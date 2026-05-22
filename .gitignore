@@ -31,7 +31,6 @@ Thumbs.db
 # Database / dump
 *.sqlite
 *.db
-*.sql
 
 # Test artifacts
 coverage/
