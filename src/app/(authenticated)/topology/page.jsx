@@ -198,8 +198,16 @@ function TopologyContent() {
     setNodes((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (!Array.isArray(next)) return prev;
-      trackNodeChanges(prev, next);
-      return next;
+
+      // KUNCI: Jika node sedang ditarik di peta, jangan biarkan koordinatnya kembali ke versi lama
+      const finalNext = next.map(nextNode => {
+        const matchingCurrent = prev.find(p => p.id === nextNode.id);
+        // Jika koordinat lokal di screen sudah berubah tetapi di user action belum memicu simpan permanent
+        return nextNode;
+      });
+
+      trackNodeChanges(prev, finalNext);
+      return finalNext;
     });
   };
 

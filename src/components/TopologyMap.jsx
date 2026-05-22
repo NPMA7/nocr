@@ -116,7 +116,9 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
   const [position, setPosition] = useState([parseFloat(node.latitude), parseFloat(node.longitude)]);
   const isDragging = useRef(false);
   const nodeRef = useRef(node);
+  const markerRef = useRef(null);
 
+  // Efek ini hanya mengupdate posisi jika pengguna TIDAK sedang menyeret ikon
   useEffect(() => {
     nodeRef.current = node;
     if (!isDragging.current) {
@@ -128,6 +130,40 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
     return getMarkerIcon(node, isSelected, edges, showLabels);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.type, node.status, node.label, node.linked_interface, isSelected, edges, coreInterfaces, showLabels]);
+
+  // Handler seret interaktif yang mengunci pergerakan kabel secara simultan
+  const handleDrag = useCallback((e) => {
+    if (readOnly) return;
+    const marker = markerRef.current;
+    if (!marker) return;
+
+    const newLatLng = marker.getLatLng();
+    const currentNodeId = nodeRef.current.id;
+    const map = marker._map;
+
+    if (map) {
+      map.eachLayer((layer) => {
+        if (layer instanceof L.Polyline && layer.options) {
+          const { nodeFromId, nodeToId } = layer.options;
+
+          if (nodeFromId === currentNodeId || nodeToId === currentNodeId) {
+            const latlngs = layer.getLatLngs();
+
+            if (latlngs.length >= 2) {
+              if (nodeFromId === currentNodeId) {
+                latlngs[0] = newLatLng;
+              }
+              if (nodeToId === currentNodeId) {
+                latlngs[latlngs.length - 1] = newLatLng;
+              }
+              layer.setLatLngs(latlngs);
+              layer.redraw(); // Paksa render ulang instan untuk layer kabel ini saja
+            }
+          }
+        }
+      });
+    }
+  }, [readOnly]);
 
   const eventHandlers = useMemo(() => ({
     click: (e) => handleNodeClick(e, nodeRef.current),
@@ -146,22 +182,29 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
     },
     dragstart: () => {
       if (readOnly) return;
-      isDragging.current = true;
+      isDragging.current = true; // Kunci status menyeret menjadi TRUE
       pushUndo(nodeRef.current.id, nodeRef.current.latitude, nodeRef.current.longitude);
     },
-    drag: (e) => {
-      if (readOnly) return;
-      const newLatLng = e.target.getLatLng();
-      setNodes(prev => prev.map(n => n.id === nodeRef.current.id ? { ...n, latitude: newLatLng.lat, longitude: newLatLng.lng } : n));
-    },
+    drag: handleDrag,
     dragend: (e) => {
       if (readOnly) return;
-      isDragging.current = false;
       const newLatLng = e.target.getLatLng();
+      
+      // Berikan jeda mikro agar Leaflet menyelesaikan animasi internal sebelum status kunci dibuka
+      setTimeout(() => {
+        isDragging.current = false;
+      }, 50);
+
       setPosition([newLatLng.lat, newLatLng.lng]);
-      setNodes(prev => prev.map(n => n.id === nodeRef.current.id ? { ...n, latitude: newLatLng.lat, longitude: newLatLng.lng } : n));
+      
+      // Kirim koordinat mutakhir ke state penampung utama di page.jsx
+      setNodes(prev => prev.map(n => 
+        n.id === nodeRef.current.id 
+          ? { ...n, latitude: newLatLng.lat, longitude: newLatLng.lng } 
+          : n
+      ));
     }
-  }), [handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode, readOnly]);
+  }), [handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode, readOnly, handleDrag]);
 
   const isDown = useMemo(() => {
     const interfaces = coreInterfaces || [];
@@ -198,6 +241,7 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
 
   return (
     <Marker
+      ref={markerRef}
       position={position}
       icon={icon}
       draggable={!readOnly && interactionMode === 'select'}
@@ -396,32 +440,35 @@ export default function TopologyMap({
       <FlyToHandler flyToTarget={flyToTarget} onFlyToComplete={onFlyToComplete} />
       {!readOnly && <KeyboardHandler onUndo={handleUndo} />}
 
-      {validEdges.map(edge => (
-        <Polyline
-          key={edge.id}
-          positions={[[edge.fromNode.latitude, edge.fromNode.longitude], [edge.toNode.latitude, edge.toNode.longitude]]}
-          pathOptions={{
-            color: getEdgeColor(edge),
-            weight: selectedEdge?.id === edge.id ? 5 : 3.5,
-            dashArray: getEdgeDash(edge),
-            opacity: 0.9
-          }}
-          eventHandlers={{
-            click: (e) => {
-              L.DomEvent.stopPropagation(e.originalEvent || e);
-              if (!readOnly && interactionMode === 'delete_edge') {
-                onEdgeDelete?.(edge.id);
-                setEdges(prev => prev.filter(ed => ed.id !== edge.id));
-                if (selectedEdge?.id === edge.id) setSelectedEdge(null);
-              } else {
-                setSelectedNode(null);
-                setSelectedEdge(edge);
-              }
-            }
-          }}
-        />
-      ))}
-
+      {/* Cari blok validEdges.map dan ubah menjadi seperti ini */}
+{validEdges.map(edge => (
+  <Polyline
+    key={edge.id}
+    positions={[[edge.fromNode.latitude, edge.fromNode.longitude], [edge.toNode.latitude, edge.toNode.longitude]]}
+    pathOptions={{
+      color: getEdgeColor(edge),
+      weight: selectedEdge?.id === edge.id ? 5 : 3.5,
+      dashArray: getEdgeDash(edge),
+      opacity: 0.9,
+      // ISI DENGAN INI: Simpan ID node langsung di dalam properti native Leaflet path
+      nodeFromId: edge.from_node || edge.from,
+      nodeToId: edge.to_node || edge.to
+    }}
+    eventHandlers={{
+      click: (e) => {
+        L.DomEvent.stopPropagation(e.originalEvent || e);
+        if (!readOnly && interactionMode === 'delete_edge') {
+          onEdgeDelete?.(edge.id);
+          setEdges(prev => prev.filter(ed => ed.id !== edge.id));
+          if (selectedEdge?.id === edge.id) setSelectedEdge(null);
+        } else {
+          setSelectedNode(null);
+          setSelectedEdge(edge);
+        }
+      }
+    }}
+  />
+))}
       {nodes.filter(n => !isNaN(parseFloat(n.latitude)) && !isNaN(parseFloat(n.longitude))).map(node => (
         <DraggableMarker
           key={node.id}
