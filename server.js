@@ -3,8 +3,6 @@ const next = require('next');
 const http = require('http');
 const { Server } = require('socket.io');
 const ping = require('ping');
-const fs = require('fs');
-const path = require('path');
 const supabase = require('./src/lib/supabaseClient');
 const mikrotik = require('./src/lib/mikrotik');
 
@@ -28,12 +26,10 @@ app.prepare().then(() => {
     const clients = new Set();
     let isWorkerRunning = false;
 
-    // Activity logging system
+    // Batasan jumlah log di database Supabase
     const MAX_ACTIVITY_LOGS_DB = 1000;
-    const MAX_ACTIVITY_LOGS_UI = 50;
-    const logFilePath = path.join(__dirname, 'src', 'lib', 'data', 'activity_logs.json');
-    let activityLogs = [];
 
+    // Fungsi otomatis memangkas log lama di Supabase agar database tidak bengkak
     async function trimActivityLogsInDb() {
         try {
             const { count, error: countErr } = await supabase
@@ -55,81 +51,15 @@ app.prepare().then(() => {
                 const batch = ids.slice(i, i + batchSize);
                 const { error: delErr } = await supabase.from('activity_logs').delete().in('id', batch);
                 if (delErr) {
-                    console.error('Gagal memangkas log aktivitas:', delErr.message);
+                    console.error('Gagal memangkas log aktivitas di database:', delErr.message);
                     return;
                 }
             }
-            console.log(`Log aktivitas dipangkas: ${excess} entri lama dihapus (maks ${MAX_ACTIVITY_LOGS_DB}).`);
+            console.log(`Log database dipangkas: ${excess} entri lama dihapus.`);
         } catch (err) {
             console.error('Gagal memangkas log aktivitas:', err.message);
         }
     }
-
-    // Local fallback loader
-    function loadLocalLogs() {
-        try {
-            if (fs.existsSync(logFilePath)) {
-                const data = fs.readFileSync(logFilePath, 'utf8');
-                activityLogs = JSON.parse(data);
-            }
-        } catch (e) {
-            console.error("Gagal memuat log aktivitas lokal:", e);
-        }
-        if (activityLogs.length === 0) {
-            activityLogs.push({ time: new Date().toISOString(), message: "Sistem monitoring NOCR berhasil dijalankan" });
-            saveLocalLogs();
-        }
-    }
-
-    function saveLocalLogs() {
-        try {
-            const dir = path.dirname(logFilePath);
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
-            const trimmed = activityLogs.slice(0, MAX_ACTIVITY_LOGS_DB);
-            fs.writeFileSync(logFilePath, JSON.stringify(trimmed, null, 2));
-        } catch (e) {
-            console.error("Gagal menyimpan log aktivitas lokal:", e);
-        }
-    }
-
-    async function initActivityLogs() {
-        try {
-            // Try fetching from Supabase database
-            const { data, error } = await supabase
-                .from('activity_logs')
-                .select('time, message')
-                .order('time', { ascending: false })
-                .limit(MAX_ACTIVITY_LOGS_UI);
-            
-            if (error) {
-                console.warn("Gagal mengambil log dari database, menggunakan fallback lokal:", error.message);
-                loadLocalLogs();
-            } else if (data && data.length > 0) {
-                activityLogs = data.map(item => ({
-                    time: item.time,
-                    message: item.message
-                }));
-                console.log(`Berhasil memuat ${activityLogs.length} log aktivitas dari database.`);
-            } else {
-                // Table is empty, seed with initial log
-                console.log("Tabel log aktivitas kosong, melakukan seeding awal.");
-                const initialLog = { time: new Date().toISOString(), message: "Sistem monitoring NOCR berhasil dijalankan" };
-                activityLogs.push(initialLog);
-                await supabase.from('activity_logs').insert([{ message: "Sistem monitoring NOCR berhasil dijalankan" }]);
-                saveLocalLogs();
-            }
-        } catch (err) {
-            console.warn("Gagal inisialisasi database log, menggunakan fallback lokal:", err.message);
-            loadLocalLogs();
-        }
-
-        await trimActivityLogsInDb();
-    }
-
-    // Trigger initial logs load
-    initActivityLogs();
 
     const targetStatuses = {};
 
@@ -180,29 +110,27 @@ app.prepare().then(() => {
         }
     }
 
+    // Fungsi utama penampung log - MURNI DB DAN EMIT SOCKET REALTIME
     async function addActivityLog(message) {
         const log = { time: new Date().toISOString(), message };
-        activityLogs.unshift(log);
-        if (activityLogs.length > MAX_ACTIVITY_LOGS_UI) {
-            activityLogs.pop();
-        }
-
-        saveLocalLogs();
 
         try {
+            // Langsung masukkan ke tabel database Supabase
             const { error } = await supabase
                 .from('activity_logs')
                 .insert([{ message }]);
+            
             if (error) {
-                console.error("Gagal menyimpan log ke database:", error.message);
+                console.error("Gagal menyimpan log ke database Supabase:", error.message);
             } else {
                 await trimActivityLogsInDb();
             }
         } catch (err) {
-            console.error("Gagal menyimpan log ke database:", err.message);
+            console.error("Gagal koneksi simpan log database:", err.message);
         }
 
-        io.emit('status', log);
+        // Emit ke websocket agar UI Dashboard langsung ter-refresh secara live
+        io.emit('activity_log_updated', log);
     }
 
     global.addActivityLog = addActivityLog;
@@ -226,13 +154,24 @@ app.prepare().then(() => {
 
     io.on('connection', (socket) => {
         clients.add(socket.id);
-        
-        // Send initial logs upon connecting
-        socket.emit('initial_logs', activityLogs);
 
-        // Handle explicit request for initial logs to avoid race conditions
-        socket.on('request_initial_logs', () => {
-            socket.emit('initial_logs', activityLogs);
+        // Mengambil log awal langsung dari database secara asinkron saat client connect
+        supabase
+            .from('activity_logs')
+            .select('time, message')
+            .order('time', { ascending: false })
+            .limit(50)
+            .then(({ data }) => {
+                if (data) socket.emit('initial_logs', data);
+            });
+
+        socket.on('request_initial_logs', async () => {
+            const { data } = await supabase
+                .from('activity_logs')
+                .select('time, message')
+                .order('time', { ascending: false })
+                .limit(50);
+            if (data) socket.emit('initial_logs', data);
         });
 
         socket.on('subscribe_monitor', (deviceId) => {
@@ -287,7 +226,7 @@ app.prepare().then(() => {
                     const latency = res.alive ? Math.round(res.time) : 0;
                     const timestamp = new Date().toISOString();
 
-                    // Log status changes
+                    // Deteksi perubahan status untuk log aktivitas
                     const previousStatus = targetStatuses[target.id];
                     if (previousStatus && previousStatus !== status) {
                         addActivityLog(`Status ${target.type === 'client' || target.type === 'pppoe-client' ? 'pelanggan' : 'perangkat'} ${target.name} berubah menjadi ${status === 'online' ? 'Online' : 'Offline'}`);
@@ -304,7 +243,7 @@ app.prepare().then(() => {
                                 last_check: timestamp
                             }, { onConflict: 'device_id' });
                     } catch (dbErr) {
-                        // Ignore DB errors in background
+                        // Abaikan error upsert status di background
                     }
 
                     io.emit('device-status', {
@@ -323,7 +262,7 @@ app.prepare().then(() => {
                         });
                     }
                 } catch (e) {
-                    // Ignore ping errors
+                    // Abaikan error probe ping satuan
                 }
             }
         } catch (error) {
@@ -333,14 +272,14 @@ app.prepare().then(() => {
         }
     };
 
-    // Run ping worker every 5 seconds
+    // Jalankan ping worker setiap 5 detik
     setInterval(pingWorker, 5000);
 
-    // Broadcast MikroTik core metrics to all dashboards (every 10s)
+    // Jalankan broadcast core metrics MikroTik setiap 10 detik
     broadcastDashboardCoreStatus();
     setInterval(broadcastDashboardCoreStatus, 10000);
 
-    // Default Next.js Handler (Custom Server)
+    // Default Next.js Handler
     server.all('*', (req, res) => {
         return handle(req, res);
     });

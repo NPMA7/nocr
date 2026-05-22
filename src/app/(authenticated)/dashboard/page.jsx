@@ -19,7 +19,7 @@ const POLL_INTERVAL_MS = 15000;
 
 export default function Dashboard() {
   const router = useRouter();
-  const { alerts, isConnected } = useAppState();
+  const { isConnected } = useAppState();
 
   const [coreStatus, setCoreStatus] = useState(null);
   const [coreInterfaces, setCoreInterfaces] = useState([]);
@@ -27,9 +27,11 @@ export default function Dashboard() {
   const [topologyNodes, setTopologyNodes] = useState([]);
   const [mapTheme, setMapTheme] = useState('colored');
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [dbLogs, setDbLogs] = useState([]); // State penampung log aktivitas dari database
   const mountedRef = useRef(true);
 
   const getLogStyle = (msg) => {
+    if (!msg) return { bgColor: 'bg-blue-950/10 border-blue-500/20 text-slate-300', icon: 'info' };
     const lowercaseMsg = msg.toLowerCase();
     if (lowercaseMsg.includes('berhasil') || lowercaseMsg.includes('online')) {
       return {
@@ -89,9 +91,19 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Mengambil data log langsung dari database melalui API backend
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/activity-logs`);
+      if (mountedRef.current) setDbLogs(res.data || []);
+    } catch (e) {
+      console.error("Gagal memuat log aktivitas dari database", e);
+    }
+  }, []);
+
   const fetchAllDashboardData = useCallback(async () => {
-    await Promise.all([fetchCoreStatus(), fetchInterfaces(), fetchTopology()]);
-  }, [fetchCoreStatus, fetchInterfaces, fetchTopology]);
+    await Promise.all([fetchCoreStatus(), fetchInterfaces(), fetchTopology(), fetchLogs()]);
+  }, [fetchCoreStatus, fetchInterfaces, fetchTopology, fetchLogs]);
 
   const applyTopologyPayload = useCallback((nodes, edgesPayload) => {
     if (nodes) setTopologyNodes(nodes);
@@ -117,10 +129,11 @@ export default function Dashboard() {
     };
 
     const handleTopologyRefresh = () => fetchTopology();
-
     const handleInterfaceUpdate = () => fetchInterfaces();
-
     const handlePppoeUpdate = () => fetchCoreStatus();
+    
+    // Refresh log aktivitas otomatis ketika ada broadcast event log baru dari socket
+    const handleNewActivityLog = () => fetchLogs();
 
     const handleDeviceStatus = ({ id, status }) => {
       if (!id || !status) return;
@@ -136,6 +149,7 @@ export default function Dashboard() {
       socket.on('interface_update', handleInterfaceUpdate);
       socket.on('pppoe_active_update', handlePppoeUpdate);
       socket.on('device-status', handleDeviceStatus);
+      socket.on('activity_log_updated', handleNewActivityLog); // Trigger realtime via WebSocket
     }
 
     return () => {
@@ -148,9 +162,10 @@ export default function Dashboard() {
         socket.off('interface_update', handleInterfaceUpdate);
         socket.off('pppoe_active_update', handlePppoeUpdate);
         socket.off('device-status', handleDeviceStatus);
+        socket.off('activity_log_updated', handleNewActivityLog);
       }
     };
-  }, [fetchAllDashboardData, fetchTopology, fetchInterfaces, fetchCoreStatus, applyTopologyPayload]);
+  }, [fetchAllDashboardData, fetchTopology, fetchInterfaces, fetchCoreStatus, fetchLogs, applyTopologyPayload]);
 
   const totalNodes = topologyNodes.length;
   const oltCount = topologyNodes.filter((n) => n.type === 'olt').length;
@@ -285,7 +300,7 @@ export default function Dashboard() {
           <span className="text-xl font-bold text-slate-100">{clientCount}</span>
         </div>
 
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-red-500/10 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/10 rounded-full blur-xl -mr-4 -mt-4"></div>
           <div className="flex items-center gap-2 text-red-400 mb-1 relative z-10">
             <AlertTriangle size={14} /> <span className="text-[10px] font-bold uppercase tracking-wider">Offline</span>
@@ -373,10 +388,11 @@ export default function Dashboard() {
               <span className="text-slate-400 uppercase tracking-wider">{isConnected ? 'Live' : 'Terputus'}</span>
             </span>
           </h3>
+          
           <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2.5 custom-scrollbar">
-            {alerts &&
-              alerts.map((a, i) => {
-                const style = getLogStyle(a.msg);
+            {dbLogs && dbLogs.length > 0 ? (
+              dbLogs.map((a, i) => {
+                const style = getLogStyle(a.message || a.msg);
                 return (
                   <div
                     key={i}
@@ -389,7 +405,7 @@ export default function Dashboard() {
                       {style.icon === 'info' && <Info size={14} className="text-blue-400" />}
                     </div>
                     <div className="flex-1 flex flex-col gap-1 min-w-0">
-                      <span className="text-slate-200 leading-relaxed break-words">{a.msg}</span>
+                      <span className="text-slate-200 leading-relaxed break-words">{a.message || a.msg}</span>
                       <span className="text-[9px] text-slate-500 font-mono self-start uppercase">
                         {new Date(a.time).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}{' '}
                         {new Date(a.time).toLocaleTimeString('id-ID', {
@@ -401,8 +417,8 @@ export default function Dashboard() {
                     </div>
                   </div>
                 );
-              })}
-            {(!alerts || alerts.length === 0) && (
+              })
+            ) : (
               <div className="flex flex-col items-center justify-center flex-1 py-12 text-slate-500 gap-2">
                 <Info size={24} className="text-slate-600 animate-pulse" />
                 <span className="text-sm">Belum ada aktivitas</span>
