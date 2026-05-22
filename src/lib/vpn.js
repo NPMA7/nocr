@@ -1,28 +1,9 @@
-const fs = require('fs');
-const path = require('path');
 const { exec } = require('child_process');
 
-const vpnConfigFile = path.join(process.cwd(), 'src', 'lib', 'data', 'vpn_config.json');
+// Fungsi ini sekarang tidak lagi membaca file JSON lokal, melainkan menerima objek konfigurasi langsung
+const connectVpn = (config) => new Promise((resolve, reject) => {
+    if (!config) return reject(new Error('Konfigurasi VPN tidak ditemukan atau kosong'));
 
-const getVpnConfig = () => {
-    try {
-        if (fs.existsSync(vpnConfigFile)) {
-            const data = fs.readFileSync(vpnConfigFile, 'utf8');
-            return JSON.parse(data);
-        }
-    } catch (e) {
-        console.error('Error reading VPN config:', e);
-    }
-    return { 
-        name: '', username: '', password: '',
-        windows_name: '', windows_username: '', windows_password: '',
-        linux_name: '', linux_username: '', linux_password: '',
-        active_platform: 'windows'
-    };
-};
-
-const connectVpn = () => new Promise((resolve, reject) => {
-    const config = getVpnConfig();
     const activePlatform = config.active_platform || (process.platform === 'linux' ? 'linux' : 'windows');
     const isLinux = activePlatform === 'linux';
     const name = isLinux ? (config.linux_name || config.name) : (config.windows_name || config.name);
@@ -55,8 +36,9 @@ const connectVpn = () => new Promise((resolve, reject) => {
     });
 });
 
-const disconnectVpn = () => new Promise((resolve, reject) => {
-    const config = getVpnConfig();
+const disconnectVpn = (config) => new Promise((resolve, reject) => {
+    if (!config) return reject(new Error('Konfigurasi VPN tidak ditemukan atau kosong'));
+
     const activePlatform = config.active_platform || (process.platform === 'linux' ? 'linux' : 'windows');
     const isLinux = activePlatform === 'linux';
     const name = isLinux ? (config.linux_name || config.name) : (config.windows_name || config.name);
@@ -82,8 +64,9 @@ const disconnectVpn = () => new Promise((resolve, reject) => {
     });
 });
 
-const checkVpnStatus = () => new Promise((resolve) => {
-    const config = getVpnConfig();
+const checkVpnStatus = (config) => new Promise((resolve) => {
+    if (!config) return resolve({ connected: false, message: 'VPN belum dikonfigurasi di database' });
+
     const activePlatform = config.active_platform || (process.platform === 'linux' ? 'linux' : 'windows');
     const isLinux = activePlatform === 'linux';
     const name = isLinux ? (config.linux_name || config.name) : (config.windows_name || config.name);
@@ -119,9 +102,7 @@ const checkVpnStatus = () => new Promise((resolve) => {
 });
 
 module.exports = {
-    getVpnConfig,
     connectVpn,
     disconnectVpn,
     checkVpnStatus
 };
-

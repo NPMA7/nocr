@@ -1,12 +1,7 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { exec } from 'child_process';
 import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
-import { getVpnConfig, connectVpn, disconnectVpn, checkVpnStatus } from '@/lib/vpn';
+import { connectVpn, disconnectVpn, checkVpnStatus } from '@/lib/vpn';
 import supabase from '@/lib/supabaseClient';
-
-const vpnConfigFile = path.join(process.cwd(), 'src', 'lib', 'data', 'vpn_config.json');
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -15,33 +10,38 @@ const sendError = (err, defaultStatus = 500) => {
     );
 };
 
+// Helper internal untuk mengambil konfigurasi VPN dari database Supabase
+async function fetchDbConfig() {
+    const { data, error } = await supabase
+        .from('vpn_settings')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle();
+    
+    if (error || !data) {
+        return { 
+            name: '', username: '', password: '',
+            windows_name: '', windows_username: '', windows_password: '',
+            linux_name: '', linux_username: '', linux_password: '',
+            active_platform: 'windows'
+        };
+    }
+    return data;
+}
+
 export async function GET(req, { params }) {
     const { path: routePath } = await params;
     
     try {
         verifyAuth(req);
+        const config = await fetchDbConfig();
 
         if (routePath[0] === 'status') {
-            const statusResult = await checkVpnStatus();
+            const statusResult = await checkVpnStatus(config);
             return NextResponse.json(statusResult);
         }
 
         if (routePath[0] === 'settings') {
-            try {
-                const { data, error } = await supabase
-                    .from('vpn_settings')
-                    .select('name, username, password, windows_name, windows_username, windows_password, linux_name, active_platform')
-                    .eq('id', 1)
-                    .maybeSingle();
-                
-                if (data && (data.name || data.windows_name || data.linux_name || data.active_platform)) {
-                    return NextResponse.json(data);
-                }
-            } catch (dbErr) {
-                console.error('Failed to fetch VPN config from database, using local fallback:', dbErr.message);
-            }
-            
-            const config = getVpnConfig();
             return NextResponse.json(config);
         }
 
@@ -57,13 +57,14 @@ export async function POST(req, { params }) {
     try {
         const user = await resolveAuth(req);
         enforceRoleForMutation(req, user);
+        const config = await fetchDbConfig();
 
         if (routePath[0] === 'connect') {
             try {
                 if (global.addActivityLog) {
                     global.addActivityLog('Menghubungkan koneksi VPN Auto-Dial...');
                 }
-                const stdout = await connectVpn();
+                const stdout = await connectVpn(config);
                 if (global.addActivityLog) {
                     global.addActivityLog('Koneksi VPN Auto-Dial berhasil terhubung');
                 }
@@ -81,7 +82,7 @@ export async function POST(req, { params }) {
                 if (global.addActivityLog) {
                     global.addActivityLog('Memutuskan koneksi VPN Auto-Dial...');
                 }
-                const stdout = await disconnectVpn();
+                const stdout = await disconnectVpn(config);
                 if (global.addActivityLog) {
                     global.addActivityLog('Koneksi VPN Auto-Dial berhasil diputuskan');
                 }
@@ -110,65 +111,34 @@ export async function POST(req, { params }) {
             if (selectedPlatform === 'windows' && !windows_name) {
                 return NextResponse.json({ error: 'Nama profil Windows wajib diisi' }, { status: 400 });
             }
-            
-            // Save to local file (needed for local autodial dialer when offline)
-            const configDir = path.dirname(vpnConfigFile);
-            if (!fs.existsSync(configDir)) {
-                fs.mkdirSync(configDir, { recursive: true });
-            }
-            fs.writeFileSync(vpnConfigFile, JSON.stringify({ 
-                name: windows_name || linux_name || name || '', 
-                username: windows_username || username || '', 
-                password: windows_password || password || '',
-                windows_name: windows_name || '',
-                windows_username: windows_username || '',
-                windows_password: windows_password || '',
-                linux_name: linux_name || '',
-                active_platform: selectedPlatform
-            }, null, 2));
 
-            // Save to database
-            let dbSuccess = true;
-            let dbErrorMsg = '';
-            try {
-                const { error: dbErr } = await supabase
-                    .from('vpn_settings')
-                    .upsert({
-                        id: 1,
-                        name: windows_name || linux_name || name || '',
-                        username: windows_username || username || '',
-                        password: windows_password || password || '',
-                        windows_name: windows_name || null,
-                        windows_username: windows_username || null,
-                        windows_password: windows_password || null,
-                        linux_name: linux_name || null,
-                        active_platform: selectedPlatform,
-                        updated_at: new Date().toISOString()
-                    });
-                if (dbErr) {
-                    dbSuccess = false;
-                    dbErrorMsg = dbErr.message;
-                    console.error('Failed to save VPN settings to database:', dbErr.message);
-                }
-            } catch (dbErr) {
-                dbSuccess = false;
-                dbErrorMsg = dbErr.message;
+            // Simpan perubahan murni ke database Supabase tanpa menyentuh lokal disk fs
+            const { error: dbErr } = await supabase
+                .from('vpn_settings')
+                .upsert({
+                    id: 1,
+                    name: windows_name || linux_name || name || '',
+                    username: windows_username || username || '',
+                    password: windows_password || password || '',
+                    windows_name: windows_name || null,
+                    windows_username: windows_username || null,
+                    windows_password: windows_password || null,
+                    linux_name: linux_name || null,
+                    active_platform: selectedPlatform,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (dbErr) {
                 console.error('Failed to save VPN settings to database:', dbErr.message);
+                return NextResponse.json({ error: `Gagal menyimpan konfigurasi ke database: ${dbErr.message}` }, { status: 400 });
             }
 
             if (global.addActivityLog) {
                 const platformName = selectedPlatform === 'linux' ? 'Linux' : 'Windows';
-                global.addActivityLog(`Pengaturan VPN Auto-Dial disimpan (${platformName})`);
+                global.addActivityLog(`Pengaturan VPN Auto-Dial disimpan ke database (${platformName})`);
             }
 
-            if (!dbSuccess) {
-                return NextResponse.json({ 
-                    success: true, 
-                    message: `Konfigurasi VPN disimpan secara lokal, namun gagal disinkronkan ke database: ${dbErrorMsg}` 
-                });
-            }
-
-            return NextResponse.json({ success: true, message: 'Konfigurasi VPN disimpan ke lokal & database' });
+            return NextResponse.json({ success: true, message: 'Konfigurasi VPN berhasil diperbarui di database' });
         }
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
