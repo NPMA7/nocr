@@ -1,0 +1,54 @@
+# ======================================
+# Berkas & direktori yang tidak boleh di-push ke GitHub
+# ======================================
+
+# Dependency / package managers
+node_modules/
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+out/
+*.log
+
+# Environment / credentials
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# System files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Database / dump
+*.sqlite
+*.db
+*.sql
+
+# Test artifacts
+coverage/
+
+# OS & editor
+*.bak
+*.tmp
+
+# Misc
+*.pem
+*.key
+*.crt
+
+# Next.js
+.next/
+next-temp/
+.frontend-to-delete/
+
+
+src/lib/data/

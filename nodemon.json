@@ -1,0 +1,11 @@
+{
+  "watch": [
+    "server.js",
+    "src/lib/"
+  ],
+  "ignore": [
+    "src/lib/data/*",
+    "src/lib/data/**/*"
+  ],
+  "ext": "js,mjs,json"
+}
