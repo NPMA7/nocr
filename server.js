@@ -25,6 +25,7 @@ app.prepare().then(() => {
     const activeMonitors = new Set();
     const clients = new Set();
     let isWorkerRunning = false;
+    const previousMappingsStatus = {};
 
     // Batasan jumlah log di database Supabase
     const MAX_ACTIVITY_LOGS_DB = 1000;
@@ -230,10 +231,12 @@ app.prepare().then(() => {
                     const latency = res.alive ? Math.round(res.time) : 0;
                     const timestamp = new Date().toISOString();
 
-                    // Deteksi perubahan status untuk log aktivitas
+                    // Deteksi perubahan status untuk log aktivitas (kecuali L2TP yang sudah dikelola oleh mappings)
                     const previousStatus = targetStatuses[target.id];
                     if (previousStatus && previousStatus !== status) {
-                        addActivityLog(`Status ${target.type === 'client' || target.type === 'pppoe-client' ? 'pelanggan' : 'perangkat'} ${target.name} berubah menjadi ${status === 'online' ? 'Online' : 'Offline'}`);
+                        if (target.type !== 'client') { // L2TP / client logs via mappings now
+                            addActivityLog(`Status ${target.type === 'client' || target.type === 'pppoe-client' ? 'pelanggan' : 'perangkat'} ${target.name} berubah menjadi ${status === 'online' ? 'Online' : 'Offline'}`);
+                        }
                     }
                     targetStatuses[target.id] = status;
 
@@ -397,10 +400,19 @@ app.prepare().then(() => {
                     issue = 'Akun Mikrotik tidak ditemukan (Manual Link Salah)';
                 }
 
+                const prefixName = (existing && existing.is_prefix_manual) ? existing.prefix : (secretName || ap.alias);
+
+                // Tambahkan log aktivitas jika final_status berubah
+                const prevStatus = previousMappingsStatus[ap.mac_address];
+                if (prevStatus && prevStatus !== finalStatus) {
+                    addActivityLog(`Status pelanggan ${prefixName} berubah menjadi ${finalStatus}`);
+                }
+                previousMappingsStatus[ap.mac_address] = finalStatus;
+
                 return {
                     ruijie_mac: ap.mac_address,
                     mikrotik_name: secretName || '-',
-                    prefix: (existing && existing.is_prefix_manual) ? existing.prefix : (secretName || ap.alias),
+                    prefix: prefixName,
                     ruijie_alias: ap.alias,
                     mikrotik_alias: secretName || '-',
                     status_ruijie: apStatus,
