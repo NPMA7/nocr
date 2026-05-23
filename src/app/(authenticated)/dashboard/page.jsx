@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [edges, setEdges] = useState([]);
   const [topologyNodes, setTopologyNodes] = useState([]);
   const [mappings, setMappings] = useState([]);
+  const [ruijieDevices, setRuijieDevices] = useState([]);
   const [mapTheme, setMapTheme] = useState('colored');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [dbLogs, setDbLogs] = useState([]); // State penampung log aktivitas dari database
@@ -111,9 +112,18 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchRuijie = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/ruijie');
+      if (mountedRef.current) setRuijieDevices(res.data || []);
+    } catch (e) {
+      console.error("Gagal memuat data Ruijie", e);
+    }
+  }, []);
+
   const fetchAllDashboardData = useCallback(async () => {
-    await Promise.all([fetchCoreStatus(), fetchInterfaces(), fetchTopology(), fetchLogs(), fetchMappings()]);
-  }, [fetchCoreStatus, fetchInterfaces, fetchTopology, fetchLogs, fetchMappings]);
+    await Promise.all([fetchCoreStatus(), fetchInterfaces(), fetchTopology(), fetchLogs(), fetchMappings(), fetchRuijie()]);
+  }, [fetchCoreStatus, fetchInterfaces, fetchTopology, fetchLogs, fetchMappings, fetchRuijie]);
 
   const applyTopologyPayload = useCallback((nodes, edgesPayload) => {
     if (nodes) setTopologyNodes(nodes);
@@ -193,7 +203,11 @@ export default function Dashboard() {
   const oltCount = topologyNodes.filter((n) => n.type === 'olt').length;
   const odcCount = topologyNodes.filter((n) => n.type === 'odc').length;
   const odpCount = topologyNodes.filter((n) => n.type === 'odp').length;
+  const infrasCount = oltCount + odcCount + odpCount;
   const clientCount = topologyNodes.filter((n) => n.type === 'client').length;
+
+  const totalL2tpRuijie = ruijieDevices.length;
+  const offlineRuijie = ruijieDevices.filter(d => d.status === 'OFF').length;
 
   const offlineCount = useMemo(() => {
     return topologyNodes.filter((node) => {
@@ -289,43 +303,45 @@ export default function Dashboard() {
       <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 md:gap-3">
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
           <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Router size={14} className="text-blue-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total</span>
+            <Router size={14} className="text-blue-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Interfaces</span>
           </div>
           <span className="text-xl font-bold text-slate-100">{totalNodes}</span>
         </div>
 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
           <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Server size={14} className="text-purple-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">OLT</span>
-          </div>
-          <span className="text-xl font-bold text-slate-100">{oltCount}</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <HardDrive size={14} className="text-cyan-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">ODC</span>
-          </div>
-          <span className="text-xl font-bold text-slate-100">{odcCount}</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <MapIcon size={14} className="text-emerald-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">ODP</span>
-          </div>
-          <span className="text-xl font-bold text-slate-100">{odpCount}</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Users size={14} className="text-amber-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Client</span>
+            <Users size={14} className="text-amber-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Node Client Terpasang</span>
           </div>
           <span className="text-xl font-bold text-slate-100">{clientCount}</span>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <Server size={14} className="text-purple-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Infrastruktur (OLT,ODC,ODP)</span>
+          </div>
+          <span className="text-xl font-bold text-slate-100">{infrasCount}</span>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <Router size={14} className="text-cyan-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Client Ruijie (L2TP)</span>
+          </div>
+          <span className="text-xl font-bold text-slate-100">{totalL2tpRuijie}</span>
         </div>
 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-red-500/10 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/10 rounded-full blur-xl -mr-4 -mt-4"></div>
           <div className="flex items-center gap-2 text-red-400 mb-1 relative z-10">
-            <AlertTriangle size={14} /> <span className="text-[10px] font-bold uppercase tracking-wider">Offline</span>
+            <AlertTriangle size={14} /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Ruijie Offline</span>
+          </div>
+          <span className="text-xl font-bold text-red-400 relative z-10">{offlineRuijie}</span>
+        </div>
+
+
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-red-500/10 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/10 rounded-full blur-xl -mr-4 -mt-4"></div>
+          <div className="flex items-center gap-2 text-red-400 mb-1 relative z-10">
+            <AlertTriangle size={14} /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Mikrotik Offline</span>
           </div>
           <span className="text-xl font-bold text-red-400 relative z-10">{offlineCount}</span>
         </div>
