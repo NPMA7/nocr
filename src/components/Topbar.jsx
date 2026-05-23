@@ -7,7 +7,7 @@ import { API_URL, useAppState } from '@/App';
 import { normalizeRole, getRoleLabel, getStoredUser } from '@/lib/roles';
 
 export default function Topbar({ onMenuClick }) {
-  const { sessionUser } = useAppState();
+  const { sessionUser, lastSyncTime } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
 
   useEffect(() => {
@@ -130,6 +130,13 @@ export default function Topbar({ onMenuClick }) {
         </div>
         
         <div className="flex items-center gap-3 md:gap-5 flex-shrink-0">
+          {lastSyncTime && (
+            <div className="text-[10px] md:text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-slate-700/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Auto-sync: {lastSyncTime}
+            </div>
+          )}
+
           <div className="relative cursor-pointer text-slate-200 hover:text-white transition">
             <Bell size={20} />
             <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">

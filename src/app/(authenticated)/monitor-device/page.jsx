@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL, socket } from '@/App';
+import { API_URL, socket, useAppState } from '@/App';
 import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkIcon, Unlink, X, Save, Edit2, Lock, Clock } from 'lucide-react';
 import { getStoredUser, isVisitorRole, isEditorRole } from '@/lib/roles';
 
@@ -13,7 +13,7 @@ export default function MonitorDevice() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const { setLastSyncTime } = useAppState();
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,7 +42,7 @@ export default function MonitorDevice() {
       if (resMikrotik.data) {
         setMikrotikSecrets(resMikrotik.data.secrets || []);
       }
-      setLastUpdated(new Date());
+      setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
     } catch (e) {
       if (!isBackground) setError(e.message || 'Gagal mengambil data sinkronisasi');
     } finally {
@@ -214,12 +214,6 @@ export default function MonitorDevice() {
           <p className="text-sm text-slate-400 mt-1">Status Access Point (Ruijie) & Mikrotik (L2TP/PPP)</p>
         </div>
         <div className="flex items-center gap-4">
-          {lastUpdated && (
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Auto-sync: {lastUpdated.toLocaleTimeString('id-ID')}
-            </div>
-          )}
             <button 
               onClick={() => {
                 if (socket) socket.emit('force_sync_mappings');

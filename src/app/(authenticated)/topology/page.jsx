@@ -80,9 +80,9 @@ function TopologyContent() {
   const [linkStartNode, setLinkStartNode] = useState(null);
   const [deviceConfig, setDeviceConfig] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const { sessionUser } = useAppState();
+  const { sessionUser, setLastSyncTime } = useAppState();
   const [canEdit, setCanEdit] = useState(false);
-  const readOnly = !canEdit;
+  const readOnly = isVisitorRole(sessionUser?.role);
 
   const syncEditPermission = () => {
     setCanEdit(canEditTopology(getStoredUser().role));
@@ -177,7 +177,6 @@ function TopologyContent() {
 
   // Auto-refresh interval
   const [edgeMode, setEdgeMode] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
 
@@ -337,6 +336,19 @@ function TopologyContent() {
     }
   };
 
+  const fetchTopology = async (showToast = false) => {
+    try {
+      const res = await axios.get(`${API_URL}/topology`);
+      const loadedNodes = res.data.nodes || [];
+      const loadedEdges = res.data.edges || [];
+      revisionRef.current = res.data.revision || null;
+      applyTopologyFromServer(loadedNodes, loadedEdges, { resetBaseline: true, toastMsg: showToast ? 'Peta dikembalikan ke posisi semula' : null });
+    } catch (e) {
+      console.error(e);
+      if (showToast) addToast('Gagal memuat ulang peta', 'error');
+    }
+  };
+
   const fetchCoreData = async () => {
     setCoreLoading(true);
     try {
@@ -346,7 +358,7 @@ function TopologyContent() {
       ]);
       setCoreStatus(statusRes?.data || null);
       setCoreInterfaces(ifaceRes?.data || []);
-      setLastUpdated(new Date().toLocaleTimeString('id-ID'));
+      setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
     } catch (e) {
       console.error('Gagal memuat data core MikroTik', e);
     } finally {
@@ -384,12 +396,7 @@ function TopologyContent() {
   }, [readOnly]);
 
   useEffect(() => {
-    axios.get(`${API_URL}/topology`).then(res => {
-      const loadedNodes = res.data.nodes || [];
-      const loadedEdges = res.data.edges || [];
-      revisionRef.current = res.data.revision || null;
-      applyTopologyFromServer(loadedNodes, loadedEdges);
-    }).catch(console.error);
+    fetchTopology();
     axios.get(`${API_URL}/devices`).then(res => setAvailableDevices(res.data)).catch(console.error);
     axios.get('/api/mappings').then(res => setMappings(res.data)).catch(console.error);
     fetchCoreData();
@@ -402,7 +409,7 @@ function TopologyContent() {
     const handleMikrotikUpdate = (data) => {
       if (data.status) setCoreStatus(data.status);
       if (data.interfaces) setCoreInterfaces(data.interfaces);
-      setLastUpdated(new Date().toLocaleTimeString('id-ID'));
+      setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
     };
 
     const handleMappingsUpdate = () => {
@@ -670,12 +677,12 @@ function TopologyContent() {
           {!readOnly && interactionMode === 'delete_edge' && <span className="text-xs text-red-400 font-medium bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 whitespace-nowrap flex-shrink-0">Klik kabel untuk menghapus</span>}
         </div>
         <div className="flex items-center gap-4">
-          {lastUpdated && (
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Auto-sync: {lastUpdated}
-            </div>
-          )}
+          <button
+            onClick={() => fetchTopology(true)}
+            className="cursor-pointer flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 h-8 text-xs font-semibold rounded-lg transition"
+          >
+            <RefreshCw size={13} /> Refresh Peta
+          </button>
           <button
             onClick={fetchCoreData}
             disabled={coreLoading}

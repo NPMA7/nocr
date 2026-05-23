@@ -19,7 +19,7 @@ const POLL_INTERVAL_MS = 15000;
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isConnected } = useAppState();
+  const { isConnected, setLastSyncTime } = useAppState();
 
   const [coreStatus, setCoreStatus] = useState(null);
   const [coreInterfaces, setCoreInterfaces] = useState([]);
@@ -28,7 +28,6 @@ export default function Dashboard() {
   const [mappings, setMappings] = useState([]);
   const [ruijieDevices, setRuijieDevices] = useState([]);
   const [mapTheme, setMapTheme] = useState('colored');
-  const [lastUpdated, setLastUpdated] = useState(null);
   const [dbLogs, setDbLogs] = useState([]); // State penampung log aktivitas dari database
   const mountedRef = useRef(true);
 
@@ -64,12 +63,12 @@ export default function Dashboard() {
       const res = await axios.get(`${API_URL}/devices/core/status?max_age=12`);
       if (mountedRef.current) {
         setCoreStatus(res.data);
-        setLastUpdated(new Date());
+        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
       }
     } catch {
       if (mountedRef.current) setCoreStatus(null);
     }
-  }, []);
+  }, [setLastSyncTime]);
 
   const fetchInterfaces = useCallback(async () => {
     try {
@@ -86,12 +85,12 @@ export default function Dashboard() {
       if (mountedRef.current) {
         setEdges(res.data.edges || []);
         setTopologyNodes(res.data.nodes || []);
-        setLastUpdated(new Date());
+        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
       }
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [setLastSyncTime]);
 
   // Mengambil data log langsung dari database melalui API backend
   const fetchLogs = useCallback(async () => {
@@ -128,8 +127,8 @@ export default function Dashboard() {
   const applyTopologyPayload = useCallback((nodes, edgesPayload) => {
     if (nodes) setTopologyNodes(nodes);
     if (edgesPayload) setEdges(edgesPayload);
-    setLastUpdated(new Date());
-  }, []);
+    setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+  }, [setLastSyncTime]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -140,7 +139,7 @@ export default function Dashboard() {
     const handleCoreUpdate = (data) => {
       if (data) {
         setCoreStatus(data);
-        setLastUpdated(new Date());
+        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
       }
     };
 
@@ -261,11 +260,6 @@ export default function Dashboard() {
           <span className="text-slate-400 uppercase tracking-wider">
             {isConnected ? 'Live' : 'Terputus'}
           </span>
-          {lastUpdated && (
-            <span className="text-slate-500 font-normal normal-case">
-              · {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
-          )}
         </span>
       </div>
 

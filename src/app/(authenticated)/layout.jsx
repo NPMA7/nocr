@@ -18,6 +18,7 @@ export default function AuthenticatedLayout({ children }) {
   const [sessionUser, setSessionUser] = useState(() =>
     typeof window !== 'undefined' ? getStoredUser() : {}
   );
+  const [lastSyncTime, setLastSyncTime] = useState(null);
 
   const showToast = (message, type = 'success', duration = 4000) => {
     setToast({ message, type });
@@ -153,7 +154,9 @@ export default function AuthenticatedLayout({ children }) {
     sessionUser,
     refreshDevices: fetchDevices,
     refreshSessionUser,
-    showToast
+    showToast,
+    lastSyncTime,
+    setLastSyncTime
   };
 
   return (

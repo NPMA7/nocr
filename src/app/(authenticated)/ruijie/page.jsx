@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL, socket } from '@/App';
+import { API_URL, socket, useAppState } from '@/App';
 import { Wifi, WifiOff, RefreshCw, Search, Clock, Users, Activity } from 'lucide-react';
 
 export default function Ruijie() {
@@ -10,7 +10,7 @@ export default function Ruijie() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const { setLastSyncTime } = useAppState();
 
   const fetchDevices = async () => {
     setLoading(true);
@@ -18,7 +18,7 @@ export default function Ruijie() {
     try {
       const res = await axios.get(`${API_URL}/ruijie`);
       setDevices(res.data || []);
-      setLastUpdated(new Date());
+      setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
     } catch (e) {
       setError(e.message || 'Gagal mengambil data Ruijie');
     } finally {
@@ -32,7 +32,7 @@ export default function Ruijie() {
     if (socket) {
       const handleUpdate = (data) => {
         setDevices(data || []);
-        setLastUpdated(new Date());
+        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
       };
       
       socket.on('ruijie_update', handleUpdate);
@@ -114,12 +114,6 @@ export default function Ruijie() {
           <p className="text-sm text-slate-400 mt-1">Daftar perangkat Access Point Ruijie Reyee</p>
         </div>
         <div className="flex items-center gap-4">
-          {lastUpdated && (
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Auto-sync: {lastUpdated.toLocaleTimeString('id-ID')}
-            </div>
-          )}
           <button
             onClick={fetchDevices}
             disabled={loading}
