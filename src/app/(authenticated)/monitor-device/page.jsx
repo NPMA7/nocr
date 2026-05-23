@@ -179,7 +179,7 @@ export default function MonitorDevice() {
       );
     } else {
       return (
-     <div className="flex flex-col gap-1 items-end">
+     <div className="flex flex-col gap-1 items-end lg:items-start">
   <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
     <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
     Offline
@@ -232,7 +232,7 @@ export default function MonitorDevice() {
 
       {/* Stats Cards */}
       {!error && mergedDevices.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-shrink-0">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-shrink-0">
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Wifi size={20} className="text-emerald-400" />
@@ -320,7 +320,7 @@ export default function MonitorDevice() {
           ) : (
             <>
               {/* Mobile card view */}
-              <div className="md:hidden divide-y divide-slate-700/30">
+              <div className="lg:hidden divide-y divide-slate-700/30">
                 {filteredDevices.length === 0 ? (
                   <p className="text-center py-12 text-slate-500 text-base">Tidak ada data</p>
                 ) : filteredDevices.map((d, i) => (
@@ -387,7 +387,7 @@ export default function MonitorDevice() {
               </div>
 
               {/* Desktop table view */}
-              <div className="hidden md:block min-h-0 overflow-x-auto">
+              <div className="hidden lg:block min-h-0 overflow-x-auto">
                 <table className="w-full text-sm min-w-[1000px]">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">

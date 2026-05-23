@@ -827,7 +827,7 @@ function TopologyContent() {
 
           {/* Node Type Selector (Floating) */}
           {!readOnly && interactionMode === "add_node" && (
-            <div className="absolute top-full left-3 md:left-6 mt-2 z-[1001] shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 md:left-6 md:translate-x-0 mt-2 z-[1001] shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center gap-1.5 bg-slate-900 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)] rounded-lg p-1.5 w-max">
                 <span className="text-[10px] text-slate-400 uppercase font-bold px-2 whitespace-nowrap">
                   PILIH TIPE:
@@ -855,17 +855,17 @@ function TopologyContent() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex flex-wrap justify-center md:justify-end items-center gap-2 md:gap-3 w-full md:w-auto border-t border-slate-700/50 md:border-0">
           <button
             onClick={() => fetchTopology(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
           >
             <RefreshCw size={13} /> Refresh Peta
           </button>
           <button
             onClick={fetchCoreData}
             disabled={coreLoading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
           >
             <RefreshCw
               size={13}
@@ -876,7 +876,7 @@ function TopologyContent() {
           {!readOnly && (
             <button
               onClick={saveLayout}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 cursor-pointer whitespace-nowrap"
             >
               <Save size={16} /> Simpan
             </button>
