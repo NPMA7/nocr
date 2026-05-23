@@ -1,7 +1,3 @@
-# ======================================
-# Berkas & direktori yang tidak boleh di-push ke GitHub
-# ======================================
-
 # Dependency / package managers
 node_modules/
 npm-debug.log*
@@ -47,7 +43,4 @@ coverage/
 # Next.js
 .next/
 next-temp/
-.frontend-to-delete/
-
-
 src/lib/data/

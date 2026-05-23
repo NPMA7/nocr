@@ -92,13 +92,19 @@ function TopologyContent() {
   const [manualIfaceSearch, setManualIfaceSearch] = useState('');
   const [showManualIfaceDropdown, setShowManualIfaceDropdown] = useState(false);
   const [flyToTarget, setFlyToTarget] = useState(null);
+  
+  // States untuk fitur pencarian lokasi OpenStreetMap (Nominatim)
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const extractCoordinates = async () => {
     if (!manualAddData.addressSearch) return;
 
+    const query = manualAddData.addressSearch.trim();
+
     // Cek apakah input berupa koordinat (contoh: "-7.165, 107.549" atau "-7.165 107.549")
     const coordRegex = /^([-+]?\d{1,2}\.\d+)[,\s]+([-+]?\d{1,3}\.\d+)$/;
-    const coordMatch = manualAddData.addressSearch.trim().match(coordRegex);
+    const coordMatch = query.match(coordRegex);
     
     if (coordMatch) {
       setManualAddData(prev => ({
@@ -108,8 +114,25 @@ function TopologyContent() {
         label: prev.label || 'Titik dari Koordinat'
       }));
       addToast('Titik koordinat berhasil diekstrak!', 'success');
-    } else {
-      addToast('Format salah. Pastikan format Latitude, Longitude (Contoh: -7.123, 107.456)', 'error');
+      setSearchSuggestions([]);
+      return;
+    } 
+    
+    // Jika bukan koordinat, coba cari di OpenStreetMap Nominatim
+    try {
+      setIsSearching(true);
+      const res = await axios.get(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=id`);
+      if (res.data && res.data.length > 0) {
+        setSearchSuggestions(res.data);
+      } else {
+        addToast('Lokasi tidak ditemukan.', 'error');
+        setSearchSuggestions([]);
+      }
+    } catch (error) {
+      console.error(error);
+      addToast('Gagal mencari lokasi.', 'error');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -681,25 +704,57 @@ function TopologyContent() {
                 <button onClick={() => setShowManualAddModal(false)} className="text-slate-400 hover:text-white"><X size={20} /></button>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5 border-b border-slate-700/50 pb-4 mb-2">
-                  <label className="text-xs font-semibold text-slate-400">Paste Koordinat Google Maps (Opsional)</label>
+                <div className="flex flex-col gap-1.5 border-b border-slate-700/50 pb-4 mb-2 relative">
+                  <label className="text-xs font-semibold text-slate-400">Pencarian Lokasi & Koordinat</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="-7.123106..., 107.548203..."
+                      placeholder="Ketik nama tempat atau paste koordinat..."
                       value={manualAddData.addressSearch || ''}
-                      onChange={(e) => setManualAddData({...manualAddData, addressSearch: e.target.value})}
+                      onChange={(e) => {
+                        setManualAddData({...manualAddData, addressSearch: e.target.value});
+                        if (e.target.value === '') setSearchSuggestions([]);
+                      }}
                       onKeyDown={(e) => e.key === 'Enter' && extractCoordinates()}
                       className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 flex-1"
                     />
                     <button
                       onClick={extractCoordinates}
-                      className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 rounded-lg flex items-center justify-center gap-1.5 transition text-xs font-semibold whitespace-nowrap"
+                      disabled={isSearching}
+                      className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 rounded-lg flex items-center justify-center gap-1.5 transition text-xs font-semibold whitespace-nowrap disabled:opacity-50"
                     >
-                      <MapPin size={16} /> Ekstrak
+                      {isSearching ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />} 
+                      Cari
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-500 leading-tight">Mengekstrak koordinat akan otomatis mengisi Latitude dan Longitude di bawah.</p>
+
+                  {/* Suggestions Dropdown */}
+                  {searchSuggestions.length > 0 && (
+                    <div className="absolute top-[68px] left-0 right-0 z-[5000] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                      {searchSuggestions.map((place, idx) => (
+                        <div 
+                          key={idx} 
+                          className="px-3 py-2 text-xs border-b border-slate-700/50 hover:bg-slate-700 cursor-pointer text-slate-200"
+                          onClick={() => {
+                            setManualAddData(prev => ({
+                              ...prev,
+                              lat: place.lat,
+                              lng: place.lon,
+                              label: place.display_name.split(',')[0],
+                              addressSearch: place.display_name
+                            }));
+                            setSearchSuggestions([]);
+                            addToast('Lokasi berhasil dipilih', 'success');
+                          }}
+                        >
+                          <p className="font-semibold text-emerald-400">{place.display_name.split(',')[0]}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{place.display_name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-slate-500 leading-tight">Tekan Enter atau klik Cari untuk mencari lokasi atau paste koordinat.</p>
                 </div>
 
                 <div className="flex flex-col gap-1.5 relative">
