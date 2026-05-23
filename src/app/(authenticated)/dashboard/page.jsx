@@ -208,6 +208,7 @@ export default function Dashboard() {
 
   const totalL2tpRuijie = ruijieDevices.length;
   const offlineRuijie = ruijieDevices.filter(d => d.status === 'OFF').length;
+  const activeRuijieClients = ruijieDevices.reduce((sum, d) => sum + (Number(d.clients) || 0), 0);
 
   const offlineCount = useMemo(() => {
     return topologyNodes.filter((node) => {
@@ -324,26 +325,31 @@ export default function Dashboard() {
 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
           <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Router size={14} className="text-cyan-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Client Ruijie (L2TP)</span>
+            <Router size={14} className="text-cyan-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Interface (Ruijie)</span>
           </div>
           <span className="text-xl font-bold text-slate-100">{totalL2tpRuijie}</span>
         </div>
 
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-red-500/10 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/10 rounded-full blur-xl -mr-4 -mt-4"></div>
-          <div className="flex items-center gap-2 text-red-400 mb-1 relative z-10">
-            <AlertTriangle size={14} /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Ruijie Offline</span>
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <ArrowUpRight size={14} className="text-orange-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Client Aktif L2TP (Ruijie)</span>
           </div>
-          <span className="text-xl font-bold text-red-400 relative z-10">{offlineRuijie}</span>
+          <span className="text-xl font-bold text-slate-100">{activeRuijieClients}</span>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <AlertTriangle size={14} className="text-red-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Offline (Ruijie)</span>
+          </div>
+          <span className="text-xl font-bold text-slate-100">{offlineRuijie}</span>
         </div>
 
 
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-red-500/10 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/10 rounded-full blur-xl -mr-4 -mt-4"></div>
-          <div className="flex items-center gap-2 text-red-400 mb-1 relative z-10">
-            <AlertTriangle size={14} /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Mikrotik Offline</span>
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <AlertTriangle size={14} className="text-red-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Offline (Mikrotik)</span>
           </div>
-          <span className="text-xl font-bold text-red-400 relative z-10">{offlineCount}</span>
+          <span className="text-xl font-bold text-slate-100">{offlineCount}</span>
         </div>
 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
@@ -352,12 +358,7 @@ export default function Dashboard() {
           </div>
           <span className="text-xl font-bold text-slate-100">{coreStatus ? coreStatus.pppoe_active : '--'}</span>
         </div>
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-orange-500/20 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <ArrowUpRight size={14} className="text-orange-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">L2TP Aktif</span>
-          </div>
-          <span className="text-xl font-bold text-orange-400">{coreStatus ? (coreStatus.l2tp_active ?? '--') : '--'}</span>
-        </div>
+     
       </div>
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
