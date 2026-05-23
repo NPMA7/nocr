@@ -7,7 +7,7 @@ import { API_URL, useAppState } from '@/App';
 import { normalizeRole, getRoleLabel, getStoredUser } from '@/lib/roles';
 
 export default function Topbar({ onMenuClick }) {
-  const { sessionUser, lastSyncTime } = useAppState();
+  const { sessionUser, lastSyncTime, alerts } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
 
   useEffect(() => {
@@ -31,6 +31,25 @@ export default function Topbar({ onMenuClick }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Notification State
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    // Only increase unread count if the dropdown is closed
+    if (!showNotifications && alerts && alerts.length > 0) {
+      setUnreadCount(alerts.length);
+    }
+  }, [alerts]);
+
+  const handleToggleNotifications = () => {
+    const newState = !showNotifications;
+    setShowNotifications(newState);
+    if (newState) {
+      setUnreadCount(0);
+    }
+  };
 
   useEffect(() => {
     if (query.length >= 5) {
@@ -137,11 +156,38 @@ export default function Topbar({ onMenuClick }) {
             </div>
           )}
 
-          <div className="relative cursor-pointer text-slate-200 hover:text-white transition">
+          <div className="relative cursor-pointer text-slate-200 hover:text-white transition" onClick={handleToggleNotifications}>
             <Bell size={20} />
-            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+            
+            {showNotifications && (
+              <div className="absolute top-10 right-0 w-80 max-w-[90vw] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl overflow-hidden z-[2005] cursor-default" onClick={e => e.stopPropagation()}>
+                <div className="p-3 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-200">Notifikasi Sistem</span>
+                  <button onClick={() => setShowNotifications(false)} className="cursor-pointer text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {(!alerts || alerts.length === 0) ? (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      Tidak ada notifikasi baru
+                    </div>
+                  ) : (
+                    alerts.map((alert, idx) => (
+                      <div key={idx} className="p-3 border-b border-slate-700/50 hover:bg-slate-700/30 transition flex flex-col gap-1">
+                        <span className="text-xs text-slate-300 leading-relaxed">{alert.msg}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {alert.time ? new Date(alert.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-3">

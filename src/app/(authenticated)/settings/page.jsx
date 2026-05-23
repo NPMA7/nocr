@@ -1,9 +1,9 @@
 'use client';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API_URL, useAppState } from '@/App';
-import { Save, Server, Shield, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil } from 'lucide-react';
+import { Save, Server, Shield, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key } from 'lucide-react';
 import { isAdminRole, canRevealPasswords, getStoredUser, getRoleLabel } from '@/lib/roles';
 
 class ErrorBoundary extends React.Component {
@@ -36,6 +36,11 @@ function UserManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [roleEdits, setRoleEdits] = useState({});
   const [savingRoleId, setSavingRoleId] = useState(null);
+
+  // State untuk admin mengubah password user lain
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -96,6 +101,24 @@ function UserManagement() {
       } catch (err) {
         if (showToast) showToast(err.response?.data?.error || err.message, 'error');
       }
+    }
+  };
+
+  const handleAdminChangePassword = async (e) => {
+    e.preventDefault();
+    if (!selectedUserForPassword) return;
+    setChangingPassword(true);
+    try {
+      await axios.patch(`${API_URL}/auth/users/${selectedUserForPassword.id}`, {
+        password: newPassword
+      });
+      setSelectedUserForPassword(null);
+      setNewPassword('');
+      if (showToast) showToast(`Password untuk pengguna ${selectedUserForPassword.username} berhasil diubah`, 'success');
+    } catch (err) {
+      if (showToast) showToast(err.response?.data?.error || err.message, 'error');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -168,13 +191,149 @@ function UserManagement() {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button title="Hapus" onClick={() => handleDelete(u.id)} className="text-slate-500 hover:text-red-400 p-1 transition"><Trash2 size={16} /></button>
+                  <div className="flex justify-end items-center gap-2">
+                    <button 
+                      title="Ubah Password" 
+                      onClick={() => setSelectedUserForPassword(u)} 
+                      className="text-slate-500 hover:text-blue-400 p-1 transition cursor-pointer"
+                    >
+                      <Key size={16} />
+                    </button>
+                    <button 
+                      title="Hapus" 
+                      onClick={() => handleDelete(u.id)} 
+                      className="text-slate-500 hover:text-red-400 p-1 transition cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Modal Ubah Password untuk Admin */}
+      {selectedUserForPassword && (
+        <div className="fixed inset-0 bg-slate-950/70 flex items-center justify-center z-[3000] p-4 backdrop-blur-sm">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-700">
+              <h3 className="text-lg font-bold text-slate-100">Ubah Password Pengguna</h3>
+              <p className="text-xs text-slate-400 mt-1">Mengubah password untuk akun <strong className="text-blue-400">{selectedUserForPassword.username}</strong></p>
+            </div>
+            <form onSubmit={handleAdminChangePassword} className="p-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-400">Password Baru</label>
+                <input 
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Masukkan password baru"
+                  required
+                  minLength={4}
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-2">
+                <button 
+                  type="button" 
+                  onClick={() => { setSelectedUserForPassword(null); setNewPassword(''); }}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={changingPassword}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition cursor-pointer"
+                >
+                  {changingPassword ? 'Menyimpan...' : 'Simpan Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PasswordChangeSettings() {
+  const { showToast } = useAppState();
+  const [form, setForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (form.newPassword !== form.confirmPassword) {
+      if (showToast) showToast('Konfirmasi password tidak cocok', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const user = getStoredUser();
+      await axios.patch(`${API_URL}/auth/users/${user.id}`, {
+        password: form.newPassword
+      });
+      setForm({ newPassword: '', confirmPassword: '' });
+      if (showToast) showToast('Password Anda berhasil diperbarui', 'success');
+    } catch (err) {
+      if (showToast) showToast(err.response?.data?.error || err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
+      <div className="p-5 border-b border-slate-700/50">
+        <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2"><Key size={20} className="text-blue-500" /> Ubah Password Saya</h2>
+        <p className="text-xs text-slate-400 mt-1">Gunakan form di bawah ini untuk memperbarui password login Anda.</p>
+      </div>
+      <div className="p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-md">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-400">Password Baru</label>
+            <div className="relative">
+              <input 
+                type={showPwd ? "text" : "password"}
+                value={form.newPassword}
+                onChange={e => setForm({...form, newPassword: e.target.value})}
+                placeholder="Masukkan password baru"
+                required
+                minLength={4}
+                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full pr-10" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd(!showPwd)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+              >
+                {showPwd ? <EyeOff size={16}/> : <Eye size={16}/>}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-400">Konfirmasi Password Baru</label>
+            <input 
+              type={showPwd ? "text" : "password"}
+              value={form.confirmPassword}
+              onChange={e => setForm({...form, confirmPassword: e.target.value})}
+              placeholder="Konfirmasi password baru"
+              required
+              minLength={4}
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full" 
+            />
+          </div>
+          <div className="flex justify-end mt-2">
+            <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg text-sm transition disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-lg shadow-blue-500/20">
+              <Save size={16} /> {loading ? 'Menyimpan...' : 'Perbarui Password'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -196,7 +355,7 @@ function Settings() {
   const [canShowPassword, setCanShowPassword] = useState(false);
 
   const syncRoleFlags = () => {
-    const userData = getStoredUser();
+    const userData = sessionUser?.role ? sessionUser : getStoredUser();
     setIsAdmin(isAdminRole(userData.role));
     setCanShowPassword(canRevealPasswords(userData.role));
   };
@@ -244,10 +403,14 @@ function Settings() {
     if (sessionUser?.role) syncRoleFlags();
   }, [sessionUser]);
 
+  const fetchedCoreRef = useRef(false);
+  const fetchedVpnRef = useRef(false);
+
   useEffect(() => {
-    if (!devices) return;
+    if (!devices || devices.length === 0 || fetchedCoreRef.current) return;
     const core = devices.find(d => d.type === 'mikrotik-core' || (d.name && d.name.toLowerCase().includes('pusat')) || (d.name && d.name.toLowerCase().includes('core')));
     if (core) {
+      fetchedCoreRef.current = true;
       setExistingId(core.id);
       axios.get(`${API_URL}/devices/${core.id}`).then(res => {
         setCoreDevice({
@@ -260,7 +423,11 @@ function Settings() {
         });
       }).catch(console.error);
     }
-    
+  }, [devices]);
+
+  useEffect(() => {
+    if (fetchedVpnRef.current) return;
+    fetchedVpnRef.current = true;
     axios.get(`${API_URL}/vpn/settings`).then(res => {
       setVpnConfig({
         windows_name: res.data.windows_name || '',
@@ -275,7 +442,7 @@ function Settings() {
         active_platform: res.data.active_platform || 'windows'
       });
     }).catch(console.error);
-  }, [devices]);
+  }, []);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -595,6 +762,10 @@ function Settings() {
 
           {activeTab === 'users' && isAdmin && (
             <UserManagement />
+          )}
+
+          {activeTab === 'password' && (
+            <PasswordChangeSettings />
           )}
 
           {(activeTab === 'db') && (

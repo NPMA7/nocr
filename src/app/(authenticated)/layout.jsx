@@ -92,12 +92,24 @@ export default function AuthenticatedLayout({ children }) {
       const handleDisconnect = () => setIsConnected(false);
       
       const handleStatus = (data) => {
-        setAlerts(prev => [{ time: data.time ? new Date(data.time) : new Date(), msg: data.message || data.msg }, ...prev].slice(0, 10));
+        const msg = data.message || data.msg || '';
+        const lower = msg.toLowerCase();
+        if (lower.includes('berubah menjadi online') || lower.includes('berubah menjadi offline')) {
+          return;
+        }
+        setAlerts(prev => [{ time: data.time ? new Date(data.time) : new Date(), msg }, ...prev].slice(0, 10));
       };
 
       const handleInitialLogs = (logs) => {
         if (Array.isArray(logs)) {
-          setAlerts(logs.map(log => ({ time: new Date(log.time), msg: log.message })));
+          const filtered = logs
+            .filter(log => {
+              const msg = log.message || '';
+              const lower = msg.toLowerCase();
+              return !lower.includes('berubah menjadi online') && !lower.includes('berubah menjadi offline');
+            })
+            .map(log => ({ time: new Date(log.time), msg: log.message }));
+          setAlerts(filtered.slice(0, 10));
         }
       };
 
@@ -117,6 +129,7 @@ export default function AuthenticatedLayout({ children }) {
       socket.on('connect', handleConnect);
       socket.on('disconnect', handleDisconnect);
       socket.on('status', handleStatus);
+      socket.on('activity_log_updated', handleStatus);
       socket.on('initial_logs', handleInitialLogs);
       socket.on('device-status', handleDeviceStatus);
       socket.on('user_role_updated', handleRoleUpdated);
@@ -133,6 +146,7 @@ export default function AuthenticatedLayout({ children }) {
         socket.off('connect', handleConnect);
         socket.off('disconnect', handleDisconnect);
         socket.off('status', handleStatus);
+        socket.off('activity_log_updated', handleStatus);
         socket.off('initial_logs', handleInitialLogs);
         socket.off('device-status', handleDeviceStatus);
         socket.off('user_role_updated', handleRoleUpdated);

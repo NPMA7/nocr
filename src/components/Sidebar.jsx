@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Network, PieChart, GitGraph, Server, Settings, Database, Shield, Wifi, Monitor } from 'lucide-react';
+import { Network, PieChart, GitGraph, Server, Settings, Database, Shield, Wifi, Monitor, Key } from 'lucide-react';
 
 import { useAppState } from '@/App';
 import { isAdminRole, getStoredUser } from '@/lib/roles';
@@ -123,6 +123,18 @@ export default function Sidebar({ isConnected, onNavigate }) {
                   <Shield size={14} /> Manajemen Pengguna
                 </Link>
               )}
+              <Link 
+                href="/settings?tab=password" 
+                onClick={onNavigate} 
+                scroll={false}
+                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                  currentTab === 'password' 
+                    ? 'text-blue-400 bg-blue-500/10' 
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                <Key size={14} /> Ubah Password Saya
+              </Link>
             </div>
           )}
         </div>

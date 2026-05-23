@@ -14,7 +14,7 @@ export default function RootLayout({ children }) {
         {/* FontAwesome Icons for Leaflet Markers */}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         {/* Favicon */}
-        <link rel="icon" type="image/png" href="/assets/logo.png" />
+        <link rel="icon" type="image/png" href="/logo.png" />
       </head>
       <body className="bg-slate-900 text-slate-50 overflow-hidden antialiased">
         {children}

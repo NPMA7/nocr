@@ -179,24 +179,74 @@ export async function PATCH(req, { params }) {
     try {
         if (path[0] === 'users' && path[1]) {
             const user = verifyAuth(req);
-            enforceAdmin(user);
-
+            const id = path[1];
             const body = await req.json();
-            const normalizedRole = normalizeRole(body.role);
 
-            if (!normalizedRole) {
+            const isSelf = user.id === id;
+            const isAdmin = user.role === 'admin';
+
+            // Check authorization: must be admin or modifying own profile
+            if (!isAdmin && !isSelf) {
                 return NextResponse.json(
-                    { error: 'Role tidak valid. Gunakan admin, editor, atau visitor.' },
+                    { error: 'Akses ditolak: Anda tidak memiliki izin untuk mengubah data ini.' },
+                    { status: 403 }
+                );
+            }
+
+            const updateData = {};
+
+            // 1. Role Update (Admin only)
+            if (body.role !== undefined) {
+                if (!isAdmin) {
+                    return NextResponse.json(
+                        { error: 'Akses ditolak: Hanya Administrator yang dapat mengubah role.' },
+                        { status: 403 }
+                    );
+                }
+
+                const normalizedRole = normalizeRole(body.role);
+                if (!normalizedRole) {
+                    return NextResponse.json(
+                        { error: 'Role tidak valid. Gunakan admin, editor, atau visitor.' },
+                        { status: 400 }
+                    );
+                }
+                updateData.role = normalizedRole;
+            }
+
+            // 2. Password Update (Admin or self)
+            if (body.password !== undefined) {
+                const password = body.password;
+                if (typeof password !== 'string' || password.length < 4) {
+                    return NextResponse.json(
+                        { error: 'Password minimal harus 4 karakter.' },
+                        { status: 400 }
+                    );
+                }
+                const salt = await bcrypt.genSalt(10);
+                const password_hash = await bcrypt.hash(password, salt);
+                updateData.password_hash = password_hash;
+            }
+
+            if (Object.keys(updateData).length === 0) {
+                return NextResponse.json(
+                    { error: 'Tidak ada field data yang diubah.' },
                     { status: 400 }
                 );
             }
 
-            const id = path[1];
+            // Fetch current user details from DB
+            const targetUser = await supabase.from('admin_users').select('username, role').eq('id', id).single();
+            if (targetUser.error || !targetUser.data) {
+                return NextResponse.json(
+                    { error: 'Pengguna tidak ditemukan.' },
+                    { status: 404 }
+                );
+            }
+            const previousRole = normalizeRole(targetUser.data.role);
 
-            const targetUser = await supabase.from('admin_users').select('role').eq('id', id).single();
-            const previousRole = normalizeRole(targetUser?.data?.role);
-
-            if (user.id === id && normalizedRole !== 'admin' && previousRole === 'admin') {
+            // Safety check: Cannot demote the last remaining admin
+            if (updateData.role && updateData.role !== 'admin' && previousRole === 'admin') {
                 const { data: allUsers } = await supabase.from('admin_users').select('id, role');
                 const adminCount = (allUsers || []).filter(
                     (u) => normalizeRole(u.role) === 'admin'
@@ -211,7 +261,7 @@ export async function PATCH(req, { params }) {
 
             const { data, error } = await supabase
                 .from('admin_users')
-                .update({ role: normalizedRole })
+                .update(updateData)
                 .eq('id', id)
                 .select('id, username, role, created_at')
                 .single();
@@ -223,12 +273,24 @@ export async function PATCH(req, { params }) {
                 role: normalizeRole(data.role) || 'visitor'
             };
 
-            if (global.io) {
+            // Emit socket updates if role changed
+            if (updateData.role && global.io) {
                 global.io.emit('user_role_updated', {
                     userId: updated.id,
                     username: updated.username,
                     role: updated.role
                 });
+            }
+
+            // Write to Activity Logs
+            if (global.addActivityLog) {
+                if (updateData.role && previousRole !== updateData.role) {
+                    global.addActivityLog(`Hak akses (Role) pengguna ${updated.username} diubah menjadi ${updateData.role.toUpperCase()}`);
+                }
+                if (updateData.password_hash) {
+                    const actorLabel = isSelf ? 'Pengguna' : 'Administrator';
+                    global.addActivityLog(`${actorLabel} memperbarui password untuk pengguna ${updated.username}`);
+                }
             }
 
             return NextResponse.json(updated);

@@ -26,6 +26,7 @@ app.prepare().then(() => {
     const clients = new Set();
     let isWorkerRunning = false;
     const previousMappingsStatus = {};
+    let previousTidakSinkronCount = -1;
 
     // Batasan jumlah log di database Supabase
     const MAX_ACTIVITY_LOGS_DB = 1000;
@@ -71,6 +72,8 @@ app.prepare().then(() => {
         return fallback?.[0] || null;
     }
 
+    let lastCpuAlert = 0;
+    let lastMemAlert = 0;
     async function broadcastDashboardCoreStatus() {
         try {
             const device = await getCoreDevice();
@@ -91,13 +94,29 @@ app.prepare().then(() => {
             const pppoeCount = await mikrotik.getActivePPPoE(device);
             const l2tpCount = await mikrotik.getActiveL2TP(device);
 
+            const cpuLoad = parseInt(resource['cpu-load']) || 0;
+            const freeMem = parseInt(resource['free-memory']) || 0;
+            const totalMem = parseInt(resource['total-memory']) || 1;
+            const memUsage = Math.round(((totalMem - freeMem) / totalMem) * 100);
+
+            const nowTime = Date.now();
+            if (cpuLoad >= 60 && nowTime - lastCpuAlert > 5 * 60 * 1000) {
+                if (global.addActivityLog) global.addActivityLog(`Peringatan: Penggunaan CPU MikroTik mencapai ${cpuLoad}%!`);
+                lastCpuAlert = nowTime;
+            }
+
+            if (memUsage >= 60 && nowTime - lastMemAlert > 5 * 60 * 1000) {
+                if (global.addActivityLog) global.addActivityLog(`Peringatan: Penggunaan Memori MikroTik mencapai ${memUsage}%!`);
+                lastMemAlert = nowTime;
+            }
+
             io.emit('dashboard_core_update', {
                 connected: true,
                 device_name: device.name,
                 ip_address: device.ip_address,
                 cpu: resource['cpu-load'],
-                free_memory: parseInt(resource['free-memory']) || 0,
-                total_memory: parseInt(resource['total-memory']) || 0,
+                free_memory: freeMem,
+                total_memory: totalMem,
                 uptime: resource.uptime,
                 board: resource['board-name'],
                 version: resource.version,
@@ -130,8 +149,7 @@ app.prepare().then(() => {
             console.error("Gagal koneksi simpan log database:", err.message);
         }
 
-        // Emit ke websocket agar UI Dashboard langsung ter-refresh secara live
-        io.emit('activity_log_updated', log);
+        // Socket emission dipindahkan ke event postgres_changes agar API Next.js juga ikut terpancar
     }
 
     global.addActivityLog = addActivityLog;
@@ -148,6 +166,9 @@ app.prepare().then(() => {
             if (payload.table === 'topology_nodes' || payload.table === 'topology_edges') {
                 io.emit('dashboard_topology_refresh');
             }
+            if (payload.table === 'activity_logs' && payload.eventType === 'INSERT') {
+                io.emit('activity_log_updated', payload.new);
+            }
 
             io.emit('db_change', payload);
         })
@@ -160,8 +181,10 @@ app.prepare().then(() => {
         supabase
             .from('activity_logs')
             .select('time, message')
+            .not('message', 'ilike', '%berubah menjadi Online%')
+            .not('message', 'ilike', '%berubah menjadi Offline%')
             .order('time', { ascending: false })
-            .limit(50)
+            .limit(20)
             .then(({ data }) => {
                 if (data) socket.emit('initial_logs', data);
             });
@@ -170,8 +193,10 @@ app.prepare().then(() => {
             const { data } = await supabase
                 .from('activity_logs')
                 .select('time, message')
+                .not('message', 'ilike', '%berubah menjadi Online%')
+                .not('message', 'ilike', '%berubah menjadi Offline%')
                 .order('time', { ascending: false })
-                .limit(50);
+                .limit(20);
             if (data) socket.emit('initial_logs', data);
         });
 
@@ -482,7 +507,7 @@ app.prepare().then(() => {
 
                 const prefixName = (existing && existing.is_prefix_manual) ? existing.prefix : (secretName || ap.alias);
 
-                // Tambahkan log aktivitas jika final_status berubah
+                // Kembalikan log aktivitas karena dibutuhkan di tabel Log Aktivitas Dashboard
                 const prevStatus = previousMappingsStatus[ap.mac_address];
                 if (prevStatus && prevStatus !== finalStatus) {
                     addActivityLog(`Status pelanggan ${prefixName} berubah menjadi ${finalStatus}`);
@@ -509,6 +534,12 @@ app.prepare().then(() => {
                 const batch = upsertData.slice(i, i + 100);
                 await supabase.from('device_mappings').upsert(batch, { onConflict: 'ruijie_mac' });
             }
+
+            const currentTidakSinkron = upsertData.filter(d => d.status_mikrotik === 'Online' && d.status_ruijie === 'Offline').length;
+            if (currentTidakSinkron !== previousTidakSinkronCount && currentTidakSinkron > 0) {
+                if (global.addActivityLog) global.addActivityLog(`Ditemukan ${currentTidakSinkron} perangkat dengan status Tidak Sinkron`);
+            }
+            previousTidakSinkronCount = currentTidakSinkron;
             
             // Emit update agar tabel langsung segar
             io.emit('mappings_updated');
