@@ -283,6 +283,20 @@ app.prepare().then(() => {
     broadcastDashboardCoreStatus();
     setInterval(broadcastDashboardCoreStatus, 10000);
 
+    // Fungsi penjadwalan agar task berjalan tepat di awal pergantian menit
+    function scheduleAtMinuteBoundary(callback, offsetSeconds = 0) {
+        const now = new Date();
+        const currentSeconds = now.getSeconds();
+        const currentMs = now.getMilliseconds();
+        let msToNextTarget = ((60 - currentSeconds + offsetSeconds) * 1000 - currentMs) % 60000;
+        if (msToNextTarget <= 0) msToNextTarget += 60000;
+        
+        setTimeout(() => {
+            callback();
+            setInterval(callback, 60000);
+        }, msToNextTarget);
+    }
+
     // Jalankan broadcast Ruijie secara otomatis setiap 1 menit (60 detik)
     async function broadcastRuijieDevices() {
         try {
@@ -300,7 +314,7 @@ app.prepare().then(() => {
     }
 
     broadcastRuijieDevices();
-    setInterval(broadcastRuijieDevices, 60000);
+    scheduleAtMinuteBoundary(broadcastRuijieDevices, 0); // Tepat pergantian menit (:00)
 
     // Jalankan broadcast data MikroTik (Interfaces, PPPoE, Secrets) secara otomatis setiap 1 menit (60 detik)
     async function broadcastMikrotikData() {
@@ -329,9 +343,9 @@ app.prepare().then(() => {
     }
 
     broadcastMikrotikData();
-    setInterval(broadcastMikrotikData, 60000);
+    scheduleAtMinuteBoundary(broadcastMikrotikData, 0); // Tepat pergantian menit (:00)
 
-    // Jalankan Sinkronisasi Mappings setiap 65 detik (supaya data mentah sudah masuk dulu)
+    // Jalankan Sinkronisasi Mappings setiap pergantian menit lewat 5 detik (supaya data mentah Ruijie/Mikrotik masuk dulu)
     async function syncDeviceMappings() {
         try {
             const [resRuijie, resManual, resActive, resSecrets] = await Promise.all([
@@ -411,11 +425,11 @@ app.prepare().then(() => {
         }
     }
     
-    // Tunda eksekusi pertama 10 detik agar data awal terkumpul
+    // Tunda eksekusi pertama 5 detik agar data awal terkumpul, setelah itu ikut pergantian menit lewat 5 detik
     setTimeout(() => {
         syncDeviceMappings();
-        setInterval(syncDeviceMappings, 60000);
-    }, 10000);
+    }, 5000);
+    scheduleAtMinuteBoundary(syncDeviceMappings, 5); // Tepat di detik ke-05 setiap menit
 
     // Default Next.js Handler
     server.all('*', (req, res) => {
