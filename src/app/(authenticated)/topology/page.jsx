@@ -1127,38 +1127,66 @@ function TopologyContent() {
               <>
                 {activeNodeTab === 'identitas' ? (
                   <>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">Label / Nama Titik</label>
-                      <input
-                        type="text"
-                        readOnly={readOnly}
-                        value={currentSelectedNode.label}
-                        onChange={(e) => setNodesFromUser(prev => prev.map(n => n.id === currentSelectedNode.id ? { ...n, label: e.target.value } : n))}
-                        className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? 'opacity-70 cursor-default' : ''}`}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">Vendor / Merek ISP</label>
-                      <input
-                        type="text"
-                        readOnly={readOnly}
-                        placeholder="Contoh: Telkom, Biznet, Iconnet..."
-                        value={currentSelectedNode.vendor || ''}
-                        onChange={(e) => setNodesFromUser(prev => prev.map(n => n.id === currentSelectedNode.id ? { ...n, vendor: e.target.value } : n))}
-                        className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? 'opacity-70 cursor-default' : ''}`}
-                      />
-                    </div>
-
-                    <div className="flex justify-between items-center py-2.5 border-b border-slate-700/30">
+                  
+                    <div className="flex justify-between items-center border-b border-slate-700/30">
                       <span className="text-xs text-slate-400">Tipe Node</span>
-                      <span className="text-sm font-semibold text-blue-400 uppercase">{currentSelectedNode.type}</span>
+                      <span className="text-xs font-semibold text-blue-400 uppercase">{currentSelectedNode.type}</span>
                     </div>
+
+                   {/* Link node to core MikroTik interface */}
+                    {combinedInterfaceOptions.length > 0 && (
+                      <div className="flex flex-col gap-1.5 relative">
+                        {currentSelectedNode.linked_interface && (() => {
+                          const linked = combinedInterfaceOptions.find(i => i.name === currentSelectedNode.linked_interface);
+                          if (!linked) return null;
+                          
+                          let isUp = false;
+                          let isDown = false;
+                          let statusText = 'Unknown';
+                          let offlineSince = null;
+                          
+                          if (linked.isMapping) {
+                             const m = mappings.find(x => x.prefix === linked.name);
+                             if (m) {
+                               isUp = m.final_status === 'Online';
+                               isDown = m.final_status === 'Offline';
+                               statusText = m.final_status;
+                               offlineSince = m.offline_since;
+                             }
+                          } else {
+                             const c = coreInterfaces.find(x => x.name === linked.name);
+                             if (c) {
+                               isUp = c.running === 'true';
+                               isDown = c.running !== 'true'; 
+                               statusText = c.disabled === 'true' ? 'Disabled' : (isUp ? 'Up' : 'Down');
+                             }
+                          }
+
+                          return (
+                            <div className={`flex flex-col gap-1.5 p-2.5 rounded-lg text-xs border ${isUp ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-400">Status Interface</span>
+                                <span className={`font-bold px-2 py-0.5 rounded ${isUp ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                  {statusText}
+                                </span>
+                              </div>
+                              {isDown && offlineSince && (
+                                <div className="text-[10px] text-red-400 flex items-center justify-end gap-1">
+                                  <Clock size={10} /> Sejak {offlineSince}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        
+                      </div>
+                    )}
+                    
 
                     {/* Link node to core MikroTik interface */}
                     {combinedInterfaceOptions.length > 0 && (
                       <div className="flex flex-col gap-1.5 relative">
-                        <label className="text-xs font-semibold text-slate-400">Prefix (Gabungan) / Interface MikroTik</label>
+                        <label className="text-xs font-semibold text-slate-400">Interface / Prefix</label>
                         <input
                           type="text"
                           readOnly={readOnly}
@@ -1212,44 +1240,19 @@ function TopologyContent() {
                             )}
                           </div>
                         )}
-                        
-                        {/* Show linked interface status */}
-                        {currentSelectedNode.linked_interface && (() => {
-                          const linked = combinedInterfaceOptions.find(i => i.name === currentSelectedNode.linked_interface);
-                          if (!linked) return null;
-                          
-                          let isUp = false;
-                          let isDown = false;
-                          let statusText = 'Unknown';
-                          
-                          if (linked.isMapping) {
-                             const m = mappings.find(x => x.prefix === linked.name);
-                             if (m) {
-                               isUp = m.final_status === 'Online';
-                               isDown = m.final_status === 'Offline';
-                               statusText = m.final_status;
-                             }
-                          } else {
-                             const c = coreInterfaces.find(x => x.name === linked.name);
-                             if (c) {
-                               isUp = c.running === 'true';
-                               isDown = c.running !== 'true';
-                               statusText = c.disabled === 'true' ? 'Disabled' : (isUp ? 'Up' : 'Down');
-                             }
-                          }
-
-                          return (
-                            <div className={`flex items-center justify-between p-2.5 rounded-lg text-xs border ${isUp ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                              <span className="text-slate-400">Status Interface</span>
-                              <span className={`font-bold px-2 py-0.5 rounded ${isUp ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                {statusText}
-                              </span>
-                            </div>
-                          );
-                        })()}
                       </div>
                     )}
-
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-400">Vendor / Merek ISP</label>
+                      <input
+                        type="text"
+                        readOnly={readOnly}
+                        placeholder="Contoh: Telkom, Biznet, Iconnet..."
+                        value={currentSelectedNode.vendor || ''}
+                        onChange={(e) => setNodesFromUser(prev => prev.map(n => n.id === currentSelectedNode.id ? { ...n, vendor: e.target.value } : n))}
+                        className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? 'opacity-70 cursor-default' : ''}`}
+                      />
+                    </div>
                     {/* Metrics if linked to device */}
                     {currentSelectedNode.device_id && nodeDetail && !nodeDetail.loading && !nodeDetail.error && (
                       <div className="flex flex-col gap-3 mt-1 bg-slate-900/40 p-3 rounded-lg border border-slate-700/40">

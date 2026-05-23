@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL, socket } from '@/App';
-import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkIcon, Unlink, X, Save, Edit2, Lock } from 'lucide-react';
-import { getStoredUser, isVisitorRole } from '@/lib/roles';
+import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkIcon, Unlink, X, Save, Edit2, Lock, Clock } from 'lucide-react';
+import { getStoredUser, isVisitorRole, isEditorRole } from '@/lib/roles';
 
 export default function MonitorDevice() {
   const [mappings, setMappings] = useState([]);
@@ -175,12 +175,20 @@ export default function MonitorDevice() {
         <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 w-max flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
         </span>
+
       );
     } else {
       return (
-        <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Offline
-        </span>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Offline
+          </span>
+          {device.offline_since && (
+            <span className="text-[10px] text-red-400 flex items-center gap-1">
+              <Clock size={10} /> Sejak {device.offline_since}
+            </span>
+          )}
+        </div>
       );
     }
   };
@@ -340,8 +348,8 @@ export default function MonitorDevice() {
                     <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status Mikrotik</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan Issue</th>
                     {readOnly ? (
-                      <span className="text-slate-500 flex justify-end hidden">
-                      </span>
+                      <th className="text-slate-500 flex justify-end hidden">
+                      </th>
                     ) : (
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
                     )}

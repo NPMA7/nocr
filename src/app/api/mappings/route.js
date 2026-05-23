@@ -5,7 +5,23 @@ export async function GET() {
   try {
     const { data, error } = await supabase.from('device_mappings').select('*');
     if (error) throw error;
-    return NextResponse.json(data || []);
+
+    const { data: ruijieData } = await supabase.from('ruijie_devices').select('mac_address, last_online');
+    const { data: pppoeData } = await supabase.from('pppoe_secrets').select('name, last_logged_out');
+    
+    const enrichedData = (data || []).map(m => {
+      let offlineTime = null;
+      if (m.status_ruijie === 'Offline') {
+        const ap = (ruijieData || []).find(r => r.mac_address === m.ruijie_mac);
+        if (ap && ap.last_online) offlineTime = ap.last_online;
+      } else if (m.status_mikrotik === 'Offline') {
+        const sec = (pppoeData || []).find(s => s.name === m.mikrotik_alias);
+        if (sec && sec.last_logged_out) offlineTime = sec.last_logged_out;
+      }
+      return { ...m, offline_since: offlineTime };
+    });
+
+    return NextResponse.json(enrichedData);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
