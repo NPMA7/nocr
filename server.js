@@ -182,6 +182,10 @@ app.prepare().then(() => {
             activeMonitors.delete(deviceId);
         });
 
+        socket.on('force_sync_mappings', () => {
+            syncDeviceMappings();
+        });
+
         socket.on('disconnect', () => {
             clients.delete(socket.id);
             if (clients.size === 0) activeMonitors.clear();
@@ -278,6 +282,140 @@ app.prepare().then(() => {
     // Jalankan broadcast core metrics MikroTik setiap 10 detik
     broadcastDashboardCoreStatus();
     setInterval(broadcastDashboardCoreStatus, 10000);
+
+    // Jalankan broadcast Ruijie secara otomatis setiap 1 menit (60 detik)
+    async function broadcastRuijieDevices() {
+        try {
+            const { data: devices, error } = await supabase
+                .from('ruijie_devices')
+                .select('*')
+                .order('alias', { ascending: true });
+            
+            if (!error && devices) {
+                io.emit('ruijie_update', devices);
+            }
+        } catch (err) {
+            console.error('Ruijie broadcast error:', err.message);
+        }
+    }
+
+    broadcastRuijieDevices();
+    setInterval(broadcastRuijieDevices, 60000);
+
+    // Jalankan broadcast data MikroTik (Interfaces, PPPoE, Secrets) secara otomatis setiap 1 menit (60 detik)
+    async function broadcastMikrotikData() {
+        try {
+            const device = await getCoreDevice();
+            if (!device) return;
+
+            const conn = await mikrotik.connect(device);
+            if (!conn.connected) return;
+
+            const [interfaces, pppoe, secrets] = await Promise.all([
+                mikrotik.getInterfaces(device),
+                mikrotik.getActivePPPoEDetails(device),
+                mikrotik.getPPPoESecrets(device)
+            ]);
+
+            io.emit('mikrotik_full_update', { 
+                interfaces: interfaces || [], 
+                pppoe: pppoe || [], 
+                secrets: secrets || [],
+                timestamp: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error('MikroTik full broadcast error:', err.message);
+        }
+    }
+
+    broadcastMikrotikData();
+    setInterval(broadcastMikrotikData, 60000);
+
+    // Jalankan Sinkronisasi Mappings setiap 65 detik (supaya data mentah sudah masuk dulu)
+    async function syncDeviceMappings() {
+        try {
+            const [resRuijie, resManual, resActive, resSecrets] = await Promise.all([
+                supabase.from('ruijie_devices').select('*'),
+                supabase.from('device_mappings').select('*'),
+                supabase.from('pppoe_active').select('name'),
+                supabase.from('pppoe_secrets').select('name')
+            ]);
+            
+            const ruijie = resRuijie.data || [];
+            const mappings = resManual.data || [];
+            const active = resActive.data || [];
+            const secrets = resSecrets.data || [];
+
+            const normalizeName = (name) => name ? name.toLowerCase().replace(/[-_\s]/g, '') : '';
+
+            const upsertData = ruijie.map(ap => {
+                let existing = mappings.find(m => m.ruijie_mac === ap.mac_address);
+                let secretName = null;
+                let isActive = false;
+                
+                if (existing && existing.is_manual) {
+                    secretName = existing.mikrotik_name; // Prioritize mikrotik_name which is the true manual input
+                    const sec = secrets.find(s => s.name === secretName);
+                    if (sec) secretName = sec.name;
+                    isActive = active.some(a => a.name === secretName);
+                } else {
+                    const normAlias = normalizeName(ap.alias);
+                    const sec = secrets.find(s => normalizeName(s.name) === normAlias);
+                    if (sec) {
+                        secretName = sec.name;
+                        isActive = active.some(a => a.name === secretName);
+                    }
+                }
+
+                let mikrotikStatus = secretName ? (isActive ? 'Online' : 'Offline') : 'Unknown';
+                let apStatus = ap.status === 'ON' ? 'Online' : 'Offline';
+                let finalStatus = 'Unknown';
+                let issue = null;
+
+                if (apStatus === 'Online' && mikrotikStatus === 'Online') finalStatus = 'Online';
+                else if (apStatus === 'Offline' && mikrotikStatus === 'Offline') { finalStatus = 'Offline'; issue = 'Semua Perangkat Mati';}
+                else if (apStatus === 'Online' && mikrotikStatus === 'Offline') { finalStatus = 'Online'; issue = 'Mikrotik Mati'; }
+                else if (apStatus === 'Offline' && mikrotikStatus === 'Online') { finalStatus = 'Offline'; issue = 'Access Point Mati'; }
+
+                if (!secretName || secretName === '-') {
+                    issue = 'Belum ditautkan (Nama Tidak Cocok)';
+                } else if (existing && existing.is_manual && !secrets.find(s => s.name === secretName)) {
+                    issue = 'Akun Mikrotik tidak ditemukan (Manual Link Salah)';
+                }
+
+                return {
+                    ruijie_mac: ap.mac_address,
+                    mikrotik_name: secretName || '-',
+                    prefix: (existing && existing.is_prefix_manual) ? existing.prefix : (secretName || ap.alias),
+                    ruijie_alias: ap.alias,
+                    mikrotik_alias: secretName || '-',
+                    status_ruijie: apStatus,
+                    status_mikrotik: mikrotikStatus,
+                    final_status: finalStatus,
+                    issue: issue || '',
+                    is_manual: existing ? existing.is_manual : false,
+                    is_prefix_manual: existing ? !!existing.is_prefix_manual : false
+                };
+            });
+
+            // Upsert ke database batch per 100 baris untuk keamanan memori
+            for (let i = 0; i < upsertData.length; i += 100) {
+                const batch = upsertData.slice(i, i + 100);
+                await supabase.from('device_mappings').upsert(batch, { onConflict: 'ruijie_mac' });
+            }
+            
+            // Emit update agar tabel langsung segar
+            io.emit('mappings_updated');
+        } catch (err) {
+            console.error('Sync Mappings Error:', err.message);
+        }
+    }
+    
+    // Tunda eksekusi pertama 10 detik agar data awal terkumpul
+    setTimeout(() => {
+        syncDeviceMappings();
+        setInterval(syncDeviceMappings, 60000);
+    }, 10000);
 
     // Default Next.js Handler
     server.all('*', (req, res) => {

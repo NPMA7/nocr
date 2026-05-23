@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { API_URL, useAppState } from '@/App';
+import { API_URL, socket, useAppState } from '@/App';
 import { Activity, Wifi, WifiOff, Users, RefreshCw, Settings, AlertTriangle, UserPlus, X, Plus, Edit2, Trash2, Check, Eye, EyeOff, Timer } from 'lucide-react';
 import { isAdminRole, canRevealPasswords, getStoredUser, getRoleLabel, isEditorRole } from '@/lib/roles';
 
@@ -82,7 +82,6 @@ export default function Devices() {
   const [sessionFilterService, setSessionFilterService] = useState('all');
   const [secretSearch, setSecretSearch] = useState('');
   const [toasts, setToasts] = useState([]);
-  const [countdown, setCountdown] = useState(0);
 
   // Add/Edit Secret state
   const [showAddSecret, setShowAddSecret] = useState(false);
@@ -99,11 +98,6 @@ export default function Devices() {
 
   // Confirm delete state
   const [confirmDelete, setConfirmDelete] = useState(null);
-
-  // Auto-refresh interval
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0);
-  const intervalRef = useRef(null);
-  const countdownRef = useRef(null);
 
   useEffect(() => {
     syncRoleFlags();
@@ -129,7 +123,7 @@ export default function Devices() {
     else setSyncing(true);
     setError(null);
     try {
-      const queryParams = forceRefresh ? '?force=true' : (lazy && autoRefreshInterval > 0 ? `?max_age=${autoRefreshInterval}` : '');
+      const queryParams = forceRefresh ? '?force=true' : '';
       const [statusRes, ifaceRes, pppoeRes, secretsRes] = await Promise.all([
         axios.get(`${API_URL}/devices/core/status${queryParams}`).catch(e => ({ data: { connected: false, error: e.response?.data?.error || e.message } })),
         axios.get(`${API_URL}/devices/core/interfaces${queryParams}`).catch(() => ({ data: [] })),
@@ -160,27 +154,27 @@ export default function Devices() {
 
   useEffect(() => {
     fetchAll();
-  }, []);
 
-  useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    setCountdown(0);
-    if (autoRefreshInterval > 0) {
-      setCountdown(autoRefreshInterval);
-      intervalRef.current = setInterval(() => {
-        fetchAll(false, true);
-        setCountdown(autoRefreshInterval);
-      }, autoRefreshInterval * 1000);
-      countdownRef.current = setInterval(() => {
-        setCountdown(prev => (prev > 1 ? prev - 1 : autoRefreshInterval));
-      }, 1000);
+    if (socket) {
+      const handleMikrotikUpdate = (data) => {
+        if (!data) return;
+        setInterfaces(data.interfaces || []);
+        setPppoe(data.pppoe || []);
+        setPppoeSecrets(data.secrets || []);
+        setSyncStatus({
+          interfaces: 'live',
+          pppoe: 'live',
+          secrets: 'live',
+          syncedAt: new Date(data.timestamp || new Date()).toLocaleTimeString('id-ID')
+        });
+      };
+      
+      socket.on('mikrotik_full_update', handleMikrotikUpdate);
+      return () => {
+        socket.off('mikrotik_full_update', handleMikrotikUpdate);
+      };
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, [autoRefreshInterval]);
+  }, []);
 
   const handleDisconnectPPPoE = async (session) => {
     try {
@@ -369,12 +363,7 @@ export default function Devices() {
                 {(tab === 'interfaces' ? syncStatus.interfaces : tab === 'pppoe' ? syncStatus.pppoe : syncStatus.secrets) === 'cache' ? 'Cached DB' : 'Live Router'}
               </span>
             )}
-            {autoRefreshInterval > 0 && (
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 flex items-center gap-1.5 tabular-nums">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse inline-block" />
-                Refresh dalam {countdown}s
-              </span>
-            )}
+
             {syncing && !loading && (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 flex items-center gap-1">
                 <RefreshCw size={10} className="animate-spin" /> Memperbarui...
@@ -382,49 +371,19 @@ export default function Devices() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
-              <Timer size={15} className="text-slate-400" />
-              <select
-                value={autoRefreshInterval}
-                onChange={e => setAutoRefreshInterval(Number(e.target.value))}
-                className={`
-                  bg-transparent appearance-none outline-none border-none 
-                  text-xs font-semibold px-0 py-0 text-slate-200 cursor-pointer
-                  pl-1 pr-7
-                  [&>option]:bg-slate-900
-                  [&>option]:text-slate-200
-                  focus:ring-0
-                  transition
-                  disabled:text-slate-500
-                `}
-                style={{
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'none',
-                  appearance: 'none',
-                  minWidth: '68px',
-                  fontWeight: 600
-                }}
-              >
-                <option value={0}>Manual</option>
-                <option value={15}>15 detik</option>
-                <option value={30}>30 detik</option>
-                <option value={60}>1 menit</option>
-                <option value={120}>2 menit</option>
-                <option value={300}>5 menit</option>
-              </select>
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+        <div className="flex items-center gap-4">
+          {syncStatus?.syncedAt && (
+            <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Auto-sync: {syncStatus.syncedAt}
             </div>
-          </div>
+          )}
           <button
             onClick={() => fetchAll(true)}
             disabled={loading}
             className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg shadow-blue-500/20"
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Sync dari Router
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Manual Sync
           </button>
         </div>
       </div>
@@ -511,7 +470,7 @@ export default function Devices() {
       ) : tab === 'interfaces' ? (
         <div className={dataPanelClass}>
           <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">Daftar Interface</h2>
+            <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">Interface</h2>
             <input
               type="text"
               placeholder="Cari nama, tipe, MAC..."
@@ -713,7 +672,7 @@ export default function Devices() {
       ) : (
         <div className={dataPanelClass}>
           <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">Daftar Pelanggan (Secrets)</h2>
+            <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">Secrets</h2>
             <input
               type="text"
               placeholder="Cari nama atau profile..."

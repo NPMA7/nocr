@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Network, PieChart, GitGraph, Server, Settings, Database, Shield } from 'lucide-react';
+import { Network, PieChart, GitGraph, Server, Settings, Database, Shield, Wifi, Monitor } from 'lucide-react';
 
 import { useAppState } from '@/App';
 import { isAdminRole, getStoredUser } from '@/lib/roles';
@@ -54,9 +54,16 @@ export default function Sidebar({ isConnected, onNavigate }) {
         <Link href="/topology" onClick={onNavigate} className={getLinkClass('/topology')}>
           <GitGraph size={18} /> Peta Topologi
         </Link>
-        <Link href="/devices" onClick={onNavigate} className={getLinkClass('/devices')}>
-          <Server size={18} /> Perangkat
+        <Link href="/monitor-device" onClick={onNavigate} className={getLinkClass('/monitor-device')}>
+          <Monitor size={18} /> Monitor Gabungan
         </Link>
+        <Link href="/devices" onClick={onNavigate} className={getLinkClass('/devices')}>
+          <Server size={18} /> Mikrotik RO
+        </Link>
+        <Link href="/ruijie" onClick={onNavigate} className={getLinkClass('/ruijie')}>
+          <Wifi size={18} /> Ruijie AP
+        </Link>
+        
         
         <div className="flex flex-col gap-0.5">
           <Link href="/settings?tab=core" onClick={onNavigate} className={getLinkClass('/settings')}>

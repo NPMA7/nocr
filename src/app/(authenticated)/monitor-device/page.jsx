@@ -1,0 +1,524 @@
+'use client';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_URL, socket } from '@/App';
+import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkIcon, Unlink, X, Save, Edit2, Lock } from 'lucide-react';
+import { getStoredUser, isVisitorRole } from '@/lib/roles';
+
+export default function MonitorDevice() {
+  const [mappings, setMappings] = useState([]);
+  const [mikrotikSecrets, setMikrotikSecrets] = useState([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAp, setSelectedAp] = useState(null);
+  const [selectedMikrotikName, setSelectedMikrotikName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Prefix Editing State
+  const [editingPrefixMac, setEditingPrefixMac] = useState(null);
+  const [editPrefixValue, setEditPrefixValue] = useState('');
+  const [isSavingPrefix, setIsSavingPrefix] = useState(false);
+
+  // Role Access Control
+  const [canEdit, setCanEdit] = useState(false);
+  const readOnly = !canEdit;
+
+  const fetchData = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    if (!isBackground) setError(null);
+    try {
+      const [resMappings, resMikrotik] = await Promise.all([
+        axios.get('/api/mappings'),
+        axios.get('/api/monitor/mikrotik')
+      ]);
+      setMappings(resMappings.data || []);
+      if (resMikrotik.data) {
+        setMikrotikSecrets(resMikrotik.data.secrets || []);
+      }
+      setLastUpdated(new Date());
+    } catch (e) {
+      if (!isBackground) setError(e.message || 'Gagal mengambil data sinkronisasi');
+    } finally {
+      if (!isBackground) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    // Check Role
+    setCanEdit(!isVisitorRole && !isEditorRole (getStoredUser().role));
+    const handleRoleUpdate = (e) => setCanEdit(!isVisitorRole&&!isEditorRole(e.detail?.role));
+    window.addEventListener('nocr-role-updated', handleRoleUpdate);
+
+    if (socket) {
+      const handleUpdate = () => {
+        fetchData(true); // Lazy refresh for auto sync
+      };
+      
+      socket.on('mappings_updated', handleUpdate);
+      
+      return () => {
+        socket.off('mappings_updated', handleUpdate);
+        window.removeEventListener('nocr-role-updated', handleRoleUpdate);
+      };
+    }
+    return () => window.removeEventListener('nocr-role-updated', handleRoleUpdate);
+  }, []);
+  const mergedDevices = mappings;
+
+  const filteredDevices = mergedDevices.filter(d => {
+    const term = search.toLowerCase();
+    const matchesSearch = !term ||
+      (d.ruijie_alias && d.ruijie_alias.toLowerCase().includes(term)) ||
+      (d.mikrotik_alias && d.mikrotik_alias.toLowerCase().includes(term)) ||
+      (d.ruijie_mac && d.ruijie_mac.toLowerCase().includes(term));
+    
+    if (!matchesSearch) return false;
+
+    if (filterStatus !== 'all') {
+      if (filterStatus === 'ONLINE' && d.final_status !== 'Online') return false;
+      if (filterStatus === 'OFFLINE' && d.final_status !== 'Offline') return false;
+      if (filterStatus === 'ISSUE' && !d.issue) return false;
+    }
+
+    return true;
+  }).sort((a, b) => {
+    const prefixA = a.prefix || '';
+    const prefixB = b.prefix || '';
+    return prefixA.localeCompare(prefixB);
+  });
+
+  const totalOnline = mergedDevices.filter(d => d.final_status === 'Online').length;
+  const totalOffline = mergedDevices.filter(d => d.final_status === 'Offline').length;
+  const totalTidakSinkron = mergedDevices.filter(d => d.status_mikrotik === 'Online' && d.status_ruijie === 'Offline').length;
+  const totalMikrotikOffline = mergedDevices.filter(d => d.status_mikrotik === 'Offline').length;
+  const totalIssues = mergedDevices.filter(d => d.issue).length;
+
+  const handleOpenModal = (device) => {
+    setSelectedAp({ mac_address: device.ruijie_mac, alias: device.ruijie_alias });
+    setSelectedMikrotikName(device.is_manual ? device.mikrotik_alias : '');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveMapping = async () => {
+    if (!selectedAp || !selectedMikrotikName) return;
+    setIsSaving(true);
+    try {
+      const res = await axios.post('/api/mappings', {
+        ruijie_mac: selectedAp.mac_address,
+        mikrotik_name: selectedMikrotikName
+      });
+      // Update local state
+      const existing = mappings.find(m => m.ruijie_mac === res.data.ruijie_mac);
+      if (existing) {
+        setMappings(mappings.map(m => m.ruijie_mac === res.data.ruijie_mac ? res.data : m));
+      } else {
+        setMappings([...mappings, res.data]);
+      }
+      if (socket) socket.emit('force_sync_mappings');
+      setIsModalOpen(false);
+    } catch (e) {
+      alert('Gagal menyimpan tautan manual: ' + (e.response?.data?.error || e.message));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveMapping = async (mac_address) => {
+    if (!confirm('Hapus tautan manual dan kembali ke sistem otomatis?')) return;
+    try {
+      await axios.delete(`/api/mappings?ruijie_mac=${mac_address}`);
+      setMappings(mappings.filter(m => m.ruijie_mac !== mac_address));
+      if (socket) socket.emit('force_sync_mappings');
+    } catch (e) {
+      alert('Gagal menghapus tautan manual: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
+  const handleSavePrefix = async (device) => {
+    if (!editPrefixValue.trim()) {
+      alert('Prefix tidak boleh kosong');
+      return;
+    }
+    setIsSavingPrefix(true);
+    try {
+      await axios.patch('/api/mappings/prefix', {
+        ruijie_mac: device.ruijie_mac,
+        new_prefix: editPrefixValue.trim(),
+        old_prefix: device.prefix
+      });
+      // Update local state
+      setMappings(mappings.map(m => 
+        m.ruijie_mac === device.ruijie_mac ? { ...m, prefix: editPrefixValue.trim(), is_prefix_manual: true } : m
+      ));
+      if (socket) socket.emit('force_sync_mappings');
+      setEditingPrefixMac(null);
+    } catch (e) {
+      alert('Gagal menyimpan prefix: ' + (e.response?.data?.error || e.message));
+    } finally {
+      setIsSavingPrefix(false);
+    }
+  };
+
+  const getStatusDisplay = (device) => {
+    const isOnline = device.final_status === 'Online';
+    if (isOnline) {
+      return (
+        <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 w-max flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
+        </span>
+      );
+    } else {
+      return (
+        <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Offline
+        </span>
+      );
+    }
+  };
+
+  const getSourceStatus = (status) => {
+    if (status === 'Online') return <span className="text-xs font-bold text-emerald-400">UP</span>;
+    if (status === 'Offline') return <span className="text-xs font-bold text-red-500">DOWN</span>;
+    return <span className="text-xs font-bold text-slate-500">-</span>;
+  }
+
+  const dataPanelClass = 'flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden';
+  const dataScrollClass = 'flex-1 min-h-0 overflow-y-auto overscroll-contain relative';
+
+  return (
+    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden relative">
+      {/* Header */}
+      <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
+            <Monitor size={24} className="text-blue-400" />
+            Monitor Perangkat Gabungan
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">Status Access Point (Ruijie) & Mikrotik (L2TP/PPP)</p>
+        </div>
+        <div className="flex items-center gap-4">
+          {lastUpdated && (
+            <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Auto-sync: {lastUpdated.toLocaleTimeString('id-ID')}
+            </div>
+          )}
+            <button 
+              onClick={() => {
+                if (socket) socket.emit('force_sync_mappings');
+                fetchData();
+              }}
+              disabled={loading || readOnly}
+              title={readOnly ? "Anda tidak memiliki akses" : ""}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg ${
+                readOnly 
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer'
+              }`}
+            >
+              {readOnly ? <Lock size={15} /> : <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />} 
+              Sync Sekarang
+            </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {!error && mergedDevices.length > 0 && (
+        <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-1 flex-shrink-0">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Wifi size={20} className="text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Online</p>
+              <p className="text-2xl font-bold text-slate-100">{totalOnline}</p>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center flex-shrink-0">
+              <WifiOff size={20} className="text-slate-400" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Offline</p>
+              <p className="text-2xl font-bold text-slate-100">{totalOffline}</p>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-red-400/80" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tidak Sinkron</p>
+              <p className="text-xl font-bold text-red-400/80">{totalTidakSinkron}</p>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <WifiOff size={20} className="text-purple-400/80" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">MikroTik Offline</p>
+              <p className="text-xl font-bold text-purple-400/80">{totalMikrotikOffline}</p>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-orange-400" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Issue</p>
+              <p className="text-2xl font-bold text-orange-400">{totalIssues}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table Area */}
+      <div className={dataPanelClass}>
+        <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
+          <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">Sinkronisasi</h2>
+          
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Cari Alias AP atau Mikrotik..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+            />
+          </div>
+
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+          >
+            <option value="all">Semua Data</option>
+            <option value="ONLINE">Hanya Online</option>
+            <option value="OFFLINE">Hanya Offline</option>
+            <option value="ISSUE">Hanya Issue</option>
+          </select>
+          
+          <div className="flex items-center gap-3 ml-auto flex-shrink-0">
+            <span className="text-xs text-slate-500 font-medium">
+              Menampilkan {filteredDevices.length} dari {mergedDevices.length}
+            </span>
+          </div>
+        </div>
+
+        <div className={dataScrollClass}>
+          {loading && mergedDevices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-40 gap-3">
+              <RefreshCw size={24} className="animate-spin text-blue-400" />
+              <p className="text-slate-400 text-sm">Memuat data sinkronisasi...</p>
+            </div>
+          ) : error && mergedDevices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-4 0 gap-3 text-red-400">
+              <WifiOff size={24} />
+              <p className="text-sm">{error}</p>
+            </div>
+          ) : (
+            <div className="min-h-0">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Final Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Prefix (Gabungan)</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Alias (Ruijie)</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Alias (Mikrotik)</th>
+                    <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status Ruijie</th>
+                    <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status Mikrotik</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan Issue</th>
+                    {readOnly ? (
+                      <span className="text-slate-500 flex justify-end hidden">
+                      </span>
+                    ) : (
+                      <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDevices.length === 0 ? (
+                    <tr><td colSpan={8} className="text-center py-12 text-slate-500">Tidak ada data</td></tr>
+                  ) : filteredDevices.map((d, i) => (
+                    <tr key={i} className="border-b border-slate-700/20 hover:bg-slate-700/20 transition group">
+                      <td className="px-4 py-3 w-32">{getStatusDisplay(d)}</td>
+                      <td className="px-4 py-3 font-medium text-slate-300">
+                        {editingPrefixMac === d.ruijie_mac ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editPrefixValue}
+                              onChange={(e) => setEditPrefixValue(e.target.value)}
+                              className="cursor-pointer bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-100 outline-none focus:border-blue-500 w-full min-w-[150px]"
+                              autoFocus
+                              disabled={isSavingPrefix}
+                            />
+                            <button
+                              onClick={() => handleSavePrefix(d)}
+                              disabled={isSavingPrefix}
+                              className="cursor-pointer p-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded flex-shrink-0"
+                            >
+                              <Save size={14} />
+                            </button>
+                            <button
+                              onClick={() => setEditingPrefixMac(null)}
+                              disabled={isSavingPrefix}
+                              className="cursor-pointer p-1.5 bg-slate-700/50 text-slate-400 hover:bg-slate-700 rounded flex-shrink-0"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group/prefix">
+                            <span>{d.prefix || '-'}</span>
+                            {!readOnly && (
+                              <button
+                                onClick={() => {
+                                  setEditingPrefixMac(d.ruijie_mac);
+                                  setEditPrefixValue(d.prefix || '');
+                                }}
+                                className="cursor-pointer opacity-0 group-hover/prefix:opacity-100 p-1 text-slate-400 hover:text-blue-400 transition"
+                                title="Edit Prefix"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                          <span className="font-mono text-slate-200">{d.ruijie_alias || '-'}</span>
+                          <span className="text-[10px] text-slate-500 font-mono mt-0.5">MAC: {d.ruijie_mac || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-mono ${d.is_manual ? 'text-blue-400' : 'text-slate-200'}`}>{d.mikrotik_alias}</span>
+                          {d.is_manual && (
+                            <span title="Manual Linked" className="bg-blue-500/20 text-blue-400 p-1 rounded">
+                              <LinkIcon size={10} />
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {getSourceStatus(d.status_ruijie)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {getSourceStatus(d.status_mikrotik)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {d.issue ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-orange-400 bg-orange-400/10 px-2 py-1 rounded-md border border-orange-400/20">
+                            <AlertTriangle size={12} /> {d.issue}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {readOnly ? (
+                          <span className="text-slate-500 flex justify-end hidden">
+                            <Lock size={16} title="Akses Terbatas" />
+                          </span>
+                        ) : d.is_manual ? (
+                          <button
+                            onClick={() => handleRemoveMapping(d.ruijie_mac)}
+                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition border border-red-500/20 text-xs font-medium"
+                            title="Kembali ke Auto-Sync"
+                          >
+                            <Unlink size={14} /> Hapus Manual
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenModal(d)}
+                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded transition border border-blue-500/20 text-xs font-medium"
+                            title="Timpa nama secara manual"
+                          >
+                            <LinkIcon size={14} /> Tautkan Manual
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal Manual Link */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80">
+              <h3 className="font-bold text-slate-100 flex items-center gap-2">
+                <LinkIcon size={16} className="text-blue-400" /> 
+                Tautkan Manual AP ke Mikrotik
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Ruijie Access Point</label>
+                <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
+                  <p className="font-medium text-slate-200">{selectedAp?.alias}</p>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">MAC: {selectedAp?.mac_address}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Pilih Akun Mikrotik (PPP/L2TP)</label>
+                <select 
+                  value={selectedMikrotikName}
+                  onChange={e => setSelectedMikrotikName(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none"
+                >
+                  <option value="" disabled>-- Pilih Akun --</option>
+                  {mikrotikSecrets.map((s, i) => (
+                    <option key={i} value={s.name}>{s.name} ({s.service || 'any'})</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                  Pilih nama rahasia (secret) yang benar dari Mikrotik. Pilihan ini akan menimpa pencocokan nama otomatis.
+                </p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-700 bg-slate-800/80 flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleSaveMapping}
+                disabled={isSaving || !selectedMikrotikName}
+                className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} 
+                Simpan Tautan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

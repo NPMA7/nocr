@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [coreInterfaces, setCoreInterfaces] = useState([]);
   const [edges, setEdges] = useState([]);
   const [topologyNodes, setTopologyNodes] = useState([]);
+  const [mappings, setMappings] = useState([]);
   const [mapTheme, setMapTheme] = useState('colored');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [dbLogs, setDbLogs] = useState([]); // State penampung log aktivitas dari database
@@ -101,9 +102,18 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchMappings = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/mappings');
+      if (mountedRef.current) setMappings(res.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   const fetchAllDashboardData = useCallback(async () => {
-    await Promise.all([fetchCoreStatus(), fetchInterfaces(), fetchTopology(), fetchLogs()]);
-  }, [fetchCoreStatus, fetchInterfaces, fetchTopology, fetchLogs]);
+    await Promise.all([fetchCoreStatus(), fetchInterfaces(), fetchTopology(), fetchLogs(), fetchMappings()]);
+  }, [fetchCoreStatus, fetchInterfaces, fetchTopology, fetchLogs, fetchMappings]);
 
   const applyTopologyPayload = useCallback((nodes, edgesPayload) => {
     if (nodes) setTopologyNodes(nodes);
@@ -142,30 +152,42 @@ export default function Dashboard() {
       );
     };
 
+    const handleMikrotikFull = (data) => {
+      if (data && data.interfaces) {
+        setCoreInterfaces(data.interfaces);
+      }
+    };
+
+    const handleMappingsUpdated = () => fetchMappings();
+
     if (socket) {
       socket.on('dashboard_core_update', handleCoreUpdate);
       socket.on('topology_updated', handleTopologyUpdated);
-      socket.on('dashboard_topology_refresh', handleTopologyRefresh);
-      socket.on('interface_update', handleInterfaceUpdate);
-      socket.on('pppoe_active_update', handlePppoeUpdate);
-      socket.on('device-status', handleDeviceStatus);
-      socket.on('activity_log_updated', handleNewActivityLog); // Trigger realtime via WebSocket
+      socket.on('topology_refresh', handleTopologyRefresh);
+      socket.on('interfaces_updated', handleInterfaceUpdate);
+      socket.on('pppoe_updated', handlePppoeUpdate);
+      socket.on('device_status_update', handleDeviceStatus);
+      socket.on('mikrotik_full_update', handleMikrotikFull);
+      socket.on('activity_log', handleNewActivityLog);
+      socket.on('mappings_updated', handleMappingsUpdated);
     }
 
     return () => {
-      mountedRef.current = false;
       clearInterval(pollId);
+      mountedRef.current = false;
       if (socket) {
         socket.off('dashboard_core_update', handleCoreUpdate);
         socket.off('topology_updated', handleTopologyUpdated);
-        socket.off('dashboard_topology_refresh', handleTopologyRefresh);
-        socket.off('interface_update', handleInterfaceUpdate);
-        socket.off('pppoe_active_update', handlePppoeUpdate);
-        socket.off('device-status', handleDeviceStatus);
-        socket.off('activity_log_updated', handleNewActivityLog);
+        socket.off('topology_refresh', handleTopologyRefresh);
+        socket.off('interfaces_updated', handleInterfaceUpdate);
+        socket.off('pppoe_updated', handlePppoeUpdate);
+        socket.off('device_status_update', handleDeviceStatus);
+        socket.off('mikrotik_full_update', handleMikrotikFull);
+        socket.off('activity_log', handleNewActivityLog);
+        socket.off('mappings_updated', handleMappingsUpdated);
       }
     };
-  }, [fetchAllDashboardData, fetchTopology, fetchInterfaces, fetchCoreStatus, fetchLogs, applyTopologyPayload]);
+  }, [fetchAllDashboardData, applyTopologyPayload, fetchTopology, fetchInterfaces, fetchCoreStatus, fetchLogs, fetchMappings]);
 
   const totalNodes = topologyNodes.length;
   const oltCount = topologyNodes.filter((n) => n.type === 'olt').length;
@@ -354,6 +376,7 @@ export default function Dashboard() {
               topologyNodes={topologyNodes}
               edges={edges}
               coreInterfaces={coreInterfaces}
+              mappings={mappings}
               mapTheme={mapTheme}
             />
           </div>

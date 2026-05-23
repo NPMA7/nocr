@@ -63,6 +63,7 @@ function TopologyContent() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [availableDevices, setAvailableDevices] = useState([]);
+  const [mappings, setMappings] = useState([]);
 
   const [selectedNode, setSelectedNode] = useState(null);
   const [nodeDetail, setNodeDetail] = useState(null);
@@ -72,6 +73,7 @@ function TopologyContent() {
   /** 'all' | 'client' | 'infrastructure' — filter tampilan untuk semua role */
   const [nodeViewFilter, setNodeViewFilter] = useState('all');
   const [activeNodeTab, setActiveNodeTab] = useState('identitas');
+
 
   const [interactionMode, setInteractionMode] = useState('select');
   const [newNodeType, setNewNodeType] = useState('odp');
@@ -148,14 +150,33 @@ function TopologyContent() {
   const [coreLoading, setCoreLoading] = useState(false);
   const [showIfacePanel, setShowIfacePanel] = useState(false);
   
+  const combinedInterfaceOptions = useMemo(() => {
+    const options = [];
+    (mappings || []).forEach(m => {
+      if (m.prefix && !options.find(o => o.name.toLowerCase() === m.prefix.toLowerCase())) {
+        options.push({ name: m.prefix, type: 'L2TP Gabungan', label: m.prefix, isMapping: true });
+      }
+    });
+    (coreInterfaces || []).forEach(i => {
+      // Jangan masukkan l2tp-in lagi karena sudah digantikan oleh L2TP Gabungan (mappings)
+      if (i.type && i.type.toLowerCase() === 'l2tp-in') return;
+      
+      if (i.name && !options.find(o => o.name.toLowerCase() === i.name.toLowerCase())) {
+        options.push({ name: i.name, type: i.type || 'MikroTik', label: i.name, isMapping: false });
+      }
+    });
+    return options;
+  }, [mappings, coreInterfaces]);
+
+  
   // Search states
   const [ifacePanelSearch, setIfacePanelSearch] = useState('');
   const [nodeIfaceSearch, setNodeIfaceSearch] = useState('');
   const [showNodeIfaceDropdown, setShowNodeIfaceDropdown] = useState(false);
 
   // Auto-refresh interval
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off, seconds
-  const [countdown, setCountdown] = useState(0);
+  const [edgeMode, setEdgeMode] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
 
@@ -318,13 +339,13 @@ function TopologyContent() {
   const fetchCoreData = async () => {
     setCoreLoading(true);
     try {
-      const maxAgeParam = autoRefreshInterval > 0 ? `?max_age=${autoRefreshInterval}` : '';
       const [statusRes, ifaceRes] = await Promise.all([
-        axios.get(`${API_URL}/devices/core/status${maxAgeParam}`).catch(() => ({ data: null })),
-        axios.get(`${API_URL}/devices/core/interfaces${maxAgeParam}`).catch(() => ({ data: [] }))
+        axios.get(`${API_URL}/devices/core/status`).catch(() => ({ data: null })),
+        axios.get(`${API_URL}/devices/core/interfaces`).catch(() => ({ data: [] }))
       ]);
       setCoreStatus(statusRes?.data || null);
       setCoreInterfaces(ifaceRes?.data || []);
+      setLastUpdated(new Date().toLocaleTimeString('id-ID'));
     } catch (e) {
       console.error('Gagal memuat data core MikroTik', e);
     } finally {
@@ -369,6 +390,7 @@ function TopologyContent() {
       applyTopologyFromServer(loadedNodes, loadedEdges);
     }).catch(console.error);
     axios.get(`${API_URL}/devices`).then(res => setAvailableDevices(res.data)).catch(console.error);
+    axios.get('/api/mappings').then(res => setMappings(res.data)).catch(console.error);
     fetchCoreData();
 
     const handleTopologyUpdated = (payload) => {
@@ -376,14 +398,28 @@ function TopologyContent() {
       mergeTopologyFromRemote(payload.nodes, payload.edges || [], payload.revision);
     };
 
+    const handleMikrotikUpdate = (data) => {
+      if (data.status) setCoreStatus(data.status);
+      if (data.interfaces) setCoreInterfaces(data.interfaces);
+      setLastUpdated(new Date().toLocaleTimeString('id-ID'));
+    };
+
+    const handleMappingsUpdate = () => {
+      axios.get('/api/mappings').then(res => setMappings(res.data)).catch(console.error);
+    };
+
     if (socket) {
       socket.on('device-metrics', handleMetricsUpdate);
       socket.on('topology_updated', handleTopologyUpdated);
+      socket.on('mikrotik_full_update', handleMikrotikUpdate);
+      socket.on('mappings_updated', handleMappingsUpdate);
     }
     return () => {
       if (socket) {
         socket.off('device-metrics', handleMetricsUpdate);
         socket.off('topology_updated', handleTopologyUpdated);
+        socket.off('mikrotik_full_update', handleMikrotikUpdate);
+        socket.off('mappings_updated', handleMappingsUpdate);
       }
     };
   }, []);
@@ -400,27 +436,6 @@ function TopologyContent() {
       }
     }
   }, [focusId, nodes]);
-
-  // Auto-refresh effect
-  useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    setCountdown(0);
-    if (autoRefreshInterval > 0) {
-      setCountdown(autoRefreshInterval);
-      intervalRef.current = setInterval(() => {
-        fetchCoreData();
-        setCountdown(autoRefreshInterval);
-      }, autoRefreshInterval * 1000);
-      countdownRef.current = setInterval(() => {
-        setCountdown(prev => (prev > 1 ? prev - 1 : autoRefreshInterval));
-      }, 1000);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, [autoRefreshInterval]);
 
   useEffect(() => {
     if (selectedNode) {
@@ -647,33 +662,19 @@ function TopologyContent() {
           {!readOnly && linkStartNode && <span className="text-xs text-amber-400 animate-pulse font-medium whitespace-nowrap flex-shrink-0">Klik node tujuan...</span>}
           {!readOnly && interactionMode === 'delete_edge' && <span className="text-xs text-red-400 font-medium bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 whitespace-nowrap flex-shrink-0">Klik kabel untuk menghapus</span>}
         </div>
-        <div className="flex items-center gap-2">
-          {autoRefreshInterval > 0 && (
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 flex items-center gap-1.5 tabular-nums">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse inline-block" />
-              Refresh dalam {countdown}s
-            </span>
+        <div className="flex items-center gap-4">
+          {lastUpdated && (
+            <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Auto-sync: {lastUpdated}
+            </div>
           )}
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 h-8">
-            <select
-              value={autoRefreshInterval}
-              onChange={e => setAutoRefreshInterval(Number(e.target.value))}
-              className="bg-transparent text-xs text-slate-300 focus:outline-none cursor-pointer [&>option]:bg-slate-900 [&>option]:text-slate-200"
-            >
-              <option value={0}>Manual</option>
-              <option value={15}>15 detik</option>
-              <option value={30}>30 detik</option>
-              <option value={60}>1 menit</option>
-              <option value={120}>2 menit</option>
-              <option value={300}>5 menit</option>
-            </select>
-          </div>
           <button
             onClick={fetchCoreData}
             disabled={coreLoading}
             className="cursor-pointer flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 h-8 text-xs font-semibold rounded-lg transition"
           >
-            <RefreshCw size={13} className={coreLoading ? 'animate-spin' : ''} /> Sync
+            <RefreshCw size={13} className={coreLoading ? 'animate-spin' : ''} /> Manual Sync
           </button>
           {!readOnly && (
             <button onClick={saveLayout} className="cursor-pointer flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-semibold rounded-lg shadow-lg hover:shadow-blue-500/20 transition">
@@ -758,10 +759,10 @@ function TopologyContent() {
                 </div>
 
                 <div className="flex flex-col gap-1.5 relative">
-                  <label className="text-xs font-semibold text-slate-400">Interface Mikrotik Terhubung</label>
+                  <label className="text-xs font-semibold text-slate-400">Prefix (Gabungan) / Interface MikroTik</label>
                   <input
                     type="text"
-                    placeholder="Ketik untuk mencari interface..."
+                    placeholder="Ketik untuk mencari prefix/interface..."
                     value={manualIfaceSearch}
                     onChange={(e) => {
                       setManualIfaceSearch(e.target.value);
@@ -772,7 +773,7 @@ function TopologyContent() {
                     onBlur={() => setTimeout(() => setShowManualIfaceDropdown(false), 200)}
                     className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
                   />
-                  {showManualIfaceDropdown && coreInterfaces.length > 0 && (
+                  {showManualIfaceDropdown && combinedInterfaceOptions.length > 0 && (
                     <div className="absolute top-[64px] left-0 right-0 z-[4000] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl max-h-52 overflow-auto">
                       <div
                         className="px-3 py-2.5 text-xs text-slate-400 hover:bg-slate-700 cursor-pointer"
@@ -785,7 +786,7 @@ function TopologyContent() {
                       >
                         -- Tidak ada (manual) --
                       </div>
-                      {coreInterfaces
+                      {combinedInterfaceOptions
                         .filter(i => !manualIfaceSearch || i.name.toLowerCase().includes(manualIfaceSearch.toLowerCase()))
                         .map((iface, idx) => {
                           const isUsed = nodes.some(n => n.linked_interface === iface.name);
@@ -806,12 +807,14 @@ function TopologyContent() {
                               {isUsed && <span className="text-[9px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded">Terpakai</span>}
                             </span>
                             <div className="flex items-center gap-2">
-                              <IfaceBadge running={iface.running} disabled={iface.disabled} />
+                              {!iface.isMapping && (
+                                <IfaceBadge running={iface.running} disabled={iface.disabled} />
+                              )}
                               <span className="text-[10px] text-slate-500 uppercase">{iface.type}</span>
                             </div>
                           </div>
                         )})}
-                      {manualIfaceSearch && coreInterfaces.filter(i => i.name.toLowerCase().includes(manualIfaceSearch.toLowerCase())).length === 0 && (
+                      {manualIfaceSearch && combinedInterfaceOptions.filter(i => i.name.toLowerCase().includes(manualIfaceSearch.toLowerCase())).length === 0 && (
                         <div className="px-3 py-3 text-xs text-slate-500 text-center">Tidak ditemukan</div>
                       )}
                     </div>
@@ -1055,6 +1058,7 @@ function TopologyContent() {
             showLabels={showLabels}
             nodes={mapNodes}
             edges={mapEdges}
+            mappings={mappings}
             interactionMode={interactionMode}
             newNodeType={newNodeType}
             selectedNode={currentSelectedNode}
@@ -1152,13 +1156,13 @@ function TopologyContent() {
                     </div>
 
                     {/* Link node to core MikroTik interface */}
-                    {coreInterfaces.length > 0 && (
+                    {combinedInterfaceOptions.length > 0 && (
                       <div className="flex flex-col gap-1.5 relative">
-                        <label className="text-xs font-semibold text-slate-400">Interface MikroTik Terhubung</label>
+                        <label className="text-xs font-semibold text-slate-400">Prefix (Gabungan) / Interface MikroTik</label>
                         <input
                           type="text"
                           readOnly={readOnly}
-                          placeholder="Ketik untuk mencari interface..."
+                          placeholder="Ketik untuk mencari prefix/interface..."
                           value={nodeIfaceSearch}
                           onChange={e => {
                             setNodeIfaceSearch(e.target.value);
@@ -1181,7 +1185,7 @@ function TopologyContent() {
                             >
                               -- Tidak ada (manual) --
                             </div>
-                            {coreInterfaces
+                            {combinedInterfaceOptions
                               .filter(i => !nodeIfaceSearch || i.name.toLowerCase().includes(nodeIfaceSearch.toLowerCase()) || (currentSelectedNode.linked_interface && nodeIfaceSearch === currentSelectedNode.linked_interface))
                               .map((iface, i) => {
                                 const isUsedByOther = nodes.some(n => n.id !== currentSelectedNode.id && n.linked_interface === iface.name);
@@ -1203,7 +1207,7 @@ function TopologyContent() {
                                   <span className="text-[10px] text-slate-500 uppercase">{iface.type}</span>
                                 </div>
                             )})}
-                            {coreInterfaces.filter(i => nodeIfaceSearch && i.name.toLowerCase().includes(nodeIfaceSearch.toLowerCase())).length === 0 && (
+                            {combinedInterfaceOptions.filter(i => nodeIfaceSearch && i.name.toLowerCase().includes(nodeIfaceSearch.toLowerCase())).length === 0 && (
                               <div className="px-3 py-3 text-xs text-slate-500 text-center">Tidak ditemukan</div>
                             )}
                           </div>
@@ -1211,12 +1215,35 @@ function TopologyContent() {
                         
                         {/* Show linked interface status */}
                         {currentSelectedNode.linked_interface && (() => {
-                          const linked = coreInterfaces.find(i => i.name === currentSelectedNode.linked_interface);
+                          const linked = combinedInterfaceOptions.find(i => i.name === currentSelectedNode.linked_interface);
                           if (!linked) return null;
+                          
+                          let isUp = false;
+                          let isDown = false;
+                          let statusText = 'Unknown';
+                          
+                          if (linked.isMapping) {
+                             const m = mappings.find(x => x.prefix === linked.name);
+                             if (m) {
+                               isUp = m.final_status === 'Online';
+                               isDown = m.final_status === 'Offline';
+                               statusText = m.final_status;
+                             }
+                          } else {
+                             const c = coreInterfaces.find(x => x.name === linked.name);
+                             if (c) {
+                               isUp = c.running === 'true';
+                               isDown = c.running !== 'true';
+                               statusText = c.disabled === 'true' ? 'Disabled' : (isUp ? 'Up' : 'Down');
+                             }
+                          }
+
                           return (
-                            <div className={`flex items-center justify-between p-2.5 rounded-lg text-xs border ${linked.running === 'true' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                            <div className={`flex items-center justify-between p-2.5 rounded-lg text-xs border ${isUp ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
                               <span className="text-slate-400">Status Interface</span>
-                              <IfaceBadge running={linked.running} disabled={linked.disabled} />
+                              <span className={`font-bold px-2 py-0.5 rounded ${isUp ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                {statusText}
+                              </span>
                             </div>
                           );
                         })()}

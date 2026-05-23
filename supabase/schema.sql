@@ -184,3 +184,23 @@ ALTER TABLE pppoe_secrets ADD COLUMN IF NOT EXISTS last_logged_out TIMESTAMP WIT
 ALTER TABLE pppoe_secrets ADD COLUMN IF NOT EXISTS local_address VARCHAR(50);
 ALTER TABLE pppoe_secrets ADD COLUMN IF NOT EXISTS remote_address VARCHAR(50);
 ALTER TABLE pppoe_secrets ADD COLUMN IF NOT EXISTS synced_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+-- 14. Tabel Mappings Manual (Ruijie ke MikroTik)
+CREATE TABLE IF NOT EXISTS public.device_mappings (
+    ruijie_mac VARCHAR(50) PRIMARY KEY,
+    mikrotik_name VARCHAR(255) NOT NULL,
+    prefix VARCHAR(255),
+    ruijie_alias VARCHAR(255),
+    mikrotik_alias VARCHAR(255),
+    status_ruijie VARCHAR(50),
+    status_mikrotik VARCHAR(50),
+    final_status VARCHAR(50),
+    issue TEXT,
+    is_manual BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE device_mappings DISABLE ROW LEVEL SECURITY;
+
+-- 15. Penyesuaian Kolom device_mappings
+ALTER TABLE device_mappings ADD COLUMN IF NOT EXISTS is_prefix_manual BOOLEAN DEFAULT false;

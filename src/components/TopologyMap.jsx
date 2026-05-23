@@ -112,7 +112,7 @@ function FlyToHandler({ flyToTarget, onFlyToComplete }) {
   return null;
 }
 
-function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterfaces, showLabels, interactionMode, readOnly, handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode }) {
+function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterfaces, mappings, showLabels, interactionMode, readOnly, handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode, draggedNodeCoordRef }) {
   const [position, setPosition] = useState([parseFloat(node.latitude), parseFloat(node.longitude)]);
   const isDragging = useRef(false);
   const nodeRef = useRef(node);
@@ -162,8 +162,13 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
           }
         }
       });
+      
+      // Update global ref so that re-renders during drag use the latest coordinates
+      if (draggedNodeCoordRef) {
+        draggedNodeCoordRef.current[currentNodeId] = { lat: newLatLng.lat, lng: newLatLng.lng };
+      }
     }
-  }, [readOnly]);
+  }, [readOnly, draggedNodeCoordRef]);
 
   const eventHandlers = useMemo(() => ({
     click: (e) => handleNodeClick(e, nodeRef.current),
@@ -184,15 +189,22 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
       if (readOnly) return;
       isDragging.current = true; // Kunci status menyeret menjadi TRUE
       pushUndo(nodeRef.current.id, nodeRef.current.latitude, nodeRef.current.longitude);
+      if (draggedNodeCoordRef) {
+        draggedNodeCoordRef.current[nodeRef.current.id] = { lat: nodeRef.current.latitude, lng: nodeRef.current.longitude };
+      }
     },
     drag: handleDrag,
     dragend: (e) => {
       if (readOnly) return;
       const newLatLng = e.target.getLatLng();
+      const currentNodeId = nodeRef.current.id;
       
       // Berikan jeda mikro agar Leaflet menyelesaikan animasi internal sebelum status kunci dibuka
       setTimeout(() => {
         isDragging.current = false;
+        if (draggedNodeCoordRef) {
+          delete draggedNodeCoordRef.current[currentNodeId];
+        }
       }, 50);
 
       setPosition([newLatLng.lat, newLatLng.lng]);
@@ -208,10 +220,21 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
 
   const isDown = useMemo(() => {
     const interfaces = coreInterfaces || [];
+    const m = mappings || [];
     if (node.linked_interface) {
-      const matchedIface = interfaces.find(i => i.name && i.name.toLowerCase() === node.linked_interface.toLowerCase());
-      if (matchedIface) {
-        return matchedIface.disabled !== 'true' && matchedIface.running !== 'true';
+      // Periksa dari mappings gabungan terlebih dahulu
+      const linkedPrefix = node.linked_interface.toLowerCase();
+      const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === linkedPrefix);
+      
+      if (mappedNode) {
+        if (mappedNode.final_status === 'Offline') return true;
+        else if (mappedNode.final_status === 'Online') return false;
+      } else {
+        // Jika tidak ada di mapping, cek status interface mikrotik murni
+        const matchedIface = interfaces.find(i => i.name && i.name.toLowerCase() === linkedPrefix);
+        if (matchedIface) {
+          return matchedIface.disabled !== 'true' && matchedIface.running !== 'true';
+        }
       }
     } else if (node.type?.toLowerCase() !== 'core') {
       const connectedEdges = edges.filter(e => e.from_node === node.id || e.to_node === node.id || e.from === node.id || e.to === node.id);
@@ -220,7 +243,7 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
       }
     }
     return node.status === 'offline';
-  }, [node.linked_interface, node.type, node.status, node.id, edges, coreInterfaces]);
+  }, [node.linked_interface, node.type, node.status, node.id, edges, coreInterfaces, mappings]);
 
   const typePriority = useMemo(() => {
     const t = node.type?.toLowerCase() || '';
@@ -256,6 +279,7 @@ export default function TopologyMap({
   showLabels = false,
   nodes,
   edges,
+  mappings = [],
   interactionMode,
   newNodeType,
   selectedNode,
@@ -276,6 +300,7 @@ export default function TopologyMap({
 }) {
   const [currentZoom, setCurrentZoom] = useState(11);
   const undoStackRef = useRef([]); // [{id, lat, lng}]
+  const draggedNodeCoordRef = useRef({}); // { [nodeId]: { lat, lng } }
 
   const pushUndo = useCallback((id, lat, lng) => {
     undoStackRef.current.push({ id, lat, lng });
@@ -288,46 +313,55 @@ export default function TopologyMap({
     setNodes(prev => prev.map(n => n.id === last.id ? { ...n, latitude: last.lat, longitude: last.lng } : n));
   }, [setNodes]);
 
-  // Helper to find interface matching edge label or connected nodes' linked_interface
-  const findMatchingInterface = (edge) => {
-    let matched = coreInterfaces.find(i => i.name && edge.label && i.name.toLowerCase() === edge.label.toLowerCase());
-    if (matched) return matched;
+  // Helper to determine edge status considering both mappings (final_status) and coreInterfaces
+  const getInterfaceStatus = (ifaceName) => {
+    if (!ifaceName) return null;
+    const lowerName = ifaceName.toLowerCase();
     
-    if (edge.toNode?.linked_interface) {
-      matched = coreInterfaces.find(i => i.name && i.name.toLowerCase() === edge.toNode.linked_interface.toLowerCase());
-      if (matched) return matched;
+    const m = mappings || [];
+    const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === lowerName);
+    if (mappedNode) {
+      if (mappedNode.final_status === 'Offline') return 'down';
+      if (mappedNode.final_status === 'Online') return 'up';
     }
-    if (edge.fromNode?.linked_interface) {
-      matched = coreInterfaces.find(i => i.name && i.name.toLowerCase() === edge.fromNode.linked_interface.toLowerCase());
-      if (matched) return matched;
+    
+    const matched = coreInterfaces.find(i => i.name && i.name.toLowerCase() === lowerName);
+    if (matched) {
+      if (matched.disabled === 'true') return 'disabled';
+      if (matched.running === 'true') return 'up';
+      return 'down';
     }
     return null;
   };
 
-  // Edge colors based on interface status: Disabled=gray, Up=green/blue, Down=red
+  const getEdgeDerivedStatus = (edge) => {
+    let status = getInterfaceStatus(edge.label);
+    if (status) return status;
+    status = getInterfaceStatus(edge.toNode?.linked_interface);
+    if (status) return status;
+    status = getInterfaceStatus(edge.fromNode?.linked_interface);
+    if (status) return status;
+    return edge.status === 'down' ? 'down' : 'up';
+  };
+
+  // Edge colors based on status: Disabled=gray, Up=green/blue, Down=red
   const getEdgeColor = (edge) => {
     if (selectedEdge?.id === edge.id) return '#93c5fd'; // lighter blue when selected to distinguish from infra links
 
-    const matchedIface = findMatchingInterface(edge);
+    const status = getEdgeDerivedStatus(edge);
     const isInfrastructure = edge.fromNode?.type?.toLowerCase() !== 'client' && edge.toNode?.type?.toLowerCase() !== 'client';
 
-    if (matchedIface) {
-      if (matchedIface.disabled === 'true') return '#475569'; // slate-600 = disabled
-      if (matchedIface.running === 'true') return isInfrastructure ? '#3b82f6' : '#22c55e';  // blue-500 if infra, green-500 if client
-      return '#ef4444'; // red-500 = DOWN
-    }
-
-    if (edge.status === 'down') return '#ef4444';
-    return isInfrastructure ? '#3b82f6' : '#22c55e';
+    if (status === 'disabled') return '#475569'; // slate-600
+    if (status === 'down') return '#ef4444'; // red-500
+    return isInfrastructure ? '#3b82f6' : '#22c55e'; // blue-500 or green-500
   };
 
   const getEdgeDash = (edge) => {
-    const matchedIface = findMatchingInterface(edge);
+    const status = getEdgeDerivedStatus(edge);
     const isInfrastructure = edge.fromNode?.type?.toLowerCase() !== 'client' && edge.toNode?.type?.toLowerCase() !== 'client';
     
-    if (matchedIface?.disabled === 'true') return '4, 8';
-    if (matchedIface && matchedIface.running !== 'true') return '6, 6';
-    if (edge.status === 'down') return '6, 6';
+    if (status === 'disabled') return '4, 8';
+    if (status === 'down') return '6, 6';
     return isInfrastructure ? '8, 8' : null;
   };
 
@@ -337,7 +371,25 @@ export default function TopologyMap({
       const toNode = nodes.find(n => n.id === edge.to_node || n.id === edge.to);
       if (!fromNode || !toNode) return null;
       if (isNaN(fromNode.latitude) || isNaN(toNode.latitude)) return null;
-      return { ...edge, fromNode, toNode };
+
+      let fLat = fromNode.latitude, fLng = fromNode.longitude;
+      let tLat = toNode.latitude, tLng = toNode.longitude;
+
+      if (draggedNodeCoordRef.current[fromNode.id]) {
+        fLat = draggedNodeCoordRef.current[fromNode.id].lat;
+        fLng = draggedNodeCoordRef.current[fromNode.id].lng;
+      }
+      if (draggedNodeCoordRef.current[toNode.id]) {
+        tLat = draggedNodeCoordRef.current[toNode.id].lat;
+        tLng = draggedNodeCoordRef.current[toNode.id].lng;
+      }
+
+      return { 
+        ...edge, 
+        fromNode: { ...fromNode, latitude: fLat, longitude: fLng }, 
+        toNode: { ...toNode, latitude: tLat, longitude: tLng },
+        positions: [[fLat, fLng], [tLat, tLng]]
+      };
     }).filter(Boolean);
   }, [edges, nodes]);
 
@@ -348,11 +400,23 @@ export default function TopologyMap({
     let isUp = false;
 
     if (node.linked_interface) {
-        const matchedIface = coreInterfaces.find(i => i.name && i.name.toLowerCase() === node.linked_interface.toLowerCase());
-        if (matchedIface) {
-            if (matchedIface.disabled === 'true') isDisabled = true;
-            else if (matchedIface.running === 'true') isUp = true;
-            else isDown = true;
+        const linkedPrefix = node.linked_interface.toLowerCase();
+        
+        // 1. Cek dari mappings gabungan
+        const m = mappings || [];
+        const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === linkedPrefix);
+
+        if (mappedNode) {
+            if (mappedNode.final_status === 'Offline') isDown = true;
+            else if (mappedNode.final_status === 'Online') isUp = true;
+        } else {
+            // 2. Cek status interface murni
+            const matchedIface = coreInterfaces.find(i => i.name && i.name.toLowerCase() === linkedPrefix);
+            if (matchedIface) {
+                if (matchedIface.disabled === 'true') isDisabled = true;
+                else if (matchedIface.running === 'true') isUp = true;
+                else isDown = true;
+            }
         }
     } else if (node.type?.toLowerCase() !== 'core') {
         const connectedEdges = currentEdges.filter(e => e.from_node === node.id || e.to_node === node.id || e.from === node.id || e.to === node.id);
@@ -444,7 +508,7 @@ export default function TopologyMap({
 {validEdges.map(edge => (
   <Polyline
     key={edge.id}
-    positions={[[edge.fromNode.latitude, edge.fromNode.longitude], [edge.toNode.latitude, edge.toNode.longitude]]}
+    positions={edge.positions}
     pathOptions={{
       color: getEdgeColor(edge),
       weight: selectedEdge?.id === edge.id ? 5 : 3.5,
@@ -477,6 +541,7 @@ export default function TopologyMap({
           getMarkerIcon={getMarkerIcon}
           edges={edges}
           coreInterfaces={coreInterfaces}
+          mappings={mappings}
           showLabels={showLabels}
           interactionMode={interactionMode}
           readOnly={readOnly}
@@ -485,6 +550,7 @@ export default function TopologyMap({
           pushUndo={pushUndo}
           setSelectedEdge={setSelectedEdge}
           setSelectedNode={setSelectedNode}
+          draggedNodeCoordRef={draggedNodeCoordRef}
         />
       ))}
     </MapContainer>
