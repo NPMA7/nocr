@@ -158,7 +158,7 @@ export default function AuthenticatedLayout({ children }) {
 
   return (
     <AppStateContext.Provider value={contextValue}>
-      <div className="flex h-screen w-screen bg-slate-900 text-slate-50 overflow-hidden">
+      <div className="fixed inset-0 flex bg-slate-900 text-slate-50 overflow-hidden">
         
         {/* Mobile overlay */}
         {isMobileMenuOpen && (
@@ -175,7 +175,7 @@ export default function AuthenticatedLayout({ children }) {
           </Suspense>
         </div>
         
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           <Topbar onMenuClick={() => setIsMobileMenuOpen(true)} />
           
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 md:p-6">

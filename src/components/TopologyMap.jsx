@@ -259,7 +259,7 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
   }, [node.type]);
 
   const zIndex = useMemo(() => {
-    return (isSelected ? 5000 : 0) + (isDown ? 2000 : 0) + typePriority;
+    return (isSelected ? 9999 : 0) + (isDown ? 2000 : 0) + typePriority;
   }, [isSelected, isDown, typePriority]);
 
   return (
@@ -466,7 +466,7 @@ export default function TopologyMap({
       className: 'custom-leaflet-icon',
       html: `<div class="node-marker-wrapper relative transition-transform duration-200 flex flex-col items-center justify-center ${isSelected ? 'scale-100 z-50' : scaleClass}">
         ${html}
-        <div class="node-label absolute top-full whitespace-nowrap text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-700/50 pointer-events-none shadow-md mt-0.5 ${labelsVisible ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200">${node.label || 'Tanpa Label'}</div>
+        <div class="node-label absolute top-full whitespace-nowrap text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-700/50 pointer-events-none shadow-md mt-0.5 ${labelsVisible || isSelected ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200">${node.label || 'Tanpa Label'}</div>
       </div>`,
       iconSize: [32, 32],
       iconAnchor: [16, 16]

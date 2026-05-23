@@ -112,7 +112,7 @@ export default function Topbar({ onMenuClick }) {
   );
 
   return (
-    <header className="bg-slate-800 border-b border-slate-700/50 flex flex-col md:flex-row md:justify-between md:items-center relative z-[2000]">
+    <header className="bg-slate-800 border-b border-slate-700/50 flex flex-col md:flex-row md:justify-between md:items-center relative z-[2000] shrink-0">
       {/* Top Row: Hamburger, Desktop Search, Profile */}
       <div className="h-[70px] flex justify-between items-center px-4 md:px-6 w-full">
         <div className="flex items-center gap-3 flex-1 md:flex-none md:w-96 relative mr-4">

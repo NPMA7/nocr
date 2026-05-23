@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels) => {
+const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels, isFront) => {
     let colorClass = 'bg-blue-500 border-blue-200';
     const t = node.type?.toLowerCase() || '';
     const isInfrastructure = ['olt', 'odc', 'odp', 'core', 'pole'].includes(t);
@@ -32,16 +32,16 @@ const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels) => {
 
     return L.divIcon({
       className: 'custom-leaflet-icon',
-      html: `<div class="group/marker relative transition-transform duration-200 flex flex-col items-center justify-center scale-90 hover:scale-110 z-0 hover:z-[9999]">
+      html: `<div class="group/marker relative transition-transform duration-200 flex flex-col items-center justify-center scale-90 hover:scale-110 ${isFront ? 'z-[9999]' : 'z-0'} hover:z-[9999]">
         ${html}
-        <div class="absolute top-full mt-1 whitespace-nowrap text-[8px] font-bold text-slate-200 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/50 pointer-events-none shadow-md transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0 group-hover/marker:opacity-100'}">${node.label || 'Tanpa Label'}</div>
+        <div class="absolute top-full mt-1 whitespace-nowrap text-[8px] font-bold text-slate-200 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/50 pointer-events-none shadow-md transition-opacity duration-200 ${showLabels || isFront ? 'opacity-100' : 'opacity-0 group-hover/marker:opacity-100'}">${node.label || 'Tanpa Label'}</div>
       </div>`,
       iconSize: [32, 32],
       iconAnchor: [16, 16]
     });
 };
 
-const MemoizedDashboardMarker = ({ node, coreInterfaces, edges, mappings, showLabels }) => {
+const MemoizedDashboardMarker = ({ node, coreInterfaces, edges, mappings, showLabels, isActive, onMarkerClick }) => {
   const { isDown, isUp, isDisabled } = useMemo(() => {
     let down = false, up = false, disabled = false;
     if (node.linked_interface) {
@@ -86,22 +86,28 @@ const MemoizedDashboardMarker = ({ node, coreInterfaces, edges, mappings, showLa
     }
   }, [node.type]);
   
-  const zIndex = (finalIsDown ? 2000 : 0) + typePriority;
+  // Jika isActive (di-klik), paksa z-index sangat tinggi agar tidak tertutup node lain
+  const zIndex = isActive ? 9999 : (finalIsDown ? 2000 : 0) + typePriority;
 
   const icon = useMemo(() => {
-    return getMarkerIcon(node, isDown, isUp, isDisabled, showLabels);
-  }, [node.type, node.status, node.label, isDown, isUp, isDisabled, showLabels]);
+    return getMarkerIcon(node, isDown, isUp, isDisabled, showLabels, isActive);
+  }, [node.type, node.status, node.label, isDown, isUp, isDisabled, showLabels, isActive]);
 
   return (
     <Marker
       position={[parseFloat(node.latitude), parseFloat(node.longitude)]}
       icon={icon}
       zIndexOffset={zIndex}
+      eventHandlers={{
+        click: () => onMarkerClick(node.id)
+      }}
     />
   );
 };
 
 export default function DashboardMap({ topologyNodes = [], edges = [], coreInterfaces = [], mappings = [], mapTheme = 'dark', showLabels = false }) {
+  const [activeNodeId, setActiveNodeId] = useState(null);
+
   // Peta selalu terpusat di Kantor Bupati Kabupaten Bandung
   const validNodes = topologyNodes.filter(n => n.latitude != null && n.longitude != null && n.latitude !== '' && !isNaN(parseFloat(n.latitude)));
   const mapCenter = [-7.022222564193077, 107.52746684693963];
@@ -175,6 +181,8 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
             mappings={mappings}
             edges={edges}
             showLabels={showLabels}
+            isActive={activeNodeId === node.id}
+            onMarkerClick={(id) => setActiveNodeId(prev => prev === id ? null : id)}
           />
         ))}
       </MapContainer>

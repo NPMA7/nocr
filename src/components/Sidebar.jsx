@@ -48,25 +48,25 @@ export default function Sidebar({ isConnected, onNavigate }) {
  
       
       <nav className="flex-1 p-4 flex flex-col gap-1">
-        <Link href="/dashboard" onClick={onNavigate} className={getLinkClass('/dashboard')}>
+        <Link href="/dashboard" onClick={onNavigate} scroll={false} className={getLinkClass('/dashboard')}>
           <PieChart size={18} /> Dashboard
         </Link>
-        <Link href="/topology" onClick={onNavigate} className={getLinkClass('/topology')}>
+        <Link href="/topology" onClick={onNavigate} scroll={false} className={getLinkClass('/topology')}>
           <GitGraph size={18} /> Peta Topologi
         </Link>
-        <Link href="/monitor-device" onClick={onNavigate} className={getLinkClass('/monitor-device')}>
+        <Link href="/monitor-device" onClick={onNavigate} scroll={false} className={getLinkClass('/monitor-device')}>
           <Monitor size={18} /> Monitor Gabungan
         </Link>
-        <Link href="/devices" onClick={onNavigate} className={getLinkClass('/devices')}>
+        <Link href="/devices" onClick={onNavigate} scroll={false} className={getLinkClass('/devices')}>
           <Server size={18} /> Mikrotik RO
         </Link>
-        <Link href="/ruijie" onClick={onNavigate} className={getLinkClass('/ruijie')}>
+        <Link href="/ruijie" onClick={onNavigate} scroll={false} className={getLinkClass('/ruijie')}>
           <Wifi size={18} /> Ruijie AP
         </Link>
         
         
         <div className="flex flex-col gap-0.5">
-          <Link href="/settings?tab=core" onClick={onNavigate} className={getLinkClass('/settings')}>
+          <Link href="/settings?tab=core" onClick={onNavigate} scroll={false} className={getLinkClass('/settings')}>
             <Settings size={18} /> Pengaturan
           </Link>
           
@@ -75,6 +75,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
               <Link 
                 href="/settings?tab=core" 
                 onClick={onNavigate} 
+                scroll={false}
                 className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                   currentTab === 'core' 
                     ? 'text-blue-400 bg-blue-500/10' 
@@ -86,6 +87,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
               <Link 
                 href="/settings?tab=vpn" 
                 onClick={onNavigate} 
+                scroll={false}
                 className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                   currentTab === 'vpn' 
                     ? 'text-emerald-400 bg-emerald-500/10' 
@@ -97,6 +99,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
               <Link 
                 href="/settings?tab=db" 
                 onClick={onNavigate} 
+                scroll={false}
                 className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                   currentTab === 'db' 
                     ? 'text-blue-400 bg-blue-500/10' 
@@ -109,6 +112,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 <Link 
                   href="/settings?tab=users" 
                   onClick={onNavigate} 
+                  scroll={false}
                   className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                     currentTab === 'users' 
                       ? 'text-blue-400 bg-blue-500/10' 

@@ -345,7 +345,7 @@ export default function Dashboard() {
       </div>
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
-        <div className="lg:col-span-2 bg-slate-800 border border-slate-700/50 rounded-xl p-4 md:p-5 flex flex-col min-h-0 relative overflow-hidden group">
+        <div className="lg:col-span-2 bg-slate-800 border border-slate-700/50 rounded-xl p-4 md:p-5 flex flex-col min-h-[300px] lg:min-h-0 relative overflow-hidden group">
           <h3 className="flex-shrink-0 text-base font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center gap-2">
             Pratinjau Jaringan
             <div className="flex items-center gap-2 z-10">
