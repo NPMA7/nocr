@@ -516,18 +516,14 @@ app.prepare().then(() => {
             console.error('Sync Mappings Error:', err.message);
         }
     }
-    
-    // Sinkronisasi MikroTik dan Mappings setiap 10 detik agar lebih realtime
-    setInterval(async () => {
-        await broadcastMikrotikData();
-        await syncDeviceMappings();
-    }, 10000);
+    broadcastMikrotikData();
+    scheduleAtMinuteBoundary(broadcastMikrotikData, 0); // Tepat pergantian menit (:00)
 
-    // Eksekusi pertama kali
-    setTimeout(async () => {
-        await broadcastMikrotikData();
-        await syncDeviceMappings();
-    }, 2000);
+    // Tunda eksekusi pertama 5 detik agar data awal terkumpul, setelah itu ikut pergantian menit lewat 5 detik
+    setTimeout(() => {
+        syncDeviceMappings();
+    }, 5000);
+    scheduleAtMinuteBoundary(syncDeviceMappings, 5); // Tepat di detik ke-05 setiap menit
 
     // Default Next.js Handler
     server.all('*', (req, res) => {
