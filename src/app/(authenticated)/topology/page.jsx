@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Plus, GitCommit, Save, X, Trash2, MapPin, RefreshCw,
-  Cpu, Clock, ChevronDown, ChevronUp, Network, Search, Map as MapIcon, Eye, Users, Server
+  Cpu, Clock, ChevronDown, ChevronUp, Network, Search, Map as MapIcon, Eye, Users, Server, Settings
 } from 'lucide-react';
 
 const INFRA_NODE_TYPES = ['olt', 'odc', 'odp', 'pole'];
@@ -149,6 +149,7 @@ function TopologyContent() {
   const [coreInterfaces, setCoreInterfaces] = useState([]);
   const [coreLoading, setCoreLoading] = useState(false);
   const [showIfacePanel, setShowIfacePanel] = useState(false);
+  const [showMobileMode, setShowMobileMode] = useState(false);
   
   const combinedInterfaceOptions = useMemo(() => {
     const options = [];
@@ -645,6 +646,12 @@ function TopologyContent() {
               >
                 <MapPin size={14} /> Zoom All
               </button>
+              <button
+                onClick={() => setShowMobileMode(prev => !prev)}
+                className={`cursor-pointer md:hidden flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${showMobileMode ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+              >
+                <Settings size={14} /> Mode
+              </button>
             </div>
           </div>
 
@@ -893,10 +900,10 @@ function TopologyContent() {
           </div>
         )}
 
-        {/* Left Panel — MikroTik Core Live Status */}
-        <div className="hidden md:flex absolute top-3 left-3 z-[1000] w-72 flex-col gap-2 pointer-events-none">
-
-          {/* Core Status Card */}
+        <div className="flex-1 w-full relative z-0 flex flex-col">
+          {/* Left Panel — MikroTik Core Live Status */}
+          <div className="hidden md:flex absolute top-3 left-3 z-[1000] w-72 flex-col gap-2 pointer-events-none">
+            {/* Core Status Card */}
           {coreStatus && (
             <div className={`rounded-xl border p-3.5 shadow-xl backdrop-blur-sm pointer-events-auto ${coreStatus.connected ? 'bg-slate-900/95 border-emerald-500/30' : 'bg-slate-900/95 border-red-500/30'}`}>
               <div className="flex items-center justify-between mb-2">
@@ -994,9 +1001,9 @@ function TopologyContent() {
         </div>
 
         {/* Right Floating Panel — Legend & Theme Toggle */}
-        <div className="hidden md:flex absolute top-3 right-3 z-[1000] flex-col gap-2 pointer-events-none">
+        <div className={`${showMobileMode ? 'flex' : 'hidden'} md:flex absolute bottom-8 left-3 md:bottom-auto md:top-3 md:left-auto md:right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}>
           {/* Cable Color Legend */}
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3">
+          <div className="hidden md:block rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Legenda Warna Kabel dan Node</p>
             <div className="flex flex-col gap-1.5 text-[10px] text-slate-400">
               <span className="flex items-center gap-2"><span className="w-6 h-1 bg-green-500 rounded inline-block" /> UP</span>
@@ -1052,7 +1059,6 @@ function TopologyContent() {
      
         </div>
 
-        <div className="w-full h-full relative z-0">
           <TopologyMap
             mapTheme={mapTheme}
             showLabels={showLabels}
