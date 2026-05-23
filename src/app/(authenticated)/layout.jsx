@@ -6,6 +6,7 @@ import Topbar from '@/components/Topbar';
 import { socket, AppStateContext, API_URL } from '@/App';
 import { applySessionUser, getStoredUser, getRoleLabel } from '@/lib/roles';
 import axios from 'axios';
+import { Network } from 'lucide-react';
 
 export default function AuthenticatedLayout({ children }) {
   const router = useRouter();
@@ -141,8 +142,16 @@ export default function AuthenticatedLayout({ children }) {
 
   if (!tokenChecked) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
-        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-300">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <img src="/logo.png" alt="NOCR Logo" className="w-24 h-24 object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+          <div className="text-2xl font-bold text-blue-500 flex items-center gap-2">
+            NOCR <span className='text-xs text-slate-400 font-normal mt-2'>by: npma</span>
+          </div>
+          <p className="text-sm font-semibold tracking-wider text-slate-400 uppercase mt-4">
+            Loading setup...
+          </p>
+        </div>
       </div>
     );
   }

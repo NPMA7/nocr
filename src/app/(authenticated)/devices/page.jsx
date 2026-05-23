@@ -653,14 +653,11 @@ export default function Devices() {
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center min-h-[200px]">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw size={28} className="animate-spin text-blue-400" />
-            <p className="text-slate-400 text-sm">
-              Mengambil data dari MikroTik...
-            </p>
-          </div>
+      {loading && interfaces.length === 0 ? (
+        <div className="flex-1 flex flex-col gap-2 p-3 min-h-[300px]">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="w-full h-12 bg-slate-700/30 rounded-lg animate-pulse" />
+          ))}
         </div>
       ) : error ? (
         <div className="flex-1 flex items-center justify-center min-h-[200px]">

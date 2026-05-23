@@ -308,9 +308,10 @@ export default function MonitorDevice() {
 
         <div className={dataScrollClass}>
           {loading && mergedDevices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 gap-3">
-              <RefreshCw size={24} className="animate-spin text-blue-400" />
-              <p className="text-slate-400 text-sm">Memuat data sinkronisasi...</p>
+            <div className="flex-1 flex flex-col gap-2 p-3 min-h-[300px]">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="w-full h-12 bg-slate-700/30 rounded-lg animate-pulse" />
+              ))}
             </div>
           ) : error && mergedDevices.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-4 0 gap-3 text-red-400">
