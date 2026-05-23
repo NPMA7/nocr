@@ -334,34 +334,99 @@ app.prepare().then(() => {
                 mikrotik.getPPPoESecrets(device)
             ]);
 
+            const now = new Date().toISOString();
+
+            if (interfaces && interfaces.length > 0) {
+                try {
+                    await supabase.from('network_interfaces').delete().eq('device_id', device.id);
+                    const rows = interfaces.map(iface => ({
+                        device_id: device.id,
+                        ros_id: iface['.id'] || null,
+                        name: iface.name,
+                        type: iface.type || null,
+                        mac_address: iface['mac-address'] || null,
+                        mtu: parseInt(iface.mtu) || null,
+                        running: iface.running === 'true',
+                        disabled: iface.disabled === 'true',
+                        comment: iface.comment || null,
+                        synced_at: now
+                    }));
+                    await supabase.from('network_interfaces').insert(rows);
+                } catch (e) { console.warn('Cache Interface Error:', e.message); }
+            }
+
+            if (pppoe && pppoe.length >= 0) {
+                try {
+                    await supabase.from('pppoe_active').delete().eq('device_id', device.id);
+                    if (pppoe.length > 0) {
+                        const rows = pppoe.map(p => ({
+                            device_id: device.id,
+                            ros_id: p['.id'] || null,
+                            name: p.name || null,
+                            address: p.address || null,
+                            caller_id: p['caller-id'] || null,
+                            service: p.service || null,
+                            uptime: p.uptime || null,
+                            synced_at: now
+                        }));
+                        await supabase.from('pppoe_active').insert(rows);
+                    }
+                } catch (e) { console.warn('Cache PPPoE Active Error:', e.message); }
+            }
+
+            if (secrets && secrets.length >= 0) {
+                try {
+                    await supabase.from('pppoe_secrets').delete().eq('device_id', device.id);
+                    if (secrets.length > 0) {
+                        const rows = secrets.map(sec => ({
+                            device_id: device.id,
+                            ros_id: sec['.id'] || null,
+                            name: sec.name,
+                            password: sec.password || '',
+                            profile: sec.profile || 'default',
+                            service: sec.service || 'any',
+                            disabled: sec.disabled === 'true',
+                            local_address: sec['local-address'] || null,
+                            remote_address: sec['remote-address'] || null,
+                            synced_at: now
+                        }));
+                        await supabase.from('pppoe_secrets').insert(rows);
+                    }
+                } catch (e) { console.warn('Cache PPPoE Secrets Error:', e.message); }
+            }
+
             io.emit('mikrotik_full_update', { 
                 interfaces: interfaces || [], 
                 pppoe: pppoe || [], 
                 secrets: secrets || [],
-                timestamp: new Date().toISOString()
+                timestamp: now
             });
         } catch (err) {
             console.error('MikroTik full broadcast error:', err.message);
         }
     }
 
-    broadcastMikrotikData();
-    scheduleAtMinuteBoundary(broadcastMikrotikData, 0); // Tepat pergantian menit (:00)
+
 
     // Jalankan Sinkronisasi Mappings setiap pergantian menit lewat 5 detik (supaya data mentah Ruijie/Mikrotik masuk dulu)
     async function syncDeviceMappings() {
         try {
-            const [resRuijie, resManual, resActive, resSecrets] = await Promise.all([
+            const device = await getCoreDevice();
+            if (!device) return;
+
+            const [resRuijie, resManual, resActive, resSecrets, resInterfaces] = await Promise.all([
                 supabase.from('ruijie_devices').select('*'),
                 supabase.from('device_mappings').select('*'),
-                supabase.from('pppoe_active').select('name'),
-                supabase.from('pppoe_secrets').select('name')
+                supabase.from('pppoe_active').select('name').eq('device_id', device.id),
+                supabase.from('pppoe_secrets').select('name').eq('device_id', device.id),
+                supabase.from('network_interfaces').select('name, running, disabled').eq('device_id', device.id)
             ]);
             
             const ruijie = resRuijie.data || [];
             const mappings = resManual.data || [];
             const active = resActive.data || [];
             const secrets = resSecrets.data || [];
+            const interfaces = resInterfaces.data || [];
 
             const normalizeName = (name) => name ? name.toLowerCase().replace(/[-_\s]/g, '') : '';
 
@@ -370,18 +435,33 @@ app.prepare().then(() => {
                 let secretName = null;
                 let isActive = false;
                 
+                const checkActive = (name) => {
+                    if (active.some(a => a.name === name)) return true;
+                    const iface = interfaces.find(i => i.name === name);
+                    if (iface) return iface.running && !iface.disabled;
+                    return false;
+                };
+
                 if (existing && existing.is_manual) {
                     secretName = existing.mikrotik_name; // Prioritize mikrotik_name which is the true manual input
                     const sec = secrets.find(s => s.name === secretName);
-                    if (sec) secretName = sec.name;
-                    isActive = active.some(a => a.name === secretName);
+                    const iface = interfaces.find(i => i.name === secretName);
+                    if (sec) {
+                        secretName = sec.name;
+                    } else if (iface) {
+                        secretName = iface.name;
+                    }
+                    isActive = checkActive(secretName);
                 } else {
                     const normAlias = normalizeName(ap.alias);
                     const sec = secrets.find(s => normalizeName(s.name) === normAlias);
+                    const iface = interfaces.find(i => normalizeName(i.name) === normAlias);
                     if (sec) {
                         secretName = sec.name;
-                        isActive = active.some(a => a.name === secretName);
+                    } else if (iface) {
+                        secretName = iface.name;
                     }
+                    isActive = checkActive(secretName);
                 }
 
                 let mikrotikStatus = secretName ? (isActive ? 'Online' : 'Offline') : 'Unknown';
@@ -437,11 +517,17 @@ app.prepare().then(() => {
         }
     }
     
-    // Tunda eksekusi pertama 5 detik agar data awal terkumpul, setelah itu ikut pergantian menit lewat 5 detik
-    setTimeout(() => {
-        syncDeviceMappings();
-    }, 5000);
-    scheduleAtMinuteBoundary(syncDeviceMappings, 5); // Tepat di detik ke-05 setiap menit
+    // Sinkronisasi MikroTik dan Mappings setiap 10 detik agar lebih realtime
+    setInterval(async () => {
+        await broadcastMikrotikData();
+        await syncDeviceMappings();
+    }, 10000);
+
+    // Eksekusi pertama kali
+    setTimeout(async () => {
+        await broadcastMikrotikData();
+        await syncDeviceMappings();
+    }, 2000);
 
     // Default Next.js Handler
     server.all('*', (req, res) => {
