@@ -117,7 +117,7 @@ export default function Ruijie() {
           <button
             onClick={fetchDevices}
             disabled={loading}
-            className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg shadow-blue-500/20"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Sync Sekarang
           </button>
@@ -126,7 +126,7 @@ export default function Ruijie() {
 
       {/* Stats Cards */}
       {!loading && !error && devices.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-1 flex-shrink-0">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 flex-shrink-0">
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Wifi size={20} className="text-emerald-400" />

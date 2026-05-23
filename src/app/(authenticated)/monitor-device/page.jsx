@@ -179,16 +179,19 @@ export default function MonitorDevice() {
       );
     } else {
       return (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Offline
-          </span>
-          {device.offline_since && (
-            <span className="text-[10px] text-red-400 flex items-center gap-1">
-              <Clock size={10} /> Sejak {device.offline_since}
-            </span>
-          )}
-        </div>
+     <div className="flex flex-col gap-1 items-end">
+  <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
+    <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+    Offline
+  </span>
+
+  {device.offline_since && (
+    <span className="text-[10px] text-red-400 flex items-center gap-1">
+      <Clock size={10} />
+      Sejak {device.offline_since}
+    </span>
+  )}
+</div>
       );
     }
   };
@@ -219,15 +222,9 @@ export default function MonitorDevice() {
                 if (socket) socket.emit('force_sync_mappings');
                 fetchData();
               }}
-              disabled={loading || readOnly}
-              title={readOnly ? "Anda tidak memiliki akses" : ""}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg ${
-                readOnly 
-                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer'
-              }`}
-            >
-              {readOnly ? <Lock size={15} /> : <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />} 
+              disabled={loading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer'}`}
+            > <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               Sync Sekarang
             </button>
         </div>
@@ -235,7 +232,7 @@ export default function MonitorDevice() {
 
       {/* Stats Cards */}
       {!error && mergedDevices.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-1 flex-shrink-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-shrink-0">
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Wifi size={20} className="text-emerald-400" />
@@ -261,15 +258,6 @@ export default function MonitorDevice() {
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tidak Sinkron</p>
               <p className="text-xl font-bold text-red-400/80">{totalTidakSinkron}</p>
-            </div>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-              <WifiOff size={20} className="text-purple-400/80" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">MikroTik Offline</p>
-              <p className="text-xl font-bold text-purple-400/80">{totalMikrotikOffline}</p>
             </div>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
@@ -330,8 +318,77 @@ export default function MonitorDevice() {
               <p className="text-sm">{error}</p>
             </div>
           ) : (
-            <div className="min-h-0">
-              <table className="w-full text-sm">
+            <>
+              {/* Mobile card view */}
+              <div className="md:hidden divide-y divide-slate-700/30">
+                {filteredDevices.length === 0 ? (
+                  <p className="text-center py-12 text-slate-500 text-base">Tidak ada data</p>
+                ) : filteredDevices.map((d, i) => (
+                  <div key={i} className="px-5 py-4 flex flex-col gap-3 hover:bg-slate-700/20 transition">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-bold text-slate-100 text-base truncate">{d.prefix || '-'}</span>
+                          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">Prefix</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded min-w-[52px] text-center">Ruijie</span>
+                            <span className="font-mono text-sm text-slate-300 truncate">{d.ruijie_alias || '-'}</span> {getSourceStatus(d.status_ruijie)}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded min-w-[52px] text-center">Mikrotik</span>
+                            <span className={`font-mono text-sm truncate ${d.is_manual ? 'text-blue-400' : 'text-slate-300'}`}> 
+                              {d.mikrotik_alias}
+                            </span>{getSourceStatus(d.status_mikrotik)}
+                            {d.is_manual && <LinkIcon size={12} className="text-blue-400 flex-shrink-0" />}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        {getStatusDisplay(d)}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center gap-2 mt-1">
+                      <div className="flex flex-col gap-1.5">
+                        {d.issue ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-orange-400 bg-orange-400/10 px-2 py-1 rounded-md border border-orange-400/20 w-max">
+                            <AlertTriangle size={12} /> {d.issue}
+                          </span>
+                        ) : (
+                           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md border border-emerald-400/20 w-max">
+                            <Wifi size={12} /> Normal
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-shrink-0">
+                        {readOnly ? null : d.is_manual ? (
+                          <button
+                            onClick={() => handleRemoveMapping(d.ruijie_mac)}
+                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition border border-red-500/20 text-xs font-medium"
+                          >
+                            <Unlink size={14} /> Hapus
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenModal(d)}
+                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded transition border border-blue-500/20 text-xs font-medium"
+                          >
+                            <LinkIcon size={14} /> Tautkan
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop table view */}
+              <div className="hidden md:block min-h-0 overflow-x-auto">
+                <table className="w-full text-sm min-w-[1000px]">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Final Status</th>
@@ -457,7 +514,8 @@ export default function MonitorDevice() {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </div>
       </div>
