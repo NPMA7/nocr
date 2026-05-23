@@ -67,12 +67,12 @@ function IfaceBadge({ running, disabled }) {
     );
   if (running === "true")
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold tracking-wider">
         Up
       </span>
     );
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold tracking-wider">
       Down
     </span>
   );
@@ -676,28 +676,57 @@ function TopologyContent() {
   };
 
   // Group interfaces by type for display
+  // Group interfaces by type for display
   const ifaceGroups = useMemo(() => {
     const groups = {};
-    const filtered = coreInterfaces.filter(
+    const filteredCore = coreInterfaces.filter(
       (i) =>
-        !ifacePanelSearch ||
-        (i.name &&
-          i.name.toLowerCase().includes(ifacePanelSearch.toLowerCase())),
+        (!ifacePanelSearch ||
+          (i.name &&
+            i.name.toLowerCase().includes(ifacePanelSearch.toLowerCase()))) &&
+        i.type !== "l2tp-in"
     );
-    filtered.forEach((i) => {
+    
+    filteredCore.forEach((i) => {
       const t = i.type || "other";
       if (!groups[t]) groups[t] = [];
       groups[t].push(i);
     });
-    return groups;
-  }, [coreInterfaces, ifacePanelSearch]);
 
-  const runningCount = coreInterfaces.filter(
-    (i) => i.running === "true" && i.disabled !== "true",
-  ).length;
-  const downCount = coreInterfaces.filter(
-    (i) => i.running !== "true" && i.disabled !== "true",
-  ).length;
+    const filteredMappings = mappings.filter(
+      (m) =>
+        !ifacePanelSearch ||
+        (m.prefix && m.prefix.toLowerCase().includes(ifacePanelSearch.toLowerCase())) ||
+        (m.mikrotik_alias && m.mikrotik_alias.toLowerCase().includes(ifacePanelSearch.toLowerCase()))
+    );
+
+    if (filteredMappings.length > 0) {
+      groups["l2tp-in (gabungan)"] = filteredMappings.map(m => ({
+        name: m.prefix || m.mikrotik_alias || m.ruijie_mac,
+        running: m.final_status === "Online" ? "true" : "false",
+        disabled: "false"
+      }));
+    }
+
+    return groups;
+  }, [coreInterfaces, ifacePanelSearch, mappings]);
+
+  const { runningCount, downCount, totalOnlineGabungan } = useMemo(() => {
+    let up = 0, down = 0, gabunganOnline = 0;
+    coreInterfaces.forEach((i) => {
+      if (i.type === "l2tp-in") return;
+      if (i.running === "true" && i.disabled !== "true") up++;
+      else if (i.disabled !== "true") down++;
+    });
+    mappings.forEach(m => {
+      if (m.final_status === "Online") {
+        up++;
+        gabunganOnline++;
+      }
+      else down++;
+    });
+    return { runningCount: up, downCount: down, totalOnlineGabungan: gabunganOnline };
+  }, [coreInterfaces, mappings]);
 
   const mapNodes = useMemo(() => {
     if (nodeViewFilter === "client") return nodes.filter(isClientNode);
@@ -1260,8 +1289,13 @@ function TopologyContent() {
                           Active Pelanggan
                         </p>
                         <p className="text-xs font-bold text-emerald-400">
-                          {coreStatus.l2tp_active + coreStatus.pppoe_active}
+                          {totalOnlineGabungan + (coreStatus.pppoe_active || 0)}
+                          
+                          <span className="text-[10px] px-1 font-bold text-slate-400">
+                          ({totalOnlineGabungan} + {(coreStatus.pppoe_active || 0)})
+                        </span>
                         </p>
+                        
                       </div>
                     </div>
                     <div className="bg-slate-800/80 rounded-lg p-2 flex items-center gap-2 min-w-0">
@@ -1307,7 +1341,7 @@ function TopologyContent() {
                   <div className="flex items-center gap-2">
                     <Network size={13} className="text-blue-400" />
                     <span className="text-xs font-bold text-slate-200">
-                      Interfaces ({coreInterfaces.length})
+                      Interfaces ({downCount + runningCount})
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
                       {runningCount} UP
