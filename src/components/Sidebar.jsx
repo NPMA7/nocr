@@ -37,8 +37,9 @@ export default function Sidebar({ isConnected, onNavigate }) {
   return (
     <aside className="w-64 bg-slate-800 border-r border-slate-700/50 flex flex-col z-10 h-full">
       <div className="p-6 text-xl font-bold text-blue-500 flex flex-col gap-1 border-b border-slate-700/50">
-        <span className="flex items-center gap-3">
-          <Network size={24} /> NOCR <span className='text-[10px] text-slate-400 font-normal'>by: npma</span>
+        <span className="flex items-center gap-2">
+        <img src="/logo.png" alt="NOCR Logo" className="w-10 h-10 border-2 border-slate-600 rounded-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+         NOCR <span className='text-[10px] text-slate-400 font-normal'>by: npma</span>
         </span>
         <span className="text-[12px] text-slate-400 font-normal mt-0.5">
           Network Operations Center

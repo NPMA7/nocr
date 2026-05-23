@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '@/App';
-import { Network, ShieldAlert, Lock, User, ArrowRight } from 'lucide-react';
+import { Network, ShieldAlert, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [isSetup, setIsSetup] = useState(false);
@@ -12,6 +12,7 @@ export default function Login() {
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     // Check if system is initialized
@@ -68,16 +69,18 @@ export default function Login() {
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-[120px]" />
 
       <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8 relative z-10">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <Network size={32} className="text-white" />
-          </div>
+        <p className="text-xl font-bold text-slate-400"> Login </p>
+        <div className="flex justify-center">
+           <img src="/logo.png" alt="NOCR Logo" className="w-24 h-24 border-2 border-slate-600 rounded-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
         </div>
         
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">
-            {isSetup ? 'Setup Administrator' : 'NOCR Login'}
+          <h1 className="text-2xl font-bold text-white">
+            <p className="text-xs text-slate-400">npma</p>
+            {isSetup ? 'Setup Administrator' : 'NOCR'}
+             
           </h1>
+         
           <p className="text-sm text-slate-400">
             {isSetup 
               ? 'Sistem belum dikonfigurasi. Buat akun admin pertama Anda.' 
@@ -113,13 +116,21 @@ export default function Login() {
             <div className="relative">
               <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950/50 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                className="w-full bg-slate-950/50 border border-slate-700 rounded-lg py-3 pl-10 pr-12 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none transition-colors"
+                tabIndex="-1"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
