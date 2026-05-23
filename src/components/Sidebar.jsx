@@ -97,18 +97,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
               >
                 <Network size={14} /> VPN (Auto-Dial)
               </Link>
-              <Link 
-                href="/settings?tab=db" 
-                onClick={onNavigate} 
-                scroll={false}
-                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                  currentTab === 'db' 
-                    ? 'text-blue-400 bg-blue-500/10' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
-              >
-                <Database size={14} /> Database Supabase
-              </Link>
+
               {isAdmin && (
                 <Link 
                   href="/settings?tab=users" 
