@@ -232,8 +232,8 @@ export default function MonitorDevice() {
 
       {/* Stats Cards */}
       {!error && mergedDevices.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-shrink-0">
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 flex-shrink-0">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Wifi size={20} className="text-emerald-400" />
             </div>
@@ -242,7 +242,7 @@ export default function MonitorDevice() {
               <p className="text-2xl font-bold text-slate-100">{totalOnline}</p>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center flex-shrink-0">
               <WifiOff size={20} className="text-slate-400" />
             </div>
@@ -251,7 +251,7 @@ export default function MonitorDevice() {
               <p className="text-2xl font-bold text-slate-100">{totalOffline}</p>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
               <AlertTriangle size={20} className="text-red-400/80" />
             </div>
@@ -260,7 +260,7 @@ export default function MonitorDevice() {
               <p className="text-xl font-bold text-red-400/80">{totalTidakSinkron}</p>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
               <AlertTriangle size={20} className="text-orange-400" />
             </div>

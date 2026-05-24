@@ -70,7 +70,7 @@ export default function Ruijie() {
     
     if (isOnline) {
       return (
-        <div className="flex flex-col">
+        <div className="flex flex-col items-end md:items-start">
           <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 w-max flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             Online
@@ -84,7 +84,7 @@ export default function Ruijie() {
       );
     } else {
       return (
-        <div className="flex flex-col">
+        <div className="flex flex-col items-end md:items-start">
           <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
             Offline
@@ -126,8 +126,8 @@ export default function Ruijie() {
 
       {/* Stats Cards */}
       {!loading && !error && devices.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 flex-shrink-0">
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+        <div className="grid grid-cols-3 gap-2 flex-shrink-1">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Wifi size={20} className="text-emerald-400" />
             </div>
@@ -136,7 +136,7 @@ export default function Ruijie() {
               <p className="text-2xl font-bold text-slate-100">{totalOnline}</p>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
               <WifiOff size={20} className="text-red-400" />
             </div>
@@ -145,7 +145,7 @@ export default function Ruijie() {
               <p className="text-2xl font-bold text-slate-100">{totalOffline}</p>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex-1 min-w-[150px] flex items-center gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
               <Users size={20} className="text-blue-400" />
             </div>
