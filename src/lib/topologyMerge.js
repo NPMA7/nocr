@@ -2,7 +2,7 @@
 
 const NODE_COMPARE_KEYS = [
   'label', 'latitude', 'longitude', 'type', 'device_id', 'status',
-  'linked_interface', 'vendor', 'pic_name', 'pic_phone', 'group_name'
+  'linked_interface', 'vendor', 'pic_name', 'pic_phone', 'group_name', 'site_id'
 ];
 
 const EDGE_COMPARE_KEYS = ['from_node', 'to_node', 'label', 'status'];
@@ -20,7 +20,8 @@ export function normalizeNode(n) {
     linked_interface: n.linked_interface || null,
     vendor: n.vendor || null,
     pic_name: n.pic_name || null,
-    pic_phone: n.pic_phone || null
+    pic_phone: n.pic_phone || null,
+    site_id: n.site_id || null
   };
 }
 

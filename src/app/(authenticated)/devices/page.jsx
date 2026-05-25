@@ -1157,7 +1157,7 @@ export default function Devices() {
                           <td className="px-4 py-3 font-mono text-xs text-slate-400">
                             {canShowPassword ? (
                               <div className="flex items-center gap-2">
-                                <span className="w-16 truncate">
+                                <span className="max-w-[200px] break-all">
                                   {showListPasswords[s.name]
                                     ? s.password
                                     : "••••••"}
@@ -1247,6 +1247,7 @@ export default function Devices() {
                     })
                   )}
                 </tbody>
+           
               </table>
             </div>
           </div>

@@ -1,9 +1,52 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import axios from 'axios';
 import { API_URL, socket, useAppState } from '@/App';
-import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkIcon, Unlink, X, Save, Edit2, Lock, Clock } from 'lucide-react';
-import { getStoredUser, isVisitorRole, isEditorRole } from '@/lib/roles';
+import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkIcon, Unlink, X, Save, Edit2, Clock, MapPin } from 'lucide-react';
+import { getStoredUser, isAdminRole, canEditTopology } from '@/lib/roles';
+
+/** Alias Mikrotik + tautan manual (admin) muncul saat hover di sel yang sama */
+function MikrotikAliasCell({ device, isAdmin, onLink, onUnlink, className = '' }) {
+  return (
+    <div className={`flex items-center gap-2 group/mikrotik min-w-0 ${className}`}>
+      <span
+        className={`font-mono truncate ${device.is_manual ? 'text-blue-400' : 'text-slate-200'}`}
+        title={device.mikrotik_alias}
+      >
+        {device.mikrotik_alias}
+      </span>
+      {device.is_manual && (
+        <span
+          title="Tautan manual aktif"
+          className="flex-shrink-0 bg-blue-500/20 text-blue-400 p-1 rounded group-hover/mikrotik:opacity-0 transition-opacity"
+        >
+          <LinkIcon size={10} />
+        </span>
+      )}
+      {isAdmin &&
+        (device.is_manual ? (
+          <button
+            type="button"
+            onClick={() => onUnlink(device.ruijie_mac)}
+            className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
+            title="Lepas tautan manual"
+          >
+            <Unlink size={10} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onLink(device)}
+            className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+            title="Tautkan manual ke akun Mikrotik"
+          >
+            <LinkIcon size={10} />
+          </button>
+        ))}
+    </div>
+  );
+}
 
 export default function MonitorDevice() {
   const [mappings, setMappings] = useState([]);
@@ -26,9 +69,9 @@ export default function MonitorDevice() {
   const [editPrefixValue, setEditPrefixValue] = useState('');
   const [isSavingPrefix, setIsSavingPrefix] = useState(false);
 
-  // Role Access Control
-  const [canEdit, setCanEdit] = useState(false);
-  const readOnly = !canEdit;
+  // Role: admin = tautan manual; admin/editor = edit prefix
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [canEditPrefix, setCanEditPrefix] = useState(false);
 
   const fetchData = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -53,9 +96,13 @@ export default function MonitorDevice() {
   useEffect(() => {
     fetchData();
 
-    // Check Role
-    setCanEdit(!isVisitorRole && !isEditorRole (getStoredUser().role));
-    const handleRoleUpdate = (e) => setCanEdit(!isVisitorRole&&!isEditorRole(e.detail?.role));
+    const syncRoles = () => {
+      const role = getStoredUser().role;
+      setIsAdmin(isAdminRole(role));
+      setCanEditPrefix(canEditTopology(role));
+    };
+    syncRoles();
+    const handleRoleUpdate = () => syncRoles();
     window.addEventListener('nocr-role-updated', handleRoleUpdate);
 
     if (socket) {
@@ -337,12 +384,16 @@ export default function MonitorDevice() {
                             <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded min-w-[52px] text-center">Ruijie</span>
                             <span className="font-mono text-sm text-slate-300 truncate">{d.ruijie_alias || '-'}</span> {getSourceStatus(d.status_ruijie)}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded min-w-[52px] text-center">Mikrotik</span>
-                            <span className={`font-mono text-sm truncate ${d.is_manual ? 'text-blue-400' : 'text-slate-300'}`}> 
-                              {d.mikrotik_alias}
-                            </span>{getSourceStatus(d.status_mikrotik)}
-                            {d.is_manual && <LinkIcon size={12} className="text-blue-400 flex-shrink-0" />}
+                            <MikrotikAliasCell
+                              device={d}
+                              isAdmin={isAdmin}
+                              onLink={handleOpenModal}
+                              onUnlink={handleRemoveMapping}
+                              className="flex-1 min-w-0 text-sm"
+                            />
+                            {getSourceStatus(d.status_mikrotik)}
                           </div>
                         </div>
                       </div>
@@ -364,23 +415,12 @@ export default function MonitorDevice() {
                         )}
                       </div>
 
-                      <div className="flex-shrink-0">
-                        {readOnly ? null : d.is_manual ? (
-                          <button
-                            onClick={() => handleRemoveMapping(d.ruijie_mac)}
-                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition border border-red-500/20 text-xs font-medium"
-                          >
-                            <Unlink size={14} /> Hapus
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleOpenModal(d)}
-                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded transition border border-blue-500/20 text-xs font-medium"
-                          >
-                            <LinkIcon size={14} /> Tautkan
-                          </button>
-                        )}
-                      </div>
+                      <Link
+                        href={`/sites/${encodeURIComponent(d.ruijie_mac)}`}
+                        className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 rounded border border-orange-500/20 flex-shrink-0"
+                      >
+                        <MapPin size={12} /> Wilayah
+                      </Link>
                     </div>
 
                   </div>
@@ -395,16 +435,18 @@ export default function MonitorDevice() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Final Status</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Prefix (Gabungan)</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Alias (Ruijie)</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Alias (Mikrotik)</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Alias (Mikrotik)
+                      {isAdmin && (
+                        <span className="block text-[9px] font-normal text-slate-600 normal-case mt-0.5">
+                          Hover untuk tautan manual
+                        </span>
+                      )}
+                    </th>
                     <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status Ruijie</th>
                     <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status Mikrotik</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan Issue</th>
-                    {readOnly ? (
-                      <th className="text-slate-500 flex justify-end hidden">
-                      </th>
-                    ) : (
-                      <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
-                    )}
+                    <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Wilayah</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -442,7 +484,7 @@ export default function MonitorDevice() {
                         ) : (
                           <div className="flex items-center gap-2 group/prefix">
                             <span>{d.prefix || '-'}</span>
-                            {!readOnly && (
+                            {canEditPrefix && (
                               <button
                                 onClick={() => {
                                   setEditingPrefixMac(d.ruijie_mac);
@@ -463,15 +505,13 @@ export default function MonitorDevice() {
                           <span className="text-[10px] text-slate-500 font-mono mt-0.5">MAC: {d.ruijie_mac || '-'}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-mono ${d.is_manual ? 'text-blue-400' : 'text-slate-200'}`}>{d.mikrotik_alias}</span>
-                          {d.is_manual && (
-                            <span title="Manual Linked" className="bg-blue-500/20 text-blue-400 p-1 rounded">
-                              <LinkIcon size={10} />
-                            </span>
-                          )}
-                        </div>
+                      <td className="px-4 py-3 max-w-[220px]">
+                        <MikrotikAliasCell
+                          device={d}
+                          isAdmin={isAdmin}
+                          onLink={handleOpenModal}
+                          onUnlink={handleRemoveMapping}
+                        />
                       </td>
                       <td className="px-4 py-3 text-center">
                         {getSourceStatus(d.status_ruijie)}
@@ -488,28 +528,14 @@ export default function MonitorDevice() {
                           <span className="text-slate-500 text-xs">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {readOnly ? (
-                          <span className="text-slate-500 flex justify-end hidden">
-                            <Lock size={16} title="Akses Terbatas" />
-                          </span>
-                        ) : d.is_manual ? (
-                          <button
-                            onClick={() => handleRemoveMapping(d.ruijie_mac)}
-                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition border border-red-500/20 text-xs font-medium"
-                            title="Kembali ke Auto-Sync"
-                          >
-                            <Unlink size={14} /> Hapus Manual
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleOpenModal(d)}
-                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded transition border border-blue-500/20 text-xs font-medium"
-                            title="Timpa nama secara manual"
-                          >
-                            <LinkIcon size={14} /> Tautkan Manual
-                          </button>
-                        )}
+                      <td className="px-4 py-3 text-center">
+                        <Link
+                          href={`/sites/${encodeURIComponent(d.ruijie_mac)}`}
+                          className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded border border-orange-500/20 transition"
+                          title="Detail wilayah L2TP"
+                        >
+                          <MapPin size={12} /> Detail
+                        </Link>
                       </td>
                     </tr>
                   ))}

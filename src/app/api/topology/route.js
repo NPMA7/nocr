@@ -7,6 +7,10 @@ import {
     normalizeEdge,
     computeRevision
 } from '@/lib/topologyMerge';
+import {
+    enrichTopologyNodes,
+    syncTopologyBatchToSites
+} from '@/lib/topologySiteLink';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -27,9 +31,7 @@ function nodeToRow(n) {
         group_name: norm.group_name,
         status: norm.status,
         linked_interface: norm.linked_interface,
-        vendor: norm.vendor,
-        pic_name: norm.pic_name,
-        pic_phone: norm.pic_phone
+        site_id: norm.site_id || null
     };
 }
 
@@ -89,7 +91,7 @@ export async function GET(req) {
             .select('*');
         if (edgesError) throw edgesError;
 
-        const nodes = nodesData || [];
+        const nodes = await enrichTopologyNodes(supabase, nodesData || []);
         const edges = edgesData || [];
 
         return NextResponse.json({
@@ -172,11 +174,14 @@ export async function POST(req) {
 
         await persistMergedTopology(merged, oldNodes, oldEdges);
 
-        const revision = computeRevision(merged.nodes, merged.edges);
+        await syncTopologyBatchToSites(supabase, merged.nodes);
+
+        const enrichedNodes = await enrichTopologyNodes(supabase, merged.nodes);
+        const revision = computeRevision(enrichedNodes, merged.edges);
 
         if (global.io) {
             global.io.emit('topology_updated', {
-                nodes: merged.nodes,
+                nodes: enrichedNodes,
                 edges: merged.edges,
                 revision
             });
@@ -236,7 +241,7 @@ export async function POST(req) {
         return NextResponse.json({
             success: true,
             message: 'Topology saved successfully',
-            nodes: merged.nodes,
+            nodes: enrichedNodes,
             edges: merged.edges,
             revision
         });

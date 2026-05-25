@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient';
+import { autoLinkTopologyNode } from '@/lib/topologySiteLink';
 
 export async function PATCH(req) {
   try {
@@ -33,6 +34,18 @@ export async function PATCH(req) {
       .eq('linked_interface', old_prefix);
       
     if (topologyError) throw topologyError;
+
+    const { data: linkedNodes } = await supabase
+      .from('topology_nodes')
+      .select('*')
+      .eq('linked_interface', new_prefix);
+    for (const node of linkedNodes || []) {
+      try {
+        await autoLinkTopologyNode(supabase, node);
+      } catch (linkErr) {
+        console.warn('autoLink setelah ubah prefix:', linkErr.message);
+      }
+    }
 
     return NextResponse.json({ success: true, new_prefix });
   } catch (error) {

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Network, PieChart, GitGraph, Server, Settings, Database, Shield, Wifi, Monitor, Key } from 'lucide-react';
+import { Network, PieChart, GitGraph, Server, Settings, Database, Shield, Wifi, Monitor, Key, MapPin } from 'lucide-react';
 
 import { useAppState } from '@/App';
 import { isAdminRole, getStoredUser } from '@/lib/roles';
@@ -57,6 +57,9 @@ export default function Sidebar({ isConnected, onNavigate }) {
         </Link>
         <Link href="/monitor-device" onClick={onNavigate} scroll={false} className={getLinkClass('/monitor-device')}>
           <Monitor size={18} /> Monitor Gabungan
+        </Link>
+        <Link href="/sites" onClick={onNavigate} scroll={false} className={getLinkClass('/sites')}>
+          <MapPin size={18} /> Data Wilayah
         </Link>
         <Link href="/devices" onClick={onNavigate} scroll={false} className={getLinkClass('/devices')}>
           <Server size={18} /> Mikrotik RO
