@@ -114,6 +114,8 @@ function TopologyContent() {
   const { sessionUser, setLastSyncTime } = useAppState();
   const [canEdit, setCanEdit] = useState(false);
   const readOnly = isVisitorRole(sessionUser?.role);
+  const [saving, setSaving] = useState(false);
+
 
   const syncEditPermission = () => {
     setCanEdit(canEditTopology(getStoredUser().role));
@@ -651,9 +653,15 @@ function TopologyContent() {
       addToast("Readonly", "error");
       return;
     }
+
+    if (saving) return;
+
     try {
+      setSaving(true);
+
       const upsertNodes = getDeltaNodes(nodes, baselineNodesRef.current);
       const upsertEdges = getDeltaEdges(edges, baselineEdgesRef.current);
+
       const res = await axios.post(`${API_URL}/topology`, {
         nodes: upsertNodes,
         edges: upsertEdges,
@@ -661,17 +669,24 @@ function TopologyContent() {
         deletedEdgeIds: Array.from(deletedEdgeIdsRef.current),
         baseRevision: revisionRef.current,
       });
+
       const savedNodes = res.data.nodes || nodes;
       const savedEdges = res.data.edges || edges;
+
       revisionRef.current = res.data.revision || revisionRef.current;
+
       applyTopologyFromServer(savedNodes, savedEdges);
+
       addToast("Peta berhasil disimpan!", "success");
     } catch (e) {
       console.error(e);
+
       addToast(
         "Gagal menyimpan peta: " + (e.response?.data?.error || e.message),
         "error",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -684,9 +699,9 @@ function TopologyContent() {
         (!ifacePanelSearch ||
           (i.name &&
             i.name.toLowerCase().includes(ifacePanelSearch.toLowerCase()))) &&
-        i.type !== "l2tp-in"
+        i.type !== "l2tp-in",
     );
-    
+
     filteredCore.forEach((i) => {
       const t = i.type || "other";
       if (!groups[t]) groups[t] = [];
@@ -696,15 +711,19 @@ function TopologyContent() {
     const filteredMappings = mappings.filter(
       (m) =>
         !ifacePanelSearch ||
-        (m.prefix && m.prefix.toLowerCase().includes(ifacePanelSearch.toLowerCase())) ||
-        (m.mikrotik_alias && m.mikrotik_alias.toLowerCase().includes(ifacePanelSearch.toLowerCase()))
+        (m.prefix &&
+          m.prefix.toLowerCase().includes(ifacePanelSearch.toLowerCase())) ||
+        (m.mikrotik_alias &&
+          m.mikrotik_alias
+            .toLowerCase()
+            .includes(ifacePanelSearch.toLowerCase())),
     );
 
     if (filteredMappings.length > 0) {
-      groups["l2tp-in (gabungan)"] = filteredMappings.map(m => ({
+      groups["l2tp-in (gabungan)"] = filteredMappings.map((m) => ({
         name: m.prefix || m.mikrotik_alias || m.ruijie_mac,
         running: m.final_status === "Online" ? "true" : "false",
-        disabled: "false"
+        disabled: "false",
       }));
     }
 
@@ -712,20 +731,25 @@ function TopologyContent() {
   }, [coreInterfaces, ifacePanelSearch, mappings]);
 
   const { runningCount, downCount, totalOnlineGabungan } = useMemo(() => {
-    let up = 0, down = 0, gabunganOnline = 0;
+    let up = 0,
+      down = 0,
+      gabunganOnline = 0;
     coreInterfaces.forEach((i) => {
       if (i.type === "l2tp-in") return;
       if (i.running === "true" && i.disabled !== "true") up++;
       else if (i.disabled !== "true") down++;
     });
-    mappings.forEach(m => {
+    mappings.forEach((m) => {
       if (m.final_status === "Online") {
         up++;
         gabunganOnline++;
-      }
-      else down++;
+      } else down++;
     });
-    return { runningCount: up, downCount: down, totalOnlineGabungan: gabunganOnline };
+    return {
+      runningCount: up,
+      downCount: down,
+      totalOnlineGabungan: gabunganOnline,
+    };
   }, [coreInterfaces, mappings]);
 
   const mapNodes = useMemo(() => {
@@ -903,14 +927,20 @@ function TopologyContent() {
             Sync Sekarang
           </button>
           {!readOnly && (
-            <button
-              onClick={saveLayout}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 cursor-pointer whitespace-nowrap"
-            >
-              <Save size={16} /> Simpan
+            <button onClick={saveLayout} disabled={saving} className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap">
+              {saving ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Simpan
+                </>
+              )}
             </button>
           )}
-          {/* Cable Color Legend — removed, moved to floating panel */}
         </div>
       </div>
 
@@ -969,7 +999,7 @@ function TopologyContent() {
                     <button
                       onClick={extractCoordinates}
                       disabled={isSearching}
-                      className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 rounded-lg flex items-center justify-center gap-1.5 transition text-xs font-semibold whitespace-nowrap disabled:opacity-50"
+                      className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 rounded-lg flex items-center justify-center gap-1.5 transition text-xs font-semibold whitespace-nowrap disabled:opacity-50"
                     >
                       {isSearching ? (
                         <RefreshCw size={16} className="animate-spin" />
@@ -1290,12 +1320,12 @@ function TopologyContent() {
                         </p>
                         <p className="text-xs font-bold text-emerald-400">
                           {totalOnlineGabungan + (coreStatus.pppoe_active || 0)}
-                          
+
                           <span className="text-[10px] px-1 font-bold text-slate-400">
-                          ({totalOnlineGabungan} + {(coreStatus.pppoe_active || 0)})
-                        </span>
+                            ({totalOnlineGabungan} +{" "}
+                            {coreStatus.pppoe_active || 0})
+                          </span>
                         </p>
-                        
                       </div>
                     </div>
                     <div className="bg-slate-800/80 rounded-lg p-2 flex items-center gap-2 min-w-0">

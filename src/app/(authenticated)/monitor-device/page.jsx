@@ -11,7 +11,7 @@ function MikrotikAliasCell({ device, isAdmin, onLink, onUnlink, status, classNam
   return (
     <div className={`flex items-center gap-2 group/mikrotik min-w-0 ${className}`}>
       <span
-        className={`font-mono text-sm text-slate-300 truncate  ${device.is_manual ? 'text-blue-400' : 'text-slate-200'}`}
+        className={`font-mono truncate  ${device.is_manual ? 'text-blue-400' : 'text-slate-200'}`}
         title={device.mikrotik_alias}
       >
         {device.mikrotik_alias}
