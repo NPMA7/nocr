@@ -7,15 +7,16 @@ import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkI
 import { getStoredUser, isAdminRole, canEditTopology } from '@/lib/roles';
 
 /** Alias Mikrotik + tautan manual (admin) muncul saat hover di sel yang sama */
-function MikrotikAliasCell({ device, isAdmin, onLink, onUnlink, className = '' }) {
+function MikrotikAliasCell({ device, isAdmin, onLink, onUnlink, status, className = '' }) {
   return (
     <div className={`flex items-center gap-2 group/mikrotik min-w-0 ${className}`}>
       <span
-        className={`font-mono truncate ${device.is_manual ? 'text-blue-400' : 'text-slate-200'}`}
+        className={`font-mono text-sm text-slate-300 truncate  ${device.is_manual ? 'text-blue-400' : 'text-slate-200'}`}
         title={device.mikrotik_alias}
       >
         {device.mikrotik_alias}
-      </span>
+      </span> 
+      {status}
       {device.is_manual && (
         <span
           title="Tautan manual aktif"
@@ -391,10 +392,10 @@ export default function MonitorDevice() {
                               isAdmin={isAdmin}
                               onLink={handleOpenModal}
                               onUnlink={handleRemoveMapping}
+                              status={getSourceStatus(d.status_mikrotik)}
                               className="flex-1 min-w-0 text-sm"
                             />
-                            {getSourceStatus(d.status_mikrotik)}
-                          </div>
+                         </div>
                         </div>
                       </div>
                       <div className="flex-shrink-0 text-right">
