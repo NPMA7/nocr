@@ -211,7 +211,7 @@ export default function Topbar({ onMenuClick }) {
           <button 
             onClick={handleLogout}
             title="Logout"
-            className="text-slate-400 hover:text-red-400 transition-colors flex items-center gap-2"
+            className="cursor-pointer text-slate-400 hover:text-red-400 transition-colors flex items-center gap-2"
           >
             <LogOut size={20} />
           </button>

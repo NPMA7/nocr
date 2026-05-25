@@ -223,7 +223,7 @@ export default function MonitorDevice() {
                 fetchData();
               }}
               disabled={loading}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer'}`}
+              className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer'}`}
             > <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               Sync Sekarang
             </button>
