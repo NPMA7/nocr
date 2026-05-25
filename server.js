@@ -497,7 +497,7 @@ app.prepare().then(() => {
                 if (apStatus === 'Online' && mikrotikStatus === 'Online') finalStatus = 'Online';
                 else if (apStatus === 'Offline' && mikrotikStatus === 'Offline') { finalStatus = 'Offline'; issue = 'Semua Perangkat Mati';}
                 else if (apStatus === 'Online' && mikrotikStatus === 'Offline') { finalStatus = 'Online'; issue = 'Mikrotik Mati'; }
-                else if (apStatus === 'Offline' && mikrotikStatus === 'Online') { finalStatus = 'Offline'; issue = 'Access Point Mati'; }
+                else if (apStatus === 'Offline' && mikrotikStatus === 'Online') { finalStatus = 'Offline'; issue = 'Access Point Mati / Kecabut'; }
 
                 if (!secretName || secretName === '-') {
                     issue = 'Belum ditautkan (Nama Tidak Cocok)';

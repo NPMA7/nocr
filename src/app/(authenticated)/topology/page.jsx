@@ -1203,7 +1203,7 @@ function TopologyContent() {
                     setShowManualAddModal(false);
                     setManualIfaceSearch("");
                   }}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  className="cursor-pointer px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition"
                 >
                   Batal
                 </button>
@@ -1240,7 +1240,7 @@ function TopologyContent() {
                     setManualIfaceSearch("");
                     addToast("Titik berhasil ditambahkan!", "success");
                   }}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-500/20"
+                  className="cursor-pointer px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-500/20"
                 >
                   Tambah Titik
                 </button>

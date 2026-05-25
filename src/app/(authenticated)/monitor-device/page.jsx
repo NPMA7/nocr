@@ -419,7 +419,7 @@ export default function MonitorDevice() {
                         href={`/sites/${encodeURIComponent(d.ruijie_mac)}`}
                         className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 rounded border border-orange-500/20 flex-shrink-0"
                       >
-                        <MapPin size={12} /> Wilayah
+                        <MapPin size={12} /> Detail
                       </Link>
                     </div>
 
@@ -446,7 +446,7 @@ export default function MonitorDevice() {
                     <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status Ruijie</th>
                     <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status Mikrotik</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan Issue</th>
-                    <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Wilayah</th>
+                    <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Detail Wilayah</th>
                   </tr>
                 </thead>
                 <tbody>

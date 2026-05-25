@@ -137,7 +137,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Memproses...' : (isSetup ? 'Buat Akun & Masuk' : 'Masuk ke Dashboard')}
             {!submitting && <ArrowRight size={18} />}
