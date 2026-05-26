@@ -386,7 +386,6 @@ app.prepare().then(() => {
             const { data: devices, error } = await supabase
                 .from('ruijie_devices')
                 .select('*')
-                .eq('connection_type', 'L2TP')
                 .order('alias', { ascending: true });
             
             if (!error && devices) {

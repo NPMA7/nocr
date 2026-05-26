@@ -47,6 +47,7 @@ export default function SitesListPage() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [filterProfile, setFilterProfile] = useState("all");
+  const [filterType, setFilterType] = useState("L2TP");
 
   const fetchData = async () => {
     setLoading(true);
@@ -81,10 +82,12 @@ export default function SitesListPage() {
     if (!matchesSearch) return false;
     if (filterProfile === "filled" && !d.has_site_profile) return false;
     if (filterProfile === "empty" && d.has_site_profile) return false;
+    if (filterType !== "all" && d.connection_type !== filterType) return false;
     return true;
   });
 
-  const withProfile = items.filter((d) => d.has_site_profile).length;
+  const typeItems = filterType === "all" ? items : items.filter((d) => d.connection_type === filterType);
+  const withProfile = typeItems.filter((d) => d.has_site_profile).length;
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
@@ -116,9 +119,9 @@ export default function SitesListPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">
-              Total L2TP
+              {filterType === "all" ? "Total Site" : filterType === "L2TP" ? "Total L2TP" : "Total PPPoE"}
             </p>
-            <p className="text-2xl font-bold text-slate-100">{items.length}</p>
+            <p className="text-2xl font-bold text-slate-100">{typeItems.length}</p>
           </div>
         </div>
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex items-center gap-3">
@@ -141,7 +144,7 @@ export default function SitesListPage() {
               Belum Profil
             </p>
             <p className="text-2xl font-bold text-slate-100">
-              {items.length - withProfile}
+              {typeItems.length - withProfile}
             </p>
           </div>
         </div>
@@ -163,6 +166,15 @@ export default function SitesListPage() {
             />
           </div>
           <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+          >
+            <option value="all">Semua Tipe</option>
+            <option value="L2TP">L2TP</option>
+            <option value="PPPOE">PPPoE</option>
+          </select>
+          <select
             value={filterProfile}
             onChange={(e) => setFilterProfile(e.target.value)}
             className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
@@ -172,7 +184,7 @@ export default function SitesListPage() {
             <option value="empty">Belum ada profil</option>
           </select>
           <span className="text-xs text-slate-500 ml-auto">
-            {filtered.length} dari {items.length}
+            {filtered.length} dari {typeItems.length}
           </span>
         </div>
 
@@ -210,9 +222,16 @@ export default function SitesListPage() {
                     >
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-2">
                             <span className="font-bold text-slate-100 text-base truncate">
                               {d.prefix || "—"}
+                            </span>
+                            <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold ${
+                              d.connection_type === 'PPPOE'
+                                ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            }`}>
+                              {d.connection_type || 'L2TP'}
                             </span>
                             {!d.has_site_profile && (
                               <span className="text-[10px] text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-max">
@@ -352,12 +371,21 @@ export default function SitesListPage() {
                           className="border-b border-slate-700/20 hover:bg-slate-700/20 transition cursor-default group"
                         >
                           <td className="px-4 py-3 font-bold text-slate-100 max-w-[200px]">
-                            <span
-                              className="block truncate"
-                              title={d.prefix || undefined}
-                            >
-                              {d.prefix || "—"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="truncate"
+                                title={d.prefix || undefined}
+                              >
+                                {d.prefix || "—"}
+                              </span>
+                              <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold ${
+                                d.connection_type === 'PPPOE'
+                                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                  : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                              }`}>
+                                {d.connection_type || 'L2TP'}
+                              </span>
+                            </div>
                           </td>
                           <td className="uppercase px-4 py-3 max-w-[220px]">
                             <span

@@ -10,6 +10,7 @@ export default function Ruijie() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const { setLastSyncTime } = useAppState();
 
   const fetchDevices = async () => {
@@ -58,12 +59,17 @@ export default function Ruijie() {
       if (filterStatus === 'OFF' && d.status !== 'OFF') return false;
     }
 
+    if (filterType !== 'all') {
+      if (d.connection_type !== filterType) return false;
+    }
+
     return true;
   });
 
-  const totalOnline = devices.filter(d => d.status === 'ON').length;
-  const totalOffline = devices.filter(d => d.status === 'OFF').length;
-  const totalClients = devices.reduce((sum, d) => sum + (Number(d.clients) || 0), 0);
+  const totalAp = filteredDevices.length;
+  const totalOnline = filteredDevices.filter(d => d.status === 'ON').length;
+  const totalOffline = filteredDevices.filter(d => d.status === 'OFF').length;
+  const totalClients = filteredDevices.reduce((sum, d) => sum + (Number(d.clients) || 0), 0);
 
   const getStatusDisplay = (device) => {
     const isOnline = device.status === 'ON';
@@ -126,13 +132,22 @@ export default function Ruijie() {
 
       {/* Stats Cards */}
       {!loading && !error && devices.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 flex-shrink-1">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 flex-shrink-1">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <Activity size={20} className="text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total AP</p>
+              <p className="text-2xl font-bold text-slate-100">{totalAp}</p>
+            </div>
+          </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Wifi size={20} className="text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Online</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Online</p>
               <p className="text-2xl font-bold text-slate-100">{totalOnline}</p>
             </div>
           </div>
@@ -141,7 +156,7 @@ export default function Ruijie() {
               <WifiOff size={20} className="text-red-400" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Offline</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Offline</p>
               <p className="text-2xl font-bold text-slate-100">{totalOffline}</p>
             </div>
           </div>
@@ -150,7 +165,7 @@ export default function Ruijie() {
               <Users size={20} className="text-blue-400" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Client</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Client</p>
               <p className="text-2xl font-bold text-slate-100">{totalClients}</p>
             </div>
           </div>
@@ -171,6 +186,16 @@ export default function Ruijie() {
               className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
             />
           </div>
+
+          <select
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+          >
+            <option value="all">Semua Tipe</option>
+            <option value="L2TP">L2TP</option>
+            <option value="PPPOE">PPPoE</option>
+          </select>
 
           <select
             value={filterStatus}
@@ -210,7 +235,12 @@ export default function Ruijie() {
                 ) : filteredDevices.map((d, i) => (
                   <div key={i} className="px-5 py-4 flex items-start justify-between gap-4 hover:bg-slate-700/20 transition">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-100 text-base truncate">{d.alias || '-'}</p>
+                      <p className="font-bold text-slate-100 text-base flex items-center gap-2">
+                        <span className="truncate">{d.alias || '-'}</span>
+                        <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400 border border-slate-600/50">
+                          {d.connection_type || 'Unknown'}
+                        </span>
+                      </p>
                       <p className="text-sm text-slate-400 mt-1">{d.ip_address || '-'} · <span className="font-mono text-xs">{d.mac_address}</span></p>
                       <div className="flex items-center gap-3 mt-2">
                         <span className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800/80 px-2 py-1 rounded-md border border-slate-700/50">
@@ -247,7 +277,14 @@ export default function Ruijie() {
                         <td className="px-4 py-3">
                           {getStatusDisplay(d)}
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-200">{d.alias || '-'}</td>
+                        <td className="px-4 py-3 font-medium text-slate-200">
+                          <div className="flex items-center gap-2">
+                            <span>{d.alias || '-'}</span>
+                            <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400 border border-slate-600/50">
+                              {d.connection_type || 'Unknown'}
+                            </span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-slate-400 font-mono text-xs">{d.mac_address || '-'}</td>
                         <td className="px-4 py-3 text-slate-300 font-mono text-xs">{d.ip_address || '-'}</td>
                         <td className="px-4 py-3">
