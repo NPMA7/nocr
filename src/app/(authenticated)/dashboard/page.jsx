@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [mappings, setMappings] = useState([]);
   const [ruijieDevices, setRuijieDevices] = useState([]);
   const [mapTheme, setMapTheme] = useState('colored');
+  const [networkMode, setNetworkMode] = useState('pppoe');
   const [dbLogs, setDbLogs] = useState([]); // State penampung log aktivitas dari database
   const mountedRef = useRef(true);
 
@@ -389,6 +390,7 @@ export default function Dashboard() {
               coreInterfaces={coreInterfaces}
               mappings={mappings}
               mapTheme={mapTheme}
+              networkMode={networkMode}
             />
           </div>
         </div>

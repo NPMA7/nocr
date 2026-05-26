@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo, useRef } from "react";
 import {
+  Wifi,
   Plus,
   GitCommit,
   Save,
@@ -211,6 +212,7 @@ function TopologyContent() {
   /** 'all' | 'client' | 'infrastructure' — filter tampilan untuk semua role */
   const [nodeViewFilter, setNodeViewFilter] = useState("all");
   const [activeNodeTab, setActiveNodeTab] = useState("identitas");
+  const [networkMode, setNetworkMode] = useState("l2tp");
 
   const [interactionMode, setInteractionMode] = useState("select");
   const [newNodeType, setNewNodeType] = useState("odp");
@@ -935,11 +937,130 @@ function TopologyContent() {
   }, [coreInterfaces, mappings]);
 
   const mapNodes = useMemo(() => {
-    if (nodeViewFilter === "client") return nodes.filter(isClientNode);
+    let filtered = nodes;
+
+    // 1. Build strict directed tree outward from OLTs (ignores how user drew the edges)
+    const undirectedAdj = {};
+    const nodeMap = new Map();
+    nodes.forEach((n) => {
+      undirectedAdj[n.id] = [];
+      nodeMap.set(n.id, n);
+    });
+    edges.forEach((e) => {
+      const from = e.from_node ?? e.from;
+      const to = e.to_node ?? e.to;
+      if (undirectedAdj[from] && undirectedAdj[to]) {
+        undirectedAdj[from].push(to);
+        undirectedAdj[to].push(from);
+      }
+    });
+
+    const directedAdj = {};
+    nodes.forEach((n) => (directedAdj[n.id] = []));
+
+    const visitedBFS = new Set();
+    const queue = [];
+
+    // Prioritas 1: OLT sebagai Root
+    nodes
+      .filter((n) => n.type === "olt")
+      .forEach((n) => {
+        visitedBFS.add(n.id);
+        queue.push(n.id);
+      });
+
+    // Prioritas 2 & 3: ODC dan ODP jika ada komponen yang terputus dari OLT
+    const processQueue = () => {
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        for (const neighbor of undirectedAdj[curr]) {
+          if (!visitedBFS.has(neighbor)) {
+            visitedBFS.add(neighbor);
+            directedAdj[curr].push(neighbor); // Arahkan Edge dari Root ke Child
+            queue.push(neighbor);
+          }
+        }
+      }
+    };
+    
+    processQueue();
+    
+    nodes.filter(n => n.type === "odc" && !visitedBFS.has(n.id)).forEach(n => {
+       visitedBFS.add(n.id); queue.push(n.id);
+    });
+    processQueue();
+
+    nodes.filter(n => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id)).forEach(n => {
+       visitedBFS.add(n.id); queue.push(n.id);
+    });
+    processQueue();
+
+    // 2. Count downstream clients for each node
+    const counts = {}; // id -> { l2tp: 0, pppoe: 0 }
+    const visiting = new Set();
+
+    const getCounts = (id) => {
+      if (counts[id]) return counts[id];
+      if (visiting.has(id)) return { l2tp: 0, pppoe: 0 }; // Cycle detection
+      visiting.add(id);
+
+      const res = { l2tp: 0, pppoe: 0 };
+      const node = nodeMap.get(id);
+
+      if (node) {
+        if (node.type === "client" || node.type === "pppoe-client") {
+          const isPPPoE =
+            node.linked_interface?.toLowerCase().includes("pppoe") ||
+            node.type === "pppoe-client";
+          if (isPPPoE) res.pppoe++;
+          else res.l2tp++;
+        }
+      }
+
+      for (const child of directedAdj[id] || []) {
+        const childCounts = getCounts(child);
+        res.l2tp += childCounts.l2tp;
+        res.pppoe += childCounts.pppoe;
+      }
+
+      counts[id] = res;
+      visiting.delete(id);
+      return res;
+    };
+
+    nodes.forEach((n) => getCounts(n.id));
+
+    // 3. Filter nodes
+    filtered = filtered.filter((n) => {
+      if (n.type === "client" || n.type === "pppoe-client") {
+        const isPPPoE =
+          n.linked_interface?.toLowerCase().includes("pppoe") ||
+          n.type === "pppoe-client";
+        if (networkMode === "l2tp") return !isPPPoE;
+        if (networkMode === "pppoe") return isPPPoE;
+      } else {
+        // Infrastructure nodes
+        const c = counts[n.id] || { l2tp: 0, pppoe: 0 };
+
+        if (networkMode === "l2tp") {
+          // Hide ONLY if it strictly serves PPPoE clients (no L2TP clients)
+          if (c.pppoe > 0 && c.l2tp === 0) return false;
+          return true; // Keep if shared or empty
+        }
+        if (networkMode === "pppoe") {
+          // Hide ONLY if it strictly serves L2TP clients (no PPPoE clients)
+          if (c.l2tp > 0 && c.pppoe === 0) return false;
+          return true; // Keep if shared or empty
+        }
+      }
+      return true;
+    });
+
+    if (nodeViewFilter === "client") return filtered.filter(isClientNode);
     if (nodeViewFilter === "infrastructure")
-      return nodes.filter(isInfrastructureNode);
-    return nodes;
-  }, [nodes, nodeViewFilter]);
+      return filtered.filter(isInfrastructureNode);
+    return filtered;
+  }, [nodes, edges, nodeViewFilter, networkMode]);
 
   const mapNodeIds = useMemo(
     () => new Set(mapNodes.map((n) => n.id)),
@@ -1679,6 +1800,19 @@ function TopologyContent() {
                 Mode
               </p>
               <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setNetworkMode((prev) =>
+                      prev === "l2tp" ? "pppoe" : "l2tp",
+                    )
+                  }
+                  className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30"
+                >
+                  <Wifi size={12} />
+                  Jaringan: {networkMode === "l2tp" ? "L2TP" : "PPPoE"} 
+                </button>
+                <div className="h-px bg-slate-700/50 w-full my-1"></div>
                 <button
                   type="button"
                   onClick={() =>

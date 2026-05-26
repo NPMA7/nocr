@@ -105,8 +105,136 @@ const MemoizedDashboardMarker = ({ node, coreInterfaces, edges, mappings, showLa
   );
 };
 
-export default function DashboardMap({ topologyNodes = [], edges = [], coreInterfaces = [], mappings = [], mapTheme = 'dark', showLabels = false }) {
+export default function DashboardMap({ topologyNodes = [], edges = [], coreInterfaces = [], mappings = [], mapTheme = 'dark', showLabels = false, networkMode = 'pppoe' }) {
   const [activeNodeId, setActiveNodeId] = useState(null);
+
+  const mapNodes = useMemo(() => {
+    let filtered = topologyNodes;
+
+    // 1. Build strict directed tree outward from OLTs (ignores how user drew the edges)
+    const undirectedAdj = {};
+    const nodeMap = new Map();
+    topologyNodes.forEach((n) => {
+      undirectedAdj[n.id] = [];
+      nodeMap.set(n.id, n);
+    });
+    edges.forEach((e) => {
+      const from = e.from_node ?? e.from;
+      const to = e.to_node ?? e.to;
+      if (undirectedAdj[from] && undirectedAdj[to]) {
+        undirectedAdj[from].push(to);
+        undirectedAdj[to].push(from);
+      }
+    });
+
+    const directedAdj = {};
+    topologyNodes.forEach((n) => (directedAdj[n.id] = []));
+
+    const visitedBFS = new Set();
+    const queue = [];
+
+    // Prioritas 1: OLT
+    topologyNodes
+      .filter((n) => n.type === "olt")
+      .forEach((n) => {
+        visitedBFS.add(n.id);
+        queue.push(n.id);
+      });
+
+    const processQueue = () => {
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        for (const neighbor of undirectedAdj[curr]) {
+          if (!visitedBFS.has(neighbor)) {
+            visitedBFS.add(neighbor);
+            directedAdj[curr].push(neighbor);
+            queue.push(neighbor);
+          }
+        }
+      }
+    };
+    
+    processQueue();
+    
+    topologyNodes.filter(n => n.type === "odc" && !visitedBFS.has(n.id)).forEach(n => {
+       visitedBFS.add(n.id); queue.push(n.id);
+    });
+    processQueue();
+
+    topologyNodes.filter(n => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id)).forEach(n => {
+       visitedBFS.add(n.id); queue.push(n.id);
+    });
+    processQueue();
+
+    // 2. Count downstream clients for each node
+    const counts = {};
+    const visiting = new Set();
+
+    const getCounts = (id) => {
+      if (counts[id]) return counts[id];
+      if (visiting.has(id)) return { l2tp: 0, pppoe: 0 };
+      visiting.add(id);
+
+      const res = { l2tp: 0, pppoe: 0 };
+      const node = nodeMap.get(id);
+
+      if (node) {
+        if (node.type === "client" || node.type === "pppoe-client") {
+          const isPPPoE =
+            node.linked_interface?.toLowerCase().includes("pppoe") ||
+            node.type === "pppoe-client";
+          if (isPPPoE) res.pppoe++;
+          else res.l2tp++;
+        }
+      }
+
+      for (const child of directedAdj[id] || []) {
+        const childCounts = getCounts(child);
+        res.l2tp += childCounts.l2tp;
+        res.pppoe += childCounts.pppoe;
+      }
+
+      counts[id] = res;
+      visiting.delete(id);
+      return res;
+    };
+
+    topologyNodes.forEach((n) => getCounts(n.id));
+
+    // 3. Filter nodes
+    filtered = filtered.filter((n) => {
+      if (n.type === "client" || n.type === "pppoe-client") {
+        const isPPPoE =
+          n.linked_interface?.toLowerCase().includes("pppoe") ||
+          n.type === "pppoe-client";
+        if (networkMode === "l2tp") return !isPPPoE;
+        if (networkMode === "pppoe") return isPPPoE;
+      } else {
+        const c = counts[n.id] || { l2tp: 0, pppoe: 0 };
+        if (networkMode === "l2tp") {
+          if (c.pppoe > 0 && c.l2tp === 0) return false;
+          return true;
+        }
+        if (networkMode === "pppoe") {
+          if (c.l2tp > 0 && c.pppoe === 0) return false;
+          return true;
+        }
+      }
+      return true;
+    });
+
+    return filtered;
+  }, [topologyNodes, edges, networkMode]);
+
+  const mapNodeIds = useMemo(() => new Set(mapNodes.map((n) => n.id)), [mapNodes]);
+
+  const mapEdges = useMemo(() => {
+    return edges.filter((e) => {
+      const fromId = e.from_node ?? e.from;
+      const toId = e.to_node ?? e.to;
+      return mapNodeIds.has(fromId) && mapNodeIds.has(toId);
+    });
+  }, [edges, mapNodeIds]);
 
   // Peta selalu terpusat di Kantor Bupati Kabupaten Bandung
   const validNodes = topologyNodes.filter(n => n.latitude != null && n.longitude != null && n.latitude !== '' && !isNaN(parseFloat(n.latitude)));
@@ -160,9 +288,9 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
             : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"}
           className={mapTheme === 'colored' ? '' : 'map-tiles-carto-dark'}
         />
-        {edges.map(edge => {
-          const fromNode = validNodes.find(d => d.id === edge.from_node || d.id === edge.from);
-          const toNode = validNodes.find(d => d.id === edge.to_node || d.id === edge.to);
+        {mapEdges.map(edge => {
+          const fromNode = mapNodes.find(d => d.id === edge.from_node || d.id === edge.from);
+          const toNode = mapNodes.find(d => d.id === edge.to_node || d.id === edge.to);
           if (!fromNode || !toNode) return null;
           const edgeObj = { ...edge, fromNode, toNode };
           return (
@@ -173,7 +301,7 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
             />
           );
         })}
-        {validNodes.map(node => (
+        {mapNodes.filter(n => n.latitude != null && n.longitude != null && n.latitude !== '' && !isNaN(parseFloat(n.latitude))).map(node => (
           <MemoizedDashboardMarker
             key={node.id}
             node={node}
