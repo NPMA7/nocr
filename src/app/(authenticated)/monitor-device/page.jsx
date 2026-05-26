@@ -9,42 +9,47 @@ import { getStoredUser, isAdminRole, canEditTopology } from '@/lib/roles';
 /** Alias Mikrotik + tautan manual (admin) muncul saat hover di sel yang sama */
 function MikrotikAliasCell({ device, isAdmin, onLink, onUnlink, status, className = '' }) {
   return (
-    <div className={`flex items-center gap-2 group/mikrotik min-w-0 ${className}`}>
-      <span
-        className={`font-mono truncate  ${device.is_manual ? 'text-blue-400' : 'text-slate-200'}`}
-        title={device.mikrotik_alias}
-      >
-        {device.mikrotik_alias}
-      </span> 
-      {status}
-      {device.is_manual && (
+    <div className={`flex flex-col group/mikrotik min-w-0 ${className}`}>
+      <div className="flex items-center gap-2">
         <span
-          title="Tautan manual aktif"
-          className="flex-shrink-0 bg-blue-500/20 text-blue-400 p-1 rounded group-hover/mikrotik:opacity-0 transition-opacity"
+          className={`font-mono truncate  ${device.is_manual ? 'text-blue-400' : 'text-slate-200'}`}
+          title={device.mikrotik_alias}
         >
-          <LinkIcon size={10} />
-        </span>
-      )}
-      {isAdmin &&
-        (device.is_manual ? (
-          <button
-            type="button"
-            onClick={() => onUnlink(device.ruijie_mac)}
-            className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
-            title="Lepas tautan manual"
-          >
-            <Unlink size={10} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onLink(device)}
-            className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
-            title="Tautkan manual ke akun Mikrotik"
+          {device.mikrotik_alias}
+        </span> 
+        {status}
+        {device.is_manual && (
+          <span
+            title="Tautan manual aktif"
+            className="flex-shrink-0 bg-blue-500/20 text-blue-400 p-1 rounded group-hover/mikrotik:opacity-0 transition-opacity"
           >
             <LinkIcon size={10} />
-          </button>
-        ))}
+          </span>
+        )}
+        {isAdmin &&
+          (device.is_manual ? (
+            <button
+              type="button"
+              onClick={() => onUnlink(device.ruijie_mac)}
+              className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
+              title="Lepas tautan manual"
+            >
+              <Unlink size={10} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onLink(device)}
+              className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+              title="Tautkan manual ke akun Mikrotik"
+            >
+              <LinkIcon size={10} />
+            </button>
+          ))}
+      </div>
+      <span className="text-[13px] text-slate-500 font-mono mt-0.5">
+        IP: {device.remote_address || '-'}
+      </span>
     </div>
   );
 }
@@ -566,7 +571,7 @@ export default function MonitorDevice() {
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Ruijie Access Point</label>
                 <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
                   <p className="font-medium text-slate-200">{selectedAp?.alias}</p>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5">MAC: {selectedAp?.mac_address}</p>
+                  <p className="text-[12px] text-slate-500 font-mono mt-0.5">MAC: {selectedAp?.mac_address}</p>
                 </div>
               </div>
 

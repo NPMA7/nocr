@@ -7,18 +7,24 @@ export async function GET() {
     if (error) throw error;
 
     const { data: ruijieData } = await supabase.from('ruijie_devices').select('mac_address, last_online');
-    const { data: pppoeData } = await supabase.from('pppoe_secrets').select('name, last_logged_out');
+    const { data: pppoeData } = await supabase.from('pppoe_secrets').select('name, last_logged_out, remote_address');
     
     const enrichedData = (data || []).map(m => {
       let offlineTime = null;
+      let remoteAddr = null;
+
+      const sec = (pppoeData || []).find(s => s.name === m.mikrotik_alias);
+      if (sec) {
+        remoteAddr = sec.remote_address;
+      }
+
       if (m.status_ruijie === 'Offline') {
         const ap = (ruijieData || []).find(r => r.mac_address === m.ruijie_mac);
         if (ap && ap.last_online) offlineTime = ap.last_online;
       } else if (m.status_mikrotik === 'Offline') {
-        const sec = (pppoeData || []).find(s => s.name === m.mikrotik_alias);
         if (sec && sec.last_logged_out) offlineTime = sec.last_logged_out;
       }
-      return { ...m, offline_since: offlineTime };
+      return { ...m, offline_since: offlineTime, remote_address: remoteAddr };
     });
 
     return NextResponse.json(enrichedData);

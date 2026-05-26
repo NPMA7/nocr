@@ -35,11 +35,13 @@ export async function GET(_req, { params }) {
       .maybeSingle();
     const { data: pppoeData } = await supabase
       .from('pppoe_secrets')
-      .select('name, last_logged_out')
+      .select('name, last_logged_out, remote_address')
       .eq('name', mapping.mikrotik_alias)
       .maybeSingle();
 
     let offline_since = null;
+    let remote_address = pppoeData?.remote_address || null;
+
     if (mapping.status_ruijie === 'Offline' && ruijieData?.last_online) {
       offline_since = ruijieData.last_online;
     } else if (mapping.status_mikrotik === 'Offline' && pppoeData?.last_logged_out) {
@@ -51,7 +53,7 @@ export async function GET(_req, { params }) {
       return NextResponse.json({ error: 'Site tidak ditemukan' }, { status: 404 });
     }
 
-    return NextResponse.json({ ...item, offline_since });
+    return NextResponse.json({ ...item, offline_since, remote_address });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
