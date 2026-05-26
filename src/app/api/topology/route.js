@@ -9,6 +9,7 @@ import {
 } from '@/lib/topologyMerge';
 import {
     enrichTopologyNodes,
+    enrichTopologyNodesBatch,
     syncTopologyBatchToSites
 } from '@/lib/topologySiteLink';
 
@@ -31,7 +32,8 @@ function nodeToRow(n) {
         group_name: norm.group_name,
         status: norm.status,
         linked_interface: norm.linked_interface,
-        site_id: norm.site_id || null
+        site_id: norm.site_id || null,
+        last_modified_at: norm.last_modified_at || new Date().toISOString(),
     };
 }
 
@@ -91,7 +93,8 @@ export async function GET(req) {
             .select('*');
         if (edgesError) throw edgesError;
 
-        const nodes = await enrichTopologyNodes(supabase, nodesData || []);
+        // Batch enrichment: 5-6 queries total (vs N×2 queries sebelumnya)
+        const nodes = await enrichTopologyNodesBatch(supabase, nodesData || []);
         const edges = edgesData || [];
 
         return NextResponse.json({
@@ -172,24 +175,68 @@ export async function POST(req) {
             deletedEdgeIds
         });
 
-        await persistMergedTopology(merged, oldNodes, oldEdges);
+        // --- Conflict Detection per-node ---
+        // Node dianggap konflik jika last_modified_at di DB lebih baru dari yang dikirim client
+        const dbNodeMap = new Map(oldNodes.map((n) => [n.id, n]));
+        const conflicts = [];
+        const safeUpsertNodes = [];
 
-        await syncTopologyBatchToSites(supabase, merged.nodes);
+        for (const clientNode of upsertNodes) {
+            const dbNode = dbNodeMap.get(clientNode.id);
+            if (!dbNode) {
+                // Node baru, tidak ada konflik
+                safeUpsertNodes.push(clientNode);
+                continue;
+            }
+            const dbTs = dbNode.last_modified_at ? new Date(dbNode.last_modified_at).getTime() : 0;
+            const clientTs = clientNode.last_modified_at ? new Date(clientNode.last_modified_at).getTime() : 0;
+            // Jika DB punya timestamp yang lebih baru dari versi client → konflik
+            if (dbTs > 0 && clientTs > 0 && dbTs > clientTs) {
+                conflicts.push({
+                    id: clientNode.id,
+                    label: clientNode.label || dbNode.label,
+                    clientVersion: clientNode,
+                    dbVersion: dbNode,
+                });
+            } else {
+                safeUpsertNodes.push(clientNode);
+            }
+        }
 
-        const enrichedNodes = await enrichTopologyNodes(supabase, merged.nodes);
-        const revision = computeRevision(enrichedNodes, merged.edges);
+        // Stamp last_modified_at pada node yang aman sebelum disimpan
+        const now = new Date().toISOString();
+        const stampedUpsertNodes = safeUpsertNodes.map((n) => ({ ...n, last_modified_at: now }));
+
+        // Merge hanya dengan node yang tidak konflik
+        const mergedSafe = mergeTopologySave({
+            dbNodes: oldNodes,
+            dbEdges: oldEdges,
+            upsertNodes: stampedUpsertNodes,
+            upsertEdges,
+            deletedNodeIds,
+            deletedEdgeIds
+        });
+
+        await persistMergedTopology(mergedSafe, oldNodes, oldEdges);
+
+        // Sync hanya node yang benar-benar berubah (bukan semua node!)
+        await syncTopologyBatchToSites(supabase, stampedUpsertNodes);
+
+        // Batch enrichment: 5-6 queries total untuk semua node
+        const enrichedNodes = await enrichTopologyNodesBatch(supabase, mergedSafe.nodes);
+        const revision = computeRevision(enrichedNodes, mergedSafe.edges);
 
         if (global.io) {
             global.io.emit('topology_updated', {
                 nodes: enrichedNodes,
-                edges: merged.edges,
+                edges: mergedSafe.edges,
                 revision
             });
             global.io.emit('dashboard_topology_refresh');
         }
 
         if (global.addActivityLog) {
-            const newNodes = merged.nodes;
+            const newNodes = mergedSafe.nodes;
             const oldNodeIds = new Set(oldNodes.map((n) => n.id));
             const newNodeIds = new Set(newNodes.map((n) => n.id));
 
@@ -242,8 +289,9 @@ export async function POST(req) {
             success: true,
             message: 'Topology saved successfully',
             nodes: enrichedNodes,
-            edges: merged.edges,
-            revision
+            edges: mergedSafe.edges,
+            revision,
+            conflicts,
         });
     } catch (err) {
         console.error('Error saving topology:', err);

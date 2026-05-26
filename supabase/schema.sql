@@ -380,3 +380,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_topology_node_id_unique
     ON public.sites (topology_node_id) WHERE topology_node_id IS NOT NULL;
 
 ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS full_address TEXT DEFAULT NULL;
+ALTER TABLE topology_nodes ADD COLUMN IF NOT EXISTS last_modified_at TIMESTAMPTZ DEFAULT NULL;
+UPDATE topology_nodes SET last_modified_at = NOW() WHERE last_modified_at IS NULL;

@@ -137,7 +137,7 @@ export default function Topbar({ onMenuClick }) {
         <div className="flex items-center gap-3 flex-1 md:flex-none md:w-96 relative mr-4">
           <button 
             onClick={onMenuClick}
-            className="md:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition"
+            className="cursor-pointer md:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition"
           >
             <Menu size={24} />
           </button>

@@ -21,7 +21,8 @@ export function normalizeNode(n) {
     vendor: n.vendor || null,
     pic_name: n.pic_name || null,
     pic_phone: n.pic_phone || null,
-    site_id: n.site_id || null
+    site_id: n.site_id || null,
+    last_modified_at: n.last_modified_at || null,
   };
 }
 

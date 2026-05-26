@@ -28,6 +28,17 @@ app.prepare().then(() => {
     const previousMappingsStatus = {};
     let previousTidakSinkronCount = -1;
 
+    // Node presence registry: nodeId → { userId, username, socketId, since }
+    const nodePresence = new Map();
+
+    function broadcastNodePresence() {
+        const payload = {};
+        for (const [nodeId, info] of nodePresence.entries()) {
+            payload[nodeId] = { userId: info.userId, username: info.username, since: info.since };
+        }
+        io.emit('node_presence', payload);
+    }
+
     // Batasan jumlah log di database Supabase
     const MAX_ACTIVITY_LOGS_DB = 1000;
 
@@ -212,9 +223,53 @@ app.prepare().then(() => {
             syncDeviceMappings();
         });
 
+        // Node presence: client mengunci node saat mulai edit
+        socket.on('node_lock', ({ nodeId, userId, username }) => {
+            if (!nodeId) return;
+            // Lepas lock lama milik socket ini jika pindah node
+            for (const [nid, info] of nodePresence.entries()) {
+                if (info.socketId === socket.id && nid !== nodeId) {
+                    nodePresence.delete(nid);
+                }
+            }
+            nodePresence.set(nodeId, { userId, username: username || userId, socketId: socket.id, since: Date.now() });
+            broadcastNodePresence();
+        });
+
+        // Node presence: client melepas lock
+        socket.on('node_unlock', ({ nodeId }) => {
+            if (!nodeId) return;
+            // '__all__' = lepas semua lock milik socket ini
+            if (nodeId === '__all__') {
+                let changed = false;
+                for (const [nid, info] of nodePresence.entries()) {
+                    if (info.socketId === socket.id) {
+                        nodePresence.delete(nid);
+                        changed = true;
+                    }
+                }
+                if (changed) broadcastNodePresence();
+                return;
+            }
+            const info = nodePresence.get(nodeId);
+            if (info && info.socketId === socket.id) {
+                nodePresence.delete(nodeId);
+                broadcastNodePresence();
+            }
+        });
+
         socket.on('disconnect', () => {
             clients.delete(socket.id);
             if (clients.size === 0) activeMonitors.clear();
+            // Lepas semua lock milik socket ini
+            let changed = false;
+            for (const [nid, info] of nodePresence.entries()) {
+                if (info.socketId === socket.id) {
+                    nodePresence.delete(nid);
+                    changed = true;
+                }
+            }
+            if (changed) broadcastNodePresence();
         });
     });
 

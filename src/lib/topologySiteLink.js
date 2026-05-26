@@ -150,7 +150,6 @@ export async function syncTopologyNodeToSite(supabase, node) {
   const sitePayload = {
     ruijie_mac: mapping.ruijie_mac,
     connection_type: 'l2tp',
-    vendor: fields.vendor,
     latitude: node.latitude != null ? Number(node.latitude) : null,
     longitude: node.longitude != null ? Number(node.longitude) : null,
     topology_node_id: node.id,
@@ -158,6 +157,8 @@ export async function syncTopologyNodeToSite(supabase, node) {
   };
 
   if (site?.id) {
+    // Only update coords and link. Do not overwrite vendor/pics for existing sites 
+    // to prevent accidental mass wipes from topology page.
     const { data: updated, error } = await supabase
       .from('sites')
       .update(sitePayload)
@@ -167,6 +168,8 @@ export async function syncTopologyNodeToSite(supabase, node) {
     if (error) throw error;
     site = updated;
   } else {
+    // For new sites, insert with vendor
+    sitePayload.vendor = fields.vendor;
     const { data: inserted, error } = await supabase
       .from('sites')
       .insert(sitePayload)
@@ -174,18 +177,18 @@ export async function syncTopologyNodeToSite(supabase, node) {
       .single();
     if (error) throw error;
     site = inserted;
-  }
 
-  await supabase.from('site_pics').delete().eq('site_id', site.id);
-  const validPics = fields.pics.map((p, i) => ({
-    site_id: site.id,
-    name: p.name,
-    phone: p.phone || null,
-    sort_order: i,
-  }));
-  if (validPics.length > 0) {
-    const { error: picErr } = await supabase.from('site_pics').insert(validPics);
-    if (picErr) throw picErr;
+    // Only insert pics for completely new sites
+    const validPics = fields.pics.map((p, i) => ({
+      site_id: site.id,
+      name: p.name,
+      phone: p.phone || null,
+      sort_order: i,
+    }));
+    if (validPics.length > 0) {
+      const { error: picErr } = await supabase.from('site_pics').insert(validPics);
+      if (picErr) throw picErr;
+    }
   }
 
   await bindTopologyNodeToSite(supabase, node.id, site.id);
@@ -279,6 +282,124 @@ export async function enrichTopologyNodes(supabase, nodes) {
   return Promise.all((nodes || []).map((n) => enrichTopologyNodeWithSite(supabase, n)));
 }
 
+/**
+ * Versi batch dari enrichTopologyNodes — hanya 5-6 Supabase queries
+ * untuk ratusan node (vs N×2 queries di versi lama).
+ */
+export async function enrichTopologyNodesBatch(supabase, nodes) {
+  if (!nodes || nodes.length === 0) return [];
+
+  // === Phase 1: Batch nodes yang sudah punya site_id ===
+  const siteIds = [...new Set(nodes.filter((n) => n.site_id).map((n) => n.site_id))];
+
+  let sitesById = {};
+  let picsMap = {};
+
+  if (siteIds.length > 0) {
+    const [{ data: sitesData }, { data: picsData }] = await Promise.all([
+      supabase.from('sites').select('*').in('id', siteIds),
+      supabase
+        .from('site_pics')
+        .select('*')
+        .in('site_id', siteIds)
+        .order('sort_order', { ascending: true }),
+    ]);
+    for (const s of sitesData || []) sitesById[s.id] = s;
+    for (const p of picsData || []) {
+      if (!picsMap[p.site_id]) picsMap[p.site_id] = [];
+      picsMap[p.site_id].push(p);
+    }
+  }
+
+  // === Phase 2: Nodes tanpa site_id — lookup via linked_interface → device_mappings → sites ===
+  const nodesNeedingLookup = nodes.filter((n) => !n.site_id && n.linked_interface?.trim());
+
+  if (nodesNeedingLookup.length > 0) {
+    // Fetch semua mappings (satu query), match prefix di memory
+    const { data: allMappings } = await supabase
+      .from('device_mappings')
+      .select('ruijie_mac, prefix');
+
+    const mappingsByPrefix = {};
+    for (const m of allMappings || []) {
+      if (m.prefix) mappingsByPrefix[m.prefix.trim().toLowerCase()] = m;
+    }
+
+    const nodeToMac = {};
+    const macSet = new Set();
+    for (const node of nodesNeedingLookup) {
+      const mapping = mappingsByPrefix[node.linked_interface.trim().toLowerCase()];
+      if (mapping) {
+        nodeToMac[node.id] = mapping.ruijie_mac;
+        macSet.add(mapping.ruijie_mac);
+      }
+    }
+
+    if (macSet.size > 0) {
+      const { data: extraSites } = await supabase
+        .from('sites')
+        .select('*')
+        .in('ruijie_mac', [...macSet]);
+
+      const siteByMac = {};
+      const extraSiteIds = [];
+      for (const s of extraSites || []) {
+        siteByMac[s.ruijie_mac] = s;
+        sitesById[s.id] = s;
+        extraSiteIds.push(s.id);
+      }
+
+      if (extraSiteIds.length > 0) {
+        const { data: extraPics } = await supabase
+          .from('site_pics')
+          .select('*')
+          .in('site_id', extraSiteIds)
+          .order('sort_order', { ascending: true });
+        for (const p of extraPics || []) {
+          if (!picsMap[p.site_id]) picsMap[p.site_id] = [];
+          picsMap[p.site_id].push(p);
+        }
+      }
+
+      // Map node → site via mac
+      for (const node of nodesNeedingLookup) {
+        const mac = nodeToMac[node.id];
+        if (mac && siteByMac[mac] && !node.site_id) {
+          // Patch site_id supaya Phase 3 bisa resolve
+          node._resolvedSiteId = siteByMac[mac].id;
+        }
+      }
+    }
+  }
+
+  // === Phase 3: Build enriched nodes di memory (tanpa query tambahan) ===
+  return nodes.map((node) => {
+    const siteId = node.site_id || node._resolvedSiteId;
+    const site = siteId ? sitesById[siteId] : null;
+    if (node._resolvedSiteId) delete node._resolvedSiteId; // cleanup temp field
+
+    if (!site) return { ...node, site: null };
+
+    const pics = picsMap[site.id] || [];
+    const fields = topologyFieldsFromSite(site, pics);
+    return {
+      ...node,
+      site_id: site.id,
+      vendor: fields.vendor,
+      pic_name: fields.pic_name,
+      pic_phone: fields.pic_phone,
+      site: {
+        id: site.id,
+        ruijie_mac: site.ruijie_mac,
+        customer_id: site.customer_id,
+        activation_date: site.activation_date,
+        topology_node_id: site.topology_node_id,
+        pics: pics.map((p) => ({ id: p.id, name: p.name, phone: p.phone, sort_order: p.sort_order })),
+      },
+    };
+  });
+}
+
 export async function syncTopologyBatchToSites(supabase, nodes) {
   for (const node of nodes || []) {
     if (!node?.linked_interface?.trim() && !node?.site_id) continue;
@@ -293,3 +414,4 @@ export async function syncTopologyBatchToSites(supabase, nodes) {
     }
   }
 }
+

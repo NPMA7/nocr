@@ -1,7 +1,7 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 import {
   MapPin,
   Search,
@@ -10,25 +10,30 @@ import {
   Building2,
   Wifi,
   WifiOff,
-} from 'lucide-react';
+} from "lucide-react";
 
 function encodeMac(mac) {
-  return encodeURIComponent(mac || '');
+  return encodeURIComponent(mac || "");
 }
 
 /** Alamat lengkap; jika kosong tampilkan titik koordinat */
 function getSiteLocationDisplay(site) {
   const addr = site?.full_address?.trim();
-  if (addr) return { kind: 'address', label: addr };
+  if (addr) return { kind: "address", label: addr };
   const lat = site?.latitude;
   const lng = site?.longitude;
-  if (lat != null && lng != null && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))) {
+  if (
+    lat != null &&
+    lng != null &&
+    !Number.isNaN(Number(lat)) &&
+    !Number.isNaN(Number(lng))
+  ) {
     return {
-      kind: 'coords',
+      kind: "coords",
       label: `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`,
     };
   }
-  return { kind: 'empty', label: null };
+  return { kind: "empty", label: null };
 }
 
 function getValidPics(pics) {
@@ -40,17 +45,19 @@ export default function SitesListPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState('');
-  const [filterProfile, setFilterProfile] = useState('all');
+  const [search, setSearch] = useState("");
+  const [filterProfile, setFilterProfile] = useState("all");
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get('/api/sites');
+      const res = await axios.get("/api/sites");
       setItems(res.data || []);
     } catch (e) {
-      setError(e.response?.data?.error || e.message || 'Gagal memuat data wilayah');
+      setError(
+        e.response?.data?.error || e.message || "Gagal memuat data wilayah",
+      );
     } finally {
       setLoading(false);
     }
@@ -68,11 +75,12 @@ export default function SitesListPage() {
       (d.ruijie_alias && d.ruijie_alias.toLowerCase().includes(term)) ||
       (d.mikrotik_alias && d.mikrotik_alias.toLowerCase().includes(term)) ||
       (d.site?.vendor && d.site.vendor.toLowerCase().includes(term)) ||
-      (d.site?.full_address && d.site.full_address.toLowerCase().includes(term));
+      (d.site?.full_address &&
+        d.site.full_address.toLowerCase().includes(term));
 
     if (!matchesSearch) return false;
-    if (filterProfile === 'filled' && !d.has_site_profile) return false;
-    if (filterProfile === 'empty' && d.has_site_profile) return false;
+    if (filterProfile === "filled" && !d.has_site_profile) return false;
+    if (filterProfile === "empty" && d.has_site_profile) return false;
     return true;
   });
 
@@ -96,7 +104,7 @@ export default function SitesListPage() {
           disabled={loading}
           className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 disabled:opacity-50"
         >
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           Muat Ulang
         </button>
       </div>
@@ -107,7 +115,9 @@ export default function SitesListPage() {
             <MapPin size={20} className="text-orange-400" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase">Total L2TP</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase">
+              Total L2TP
+            </p>
             <p className="text-2xl font-bold text-slate-100">{items.length}</p>
           </div>
         </div>
@@ -116,7 +126,9 @@ export default function SitesListPage() {
             <Building2 size={20} className="text-emerald-400" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase">Profil Terisi</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase">
+              Profil Terisi
+            </p>
             <p className="text-2xl font-bold text-slate-100">{withProfile}</p>
           </div>
         </div>
@@ -125,8 +137,12 @@ export default function SitesListPage() {
             <Wifi size={20} className="text-slate-400" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase">Belum Profil</p>
-            <p className="text-2xl font-bold text-slate-100">{items.length - withProfile}</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase">
+              Belum Profil
+            </p>
+            <p className="text-2xl font-bold text-slate-100">
+              {items.length - withProfile}
+            </p>
           </div>
         </div>
       </div>
@@ -134,7 +150,10 @@ export default function SitesListPage() {
       <div className="flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+            />
             <input
               type="text"
               placeholder="Cari prefix, vendor, alamat..."
@@ -161,7 +180,10 @@ export default function SitesListPage() {
           {loading && items.length === 0 ? (
             <div className="p-6 space-y-2">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-16 bg-slate-700/30 rounded-lg animate-pulse" />
+                <div
+                  key={i}
+                  className="h-16 bg-slate-700/30 rounded-lg animate-pulse"
+                />
               ))}
             </div>
           ) : error && items.length === 0 ? (
@@ -172,134 +194,278 @@ export default function SitesListPage() {
           ) : filtered.length === 0 ? (
             <p className="text-center py-16 text-slate-500">Tidak ada data</p>
           ) : (
-            <div className="min-h-0 overflow-x-auto">
-              <table className="w-full text-sm min-w-[900px]">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Prefix Sites
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Vendor / ID Pelanggan
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      PIC
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Alamat / Lokasi
-                    </th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-24">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((d) => {
-                    const loc = getSiteLocationDisplay(d.site);
-                    const vendor = d.site?.vendor;
-                    const customerId = d.site?.customer_id;
-                    return (
-                      <tr
-                        key={d.ruijie_mac}
-                        className="border-b border-slate-700/20 hover:bg-slate-700/20 transition cursor-default group"
-                      >
-                        <td className="px-4 py-3 font-bold text-slate-100 max-w-[200px]">
-                          <span className="block truncate" title={d.prefix || undefined}>
-                            {d.prefix || '—'}
-                          </span>
-                        </td>
-                        <td className="uppercase px-4 py-3 max-w-[220px]">
-                          <span className="block truncate text-slate-300" title={vendor || undefined}>
-                            {vendor ? (
-                              <span>
-                                {vendor}
-                                {customerId && (
-                                  <span className="text-slate-400 font-mono text-xs ml-2">
-                                    ({customerId})
-                                  </span>
-                                )}
-                              </span>
-                            ) : (
-                              <span className="text-slate-600 italic">Belum diisi</span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="uppercase px-4 py-3 max-w-[220px]">
-                          {getValidPics(d.site?.pics).length > 0 ? (
-                            <div className="flex flex-col gap-1 min-w-0">
-                              {getValidPics(d.site.pics).map((p, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0"
-                                  title={[p.name, p.phone].filter(Boolean).join(' · ')}
-                                >
-                                  <span className="text-slate-200 truncate text-sm">{p.name}</span>
-                                  {p.phone ? (
-                                    <span className="text-slate-500 font-mono text-sm truncate">
-                                      {p.phone}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-600 italic text-sm">Tanpa nomor</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-slate-500">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 min-w-[200px] max-w-[320px] align-top">
-                          <div className="flex flex-col gap-1 min-w-0">
-                            {loc.label ? (
-                              <span
-                                className={`whitespace-pre-line ${
-                                  loc.kind === 'coords'
-                                    ? 'text-orange-300/90 font-mono text-xs'
-                                    : 'text-slate-300'
-                                }`}
-                                title={loc.label}
-                                style={{
-                                  wordBreak: 'break-word',
-                                  whiteSpace: 'pre-line',
-                                  display: 'block',
-                                }}
-                              >
-                                {loc.kind === 'coords' && (
-                                  <span className="text-[10px] text-slate-500 font-sans mr-1">
-                                    Koordinat:
-                                  </span>
-                                )}
-                                {loc.label}
-                              </span>
-                            ) : (
-                              <span className="text-slate-600 italic">Belum diisi</span>
-                            )}
+            <>
+              {/* Mobile card view */}
+              <div className="lg:hidden divide-y divide-slate-700/30">
+                {filtered.map((d) => {
+                  const loc = getSiteLocationDisplay(d.site);
+                  const vendor = d.site?.vendor;
+                  const customerId = d.site?.customer_id;
+                  const pics = getValidPics(d.site?.pics);
+
+                  return (
+                    <div
+                      key={d.ruijie_mac}
+                      className="px-5 py-4 flex flex-col gap-3 hover:bg-slate-700/20 transition cursor-default"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="font-bold text-slate-100 text-base truncate">
+                              {d.prefix || "—"}
+                            </span>
                             {!d.has_site_profile && (
                               <span className="text-[10px] text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-max">
                                 Baru
                               </span>
-                            )}
+                            )}<button
+                              type="button"
+                              className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/20 transition"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(
+                                  `/sites/${encodeMac(d.ruijie_mac)}`,
+                                );
+                              }}
+                            >
+                              Detail Wilayah <ChevronRight size={14} />
+                            </button>
                           </div>
-                     
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 group-hover:text-blue-400 transition cursor-pointer"
-                            onClick={e => {
-                              e.stopPropagation();
-                              router.push(`/sites/${encodeMac(d.ruijie_mac)}`);
-                            }}
-                          >
-                            Detail
-                            <ChevronRight size={16} />
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <div className="flex flex-col gap-1.5 mt-1">
+                            {/* Vendor */}
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-medium bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded w-[60px] text-center mt-0.5 uppercase tracking-wider">
+                                Vendor
+                              </span>
+                              <span className="text-sm text-slate-300">
+                                {vendor ? (
+                                  <span>
+                                    {vendor}
+                                    {customerId && (
+                                      <span className="text-slate-400 font-mono text-xs ml-2">
+                                        ({customerId})
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-600 italic">
+                                    Belum diisi
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+
+                            {/* PIC */}
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-medium bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded w-[60px] text-center mt-0.5 uppercase tracking-wider">
+                                PIC
+                              </span>
+                              <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                {pics.length > 0 ? (
+                                  pics.map((p, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="flex items-center gap-2 text-sm text-slate-300"
+                                    >
+                                      <span className="truncate">{p.name}</span>
+                                      {p.phone && (
+                                        <span className="text-slate-500 font-mono text-xs truncate">
+                                          • {p.phone}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <span className="text-slate-600 italic text-sm">
+                                    Belum diisi
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Lokasi */}
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-medium bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded w-[60px] text-center mt-0.5 uppercase tracking-wider">
+                                Lokasi
+                              </span>
+                              <div className="flex-1 min-w-0 text-sm">
+                                {loc.label ? (
+                                  <span
+                                    className={
+                                      loc.kind === "coords"
+                                        ? "text-orange-300/90 font-mono text-xs"
+                                        : "text-slate-300"
+                                    }
+                                  >
+                                    {loc.kind === "coords" && (
+                                      <span className="text-[10px] text-slate-500 font-sans mr-1">
+                                        Koordinat:
+                                      </span>
+                                    )}
+                                    {loc.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-600 italic">
+                                    Belum diisi
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table view */}
+              <div className="hidden lg:block min-h-0 overflow-x-auto">
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
+                      <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Prefix Sites
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Vendor / ID Pelanggan
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        PIC
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Alamat / Lokasi
+                      </th>
+                      <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-24">
+                        Aksi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((d) => {
+                      const loc = getSiteLocationDisplay(d.site);
+                      const vendor = d.site?.vendor;
+                      const customerId = d.site?.customer_id;
+                      return (
+                        <tr
+                          key={d.ruijie_mac}
+                          className="border-b border-slate-700/20 hover:bg-slate-700/20 transition cursor-default group"
+                        >
+                          <td className="px-4 py-3 font-bold text-slate-100 max-w-[200px]">
+                            <span
+                              className="block truncate"
+                              title={d.prefix || undefined}
+                            >
+                              {d.prefix || "—"}
+                            </span>
+                          </td>
+                          <td className="uppercase px-4 py-3 max-w-[220px]">
+                            <span
+                              className="block truncate text-slate-300"
+                              title={vendor || undefined}
+                            >
+                              {vendor ? (
+                                <span>
+                                  {vendor}
+                                  {customerId && (
+                                    <span className="text-slate-400 font-mono text-xs ml-2">
+                                      ({customerId})
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600 italic">
+                                  Belum diisi
+                                </span>
+                              )}
+                            </span>
+                          </td>
+                          <td className="uppercase px-4 py-3 max-w-[220px]">
+                            {getValidPics(d.site?.pics).length > 0 ? (
+                              <div className="flex flex-col gap-1 min-w-0">
+                                {getValidPics(d.site.pics).map((p, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0"
+                                    title={[p.name, p.phone]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  >
+                                    <span className="text-slate-200 truncate text-sm">
+                                      {p.name}
+                                    </span>
+                                    {p.phone ? (
+                                      <span className="text-slate-500 font-mono text-sm truncate">
+                                        {p.phone}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-600 italic text-sm">
+                                        Tanpa nomor
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-500">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 min-w-[200px] max-w-[320px] align-top">
+                            <div className="flex flex-col gap-1 min-w-0">
+                              {loc.label ? (
+                                <span
+                                  className={`whitespace-pre-line ${
+                                    loc.kind === "coords"
+                                      ? "text-orange-300/90 font-mono text-xs"
+                                      : "text-slate-300"
+                                  }`}
+                                  title={loc.label}
+                                  style={{
+                                    wordBreak: "break-word",
+                                    whiteSpace: "pre-line",
+                                    display: "block",
+                                  }}
+                                >
+                                  {loc.kind === "coords" && (
+                                    <span className="text-[10px] text-slate-500 font-sans mr-1">
+                                      Koordinat:
+                                    </span>
+                                  )}
+                                  {loc.label}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600 italic">
+                                  Belum diisi
+                                </span>
+                              )}
+                              {!d.has_site_profile && (
+                                <span className="text-[10px] text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-max">
+                                  Baru
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span
+                              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 group-hover:text-blue-400 transition cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(
+                                  `/sites/${encodeMac(d.ruijie_mac)}`,
+                                );
+                              }}
+                            >
+                              Detail
+                              <ChevronRight size={16} />
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

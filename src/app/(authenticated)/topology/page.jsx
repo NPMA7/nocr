@@ -87,6 +87,112 @@ const TopologyMap = dynamic(() => import("@/components/TopologyMap"), {
   ),
 });
 
+function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
+  const [selected, setSelected] = useState(() => new Set(conflicts.map((c) => c.id)));
+
+  const toggleAll = () => {
+    if (selected.size === conflicts.length) setSelected(new Set());
+    else setSelected(new Set(conflicts.map((c) => c.id)));
+  };
+
+  const toggle = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <div className="absolute inset-0 z-[5000] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 w-full max-w-lg flex flex-col overflow-hidden animate-fade-in-up">
+        {/* Header */}
+        <div className="p-5 border-b border-slate-700/50 bg-amber-500/5 flex items-start gap-3">
+          <div className="mt-0.5 flex-shrink-0 w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg">
+            ⚠️
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-amber-300 text-base">Konflik Perubahan Terdeteksi</h3>
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+              {conflicts.length} node sudah diubah user lain sejak kamu mulai mengedit.
+              Pilih tindakan untuk setiap node di bawah ini.
+            </p>
+          </div>
+          <button onClick={onDismiss} className="text-slate-500 hover:text-white transition flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Node list */}
+        <div className="overflow-y-auto max-h-72 divide-y divide-slate-700/40">
+          {/* Select all row */}
+          <div className="px-5 py-2.5 flex items-center gap-3 bg-slate-800/40">
+            <input
+              type="checkbox"
+              id="conflict-select-all"
+              checked={selected.size === conflicts.length}
+              onChange={toggleAll}
+              className="w-4 h-4 accent-amber-500 cursor-pointer"
+            />
+            <label htmlFor="conflict-select-all" className="text-xs font-semibold text-slate-300 cursor-pointer">
+              Pilih Semua ({conflicts.length} node)
+            </label>
+          </div>
+
+          {conflicts.map((c) => (
+            <div key={c.id} className={`px-5 py-3 flex items-start gap-3 transition ${selected.has(c.id) ? "bg-amber-500/5" : ""}`}>
+              <input
+                type="checkbox"
+                id={`conflict-${c.id}`}
+                checked={selected.has(c.id)}
+                onChange={() => toggle(c.id)}
+                className="w-4 h-4 mt-0.5 accent-amber-500 cursor-pointer flex-shrink-0"
+              />
+              <label htmlFor={`conflict-${c.id}`} className="flex-1 min-w-0 cursor-pointer">
+                <p className="text-sm font-semibold text-slate-100 truncate">{c.label}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-mono">
+                    {c.id}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    DB diubah: {c.dbVersion?.last_modified_at
+                      ? new Date(c.dbVersion.last_modified_at).toLocaleTimeString("id-ID")
+                      : "tidak diketahui"}
+                  </span>
+                </div>
+              </label>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="p-5 border-t border-slate-700/50 bg-slate-800/30 flex flex-col gap-3">
+          <p className="text-[11px] text-slate-500 text-center">
+            {selected.size === 0 ? "Tidak ada node dipilih" : `${selected.size} node terpilih`}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onAcceptServer(selected)}
+              disabled={selected.size === 0}
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={14} /> Pakai Versi Server
+            </button>
+            <button
+              onClick={() => onForce(selected)}
+              disabled={selected.size === 0}
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white transition shadow-lg shadow-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Save size={14} /> Pakai Versimu
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TopologyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -115,6 +221,11 @@ function TopologyContent() {
   const [canEdit, setCanEdit] = useState(false);
   const readOnly = isVisitorRole(sessionUser?.role);
   const [saving, setSaving] = useState(false);
+
+  // Presence & conflict states
+  const [nodePresenceMap, setNodePresenceMap] = useState({}); // { nodeId: { username, userId } }
+  const [conflictQueue, setConflictQueue] = useState([]); // array of conflict objects to resolve
+  const [forceSaveQueue, setForceSaveQueue] = useState([]); // nodes user pilih untuk force-save
 
 
   const syncEditPermission = () => {
@@ -524,6 +635,9 @@ function TopologyContent() {
       socket.on("topology_updated", handleTopologyUpdated);
       socket.on("mikrotik_full_update", handleMikrotikUpdate);
       socket.on("mappings_updated", handleMappingsUpdate);
+      socket.on("node_presence", (presenceMap) => {
+        setNodePresenceMap(presenceMap || {});
+      });
     }
     return () => {
       if (socket) {
@@ -531,6 +645,7 @@ function TopologyContent() {
         socket.off("topology_updated", handleTopologyUpdated);
         socket.off("mikrotik_full_update", handleMikrotikUpdate);
         socket.off("mappings_updated", handleMappingsUpdate);
+        socket.off("node_presence");
       }
     };
   }, []);
@@ -558,6 +673,14 @@ function TopologyContent() {
 
   useEffect(() => {
     if (selectedNode) {
+      // Emit lock ke server — hanya jika canEdit
+      if (canEdit && socket && selectedNode.id) {
+        socket.emit("node_lock", {
+          nodeId: selectedNode.id,
+          userId: sessionUser?.id || sessionUser?.username || "unknown",
+          username: sessionUser?.username || sessionUser?.name || "Editor",
+        });
+      }
       setNodeIfaceSearch(selectedNode.linked_interface || "");
       setNodeDetail({ loading: true });
       if (selectedNode.device_id) {
@@ -582,6 +705,12 @@ function TopologyContent() {
         setDeviceConfig(null);
       }
     } else {
+      // Deselect: lepas lock
+      if (canEdit && socket) {
+        const prevId = nodesRef.current; // we track via selectedNode prev
+        // Unlock semua lock milik kita saat tidak ada node terpilih
+        socket.emit("node_unlock", { nodeId: "__all__" });
+      }
       setNodeDetail(null);
       setDeviceConfig(null);
       setNodeIfaceSearch("");
@@ -648,7 +777,7 @@ function TopologyContent() {
     ? nodes.find((n) => n.id === selectedNode.id) || selectedNode
     : null;
 
-  const saveLayout = async () => {
+  const saveLayout = async (forceNodes = []) => {
     if (readOnly) {
       addToast("Readonly", "error");
       return;
@@ -662,8 +791,15 @@ function TopologyContent() {
       const upsertNodes = getDeltaNodes(nodes, baselineNodesRef.current);
       const upsertEdges = getDeltaEdges(edges, baselineEdgesRef.current);
 
+      // Gabungkan force-save nodes (dari conflict resolution "Pakai versimu")
+      const forceSaveIds = new Set(forceNodes.map((n) => n.id));
+      const mergedUpsert = [
+        ...upsertNodes.filter((n) => !forceSaveIds.has(n.id)),
+        ...forceNodes,
+      ];
+
       const res = await axios.post(`${API_URL}/topology`, {
-        nodes: upsertNodes,
+        nodes: mergedUpsert,
         edges: upsertEdges,
         deletedNodeIds: Array.from(deletedNodeIdsRef.current),
         deletedEdgeIds: Array.from(deletedEdgeIdsRef.current),
@@ -677,7 +813,22 @@ function TopologyContent() {
 
       applyTopologyFromServer(savedNodes, savedEdges);
 
-      addToast("Peta berhasil disimpan!", "success");
+      // Handle konflik dari server
+      const serverConflicts = res.data.conflicts || [];
+      if (serverConflicts.length > 0) {
+        setConflictQueue(serverConflicts);
+        addToast(
+          `${serverConflicts.length} node berkonflik dengan perubahan user lain`,
+          "error",
+        );
+      } else {
+        addToast("Peta berhasil disimpan!", "success");
+      }
+
+      // Unlock semua node setelah save
+      if (socket) {
+        socket.emit("node_unlock", { nodeId: "__all__" });
+      }
     } catch (e) {
       console.error(e);
 
@@ -687,6 +838,37 @@ function TopologyContent() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** User memilih "Pakai versimu" untuk semua konflik yang dicentang */
+  const resolveConflictsForce = (selectedIds) => {
+    const forcedNodes = conflictQueue
+      .filter((c) => selectedIds.has(c.id))
+      .map((c) => ({
+        ...c.clientVersion,
+        last_modified_at: null, // reset supaya server stamps ulang
+      }));
+    setConflictQueue([]);
+    if (forcedNodes.length > 0) {
+      saveLayout(forcedNodes);
+    }
+  };
+
+  /** User memilih "Pakai versi server" — update local nodes ke versi DB */
+  const resolveConflictsAcceptServer = (selectedIds) => {
+    const serverNodes = conflictQueue
+      .filter((c) => selectedIds.has(c.id))
+      .map((c) => c.dbVersion);
+    setConflictQueue([]);
+    if (serverNodes.length > 0) {
+      setNodes((prev) =>
+        prev.map((n) => {
+          const sv = serverNodes.find((s) => s.id === n.id);
+          return sv ? { ...n, ...sv } : n;
+        }),
+      );
+      addToast("Versi server diterapkan ke node yang konflik", "info");
     }
   };
 
@@ -927,7 +1109,7 @@ function TopologyContent() {
             Sync Sekarang
           </button>
           {!readOnly && (
-            <button onClick={saveLayout} disabled={saving} className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap">
+            <button onClick={() => saveLayout()} disabled={saving} className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap">
               {saving ? (
                 <>
                   <RefreshCw size={16} className="animate-spin" />
@@ -1279,6 +1461,16 @@ function TopologyContent() {
           </div>
         )}
 
+        {/* Conflict Resolution Modal */}
+        {conflictQueue.length > 0 && (
+          <ConflictModal
+            conflicts={conflictQueue}
+            onForce={resolveConflictsForce}
+            onAcceptServer={resolveConflictsAcceptServer}
+            onDismiss={() => setConflictQueue([])}
+          />
+        )}
+
         <div className="flex-1 w-full relative z-0 flex flex-col">
           {/* Left Panel — MikroTik Core Live Status */}
           <div className="hidden md:flex absolute top-3 left-3 z-[1000] w-72 flex-col gap-2 pointer-events-none">
@@ -1601,6 +1793,20 @@ function TopologyContent() {
               <X size={20} />
             </button>
           </div>
+
+          {/* Indikator: node ini sedang diedit user lain */}
+          {currentSelectedNode && nodePresenceMap[currentSelectedNode.id] &&
+            nodePresenceMap[currentSelectedNode.id].userId !== (sessionUser?.id?.toString() || sessionUser?.username) && (
+            <div className="mx-3 mt-2 flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+              <span className="text-amber-400 text-sm">🔒</span>
+              <p className="text-xs text-amber-300 font-medium leading-snug">
+                Sedang diedit oleh&nbsp;
+                <span className="font-bold text-amber-200">
+                  {nodePresenceMap[currentSelectedNode.id].username}
+                </span>
+              </p>
+            </div>
+          )}
 
           {currentSelectedNode && (
             <div className="flex border-b border-slate-700/50 bg-slate-850/40">
