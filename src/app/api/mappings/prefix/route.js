@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient';
 import { autoLinkTopologyNode } from '@/lib/topologySiteLink';
+import { resolveAuth, enforceTopologyMutation } from '@/lib/auth';
 
 export async function PATCH(req) {
   try {
+    const user = await resolveAuth(req);
+    enforceTopologyMutation(user);
+
     const body = await req.json();
     const { ruijie_mac, new_prefix, old_prefix } = body;
     

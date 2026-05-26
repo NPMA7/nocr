@@ -7,7 +7,7 @@ export async function GET() {
     const { data: mappings, error } = await supabase.from('device_mappings').select('*');
     if (error) throw error;
 
-    const { data: ruijieData } = await supabase.from('ruijie_devices').select('mac_address, last_online');
+    const { data: ruijieData } = await supabase.from('ruijie_devices').select('mac_address, last_online').eq('connection_type', 'L2TP');
     const { data: pppoeData } = await supabase.from('pppoe_secrets').select('name, last_logged_out, remote_address');
 
     const enrichedMappings = (mappings || []).map((m) => {

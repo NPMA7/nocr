@@ -386,6 +386,7 @@ app.prepare().then(() => {
             const { data: devices, error } = await supabase
                 .from('ruijie_devices')
                 .select('*')
+                .eq('connection_type', 'L2TP')
                 .order('alias', { ascending: true });
             
             if (!error && devices) {
@@ -495,7 +496,7 @@ app.prepare().then(() => {
             if (!device) return;
 
             const [resRuijie, resManual, resActive, resSecrets, resInterfaces] = await Promise.all([
-                supabase.from('ruijie_devices').select('*'),
+                supabase.from('ruijie_devices').select('*').eq('connection_type', 'L2TP'),
                 supabase.from('device_mappings').select('*'),
                 supabase.from('pppoe_active').select('name').eq('device_id', device.id),
                 supabase.from('pppoe_secrets').select('name').eq('device_id', device.id),

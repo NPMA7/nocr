@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient';
+import { resolveAuth, enforceRoleForMutation } from '@/lib/auth';
 
 export async function GET() {
   try {
     const { data, error } = await supabase.from('device_mappings').select('*');
     if (error) throw error;
 
-    const { data: ruijieData } = await supabase.from('ruijie_devices').select('mac_address, last_online');
+    const { data: ruijieData } = await supabase.from('ruijie_devices').select('mac_address, last_online').eq('connection_type', 'L2TP');
     const { data: pppoeData } = await supabase.from('pppoe_secrets').select('name, last_logged_out, remote_address');
     
     const enrichedData = (data || []).map(m => {
@@ -35,6 +36,9 @@ export async function GET() {
 
 export async function POST(req) {
   try {
+    const user = await resolveAuth(req);
+    enforceRoleForMutation(req, user); // Only admin for manual link
+
     const body = await req.json();
     const { ruijie_mac, mikrotik_name } = body;
     
@@ -62,8 +66,11 @@ export async function POST(req) {
 
 export async function DELETE(req) {
   try {
-    const url = new URL(req.url);
-    const ruijie_mac = url.searchParams.get('ruijie_mac');
+    const user = await resolveAuth(req);
+    enforceRoleForMutation(req, user);
+
+    const { searchParams } = new URL(req.url);
+    const ruijie_mac = searchParams.get('ruijie_mac');
     
     if (!ruijie_mac) {
       return NextResponse.json({ error: 'ruijie_mac is required' }, { status: 400 });
