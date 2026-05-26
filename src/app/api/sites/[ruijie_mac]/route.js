@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient';
 import { fetchSitesBundle, upsertSiteProfile } from '@/lib/sitesApi';
+import { resolveAuth, enforceTopologyMutation } from '@/lib/auth';
 
 function decodeMac(raw) {
   try {
@@ -58,6 +59,9 @@ export async function GET(_req, { params }) {
 
 export async function PATCH(req, { params }) {
   try {
+    const user = await resolveAuth(req);
+    enforceTopologyMutation(user);
+
     const ruijie_mac = decodeMac(params.ruijie_mac);
     if (!ruijie_mac) {
       return NextResponse.json({ error: 'ruijie_mac wajib' }, { status: 400 });
