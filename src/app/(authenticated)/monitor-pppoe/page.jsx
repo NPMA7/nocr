@@ -84,10 +84,11 @@ export default function MonitorPppoe() {
     if (!isBackground) setError(null);
     try {
       const [resMappings, resMikrotik] = await Promise.all([
-        axios.get('/api/monitor/pppoe'),
+        axios.get('/api/mappings'),
         axios.get('/api/monitor/mikrotik')
       ]);
-      setMappings(resMappings.data || []);
+      const allMappings = resMappings.data || [];
+      setMappings(allMappings.filter(m => m.connection_type === 'PPPOE'));
       if (resMikrotik.data) {
         setMikrotikSecrets(resMikrotik.data.secrets || []);
       }

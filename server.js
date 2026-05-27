@@ -515,31 +515,48 @@ app.prepare().then(() => {
                 let secretName = null;
                 let isActive = false;
                 
+                const isL2TP = ap.connection_type === 'L2TP';
+                const isPPPoE = ap.connection_type === 'PPPOE';
+
                 const checkActive = (name) => {
-                    if (active.some(a => a.name === name)) return true;
-                    const iface = interfaces.find(i => i.name === name);
-                    if (iface) return iface.running && !iface.disabled;
+                    if (isPPPoE) {
+                        const hasActiveSession = active.some(a => a.name === name);
+                        const staticIface = interfaces.find(i => 
+                            i.name === `PPPoE - ${name}` || 
+                            i.name === `<pppoe-${name}>` || 
+                            i.name === `PPPoE-${name}` ||
+                            i.name === name
+                        );
+                        if (staticIface) {
+                            return staticIface.running && !staticIface.disabled;
+                        }
+                        return hasActiveSession;
+                    } else if (isL2TP) {
+                        const iface = interfaces.find(i => i.name === name);
+                        if (iface) return iface.running && !iface.disabled;
+                        return false;
+                    }
                     return false;
                 };
 
                 if (existing && existing.is_manual) {
                     secretName = existing.mikrotik_name; // Prioritize mikrotik_name which is the true manual input
-                    const sec = secrets.find(s => s.name === secretName);
-                    const iface = interfaces.find(i => i.name === secretName);
-                    if (sec) {
-                        secretName = sec.name;
-                    } else if (iface) {
-                        secretName = iface.name;
+                    if (isPPPoE) {
+                        const sec = secrets.find(s => s.name === secretName);
+                        if (sec) secretName = sec.name;
+                    } else if (isL2TP) {
+                        const iface = interfaces.find(i => i.name === secretName);
+                        if (iface) secretName = iface.name;
                     }
                     isActive = checkActive(secretName);
                 } else {
                     const normAlias = normalizeName(ap.alias);
-                    const sec = secrets.find(s => normalizeName(s.name) === normAlias);
-                    const iface = interfaces.find(i => normalizeName(i.name) === normAlias);
-                    if (sec) {
-                        secretName = sec.name;
-                    } else if (iface) {
-                        secretName = iface.name;
+                    if (isPPPoE) {
+                        const sec = secrets.find(s => normalizeName(s.name) === normAlias);
+                        if (sec) secretName = sec.name;
+                    } else if (isL2TP) {
+                        const iface = interfaces.find(i => normalizeName(i.name) === normAlias);
+                        if (iface) secretName = iface.name;
                     }
                     isActive = checkActive(secretName);
                 }
