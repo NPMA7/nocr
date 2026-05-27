@@ -319,15 +319,15 @@ function TopologyContent() {
       ) {
         options.push({
           name: m.prefix,
-          type: "L2TP Gabungan",
+          type: m.connection_type === 'PPPOE' ? "PPPoE Gabungan" : "L2TP Gabungan",
           label: m.prefix,
           isMapping: true,
         });
       }
     });
     (coreInterfaces || []).forEach((i) => {
-      // Jangan masukkan l2tp-in lagi karena sudah digantikan oleh L2TP Gabungan (mappings)
-      if (i.type && i.type.toLowerCase() === "l2tp-in") return;
+      // Jangan masukkan l2tp-in atau pppoe-in lagi karena sudah digantikan oleh Gabungan (mappings)
+      if (i.type && (i.type.toLowerCase() === "l2tp-in" || i.type.toLowerCase() === "pppoe-in")) return;
 
       if (
         i.name &&
@@ -904,11 +904,23 @@ function TopologyContent() {
     );
 
     if (filteredMappings.length > 0) {
-      groups["l2tp-in (gabungan)"] = filteredMappings.map((m) => ({
-        name: m.prefix || m.mikrotik_alias || m.ruijie_mac,
-        running: m.final_status === "Online" ? "true" : "false",
-        disabled: "false",
-      }));
+      const l2tpMappings = filteredMappings.filter(m => m.connection_type !== 'PPPOE');
+      const pppoeMappings = filteredMappings.filter(m => m.connection_type === 'PPPOE');
+      
+      if (l2tpMappings.length > 0) {
+        groups["l2tp-in (gabungan)"] = l2tpMappings.map((m) => ({
+          name: m.prefix || m.mikrotik_alias || m.ruijie_mac,
+          running: m.final_status === "Online" ? "true" : "false",
+          disabled: "false",
+        }));
+      }
+      if (pppoeMappings.length > 0) {
+        groups["pppoe-in (gabungan)"] = pppoeMappings.map((m) => ({
+          name: m.prefix || m.mikrotik_alias || m.ruijie_mac,
+          running: m.final_status === "Online" ? "true" : "false",
+          disabled: "false",
+        }));
+      }
     }
 
     return groups;
