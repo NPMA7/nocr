@@ -577,7 +577,11 @@ app.prepare().then(() => {
                     issue = 'Akun Mikrotik tidak ditemukan (Manual Link Salah)';
                 }
 
-                const prefixName = ((existing && existing.is_prefix_manual) ? existing.prefix : (secretName || ap.alias))?.toUpperCase();
+                let autoPrefix = secretName || ap.alias;
+                if (isPPPoE) {
+                    autoPrefix = ap.alias || secretName; // For PPPoE, prioritize Ruijie AP alias
+                }
+                const prefixName = ((existing && existing.is_prefix_manual) ? existing.prefix : autoPrefix)?.toUpperCase();
 
                 // Kembalikan log aktivitas karena dibutuhkan di tabel Log Aktivitas Dashboard
                 const prevStatus = previousMappingsStatus[ap.mac_address];

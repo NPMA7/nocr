@@ -1021,9 +1021,14 @@ function TopologyContent() {
 
       if (node) {
         if (node.type === "client" || node.type === "pppoe-client") {
-          const isPPPoE =
+          let isPPPoE =
             node.linked_interface?.toLowerCase().includes("pppoe") ||
             node.type === "pppoe-client";
+            
+          if (!isPPPoE && node.linked_interface) {
+            const m = mappings.find(map => map.prefix && map.prefix.toLowerCase() === node.linked_interface.toLowerCase());
+            if (m && m.connection_type === 'PPPOE') isPPPoE = true;
+          }
           if (isPPPoE) res.pppoe++;
           else res.l2tp++;
         }
@@ -1045,9 +1050,17 @@ function TopologyContent() {
     // 3. Filter nodes
     filtered = filtered.filter((n) => {
       if (n.type === "client" || n.type === "pppoe-client") {
-        const isPPPoE =
+        let isPPPoE =
           n.linked_interface?.toLowerCase().includes("pppoe") ||
           n.type === "pppoe-client";
+          
+        if (!isPPPoE && n.linked_interface) {
+          const m = mappings.find(map => map.prefix && map.prefix.toLowerCase() === n.linked_interface.toLowerCase());
+          if (m && m.connection_type === 'PPPOE') isPPPoE = true;
+        }
+        
+        if (!n.linked_interface && n.type === "client") return true; // Selalu tampilkan node baru yang belum ditautkan
+        
         if (networkMode === "l2tp") return !isPPPoE;
         if (networkMode === "pppoe") return isPPPoE;
       } else {
