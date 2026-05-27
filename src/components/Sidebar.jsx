@@ -55,8 +55,11 @@ export default function Sidebar({ isConnected, onNavigate }) {
         <Link href="/topology" onClick={onNavigate} scroll={false} className={getLinkClass('/topology')}>
           <GitGraph size={18} /> Peta Topologi
         </Link>
-        <Link href="/monitor-device" onClick={onNavigate} scroll={false} className={getLinkClass('/monitor-device')}>
-          <Monitor size={18} /> Monitor Gabungan
+        <Link href="/monitor-l2tp" onClick={onNavigate} scroll={false} className={getLinkClass('/monitor-l2tp')}>
+          <Monitor size={18} /> Monitor L2TP
+        </Link>
+        <Link href="/monitor-pppoe" onClick={onNavigate} scroll={false} className={getLinkClass('/monitor-pppoe')}>
+          <Monitor size={18} /> Monitor PPPOE
         </Link>
         <Link href="/sites" onClick={onNavigate} scroll={false} className={getLinkClass('/sites')}>
           <MapPin size={18} /> Data Wilayah

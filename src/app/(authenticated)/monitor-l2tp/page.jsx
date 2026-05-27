@@ -87,7 +87,8 @@ export default function MonitorDevice() {
         axios.get('/api/mappings'),
         axios.get('/api/monitor/mikrotik')
       ]);
-      setMappings(resMappings.data || []);
+      const allMappings = resMappings.data || [];
+      setMappings(allMappings.filter(m => m.connection_type === 'L2TP'));
       if (resMikrotik.data) {
         setMikrotikSecrets(resMikrotik.data.secrets || []);
       }
@@ -156,7 +157,7 @@ export default function MonitorDevice() {
   const totalIssues = mergedDevices.filter(d => d.issue).length;
 
   const handleOpenModal = (device) => {
-    setSelectedAp({ mac_address: device.ruijie_mac, alias: device.ruijie_alias });
+    setSelectedAp({ mac_address: device.ruijie_mac, alias: device.ruijie_alias, mikrotik_name: device.mikrotik_name });
     setSelectedMikrotikName(device.is_manual ? device.mikrotik_alias : '');
     setIsModalOpen(true);
   };
@@ -265,9 +266,9 @@ export default function MonitorDevice() {
         <div>
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
             <Monitor size={24} className="text-blue-400" />
-            Monitor Perangkat Gabungan
+            Monitor Perangkat L2TP
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Status Access Point (Ruijie) & Mikrotik (L2TP/PPP)</p>
+          <p className="text-sm text-slate-400 mt-1">Status Access Point (Ruijie) & Mikrotik (L2TP)</p>
         </div>
         <div className="flex items-center gap-4">
             <button 
@@ -489,7 +490,7 @@ export default function MonitorDevice() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group/prefix">
-                            <span>{d.prefix || '-'}</span>
+                            <span>{d.prefix ? String(d.prefix).toUpperCase() : '-'}</span>
                             {canEditPrefix && (
                               <button
                                 onClick={() => {
@@ -576,16 +577,23 @@ export default function MonitorDevice() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Pilih Akun Mikrotik (PPP/L2TP)</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Pilih Akun Mikrotik (L2TP)</label>
                 <select 
                   value={selectedMikrotikName}
                   onChange={e => setSelectedMikrotikName(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none"
                 >
                   <option value="" disabled>-- Pilih Akun --</option>
-                  {mikrotikSecrets.map((s, i) => (
-                    <option key={i} value={s.name}>{s.name} ({s.service || 'any'})</option>
-                  ))}
+                  {mikrotikSecrets
+                    .filter(s => s.service !== 'pppoe')
+                    .map((s, i) => {
+                      const isUsed = mappings.some(m => m.mikrotik_name === s.name) && s.name !== selectedAp?.mikrotik_name;
+                      return (
+                        <option key={i} value={s.name} disabled={isUsed}>
+                          {s.name} ({s.service || 'any'}) {isUsed ? '(Sudah Digunakan)' : ''}
+                        </option>
+                      );
+                    })}
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
                   Pilih nama rahasia (secret) yang benar dari Mikrotik. Pilihan ini akan menimpa pencocokan nama otomatis.

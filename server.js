@@ -495,11 +495,11 @@ app.prepare().then(() => {
             if (!device) return;
 
             const [resRuijie, resManual, resActive, resSecrets, resInterfaces] = await Promise.all([
-                supabase.from('ruijie_devices').select('*').eq('connection_type', 'L2TP'),
+                supabase.from('ruijie_devices').select('*'),
                 supabase.from('device_mappings').select('*'),
-                supabase.from('pppoe_active').select('name').eq('device_id', device.id),
-                supabase.from('pppoe_secrets').select('name').eq('device_id', device.id),
-                supabase.from('network_interfaces').select('name, running, disabled').eq('device_id', device.id)
+                supabase.from('pppoe_active').select('name'),
+                supabase.from('pppoe_secrets').select('name'),
+                supabase.from('network_interfaces').select('name, running, disabled')
             ]);
             
             const ruijie = resRuijie.data || [];
@@ -549,10 +549,10 @@ app.prepare().then(() => {
                 let finalStatus = 'Unknown';
                 let issue = null;
 
-                if (apStatus === 'Online' && mikrotikStatus === 'Online') finalStatus = 'Online';
-                else if (apStatus === 'Offline' && mikrotikStatus === 'Offline') { finalStatus = 'Offline'; issue = 'Semua Perangkat Mati';}
-                else if (apStatus === 'Online' && mikrotikStatus === 'Offline') { finalStatus = 'Online'; issue = 'Mikrotik Mati'; }
-                else if (apStatus === 'Offline' && mikrotikStatus === 'Online') { finalStatus = 'Offline'; issue = 'Access Point Mati / Kecabut'; }
+                finalStatus = apStatus;
+                if (apStatus === 'Online' && mikrotikStatus === 'Offline') issue = 'Mikrotik Mati';
+                else if (apStatus === 'Offline' && mikrotikStatus === 'Offline') issue = 'Semua Perangkat Mati';
+                else if (apStatus === 'Offline' && mikrotikStatus === 'Online') issue = 'Access Point Mati / Kecabut';
 
                 if (!secretName || secretName === '-') {
                     issue = 'Belum ditautkan (Nama Tidak Cocok)';
@@ -560,7 +560,7 @@ app.prepare().then(() => {
                     issue = 'Akun Mikrotik tidak ditemukan (Manual Link Salah)';
                 }
 
-                const prefixName = (existing && existing.is_prefix_manual) ? existing.prefix : (secretName || ap.alias);
+                const prefixName = ((existing && existing.is_prefix_manual) ? existing.prefix : (secretName || ap.alias))?.toUpperCase();
 
                 // Kembalikan log aktivitas karena dibutuhkan di tabel Log Aktivitas Dashboard
                 const prevStatus = previousMappingsStatus[ap.mac_address];
