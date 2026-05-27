@@ -883,7 +883,7 @@ function TopologyContent() {
         (!ifacePanelSearch ||
           (i.name &&
             i.name.toLowerCase().includes(ifacePanelSearch.toLowerCase()))) &&
-        i.type !== "l2tp-in",
+        i.type !== "l2tp-in" && i.type !== "pppoe-in",
     );
 
     filteredCore.forEach((i) => {
@@ -926,25 +926,25 @@ function TopologyContent() {
     return groups;
   }, [coreInterfaces, ifacePanelSearch, mappings]);
 
-  const { runningCount, downCount, totalOnlineGabungan } = useMemo(() => {
+  const { runningCount, downCount, l2tpOnlineGabungan } = useMemo(() => {
     let up = 0,
       down = 0,
-      gabunganOnline = 0;
+      l2tpOnline = 0;
     coreInterfaces.forEach((i) => {
-      if (i.type === "l2tp-in") return;
+      if (i.type === "l2tp-in" || i.type === "pppoe-in") return; // exclude raw interfaces
       if (i.running === "true" && i.disabled !== "true") up++;
       else if (i.disabled !== "true") down++;
     });
     mappings.forEach((m) => {
       if (m.final_status === "Online") {
         up++;
-        gabunganOnline++;
+        if (m.connection_type !== 'PPPOE') l2tpOnline++;
       } else down++;
     });
     return {
       runningCount: up,
       downCount: down,
-      totalOnlineGabungan: gabunganOnline,
+      l2tpOnlineGabungan: l2tpOnline,
     };
   }, [coreInterfaces, mappings]);
 
@@ -1654,14 +1654,14 @@ function TopologyContent() {
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] text-slate-500">
-                          Active Pelanggan
+                          Pelanggan Aktif
                         </p>
                         <p className="text-xs font-bold text-emerald-400">
-                          {totalOnlineGabungan + (coreStatus.pppoe_active || 0)}
+                          {l2tpOnlineGabungan + (coreStatus.pppoe_active || 0)}
 
                           <span className="text-[10px] px-1 font-bold text-slate-400">
-                            ({totalOnlineGabungan} +{" "}
-                            {coreStatus.pppoe_active || 0})
+                            ({l2tpOnlineGabungan} L2TP +{" "}
+                            {coreStatus.pppoe_active || 0} PPPoE)
                           </span>
                         </p>
                       </div>
