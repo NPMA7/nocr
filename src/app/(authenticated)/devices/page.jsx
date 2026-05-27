@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
   Timer,
+  Server,
 } from "lucide-react";
 import {
   isAdminRole,
@@ -497,8 +498,8 @@ export default function Devices() {
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-100">
-              Perangkat Jaringan
+            <h1 className="text-2xl font-bold flex items-center text-slate-100 gap-3">
+             <Server size={24} className="text-emerald-400" /> Perangkat Jaringan
             </h1>
             {syncStatus?.syncedAt && (
               <span

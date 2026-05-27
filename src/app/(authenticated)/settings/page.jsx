@@ -3,7 +3,7 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API_URL, useAppState } from '@/App';
-import { Save, Server, Shield, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key } from 'lucide-react';
+import { Save, Server, Shield, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key, } from 'lucide-react';
 import { isAdminRole, canRevealPasswords, getStoredUser, getRoleLabel } from '@/lib/roles';
 
 class ErrorBoundary extends React.Component {
@@ -501,7 +501,7 @@ function Settings() {
   return (
     <div className="h-full min-h-0 overflow-y-auto flex flex-col gap-6 max-w-4xl mx-auto w-full pb-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Pengaturan Sistem</h1>
+        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">  <Database size={24} /> Pengaturan Sistem</h1>
         <p className="text-sm text-slate-400">Konfigurasi pusat untuk NOCR dan Perangkat Core</p>
         {readOnlySettings && (
           <p className="text-xs text-amber-400/90 mt-1">
