@@ -633,7 +633,7 @@ function TopologyContent() {
     };
 
     if (socket) {
-      socket.on("device-metrics", handleMetricsUpdate);
+      socket.on("device-status", handleMetricsUpdate);
       socket.on("topology_updated", handleTopologyUpdated);
       socket.on("mikrotik_full_update", handleMikrotikUpdate);
       socket.on("mappings_updated", handleMappingsUpdate);
@@ -643,7 +643,7 @@ function TopologyContent() {
     }
     return () => {
       if (socket) {
-        socket.off("device-metrics", handleMetricsUpdate);
+        socket.off("device-status", handleMetricsUpdate);
         socket.off("topology_updated", handleTopologyUpdated);
         socket.off("mikrotik_full_update", handleMikrotikUpdate);
         socket.off("mappings_updated", handleMappingsUpdate);

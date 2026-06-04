@@ -15,7 +15,7 @@ const DashboardMap = dynamic(() => import('@/components/DashboardMap'), {
   )
 });
 
-const POLL_INTERVAL_MS = 15000;
+const POLL_INTERVAL_MS = 60000; // Increased to 1m (Realtime is handled by WebSockets)
 
 export default function Dashboard() {
   const router = useRouter();
@@ -176,7 +176,7 @@ export default function Dashboard() {
       socket.on('topology_refresh', handleTopologyRefresh);
       socket.on('interfaces_updated', handleInterfaceUpdate);
       socket.on('pppoe_updated', handlePppoeUpdate);
-      socket.on('device_status_update', handleDeviceStatus);
+      socket.on('device-status', handleDeviceStatus);
       socket.on('mikrotik_full_update', handleMikrotikFull);
       socket.on('activity_log', handleNewActivityLog);
       socket.on('mappings_updated', handleMappingsUpdated);
@@ -191,7 +191,7 @@ export default function Dashboard() {
         socket.off('topology_refresh', handleTopologyRefresh);
         socket.off('interfaces_updated', handleInterfaceUpdate);
         socket.off('pppoe_updated', handlePppoeUpdate);
-        socket.off('device_status_update', handleDeviceStatus);
+        socket.off('device-status', handleDeviceStatus);
         socket.off('mikrotik_full_update', handleMikrotikFull);
         socket.off('activity_log', handleNewActivityLog);
         socket.off('mappings_updated', handleMappingsUpdated);

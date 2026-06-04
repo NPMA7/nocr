@@ -77,10 +77,12 @@ app.prepare().then(() => {
     const targetStatuses = {};
 
     async function getCoreDevice() {
-        const { data } = await supabase.from('devices').select('*').eq('type', 'mikrotik-core').limit(1);
-        if (data?.length) return data[0];
-        const { data: fallback } = await supabase.from('devices').select('*').eq('type', 'mikrotik').limit(1);
-        return fallback?.[0] || null;
+        const devices = await getCachedDevices();
+        if (!devices) return null;
+        const core = devices.find(d => d.type === 'mikrotik-core');
+        if (core) return core;
+        const fallback = devices.find(d => d.type === 'mikrotik');
+        return fallback || null;
     }
 
     let lastCpuAlert = 0;
@@ -165,16 +167,51 @@ app.prepare().then(() => {
 
     global.addActivityLog = addActivityLog;
 
+    // Caches for ping worker
+    let devicesCache = { data: null, timestamp: 0 };
+    let nodesCache = { data: null, timestamp: 0 };
+    let activePppoeCache = { data: null, timestamp: 0 };
+
+    async function getCachedDevices() {
+        if (devicesCache.data && (Date.now() - devicesCache.timestamp < 60000 * 5)) {
+            return devicesCache.data;
+        }
+        const { data } = await supabase.from('devices').select('id, name, ip_address, type');
+        devicesCache = { data, timestamp: Date.now() };
+        return data;
+    }
+
+    async function getCachedNodes() {
+        if (nodesCache.data && (Date.now() - nodesCache.timestamp < 60000 * 5)) {
+            return nodesCache.data;
+        }
+        const { data } = await supabase.from('topology_nodes').select('id, label, type');
+        nodesCache = { data, timestamp: Date.now() };
+        return data;
+    }
+
+    async function getCachedActivePppoe() {
+        if (activePppoeCache.data && (Date.now() - activePppoeCache.timestamp < 60000 * 1)) {
+            return activePppoeCache.data;
+        }
+        const { data } = await supabase.from('pppoe_active').select('name, address');
+        activePppoeCache = { data, timestamp: Date.now() };
+        return data;
+    }
+
     // Supabase Realtime fallback/sync
     const channel = supabase.channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
             if (payload.table === 'network_interfaces') io.emit('interface_update', payload);
+            if (payload.table === 'devices') devicesCache.data = null;
             if (payload.table === 'pppoe_active') {
+                activePppoeCache.data = null;
                 io.emit('pppoe_active_update', payload);
-                broadcastDashboardCoreStatus();
+                // Removed broadcastDashboardCoreStatus() to prevent mass Mikrotik API calls on bulk inserts
             }
             if (payload.table === 'pppoe_secrets') io.emit('pppoe_secret_update', payload);
             if (payload.table === 'topology_nodes' || payload.table === 'topology_edges') {
+                nodesCache.data = null;
                 io.emit('dashboard_topology_refresh');
             }
             if (payload.table === 'activity_logs' && payload.eventType === 'INSERT') {
@@ -279,9 +316,9 @@ app.prepare().then(() => {
         isWorkerRunning = true;
 
         try {
-            const { data: devices } = await supabase.from('devices').select('id, name, ip_address, type');
-            const { data: nodes } = await supabase.from('topology_nodes').select('id, label, type');
-            const { data: activePppoe } = await supabase.from('pppoe_active').select('name, address');
+            const devices = await getCachedDevices();
+            const nodes = await getCachedNodes();
+            const activePppoe = await getCachedActivePppoe();
 
             const allTargets = [];
 
