@@ -191,6 +191,9 @@ app.prepare().then(() => {
     }
 
     async function getCachedActivePppoe() {
+        if (global.cachedPppoeActive) {
+            return global.cachedPppoeActive;
+        }
         if (activePppoeCache.data && (Date.now() - activePppoeCache.timestamp < 60000 * 1)) {
             return activePppoeCache.data;
         }
@@ -474,6 +477,10 @@ app.prepare().then(() => {
 
             if (pppoe && pppoe.length >= 0) {
                 try {
+                    global.cachedPppoeActive = pppoe.map(p => ({
+                        name: p.name || null,
+                        address: p.address || null
+                    }));
                     await supabase.from('pppoe_active').delete().eq('device_id', device.id);
                     if (pppoe.length > 0) {
                         const rows = pppoe.map(p => ({
