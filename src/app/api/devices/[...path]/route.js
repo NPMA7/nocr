@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import mikrotik from '@/lib/mikrotik';
 import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
 
@@ -12,13 +12,13 @@ const sendError = (err, defaultStatus = 500) => {
 
 // Helper: find the core MikroTik device
 async function getCoreDevice() {
-    const { data } = await supabase
+    const { data } = await db
         .from('devices')
         .select('*')
         .eq('type', 'mikrotik-core')
         .limit(1);
     if (data && data.length > 0) return data[0];
-    const { data: fallback } = await supabase
+    const { data: fallback } = await db
         .from('devices')
         .select('*')
         .eq('type', 'mikrotik')
@@ -80,7 +80,7 @@ export async function GET(req, { params }) {
                 let connError = null;
 
                 const checkCache = async () => {
-                    const { data: cached } = await supabase
+                    const { data: cached } = await db
                         .from('network_interfaces')
                         .select('*')
                         .eq('device_id', device.id)
@@ -123,7 +123,7 @@ export async function GET(req, { params }) {
                 if (interfaces && interfaces.length > 0) {
                     (async () => {
                         try {
-                            await supabase.from('network_interfaces').delete().eq('device_id', device.id);
+                            await db.from('network_interfaces').delete().eq('device_id', device.id);
                             const rows = interfaces.map(iface => ({
                                 device_id: device.id,
                                 ros_id: iface['.id'] || null,
@@ -136,7 +136,7 @@ export async function GET(req, { params }) {
                                 comment: iface.comment || null,
                                 synced_at: new Date().toISOString()
                             }));
-                            await supabase.from('network_interfaces').insert(rows);
+                            await db.from('network_interfaces').insert(rows);
                         } catch (dbErr) {
                             console.warn('⚠️ [Cache] Gagal menyimpan interfaces:', dbErr.message);
                         }
@@ -151,7 +151,7 @@ export async function GET(req, { params }) {
                 let useCacheFallback = false;
                 
                 const checkCache = async () => {
-                    const { data: cached } = await supabase
+                    const { data: cached } = await db
                         .from('pppoe_active')
                         .select('*')
                         .eq('device_id', device.id);
@@ -189,7 +189,7 @@ export async function GET(req, { params }) {
 
                 (async () => {
                     try {
-                        await supabase.from('pppoe_active').delete().eq('device_id', device.id);
+                        await db.from('pppoe_active').delete().eq('device_id', device.id);
                         if (pppoe && pppoe.length > 0) {
                             const rows = pppoe.map(p => ({
                                 device_id: device.id,
@@ -201,7 +201,7 @@ export async function GET(req, { params }) {
                                 uptime: p.uptime || null,
                                 synced_at: new Date().toISOString()
                             }));
-                            await supabase.from('pppoe_active').insert(rows);
+                            await db.from('pppoe_active').insert(rows);
                         }
                     } catch (dbErr) {
                         console.warn('⚠️ [Cache] Gagal menyimpan sesi PPPoE aktif:', dbErr.message);
@@ -216,7 +216,7 @@ export async function GET(req, { params }) {
                 let useCacheFallback = false;
 
                 const checkCache = async () => {
-                    const { data: cached } = await supabase
+                    const { data: cached } = await db
                         .from('pppoe_secrets')
                         .select('*')
                         .eq('device_id', device.id)
@@ -259,7 +259,7 @@ export async function GET(req, { params }) {
                 if (secrets && secrets.length > 0) {
                     (async () => {
                         try {
-                            const { error: delErr } = await supabase.from('pppoe_secrets').delete().eq('device_id', device.id);
+                            const { error: delErr } = await db.from('pppoe_secrets').delete().eq('device_id', device.id);
                             if (delErr) {
                                 console.error('⚠️ [Cache] Gagal menghapus cache PPPoE secrets lama:', delErr.message);
                                 return;
@@ -276,7 +276,7 @@ export async function GET(req, { params }) {
                                 remote_address: sec['remote-address'] || null,
                                 synced_at: new Date().toISOString()
                             }));
-                            const { error: insErr } = await supabase.from('pppoe_secrets').insert(rows);
+                            const { error: insErr } = await db.from('pppoe_secrets').insert(rows);
                             if (insErr) {
                                 console.error('⚠️ [Cache] Gagal menyisipkan PPPoE secrets baru ke Supabase:', insErr.message, insErr.details);
                             } else {
@@ -292,7 +292,7 @@ export async function GET(req, { params }) {
             }
         } else if (path.length === 1) { // Single device GET /[id]
             const id = path[0];
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('devices')
                 .select('*')
                 .eq('id', id)
@@ -330,7 +330,7 @@ export async function POST(req, { params }) {
                 
                 try {
                     const ros_id = result && result[0] ? result[0].ret : null;
-                    await supabase.from('network_interfaces').insert([{
+                    await db.from('network_interfaces').insert([{
                         device_id: device.id,
                         ros_id: ros_id,
                         name: body.name,
@@ -350,7 +350,7 @@ export async function POST(req, { params }) {
                 await mikrotik.addPPPoESecret(device, body);
 
                 try {
-                    await supabase.from('pppoe_secrets').insert([{
+                    await db.from('pppoe_secrets').insert([{
                         device_id: device.id,
                         name: body.name,
                         password: body.password,
@@ -406,7 +406,7 @@ export async function PUT(req, { params }) {
                 await mikrotik.editPPPoESecret(device, id, { name, password, profile, service });
 
                 try {
-                    await supabase.from('pppoe_secrets')
+                    await db.from('pppoe_secrets')
                         .update({
                             name: name,
                             password: password,
@@ -430,7 +430,7 @@ export async function PUT(req, { params }) {
             const updateData = { name, ip_address, username, port, type };
             if (password) updateData.password = password;
             
-            const { error } = await supabase
+            const { error } = await db
                 .from('devices')
                 .update(updateData)
                 .eq('id', id);
@@ -474,7 +474,7 @@ export async function DELETE(req, { params }) {
                 await mikrotik.deleteInterface(device, id, type);
                 
                 try {
-                    await supabase.from('network_interfaces').delete()
+                    await db.from('network_interfaces').delete()
                         .eq('device_id', device.id)
                         .eq('ros_id', id);
                 } catch (e) {}
@@ -488,12 +488,12 @@ export async function DELETE(req, { params }) {
                 // Fetch active session name first for logging
                 let sessionName = 'Tidak diketahui';
                 try {
-                    const { data: actSess } = await supabase.from('pppoe_active').select('name').eq('device_id', device.id).eq('ros_id', id).maybeSingle();
+                    const { data: actSess } = await db.from('pppoe_active').select('name').eq('device_id', device.id).eq('ros_id', id).maybeSingle();
                     if (actSess?.name) sessionName = actSess.name;
                 } catch (err) {}
 
                 await mikrotik.disconnectPPPoESession(device, id);
-                await supabase.from('pppoe_active').delete().eq('device_id', device.id).eq('ros_id', id);
+                await db.from('pppoe_active').delete().eq('device_id', device.id).eq('ros_id', id);
 
                 if (global.addActivityLog) {
                     global.addActivityLog(`Sesi PPPoE aktif ${sessionName} diputus secara paksa`);
@@ -510,7 +510,7 @@ export async function DELETE(req, { params }) {
 
                 if (name) {
                     try {
-                        await supabase.from('pppoe_secrets')
+                        await db.from('pppoe_secrets')
                             .delete()
                             .eq('device_id', device.id)
                             .eq('name', name);
@@ -528,11 +528,11 @@ export async function DELETE(req, { params }) {
             if (id.startsWith('node_')) {
                 let nodeLabel = id;
                 try {
-                    const { data: nodeData } = await supabase.from('topology_nodes').select('label').eq('id', id).maybeSingle();
+                    const { data: nodeData } = await db.from('topology_nodes').select('label').eq('id', id).maybeSingle();
                     if (nodeData?.label) nodeLabel = nodeData.label;
                 } catch (e) {}
 
-                const { error } = await supabase.from('topology_nodes').delete().eq('id', id);
+                const { error } = await db.from('topology_nodes').delete().eq('id', id);
                 if (error) throw error;
 
                 if (global.addActivityLog) {
@@ -541,11 +541,11 @@ export async function DELETE(req, { params }) {
             } else {
                 let devName = id;
                 try {
-                    const { data: devData } = await supabase.from('devices').select('name').eq('id', id).maybeSingle();
+                    const { data: devData } = await db.from('devices').select('name').eq('id', id).maybeSingle();
                     if (devData?.name) devName = devData.name;
                 } catch (e) {}
 
-                const { error } = await supabase.from('devices').delete().eq('id', id);
+                const { error } = await db.from('devices').delete().eq('id', id);
                 if (error) throw error;
 
                 if (global.addActivityLog) {

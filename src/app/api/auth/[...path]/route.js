@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole } from '@/lib/auth';
 
 // Helper for error responses
@@ -17,7 +17,7 @@ export async function GET(req, { params }) {
     
     try {
         if (path[0] === 'status') {
-            const { count, error } = await supabase
+            const { count, error } = await db
                 .from('admin_users')
                 .select('*', { count: 'exact', head: true });
 
@@ -39,7 +39,7 @@ export async function GET(req, { params }) {
             const user = verifyAuth(req);
             enforceAdmin(user);
             
-            const { data, error } = await supabase.from('admin_users').select('id, username, role, created_at');
+            const { data, error } = await db.from('admin_users').select('id, username, role, created_at');
             if (error) throw error;
             return NextResponse.json(
                 (data || []).map((u) => ({
@@ -67,7 +67,7 @@ export async function POST(req, { params }) {
                 return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
             }
 
-            const { count } = await supabase.from('admin_users').select('*', { count: 'exact', head: true });
+            const { count } = await db.from('admin_users').select('*', { count: 'exact', head: true });
             if (count > 0) {
                 return NextResponse.json({ error: 'Sistem sudah dikonfigurasi. Silakan login.' }, { status: 403 });
             }
@@ -75,7 +75,7 @@ export async function POST(req, { params }) {
             const salt = await bcrypt.genSalt(10);
             const password_hash = await bcrypt.hash(password, salt);
 
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('admin_users')
                 .insert([{ username, password_hash, role: 'admin' }])
                 .select();
@@ -103,7 +103,7 @@ export async function POST(req, { params }) {
                 return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
             }
 
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('admin_users')
                 .select('*')
                 .eq('username', username)
@@ -155,7 +155,7 @@ export async function POST(req, { params }) {
             const salt = await bcrypt.genSalt(10);
             const password_hash = await bcrypt.hash(password, salt);
 
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('admin_users')
                 .insert([{ username: username.trim(), password_hash, role: normalizedRole }])
                 .select('id, username, role, created_at');
@@ -236,7 +236,7 @@ export async function PATCH(req, { params }) {
             }
 
             // Fetch current user details from DB
-            const targetUser = await supabase.from('admin_users').select('username, role').eq('id', id).single();
+            const targetUser = await db.from('admin_users').select('username, role').eq('id', id).single();
             if (targetUser.error || !targetUser.data) {
                 return NextResponse.json(
                     { error: 'Pengguna tidak ditemukan.' },
@@ -247,7 +247,7 @@ export async function PATCH(req, { params }) {
 
             // Safety check: Cannot demote the last remaining admin
             if (updateData.role && updateData.role !== 'admin' && previousRole === 'admin') {
-                const { data: allUsers } = await supabase.from('admin_users').select('id, role');
+                const { data: allUsers } = await db.from('admin_users').select('id, role');
                 const adminCount = (allUsers || []).filter(
                     (u) => normalizeRole(u.role) === 'admin'
                 ).length;
@@ -259,7 +259,7 @@ export async function PATCH(req, { params }) {
                 }
             }
 
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('admin_users')
                 .update(updateData)
                 .eq('id', id)
@@ -315,7 +315,7 @@ export async function DELETE(req, { params }) {
                 return NextResponse.json({ error: 'Tidak dapat menghapus akun Anda sendiri' }, { status: 400 });
             }
             
-            const { error } = await supabase.from('admin_users').delete().eq('id', id);
+            const { error } = await db.from('admin_users').delete().eq('id', id);
             if (error) throw error;
             
             return NextResponse.json({ success: true });

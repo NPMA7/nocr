@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
 import { connectVpn, disconnectVpn, checkVpnStatus } from '@/lib/vpn';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -12,7 +12,7 @@ const sendError = (err, defaultStatus = 500) => {
 
 // Helper internal untuk mengambil konfigurasi VPN dari database Supabase
 async function fetchDbConfig() {
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('vpn_settings')
         .select('*')
         .eq('id', 1)
@@ -113,7 +113,7 @@ export async function POST(req, { params }) {
             }
 
             // Simpan perubahan murni ke database Supabase tanpa menyentuh lokal disk fs
-            const { error: dbErr } = await supabase
+            const { error: dbErr } = await db
                 .from('vpn_settings')
                 .upsert({
                     id: 1,

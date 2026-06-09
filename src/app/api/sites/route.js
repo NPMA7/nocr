@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { mergeMappingWithSite } from '@/lib/sitesApi';
 
 export async function GET() {
   try {
     // --- L2TP: dari device_mappings (sumber utama) ---
-    const { data: mappings, error } = await supabase.from('device_mappings').select('*');
+    const { data: mappings, error } = await db.from('device_mappings').select('*');
     if (error) throw error;
 
     // Ambil semua ruijie_devices (L2TP dan PPPoE)
-    const { data: ruijieData } = await supabase
+    const { data: ruijieData } = await db
       .from('ruijie_devices')
       .select('mac_address, last_online, connection_type, alias, status');
-    const { data: pppoeData } = await supabase
+    const { data: pppoeData } = await db
       .from('pppoe_secrets')
       .select('name, last_logged_out, remote_address');
 
@@ -71,7 +71,7 @@ export async function GET() {
     let sites = [];
     let pics = [];
     if (allMacs.length > 0) {
-      const { data: siteRows, error: siteErr } = await supabase
+      const { data: siteRows, error: siteErr } = await db
         .from('sites')
         .select('*')
         .in('ruijie_mac', allMacs);
@@ -80,7 +80,7 @@ export async function GET() {
     }
     const siteIds = sites.map((s) => s.id);
     if (siteIds.length > 0) {
-      const { data: picRows } = await supabase
+      const { data: picRows } = await db
         .from('site_pics')
         .select('*')
         .in('site_id', siteIds)

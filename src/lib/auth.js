@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { normalizeRole, ROLES, canEditTopology } from '@/lib/roles';
 
 export { normalizeRole, ROLES, canEditTopology, canMutateApp, canRevealPasswords } from '@/lib/roles';
@@ -28,7 +28,7 @@ export function verifyAuth(req) {
 /** Auth dengan role terbaru dari database (bukan hanya dari JWT). */
 export async function resolveAuth(req) {
     const decoded = verifyAuth(req);
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('admin_users')
         .select('id, username, role')
         .eq('id', decoded.id)

@@ -3,7 +3,7 @@ const next = require('next');
 const http = require('http');
 const { Server } = require('socket.io');
 const ping = require('ping');
-const supabase = require('./src/lib/supabaseClient');
+const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -39,19 +39,19 @@ app.prepare().then(() => {
         io.emit('node_presence', payload);
     }
 
-    // Batasan jumlah log di database Supabase
+    // Batasan jumlah log di database
     const MAX_ACTIVITY_LOGS_DB = 1000;
 
-    // Fungsi otomatis memangkas log lama di Supabase agar database tidak bengkak
+    // Fungsi otomatis memangkas log lama di database agar tidak bengkak
     async function trimActivityLogsInDb() {
         try {
-            const { count, error: countErr } = await supabase
+            const { count, error: countErr } = await db
                 .from('activity_logs')
                 .select('*', { count: 'exact', head: true });
             if (countErr || count == null || count <= MAX_ACTIVITY_LOGS_DB) return;
 
             const excess = count - MAX_ACTIVITY_LOGS_DB;
-            const { data: oldest, error: fetchErr } = await supabase
+            const { data: oldest, error: fetchErr } = await db
                 .from('activity_logs')
                 .select('id')
                 .order('time', { ascending: true })
@@ -62,7 +62,7 @@ app.prepare().then(() => {
             const batchSize = 200;
             for (let i = 0; i < ids.length; i += batchSize) {
                 const batch = ids.slice(i, i + batchSize);
-                const { error: delErr } = await supabase.from('activity_logs').delete().in('id', batch);
+                const { error: delErr } = await db.from('activity_logs').delete().in('id', batch);
                 if (delErr) {
                     console.error('Gagal memangkas log aktivitas di database:', delErr.message);
                     return;
@@ -148,13 +148,13 @@ app.prepare().then(() => {
         const log = { time: new Date().toISOString(), message };
 
         try {
-            // Langsung masukkan ke tabel database Supabase
-            const { error } = await supabase
+            // Langsung masukkan ke tabel database
+            const { error } = await db
                 .from('activity_logs')
                 .insert([{ message }]);
             
             if (error) {
-                console.error("Gagal menyimpan log ke database Supabase:", error.message);
+                console.error("Gagal menyimpan log ke database:", error.message);
             } else {
                 await trimActivityLogsInDb();
             }
@@ -182,7 +182,7 @@ app.prepare().then(() => {
         if (devicesCache.data && (Date.now() - devicesCache.timestamp < 30000)) {
             return devicesCache.data;
         }
-        const { data } = await supabase.from('devices').select('id, name, ip_address, type, username, password, port');
+        const { data } = await db.from('devices').select('id, name, ip_address, type, username, password, port');
         devicesCache = { data, timestamp: Date.now() };
         return data;
     }
@@ -191,7 +191,7 @@ app.prepare().then(() => {
         if (nodesCache.data && (Date.now() - nodesCache.timestamp < 60000 * 5)) {
             return nodesCache.data;
         }
-        const { data } = await supabase.from('topology_nodes').select('id, label, type');
+        const { data } = await db.from('topology_nodes').select('id, label, type');
         nodesCache = { data, timestamp: Date.now() };
         return data;
     }
@@ -203,13 +203,13 @@ app.prepare().then(() => {
         if (activePppoeCache.data && (Date.now() - activePppoeCache.timestamp < 60000 * 1)) {
             return activePppoeCache.data;
         }
-        const { data } = await supabase.from('pppoe_active').select('name, address');
+        const { data } = await db.from('pppoe_active').select('name, address');
         activePppoeCache = { data, timestamp: Date.now() };
         return data;
     }
 
-    // Supabase Realtime fallback/sync
-    const channel = supabase.channel('schema-db-changes')
+    // Database Realtime fallback/sync
+    const channel = db.channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
             if (payload.table === 'network_interfaces') { networkInterfacesCache.data = null; io.emit('interface_update', payload); }
             if (payload.table === 'devices') devicesCache.data = null;
@@ -237,7 +237,7 @@ app.prepare().then(() => {
         clients.add(socket.id);
 
         // Mengambil log awal langsung dari database secara asinkron saat client connect
-        supabase
+        db
             .from('activity_logs')
             .select('time, message')
             .not('message', 'ilike', '%berubah menjadi Online%')
@@ -248,8 +248,9 @@ app.prepare().then(() => {
                 if (data) socket.emit('initial_logs', data);
             });
 
+
         socket.on('request_initial_logs', async () => {
-            const { data } = await supabase
+            const { data } = await db
                 .from('activity_logs')
                 .select('time, message')
                 .not('message', 'ilike', '%berubah menjadi Online%')
@@ -369,7 +370,7 @@ app.prepare().then(() => {
                     targetStatuses[target.id] = status;
 
                     try {
-                        await supabase
+                        await db
                             .from('device_status')
                             .upsert({
                                 device_id: target.id,
@@ -435,7 +436,7 @@ app.prepare().then(() => {
                 io.emit('ruijie_update', ruijieDevicesCache.data);
                 return;
             }
-            const { data: devices, error } = await supabase
+            const { data: devices, error } = await db
                 .from('ruijie_devices')
                 .select('*')
                 .order('alias', { ascending: true });
@@ -472,7 +473,7 @@ app.prepare().then(() => {
             async function syncTable(tableName, items, mapFn) {
                 if (!items || items.length === 0) return;
                 
-                const { data: existing } = await supabase.from(tableName).select('*').eq('device_id', device.id);
+                const { data: existing } = await db.from(tableName).select('*').eq('device_id', device.id);
                 const existingMap = new Map((existing || []).map(e => [e.ros_id || e.name, e]));
                 
                 const rowsToUpsert = [];
@@ -503,14 +504,14 @@ app.prepare().then(() => {
 
                 if (rowsToUpsert.length > 0) {
                     for (let i = 0; i < rowsToUpsert.length; i += 100) {
-                        await supabase.from(tableName).upsert(rowsToUpsert.slice(i, i + 100));
+                        await db.from(tableName).upsert(rowsToUpsert.slice(i, i + 100));
                     }
                 }
                 
                 const idsToDelete = (existing || []).filter(e => !currentKeys.has(e.ros_id || e.name)).map(e => e.id);
                 if (idsToDelete.length > 0) {
                     for (let i = 0; i < idsToDelete.length; i += 100) {
-                        await supabase.from(tableName).delete().in('id', idsToDelete.slice(i, i + 100));
+                        await db.from(tableName).delete().in('id', idsToDelete.slice(i, i + 100));
                     }
                 }
             }
@@ -588,9 +589,11 @@ app.prepare().then(() => {
             const device = await getCoreDevice();
             if (!device) return;
 
-            const fetchCache = async (cacheObj, table, selectQuery) => {
+            const fetchCache = async (cacheObj, table, selectQuery, filterObj = null) => {
                 if (cacheObj.data && (Date.now() - cacheObj.timestamp < 30000)) return cacheObj.data;
-                const { data } = await supabase.from(table).select(selectQuery);
+                let q = db.from(table).select(selectQuery);
+                if (filterObj) q = q.eq(filterObj.col, filterObj.val);
+                const { data } = await q;
                 cacheObj.data = data || [];
                 cacheObj.timestamp = Date.now();
                 return cacheObj.data;
@@ -599,9 +602,9 @@ app.prepare().then(() => {
             const [ruijie, mappings, active, secrets, interfaces] = await Promise.all([
                 fetchCache(ruijieDevicesCache, 'ruijie_devices', '*'),
                 fetchCache(deviceMappingsCache, 'device_mappings', '*'),
-                fetchCache(activePppoeCache, 'pppoe_active', 'name'),
-                fetchCache(pppoeSecretsCache, 'pppoe_secrets', 'name'),
-                fetchCache(networkInterfacesCache, 'network_interfaces', 'name, running, disabled')
+                fetchCache(activePppoeCache, 'pppoe_active', 'name', {col: 'device_id', val: device.id}),
+                fetchCache(pppoeSecretsCache, 'pppoe_secrets', 'name', {col: 'device_id', val: device.id}),
+                fetchCache(networkInterfacesCache, 'network_interfaces', 'name, running, disabled', {col: 'device_id', val: device.id})
             ]);
             
             const normalizeName = (name) => name ? name.toLowerCase().replace(/[-_\s]/g, '') : '';
@@ -712,7 +715,7 @@ app.prepare().then(() => {
             if (changedData.length > 0) {
                 for (let i = 0; i < changedData.length; i += 100) {
                     const batch = changedData.slice(i, i + 100);
-                    await supabase.from('device_mappings').upsert(batch, { onConflict: 'ruijie_mac' });
+                    await db.from('device_mappings').upsert(batch, { onConflict: 'ruijie_mac' });
                 }
             }
 

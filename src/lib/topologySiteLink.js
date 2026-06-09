@@ -45,10 +45,10 @@ export function topologyFieldsFromSite(site, pics = []) {
   };
 }
 
-export async function findMappingByPrefix(supabase, prefix) {
+export async function findMappingByPrefix(db, prefix) {
   if (!prefix?.trim()) return null;
   const p = prefix.trim();
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('device_mappings')
     .select('ruijie_mac, prefix')
     .ilike('prefix', p);
@@ -59,9 +59,9 @@ export async function findMappingByPrefix(supabase, prefix) {
   return row || null;
 }
 
-export async function findTopologyNodeForSite(supabase, site, mappingPrefix) {
+export async function findTopologyNodeForSite(db, site, mappingPrefix) {
   if (site?.topology_node_id) {
-    const { data } = await supabase
+    const { data } = await db
       .from('topology_nodes')
       .select('*')
       .eq('id', site.topology_node_id)
@@ -70,7 +70,7 @@ export async function findTopologyNodeForSite(supabase, site, mappingPrefix) {
   }
   const prefix = mappingPrefix?.trim();
   if (!prefix) return null;
-  const { data: nodes } = await supabase
+  const { data: nodes } = await db
     .from('topology_nodes')
     .select('*')
     .ilike('linked_interface', prefix);
@@ -83,14 +83,14 @@ export async function findTopologyNodeForSite(supabase, site, mappingPrefix) {
   );
 }
 
-export async function findSiteForTopologyNode(supabase, node) {
+export async function findSiteForTopologyNode(db, node) {
   if (node?.site_id) {
-    const { data } = await supabase.from('sites').select('*').eq('id', node.site_id).maybeSingle();
+    const { data } = await db.from('sites').select('*').eq('id', node.site_id).maybeSingle();
     if (data) return data;
   }
-  const mapping = await findMappingByPrefix(supabase, node?.linked_interface);
+  const mapping = await findMappingByPrefix(db, node?.linked_interface);
   if (!mapping) return null;
-  const { data: site } = await supabase
+  const { data: site } = await db
     .from('sites')
     .select('*')
     .eq('ruijie_mac', mapping.ruijie_mac)
@@ -98,9 +98,9 @@ export async function findSiteForTopologyNode(supabase, node) {
   return site || null;
 }
 
-export async function loadSitePics(supabase, siteId) {
+export async function loadSitePics(db, siteId) {
   if (!siteId) return [];
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('site_pics')
     .select('*')
     .eq('site_id', siteId)
@@ -110,42 +110,42 @@ export async function loadSitePics(supabase, siteId) {
 }
 
 /** Set site_id + topology_node_id (1:1 — lepaskan tautan lama yang bentrok) */
-export async function bindTopologyNodeToSite(supabase, nodeId, siteId) {
+export async function bindTopologyNodeToSite(db, nodeId, siteId) {
   if (!nodeId || !siteId) return;
 
-  await supabase
+  await db
     .from('topology_nodes')
     .update({ site_id: null })
     .eq('site_id', siteId)
     .neq('id', nodeId);
 
-  await supabase
+  await db
     .from('sites')
     .update({ topology_node_id: null })
     .eq('topology_node_id', nodeId)
     .neq('id', siteId);
 
-  await supabase.from('topology_nodes').update({ site_id: siteId }).eq('id', nodeId);
-  await supabase.from('sites').update({ topology_node_id: nodeId }).eq('id', siteId);
+  await db.from('topology_nodes').update({ site_id: siteId }).eq('id', nodeId);
+  await db.from('sites').update({ topology_node_id: nodeId }).eq('id', siteId);
 }
 
 /** Site → topology_nodes (hanya tautan site_id; vendor/PIC tetap di sites) */
-export async function syncSiteToTopologyNode(supabase, site, pics, mappingPrefix) {
-  const node = await findTopologyNodeForSite(supabase, site, mappingPrefix);
+export async function syncSiteToTopologyNode(db, site, pics, mappingPrefix) {
+  const node = await findTopologyNodeForSite(db, site, mappingPrefix);
   if (!node) return null;
 
-  await bindTopologyNodeToSite(supabase, node.id, site.id);
+  await bindTopologyNodeToSite(db, node.id, site.id);
   const fields = topologyFieldsFromSite(site, pics);
   return { ...node, ...fields, site_id: site.id };
 }
 
 /** topology_nodes → sites + site_pics */
-export async function syncTopologyNodeToSite(supabase, node) {
-  const mapping = await findMappingByPrefix(supabase, node?.linked_interface);
+export async function syncTopologyNodeToSite(db, node) {
+  const mapping = await findMappingByPrefix(db, node?.linked_interface);
   if (!mapping) return null;
 
   const fields = siteFieldsFromTopologyNode(node);
-  let site = await findSiteForTopologyNode(supabase, node);
+  let site = await findSiteForTopologyNode(db, node);
 
   const sitePayload = {
     ruijie_mac: mapping.ruijie_mac,
@@ -159,7 +159,7 @@ export async function syncTopologyNodeToSite(supabase, node) {
   if (site?.id) {
     // Only update coords and link. Do not overwrite vendor/pics for existing sites 
     // to prevent accidental mass wipes from topology page.
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await db
       .from('sites')
       .update(sitePayload)
       .eq('id', site.id)
@@ -170,7 +170,7 @@ export async function syncTopologyNodeToSite(supabase, node) {
   } else {
     // For new sites, insert with vendor
     sitePayload.vendor = fields.vendor;
-    const { data: inserted, error } = await supabase
+    const { data: inserted, error } = await db
       .from('sites')
       .insert(sitePayload)
       .select()
@@ -186,22 +186,22 @@ export async function syncTopologyNodeToSite(supabase, node) {
       sort_order: i,
     }));
     if (validPics.length > 0) {
-      const { error: picErr } = await supabase.from('site_pics').insert(validPics);
+      const { error: picErr } = await db.from('site_pics').insert(validPics);
       if (picErr) throw picErr;
     }
   }
 
-  await bindTopologyNodeToSite(supabase, node.id, site.id);
+  await bindTopologyNodeToSite(db, node.id, site.id);
   return site;
 }
 
 /** Coba tautkan node ke site lewat prefix (linked_interface = prefix mapping) */
-export async function autoLinkTopologyNode(supabase, node) {
+export async function autoLinkTopologyNode(db, node) {
   if (!node?.linked_interface?.trim()) return null;
-  const mapping = await findMappingByPrefix(supabase, node.linked_interface);
+  const mapping = await findMappingByPrefix(db, node.linked_interface);
   if (!mapping) return null;
 
-  let { data: site } = await supabase
+  let { data: site } = await db
     .from('sites')
     .select('*')
     .eq('ruijie_mac', mapping.ruijie_mac)
@@ -209,7 +209,7 @@ export async function autoLinkTopologyNode(supabase, node) {
 
   if (!site) {
     const fromNode = siteFieldsFromTopologyNode(node);
-    const { data: inserted, error } = await supabase
+    const { data: inserted, error } = await db
       .from('sites')
       .insert({
         ruijie_mac: mapping.ruijie_mac,
@@ -225,7 +225,7 @@ export async function autoLinkTopologyNode(supabase, node) {
     site = inserted;
 
     if (fromNode.pics.length > 0) {
-      await supabase.from('site_pics').insert(
+      await db.from('site_pics').insert(
         fromNode.pics.map((p, i) => ({
           site_id: site.id,
           name: p.name,
@@ -235,29 +235,29 @@ export async function autoLinkTopologyNode(supabase, node) {
       );
     }
   } else {
-    await bindTopologyNodeToSite(supabase, node.id, site.id);
+    await bindTopologyNodeToSite(db, node.id, site.id);
   }
 
-  const pics = await loadSitePics(supabase, site.id);
-  await syncSiteToTopologyNode(supabase, site, pics, mapping.prefix);
+  const pics = await loadSitePics(db, site.id);
+  await syncSiteToTopologyNode(db, site, pics, mapping.prefix);
   return site;
 }
 
 /** Enrich node untuk response API: data sites + pic utama */
-export async function enrichTopologyNodeWithSite(supabase, node) {
+export async function enrichTopologyNodeWithSite(db, node) {
   if (!node) return node;
   let site = null;
   let pics = [];
 
   if (node.site_id) {
-    const { data } = await supabase.from('sites').select('*').eq('id', node.site_id).maybeSingle();
+    const { data } = await db.from('sites').select('*').eq('id', node.site_id).maybeSingle();
     site = data;
   }
   if (!site) {
-    site = await findSiteForTopologyNode(supabase, node);
+    site = await findSiteForTopologyNode(db, node);
   }
   if (site) {
-    pics = await loadSitePics(supabase, site.id);
+    pics = await loadSitePics(db, site.id);
     const fields = topologyFieldsFromSite(site, pics);
     return {
       ...node,
@@ -278,15 +278,15 @@ export async function enrichTopologyNodeWithSite(supabase, node) {
   return { ...node, site: null };
 }
 
-export async function enrichTopologyNodes(supabase, nodes) {
-  return Promise.all((nodes || []).map((n) => enrichTopologyNodeWithSite(supabase, n)));
+export async function enrichTopologyNodes(db, nodes) {
+  return Promise.all((nodes || []).map((n) => enrichTopologyNodeWithSite(db, n)));
 }
 
 /**
  * Versi batch dari enrichTopologyNodes — hanya 5-6 Supabase queries
  * untuk ratusan node (vs N×2 queries di versi lama).
  */
-export async function enrichTopologyNodesBatch(supabase, nodes) {
+export async function enrichTopologyNodesBatch(db, nodes) {
   if (!nodes || nodes.length === 0) return [];
 
   // === Phase 1: Batch nodes yang sudah punya site_id ===
@@ -297,8 +297,8 @@ export async function enrichTopologyNodesBatch(supabase, nodes) {
 
   if (siteIds.length > 0) {
     const [{ data: sitesData }, { data: picsData }] = await Promise.all([
-      supabase.from('sites').select('*').in('id', siteIds),
-      supabase
+      db.from('sites').select('*').in('id', siteIds),
+      db
         .from('site_pics')
         .select('*')
         .in('site_id', siteIds)
@@ -316,7 +316,7 @@ export async function enrichTopologyNodesBatch(supabase, nodes) {
 
   if (nodesNeedingLookup.length > 0) {
     // Fetch semua mappings (satu query), match prefix di memory
-    const { data: allMappings } = await supabase
+    const { data: allMappings } = await db
       .from('device_mappings')
       .select('ruijie_mac, prefix');
 
@@ -336,7 +336,7 @@ export async function enrichTopologyNodesBatch(supabase, nodes) {
     }
 
     if (macSet.size > 0) {
-      const { data: extraSites } = await supabase
+      const { data: extraSites } = await db
         .from('sites')
         .select('*')
         .in('ruijie_mac', [...macSet]);
@@ -350,7 +350,7 @@ export async function enrichTopologyNodesBatch(supabase, nodes) {
       }
 
       if (extraSiteIds.length > 0) {
-        const { data: extraPics } = await supabase
+        const { data: extraPics } = await db
           .from('site_pics')
           .select('*')
           .in('site_id', extraSiteIds)
@@ -400,14 +400,14 @@ export async function enrichTopologyNodesBatch(supabase, nodes) {
   });
 }
 
-export async function syncTopologyBatchToSites(supabase, nodes) {
+export async function syncTopologyBatchToSites(db, nodes) {
   for (const node of nodes || []) {
     if (!node?.linked_interface?.trim() && !node?.site_id) continue;
     try {
       if (node.site_id || node.vendor || node.pic_name || node.pic_phone) {
-        await syncTopologyNodeToSite(supabase, node);
+        await syncTopologyNodeToSite(db, node);
       } else {
-        await autoLinkTopologyNode(supabase, node);
+        await autoLinkTopologyNode(db, node);
       }
     } catch (e) {
       console.warn(`Sync topology→site gagal untuk node ${node.id}:`, e.message);

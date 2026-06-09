@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { resolveAuth, enforceRoleForMutation } from '@/lib/auth';
 
 let cachedData = null;
@@ -13,11 +13,11 @@ export async function GET() {
       return NextResponse.json(cachedData);
     }
 
-    const { data, error } = await supabase.from('device_mappings').select('*');
+    const { data, error } = await db.from('device_mappings').select('*');
     if (error) throw error;
 
-    const { data: ruijieData } = await supabase.from('ruijie_devices').select('mac_address, last_online, connection_type');
-    const { data: pppoeData } = await supabase.from('pppoe_secrets').select('name, last_logged_out, remote_address');
+    const { data: ruijieData } = await db.from('ruijie_devices').select('mac_address, last_online, connection_type');
+    const { data: pppoeData } = await db.from('pppoe_secrets').select('name, last_logged_out, remote_address');
     
     const enrichedData = (data || []).map(m => {
       let offlineTime = null;
@@ -65,7 +65,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'ruijie_mac and mikrotik_name are required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('device_mappings')
       .upsert({ 
         ruijie_mac, 
@@ -97,7 +97,7 @@ export async function DELETE(req) {
       return NextResponse.json({ error: 'ruijie_mac is required' }, { status: 400 });
     }
     
-    const { error } = await supabase
+    const { error } = await db
       .from('device_mappings')
       .delete()
       .eq('ruijie_mac', ruijie_mac);

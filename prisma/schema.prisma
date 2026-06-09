@@ -1,0 +1,225 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model activity_logs {
+  id      String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  time    DateTime? @default(now()) @db.Timestamptz(6)
+  message String
+
+  @@index([time], map: "idx_activity_logs_time")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model admin_users {
+  id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  username      String    @unique @db.VarChar(255)
+  password_hash String    @db.VarChar(255)
+  role          String?   @default("visitor") @db.VarChar(50)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model device_mappings {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ruijie_mac       String    @unique
+  mikrotik_name    String
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  prefix           String?   @db.VarChar(255)
+  ruijie_alias     String?   @db.VarChar(255)
+  mikrotik_alias   String?   @db.VarChar(255)
+  status_ruijie    String?   @db.VarChar(50)
+  status_mikrotik  String?   @db.VarChar(50)
+  final_status     String?   @db.VarChar(50)
+  issue            String?
+  is_manual        Boolean?  @default(false)
+  is_prefix_manual Boolean?  @default(false)
+  sites            sites?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model device_status {
+  device_id  String    @id @db.Uuid
+  status     String?   @default("offline") @db.VarChar(50)
+  latency    Int?      @default(0)
+  last_check DateTime? @default(now()) @db.Timestamptz(6)
+  devices    devices   @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model devices {
+  id             String           @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  name           String           @db.VarChar(255)
+  ip_address     String           @db.VarChar(45)
+  username       String?          @db.VarChar(100)
+  password       String?          @db.VarChar(255)
+  port           Int?             @default(8728)
+  type           String?          @default("mikrotik") @db.VarChar(50)
+  status         String?          @default("unknown") @db.VarChar(50)
+  last_seen      DateTime?        @default(now()) @db.Timestamptz(6)
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  device_status  device_status?
+  topology_nodes topology_nodes[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model network_interfaces {
+  id          String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  device_id   String?   @db.Uuid
+  ros_id      String?   @db.VarChar(50)
+  name        String    @db.VarChar(255)
+  type        String?   @db.VarChar(100)
+  mac_address String?   @db.VarChar(50)
+  mtu         Int?
+  running     Boolean?  @default(false)
+  disabled    Boolean?  @default(false)
+  comment     String?
+  synced_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([device_id, name], map: "unique_device_interface_name")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pppoe_active {
+  id        String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  device_id String?   @db.Uuid
+  ros_id    String?   @db.VarChar(50)
+  name      String?   @db.VarChar(255)
+  address   String?   @db.VarChar(50)
+  caller_id String?   @db.VarChar(100)
+  service   String?   @db.VarChar(100)
+  uptime    String?   @db.VarChar(100)
+  synced_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([device_id, name], map: "unique_device_active_session")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pppoe_secrets {
+  id              String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  device_id       String?   @db.Uuid
+  name            String    @db.VarChar(255)
+  password        String    @db.VarChar(255)
+  profile         String?   @default("default") @db.VarChar(255)
+  service         String?   @default("pppoe") @db.VarChar(255)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  ros_id          String?   @db.VarChar(50)
+  disabled        Boolean?  @default(false)
+  last_logged_out DateTime? @db.Timestamptz(6)
+  local_address   String?   @db.VarChar(50)
+  remote_address  String?   @db.VarChar(50)
+  synced_at       DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([device_id, name], map: "unique_device_secret_name")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ruijie_devices {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sn               String    @unique
+  mac_address      String?
+  alias            String?
+  ip_address       String?
+  status           String?
+  clients          Int?      @default(0)
+  last_online      String?
+  last_offline     String?
+  last_log_history String?
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  connection_type  String?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model site_pics {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  site_id    String    @db.Uuid
+  name       String    @db.VarChar(255)
+  phone      String?   @db.VarChar(50)
+  sort_order Int?      @default(0)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  sites      sites     @relation(fields: [site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([site_id], map: "idx_site_pics_site_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sites {
+  id                                                    String          @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  ruijie_mac                                            String          @unique @db.VarChar(50)
+  connection_type                                       String          @default("l2tp") @db.VarChar(50)
+  vendor                                                String?         @db.VarChar(255)
+  customer_id                                           String?         @db.VarChar(255)
+  activation_date                                       DateTime?       @db.Date
+  latitude                                              Float?
+  longitude                                             Float?
+  topology_node_id                                      String?         @unique(map: "idx_sites_topology_node_id_unique", where: raw("(topology_node_id IS NOT NULL)")) @db.VarChar(100)
+  created_at                                            DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at                                            DateTime?       @default(now()) @db.Timestamptz(6)
+  full_address                                          String?
+  site_pics                                             site_pics[]
+  device_mappings                                       device_mappings @relation(fields: [ruijie_mac], references: [ruijie_mac], onDelete: Cascade, onUpdate: NoAction)
+  topology_nodes_sites_topology_node_idTotopology_nodes topology_nodes? @relation("sites_topology_node_idTotopology_nodes", fields: [topology_node_id], references: [id], onUpdate: NoAction)
+  topology_nodes_topology_nodes_site_idTosites          topology_nodes? @relation("topology_nodes_site_idTosites")
+
+  @@index([connection_type], map: "idx_sites_connection_type")
+  @@index([ruijie_mac], map: "idx_sites_ruijie_mac")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model topology_edges {
+  id                                                      String         @id @db.VarChar(100)
+  from_node                                               String         @db.VarChar(100)
+  to_node                                                 String         @db.VarChar(100)
+  label                                                   String?        @db.VarChar(255)
+  status                                                  String?        @default("up") @db.VarChar(50)
+  created_at                                              DateTime?      @default(now()) @db.Timestamptz(6)
+  topology_nodes_topology_edges_from_nodeTotopology_nodes topology_nodes @relation("topology_edges_from_nodeTotopology_nodes", fields: [from_node], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  topology_nodes_topology_edges_to_nodeTotopology_nodes   topology_nodes @relation("topology_edges_to_nodeTotopology_nodes", fields: [to_node], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model topology_nodes {
+  id                                                      String           @id @db.VarChar(100)
+  device_id                                               String?          @db.Uuid
+  label                                                   String           @db.VarChar(255)
+  latitude                                                Float
+  longitude                                               Float
+  type                                                    String?          @default("odp") @db.VarChar(50)
+  group_name                                              String?          @default("unknown") @db.VarChar(100)
+  created_at                                              DateTime?        @default(now()) @db.Timestamptz(6)
+  linked_interface                                        String?          @db.VarChar(255)
+  status                                                  String?          @default("unknown") @db.VarChar(50)
+  site_id                                                 String?          @unique(map: "idx_topology_nodes_site_id_unique", where: raw("(site_id IS NOT NULL)")) @db.Uuid
+  last_modified_at                                        DateTime?        @db.Timestamptz(6)
+  sites_sites_topology_node_idTotopology_nodes            sites?           @relation("sites_topology_node_idTotopology_nodes")
+  topology_edges_topology_edges_from_nodeTotopology_nodes topology_edges[] @relation("topology_edges_from_nodeTotopology_nodes")
+  topology_edges_topology_edges_to_nodeTotopology_nodes   topology_edges[] @relation("topology_edges_to_nodeTotopology_nodes")
+  devices                                                 devices?         @relation(fields: [device_id], references: [id], onUpdate: NoAction)
+  sites_topology_nodes_site_idTosites                     sites?           @relation("topology_nodes_site_idTosites", fields: [site_id], references: [id], onUpdate: NoAction)
+
+  @@index([site_id], map: "idx_topology_nodes_site_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vpn_settings {
+  id               Int       @id @default(1)
+  name             String    @db.VarChar(255)
+  username         String?   @db.VarChar(255)
+  password         String?   @db.VarChar(255)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  windows_name     String?   @db.VarChar(255)
+  windows_username String?   @db.VarChar(255)
+  windows_password String?   @db.VarChar(255)
+  linux_name       String?   @db.VarChar(255)
+  linux_username   String?   @db.VarChar(255)
+  linux_password   String?   @db.VarChar(255)
+  active_platform  String?   @default("windows") @db.VarChar(50)
+}

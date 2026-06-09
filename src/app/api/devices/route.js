@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
@@ -13,14 +13,14 @@ export async function GET(req) {
     try {
         verifyAuth(req);
         
-        const { data: devicesData, error: devicesError } = await supabase
+        const { data: devicesData, error: devicesError } = await db
             .from('devices')
             .select('id, name, ip_address, port, type, status, last_seen')
             .order('created_at', { ascending: false });
             
         if (devicesError) throw devicesError;
 
-        const { data: nodesData, error: nodesError } = await supabase
+        const { data: nodesData, error: nodesError } = await db
             .from('topology_nodes')
             .select('*')
             .is('device_id', null);
@@ -51,7 +51,7 @@ export async function POST(req) {
         const body = await req.json();
         const { name, ip_address, username, password, port, type } = body;
         
-        const { data, error } = await supabase
+        const { data, error } = await db
             .from('devices')
             .insert([{
                 name, 

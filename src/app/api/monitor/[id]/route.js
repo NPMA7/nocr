@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { verifyAuth } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
@@ -21,19 +21,19 @@ export async function GET(req, { params }) {
         let isPppoe = false;
 
         // Cek Devices
-        const { data: dev } = await supabase.from('devices').select('ip_address, name').eq('id', id).single();
+        const { data: dev } = await db.from('devices').select('ip_address, name').eq('id', id).single();
         if (dev) {
             targetIp = dev.ip_address;
             deviceName = dev.name;
         } else {
             // Cek Nodes (Mungkin PPPoE client / AP / Switch)
-            const { data: node } = await supabase.from('topology_nodes').select('label, type').eq('id', id).single();
+            const { data: node } = await db.from('topology_nodes').select('label, type').eq('id', id).single();
             if (node) {
                 deviceName = node.label;
                 originalType = node.type;
                 if (node.type === 'pppoe-client' || node.type === 'client') {
                     // Cari IP dari session active
-                    const { data: pppoe } = await supabase.from('pppoe_active').select('address').eq('name', node.label).single();
+                    const { data: pppoe } = await db.from('pppoe_active').select('address').eq('name', node.label).single();
                     if (pppoe && pppoe.address) {
                         targetIp = pppoe.address;
                         isPppoe = true;
@@ -56,7 +56,7 @@ export async function GET(req, { params }) {
         }
 
         // Ambil data dari tabel device_status yang diupdate oleh worker di server.js
-        const { data: statusData } = await supabase
+        const { data: statusData } = await db
             .from('device_status')
             .select('*')
             .eq('device_id', id)

@@ -103,6 +103,19 @@ export default function Sidebar({ isConnected, onNavigate }) {
               >
                 <Network size={14} /> VPN (Auto-Dial)
               </Link>
+              
+              <Link 
+                href="/settings?tab=health" 
+                onClick={onNavigate} 
+                scroll={false}
+                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                  currentTab === 'health' 
+                    ? 'text-cyan-400 bg-cyan-500/10' 
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                <Monitor size={14} /> Kesehatan Sistem & DB
+              </Link>
 
               {isAdmin && (
                 <Link 

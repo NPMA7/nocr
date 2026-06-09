@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 
 export async function GET() {
   try {
     const [secretsResult, activeResult] = await Promise.all([
-      supabase.from('pppoe_secrets').select('name, service, disabled'),
-      supabase.from('pppoe_active').select('name, address, uptime')
+      db.from('pppoe_secrets').select('name, service, disabled'),
+      db.from('pppoe_active').select('name, address, uptime')
     ]);
 
     if (secretsResult.error) throw secretsResult.error;

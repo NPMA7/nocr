@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 
 export async function GET() {
   try {
     const device = await getCoreDevice();
 
     // Ambil PPPoE ruijie devices
-    const { data: ruijieDevices, error: ruijieErr } = await supabase
+    const { data: ruijieDevices, error: ruijieErr } = await db
       .from('ruijie_devices')
       .select('*')
       .eq('connection_type', 'PPPOE');
@@ -14,9 +14,9 @@ export async function GET() {
 
     // Ambil PPPoE secrets, active dari MikroTik, dan mappings dari DB
     const [resSecrets, resActive, resMappings] = await Promise.all([
-      supabase.from('pppoe_secrets').select('name, service, remote_address, last_logged_out'),
-      supabase.from('pppoe_active').select('name'),
-      supabase.from('device_mappings').select('*')
+      db.from('pppoe_secrets').select('name, service, remote_address, last_logged_out'),
+      db.from('pppoe_active').select('name'),
+      db.from('device_mappings').select('*')
     ]);
 
     const secrets = resSecrets.data || [];
@@ -101,7 +101,7 @@ export async function GET() {
 }
 
 async function getCoreDevice() {
-  const { data } = await supabase
+  const { data } = await db
     .from('mikrotik_devices')
     .select('id')
     .eq('is_core', true)

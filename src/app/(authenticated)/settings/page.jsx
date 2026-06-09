@@ -3,7 +3,7 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API_URL, useAppState } from '@/App';
-import { Save, Server, Shield, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key, } from 'lucide-react';
+import { Save, Server, Shield, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key, Activity, HardDrive, Cpu, RefreshCw, Play, Square } from 'lucide-react';
 import { isAdminRole, canRevealPasswords, getStoredUser, getRoleLabel } from '@/lib/roles';
 
 class ErrorBoundary extends React.Component {
@@ -339,6 +339,181 @@ function PasswordChangeSettings() {
   );
 }
 
+function SystemHealth({ isAdmin }) {
+  const { showToast } = useAppState();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchHealth = async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    try {
+      const res = await axios.get(`${API_URL}/system-health`);
+      setData(res.data);
+    } catch (err) {
+      console.error(err);
+      if (isManual && showToast) showToast('Gagal mengambil metrik kesehatan', 'error');
+    } finally {
+      setLoading(false);
+      if (isManual) setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHealth();
+    const interval = setInterval(() => fetchHealth(), 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRestart = async (appName) => {
+    if (!window.confirm(`Yakin ingin merestart ${appName}?`)) return;
+    try {
+      const res = await axios.post(`${API_URL}/system-health`, { action: 'restart', app_name: appName });
+      if (showToast) showToast(res.data.message || `${appName} direstart`, 'success');
+      fetchHealth(true);
+    } catch (err) {
+      if (showToast) showToast(err.response?.data?.error || `Gagal restart ${appName}`, 'error');
+    }
+  };
+
+  const formatBytes = (bytes, decimals = 2) => {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024, dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  };
+
+  const formatUptime = (seconds) => {
+    const d = Math.floor(seconds / (3600*24));
+    const h = Math.floor(seconds % (3600*24) / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    if (d > 0) return `${d}h ${h}j`;
+    return `${h}j ${m}m`;
+  };
+
+  if (loading && !data) return <div className="text-slate-400 p-5 animate-pulse">Memuat metrik sistem...</div>;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* OS Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-blue-400 font-bold mb-1"><Cpu size={18} /> Beban CPU (Load Avg)</div>
+          <div className="text-2xl font-bold text-slate-100">{data?.os?.loadAvg ? data.os.loadAvg.map(n => n.toFixed(2)).join(' | ') : '-'}</div>
+          <div className="text-xs text-slate-400">Rata-rata 1, 5, 15 menit</div>
+        </div>
+        <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-emerald-400 font-bold mb-1"><HardDrive size={18} /> Penggunaan RAM</div>
+          <div className="text-2xl font-bold text-slate-100">
+            {formatBytes(data?.os?.totalMemory - data?.os?.freeMemory)} <span className="text-sm text-slate-400 font-normal">/ {formatBytes(data?.os?.totalMemory)}</span>
+          </div>
+          <div className="w-full bg-slate-900 rounded-full h-1.5 mt-1 overflow-hidden">
+            <div className="bg-emerald-500 h-1.5 rounded-full" style={{width: `${((data?.os?.totalMemory - data?.os?.freeMemory) / data?.os?.totalMemory) * 100}%`}}></div>
+          </div>
+        </div>
+        <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-purple-400 font-bold mb-1"><Activity size={18} /> Server Uptime</div>
+          <div className="text-2xl font-bold text-slate-100">{formatUptime(data?.os?.uptime)}</div>
+          <div className="text-xs text-slate-400">Waktu aktif host sejak restart</div>
+        </div>
+      </div>
+
+      {/* Database Stats */}
+      <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg">
+        <div className="flex items-center gap-2 text-lg font-bold text-slate-100 mb-4 border-b border-slate-700/50 pb-3">
+          <Database size={20} className="text-cyan-400" /> PostgreSQL Database
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-400">Ukuran Penyimpanan</span>
+            <span className="text-lg font-bold text-slate-200">{data?.db?.size || '-'}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-400">Koneksi Aktif</span>
+            <span className="text-lg font-bold text-slate-200">{data?.db?.active_connections || 0}</span>
+          </div>
+          <div className="flex flex-col gap-1 col-span-2">
+            <span className="text-xs font-semibold text-slate-400">Versi Mesin</span>
+            <span className="text-sm font-semibold text-slate-300 break-words">{data?.db?.version || '-'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* PM2 Stats */}
+      <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-700/50 pb-3">
+          <div className="flex items-center gap-2 text-lg font-bold text-slate-100">
+            <Terminal size={20} className="text-orange-400" /> Layanan Latar Belakang (PM2)
+          </div>
+          <button 
+            onClick={() => fetchHealth(true)} 
+            disabled={refreshing}
+            className={`text-slate-400 hover:text-slate-200 p-1.5 rounded-lg bg-slate-900 border border-slate-700 transition ${refreshing ? 'animate-spin text-blue-400' : ''}`}
+            title="Muat Ulang"
+          >
+            <RefreshCw size={14} />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-900/50">
+              <tr>
+                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Aplikasi / Scraper</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Status</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Uptime</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Memori & CPU</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Restart</th>
+                {isAdmin && <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase text-right">Aksi</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/50">
+              {(data?.pm2 && Array.isArray(data.pm2)) ? data.pm2.map((app) => (
+                <tr key={app.name} className="hover:bg-slate-700/20 transition-colors">
+                  <td className="px-4 py-3 text-sm font-bold text-slate-200">{app.name}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {app.status === 'online' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> {app.status || 'Offline'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-300">{formatUptime(app.uptime / 1000)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-0.5 text-xs text-slate-400 font-mono">
+                      <span>RAM: {formatBytes(app.memory)}</span>
+                      <span>CPU: {app.cpu}%</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-300 font-mono">{app.restarts}x</td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 text-right">
+                      <button 
+                        onClick={() => handleRestart(app.name)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
+                      >
+                        <RefreshCw size={12} /> Restart
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan="6" className="px-4 py-3 text-center text-sm text-slate-500">Data PM2 tidak tersedia.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsWrapper(props) {
   return (
     <ErrorBoundary>
@@ -503,11 +678,6 @@ function Settings() {
       <div>
         <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">  <Database size={24} /> Pengaturan Sistem</h1>
         <p className="text-sm text-slate-400">Konfigurasi pusat untuk NOCR dan Perangkat Core</p>
-        {readOnlySettings && (
-          <p className="text-xs text-amber-400/90 mt-1">
-            Mode baca saja ({getRoleLabel(getStoredUser().role)}) — perubahan hanya oleh Administrator
-          </p>
-        )}
       </div>
 
       <div>
@@ -768,10 +938,8 @@ function Settings() {
             <PasswordChangeSettings />
           )}
 
-          {(activeTab === 'db') && (
-            <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg p-10 text-center">
-              <p className="text-slate-500 font-medium">Pengaturan ini belum tersedia (Coming Soon)</p>
-            </div>
+          {(activeTab === 'health') && (
+            <SystemHealth isAdmin={isAdmin} />
           )}
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { fetchSitesBundle, upsertSiteProfile } from '@/lib/sitesApi';
 import { resolveAuth, enforceTopologyMutation } from '@/lib/auth';
 
@@ -18,7 +18,7 @@ export async function GET(_req, { params }) {
       return NextResponse.json({ error: 'ruijie_mac wajib' }, { status: 400 });
     }
 
-    const { data: mappings, error } = await supabase
+    const { data: mappings, error } = await db
       .from('device_mappings')
       .select('*')
       .eq('ruijie_mac', ruijie_mac);
@@ -28,12 +28,12 @@ export async function GET(_req, { params }) {
     }
 
     const mapping = mappings[0];
-    const { data: ruijieData } = await supabase
+    const { data: ruijieData } = await db
       .from('ruijie_devices')
       .select('mac_address, last_online')
       .eq('mac_address', ruijie_mac)
       .maybeSingle();
-    const { data: pppoeData } = await supabase
+    const { data: pppoeData } = await db
       .from('pppoe_secrets')
       .select('name, last_logged_out, remote_address')
       .eq('name', mapping.mikrotik_alias)
@@ -48,7 +48,7 @@ export async function GET(_req, { params }) {
       offline_since = pppoeData.last_logged_out;
     }
 
-    const item = await fetchSitesBundle(supabase, { ruijieMac: ruijie_mac });
+    const item = await fetchSitesBundle(db, { ruijieMac: ruijie_mac });
     if (!item) {
       return NextResponse.json({ error: 'Site tidak ditemukan' }, { status: 404 });
     }
@@ -70,7 +70,7 @@ export async function PATCH(req, { params }) {
     }
 
     const body = await req.json();
-    const item = await upsertSiteProfile(supabase, ruijie_mac, body);
+    const item = await upsertSiteProfile(db, ruijie_mac, body);
     return NextResponse.json(item);
   } catch (error) {
     const status = error.status || 500;

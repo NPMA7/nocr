@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { autoLinkTopologyNode } from '@/lib/topologySiteLink';
 import { resolveAuth, enforceTopologyMutation } from '@/lib/auth';
 
@@ -16,7 +16,7 @@ export async function PATCH(req) {
     }
 
     // 1. Update device_mappings: set prefix and is_prefix_manual flag
-    const { error: mappingError } = await supabase
+    const { error: mappingError } = await db
       .from('device_mappings')
       .update({ 
         prefix: new_prefix,
@@ -29,7 +29,7 @@ export async function PATCH(req) {
     // 2. Update topology_nodes: set linked_interface where it matches old_prefix
     // Note: We use case-insensitive check if possible, or exact match depending on DB config.
     // Assuming exact match since old_prefix was exactly what the UI displayed.
-    const { error: topologyError } = await supabase
+    const { error: topologyError } = await db
       .from('topology_nodes')
       .update({
         linked_interface: new_prefix,
@@ -39,13 +39,13 @@ export async function PATCH(req) {
       
     if (topologyError) throw topologyError;
 
-    const { data: linkedNodes } = await supabase
+    const { data: linkedNodes } = await db
       .from('topology_nodes')
       .select('*')
       .eq('linked_interface', new_prefix);
     for (const node of linkedNodes || []) {
       try {
-        await autoLinkTopologyNode(supabase, node);
+        await autoLinkTopologyNode(db, node);
       } catch (linkErr) {
         console.warn('autoLink setelah ubah prefix:', linkErr.message);
       }

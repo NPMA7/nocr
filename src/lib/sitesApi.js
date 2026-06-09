@@ -48,10 +48,10 @@ export function mergeMappingWithSite(mapping, site, pics = []) {
 }
 
 /** Koordinat tampilan: dari node topologi jika tertaut (sumber edit = Peta Topologi) */
-export async function enrichSiteWithTopologyCoords(supabase, site) {
+export async function enrichSiteWithTopologyCoords(db, site) {
   if (!site) return site;
   if (site.topology_node_id) {
-    const { data: node } = await supabase
+    const { data: node } = await db
       .from('topology_nodes')
       .select('latitude, longitude')
       .eq('id', site.topology_node_id)
@@ -68,8 +68,8 @@ export async function enrichSiteWithTopologyCoords(supabase, site) {
   return { ...site, coords_from_topology: false };
 }
 
-export async function fetchSitesBundle(supabase, { ruijieMac = null } = {}) {
-  let mappingsQuery = supabase.from('device_mappings').select('*');
+export async function fetchSitesBundle(db, { ruijieMac = null } = {}) {
+  let mappingsQuery = db.from('device_mappings').select('*');
   if (ruijieMac) mappingsQuery = mappingsQuery.eq('ruijie_mac', ruijieMac);
 
   const { data: mappings, error: mapErr } = await mappingsQuery;
@@ -80,7 +80,7 @@ export async function fetchSitesBundle(supabase, { ruijieMac = null } = {}) {
     return ruijieMac ? null : [];
   }
 
-  const { data: sites, error: siteErr } = await supabase
+  const { data: sites, error: siteErr } = await db
     .from('sites')
     .select('*')
     .in('ruijie_mac', macs);
@@ -89,7 +89,7 @@ export async function fetchSitesBundle(supabase, { ruijieMac = null } = {}) {
   const siteIds = (sites || []).map((s) => s.id);
   let pics = [];
   if (siteIds.length > 0) {
-    const { data: picRows, error: picErr } = await supabase
+    const { data: picRows, error: picErr } = await db
       .from('site_pics')
       .select('*')
       .in('site_id', siteIds)
@@ -108,7 +108,7 @@ export async function fetchSitesBundle(supabase, { ruijieMac = null } = {}) {
     merged.map(async (row) => {
       const raw = siteByMac[row.ruijie_mac];
       if (!raw) return row;
-      const enriched = await enrichSiteWithTopologyCoords(supabase, raw);
+      const enriched = await enrichSiteWithTopologyCoords(db, raw);
       return { ...row, site: mapSiteRow(enriched, pics) };
     })
   );
@@ -117,7 +117,7 @@ export async function fetchSitesBundle(supabase, { ruijieMac = null } = {}) {
   return merged;
 }
 
-export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
+export async function upsertSiteProfile(db, ruijie_mac, payload) {
   const {
     vendor,
     customer_id,
@@ -127,7 +127,7 @@ export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
     connection_type = 'l2tp',
   } = payload;
 
-  const { data: mapping, error: mapCheck } = await supabase
+  const { data: mapping, error: mapCheck } = await db
     .from('device_mappings')
     .select('ruijie_mac, prefix')
     .eq('ruijie_mac', ruijie_mac)
@@ -149,7 +149,7 @@ export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
     updated_at: new Date().toISOString(),
   };
 
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from('sites')
     .select('id')
     .eq('ruijie_mac', ruijie_mac)
@@ -157,7 +157,7 @@ export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
 
   let siteId;
   if (existing?.id) {
-    const { data: updated, error: updErr } = await supabase
+    const { data: updated, error: updErr } = await db
       .from('sites')
       .update(siteRow)
       .eq('id', existing.id)
@@ -166,7 +166,7 @@ export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
     if (updErr) throw updErr;
     siteId = updated.id;
   } else {
-    const { data: inserted, error: insErr } = await supabase
+    const { data: inserted, error: insErr } = await db
       .from('sites')
       .insert(siteRow)
       .select()
@@ -175,7 +175,7 @@ export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
     siteId = inserted.id;
   }
 
-  await supabase.from('site_pics').delete().eq('site_id', siteId);
+  await db.from('site_pics').delete().eq('site_id', siteId);
 
   const validPics = (pics || [])
     .map((p, i) => ({
@@ -187,18 +187,18 @@ export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
     .filter((p) => p.name);
 
   if (validPics.length > 0) {
-    const { error: picErr } = await supabase.from('site_pics').insert(validPics);
+    const { error: picErr } = await db.from('site_pics').insert(validPics);
     if (picErr) throw picErr;
   }
 
-  const { data: savedSite } = await supabase.from('sites').select('*').eq('id', siteId).single();
-  const savedPics = await loadSitePics(supabase, siteId);
+  const { data: savedSite } = await db.from('sites').select('*').eq('id', siteId).single();
+  const savedPics = await loadSitePics(db, siteId);
 
-  await syncSiteToTopologyNode(supabase, savedSite, savedPics, mapping.prefix);
+  await syncSiteToTopologyNode(db, savedSite, savedPics, mapping.prefix);
 
-  let node = await findTopologyNodeForSite(supabase, savedSite, mapping.prefix);
+  let node = await findTopologyNodeForSite(db, savedSite, mapping.prefix);
   if (!node && mapping.prefix) {
-    const { data: candidates } = await supabase
+    const { data: candidates } = await db
       .from('topology_nodes')
       .select('*')
       .ilike('linked_interface', mapping.prefix.trim());
@@ -208,8 +208,8 @@ export async function upsertSiteProfile(supabase, ruijie_mac, payload) {
           n.linked_interface &&
           n.linked_interface.trim().toLowerCase() === mapping.prefix.trim().toLowerCase()
       ) || null;
-    if (node) await autoLinkTopologyNode(supabase, node);
+    if (node) await autoLinkTopologyNode(db, node);
   }
 
-  return fetchSitesBundle(supabase, { ruijieMac: ruijie_mac });
+  return fetchSitesBundle(db, { ruijieMac: ruijie_mac });
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseClient';
+import db from '@/lib/dbClient';
 import { verifyAuth, resolveAuth, enforceTopologyMutation } from '@/lib/auth';
 import {
     mergeTopologySave,
@@ -54,25 +54,25 @@ async function persistMergedTopology(merged, dbNodes, dbEdges) {
 
     const edgeIdsToDelete = dbEdges.filter((e) => !mergedEdgeIds.has(e.id)).map((e) => e.id);
     if (edgeIdsToDelete.length > 0) {
-        const { error } = await supabase.from('topology_edges').delete().in('id', edgeIdsToDelete);
+        const { error } = await db.from('topology_edges').delete().in('id', edgeIdsToDelete);
         if (error) throw error;
     }
 
     const nodeIdsToDelete = dbNodes.filter((n) => !mergedNodeIds.has(n.id)).map((n) => n.id);
     if (nodeIdsToDelete.length > 0) {
-        const { error } = await supabase.from('topology_nodes').delete().in('id', nodeIdsToDelete);
+        const { error } = await db.from('topology_nodes').delete().in('id', nodeIdsToDelete);
         if (error) throw error;
     }
 
     if (merged.nodes.length > 0) {
-        const { error: nodeErr } = await supabase
+        const { error: nodeErr } = await db
             .from('topology_nodes')
             .upsert(merged.nodes.map(nodeToRow), { onConflict: 'id' });
         if (nodeErr) throw nodeErr;
     }
 
     if (merged.edges.length > 0) {
-        const { error: edgeErr } = await supabase
+        const { error: edgeErr } = await db
             .from('topology_edges')
             .upsert(merged.edges.map(edgeToRow), { onConflict: 'id' });
         if (edgeErr) throw edgeErr;
@@ -92,18 +92,18 @@ export async function GET(req) {
             return NextResponse.json(cachedTopology);
         }
 
-        const { data: nodesData, error: nodesError } = await supabase
+        const { data: nodesData, error: nodesError } = await db
             .from('topology_nodes')
             .select('*');
         if (nodesError) throw nodesError;
 
-        const { data: edgesData, error: edgesError } = await supabase
+        const { data: edgesData, error: edgesError } = await db
             .from('topology_edges')
             .select('*');
         if (edgesError) throw edgesError;
 
         // Batch enrichment: 5-6 queries total (vs N×2 queries sebelumnya)
-        const nodes = await enrichTopologyNodesBatch(supabase, nodesData || []);
+        const nodes = await enrichTopologyNodesBatch(db, nodesData || []);
         const edges = edgesData || [];
 
         const responseData = {
@@ -135,12 +135,12 @@ export async function POST(req) {
             baseRevision = null
         } = body;
 
-        const { data: dbNodes, error: nodesFetchErr } = await supabase
+        const { data: dbNodes, error: nodesFetchErr } = await db
             .from('topology_nodes')
             .select('*');
         if (nodesFetchErr) throw nodesFetchErr;
 
-        const { data: dbEdges, error: edgesFetchErr } = await supabase
+        const { data: dbEdges, error: edgesFetchErr } = await db
             .from('topology_edges')
             .select('*');
         if (edgesFetchErr) throw edgesFetchErr;
@@ -234,10 +234,10 @@ export async function POST(req) {
         await persistMergedTopology(mergedSafe, oldNodes, oldEdges);
 
         // Sync hanya node yang benar-benar berubah (bukan semua node!)
-        await syncTopologyBatchToSites(supabase, stampedUpsertNodes);
+        await syncTopologyBatchToSites(db, stampedUpsertNodes);
 
         // Batch enrichment: 5-6 queries total untuk semua node
-        const enrichedNodes = await enrichTopologyNodesBatch(supabase, mergedSafe.nodes);
+        const enrichedNodes = await enrichTopologyNodesBatch(db, mergedSafe.nodes);
         const revision = computeRevision(enrichedNodes, mergedSafe.edges);
 
         if (global.io) {
