@@ -33,6 +33,7 @@ function isInfrastructureNode(node) {
 }
 import { canEditTopology, getStoredUser, isVisitorRole } from "@/lib/roles";
 import axios from "axios";
+import { fetchTopologyCached, updateTopologyCacheLocally } from "@/lib/globalCache";
 import { API_URL, socket, useAppState } from "@/App";
 import {
   buildBaselineMap,
@@ -528,12 +529,12 @@ function TopologyContent() {
     }
   };
 
-  const fetchTopology = async (showToast = false) => {
+  const fetchTopology = async (showToast = false, forceRefresh = false) => {
     try {
-      const res = await axios.get(`${API_URL}/topology`);
-      const loadedNodes = res.data.nodes || [];
-      const loadedEdges = res.data.edges || [];
-      revisionRef.current = res.data.revision || null;
+      const data = await fetchTopologyCached(forceRefresh);
+      const loadedNodes = data.nodes || [];
+      const loadedEdges = data.edges || [];
+      revisionRef.current = data.revision || null;
       applyTopologyFromServer(loadedNodes, loadedEdges, {
         resetBaseline: true,
         toastMsg: showToast ? "Peta dikembalikan ke posisi semula" : null,
@@ -547,14 +548,10 @@ function TopologyContent() {
   const fetchCoreData = async () => {
     setCoreLoading(true);
     try {
-      const [statusRes, ifaceRes] = await Promise.all([
-        axios
-          .get(`${API_URL}/devices/core/status`)
-          .catch(() => ({ data: null })),
-        axios
-          .get(`${API_URL}/devices/core/interfaces`)
-          .catch(() => ({ data: [] })),
-      ]);
+      // Fetch berurutan untuk mencegah bentrok koneksi (race condition) ke RouterOS
+      const statusRes = await axios.get(`${API_URL}/devices/core/status`).catch(() => ({ data: null }));
+      const ifaceRes = await axios.get(`${API_URL}/devices/core/interfaces`).catch(() => ({ data: [] }));
+      
       setCoreStatus(statusRes?.data || null);
       setCoreInterfaces(ifaceRes?.data || []);
       setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
@@ -617,6 +614,7 @@ function TopologyContent() {
         payload.edges || [],
         payload.revision,
       );
+      updateTopologyCacheLocally({ nodes: payload.nodes, edges: payload.edges || [], revision: payload.revision });
     };
 
     const handleMikrotikUpdate = (data) => {
@@ -814,6 +812,7 @@ function TopologyContent() {
       revisionRef.current = res.data.revision || revisionRef.current;
 
       applyTopologyFromServer(savedNodes, savedEdges);
+      updateTopologyCacheLocally(res.data);
 
       // Handle konflik dari server
       const serverConflicts = res.data.conflicts || [];
@@ -1113,6 +1112,20 @@ function TopologyContent() {
       }
     }
   }, [nodeViewFilter, mapNodeIds, selectedNode, selectedEdge]);
+
+  useEffect(() => {
+    if (mapNodes.length > 0) {
+      const lats = mapNodes.map(n => parseFloat(n.latitude)).filter(n => !isNaN(n));
+      const lngs = mapNodes.map(n => parseFloat(n.longitude)).filter(n => !isNaN(n));
+      if (lats.length > 0) {
+        const bounds = [
+          [Math.min(...lats), Math.min(...lngs)],
+          [Math.max(...lats), Math.max(...lngs)]
+        ];
+        setFlyToTarget({ bounds });
+      }
+    }
+  }, [networkMode, nodeViewFilter]);
 
   return (
     <div className="flex flex-col h-full min-h-0 -m-4 md:-m-6 relative overflow-hidden bg-slate-950">
@@ -1829,13 +1842,13 @@ function TopologyContent() {
                   type="button"
                   onClick={() =>
                     setNetworkMode((prev) =>
-                      prev === "l2tp" ? "pppoe" : "l2tp",
+                      prev === "pppoe" ? "l2tp" : "pppoe",
                     )
                   }
                   className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30"
                 >
                   <Wifi size={12} />
-                  Jaringan: {networkMode === "l2tp" ? "L2TP" : "PPPoE"} 
+                  Jaringan: {networkMode === "pppoe" ?  "PPPoE" : "L2TP"} 
                 </button>
                 <div className="h-px bg-slate-700/50 w-full my-1"></div>
                 <button

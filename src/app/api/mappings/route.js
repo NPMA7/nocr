@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient';
 import { resolveAuth, enforceRoleForMutation } from '@/lib/auth';
 
+let cachedData = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 15000; // 15 seconds
+
 export async function GET() {
   try {
+    const now = Date.now();
+    if (cachedData && now - lastFetchTime < CACHE_TTL) {
+      return NextResponse.json(cachedData);
+    }
+
     const { data, error } = await supabase.from('device_mappings').select('*');
     if (error) throw error;
 
@@ -35,6 +44,9 @@ export async function GET() {
       return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType };
     });
 
+    cachedData = enrichedData;
+    lastFetchTime = now;
+
     return NextResponse.json(enrichedData);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -65,6 +77,8 @@ export async function POST(req) {
       .select();
       
     if (error) throw error;
+    
+    lastFetchTime = 0; // invalidate cache
     return NextResponse.json(data[0]);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -89,6 +103,8 @@ export async function DELETE(req) {
       .eq('ruijie_mac', ruijie_mac);
       
     if (error) throw error;
+    
+    lastFetchTime = 0; // invalidate cache
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
@@ -105,20 +105,70 @@ function FlyToHandler({ flyToTarget, onFlyToComplete }) {
   const map = useMap();
   useEffect(() => {
     if (flyToTarget) {
-      map.flyTo([flyToTarget.lat, flyToTarget.lng], flyToTarget.zoom || 17, { duration: 1.5 });
+      if (flyToTarget.bounds) {
+        map.fitBounds(flyToTarget.bounds, { padding: [50, 50], maxZoom: 16, animate: true, duration: 1.5 });
+      } else {
+        map.flyTo([flyToTarget.lat, flyToTarget.lng], flyToTarget.zoom || 17, { duration: 1.5 });
+      }
       if (onFlyToComplete) onFlyToComplete();
     }
-  }, [flyToTarget]);
+  }, [flyToTarget, map, onFlyToComplete]);
   return null;
 }
 
-function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterfaces, mappings, showLabels, interactionMode, readOnly, handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode, draggedNodeCoordRef }) {
+const getStaticMarkerIcon = (node, isSelected, isDown, isDisabled, isUp, currentZoom, labelsVisible) => {
+    let colorClass = 'bg-blue-500 border-blue-200';
+    const t = node.type?.toLowerCase() || '';
+    const isInfrastructure = ['olt', 'odc', 'odp', 'core', 'pole'].includes(t);
+
+    if (isDisabled) colorClass = 'bg-slate-500 border-slate-300';
+    else if (isUp) colorClass = isInfrastructure ? 'bg-blue-500 border-blue-300 ring-2 ring-blue-500/50' : 'bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50';
+    else if (isDown) colorClass = 'bg-red-500 border-red-300 ring-2 ring-red-500/50';
+    else {
+        if (node.status === 'online') colorClass = isInfrastructure ? 'bg-blue-500 border-blue-300 ring-2 ring-blue-500/50' : 'bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50';
+        else if (node.status === 'offline') colorClass = 'bg-red-500 border-red-300 ring-2 ring-red-500/50';
+        else if (t === 'core' || t === 'olt') colorClass = 'bg-blue-600 border-blue-300';
+        else if (t === 'client') colorClass = 'bg-purple-500 border-purple-200';
+        else colorClass = 'bg-slate-500 border-slate-300';
+    }
+
+    let scaleClass = 'scale-60 hover:scale-[1.0]';
+    let labelScale = 'scale-60 mt-3';
+    if (currentZoom >= 8) {
+      scaleClass = 'scale-100 hover:scale-150';
+      labelScale = 'scale-100 hover:scale-105 origin-top mt-1.5';
+    } else if (currentZoom >= 11) {
+      scaleClass = 'scale-80 hover:scale-120';
+      labelScale = 'scale-80 hover:scale-100 origin-top mt-2.5';
+    }
+
+    let html = '';
+    switch (t) {
+      case 'olt': html = `<div class="w-8 h-8 rounded-lg flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-server text-xs"></i></div>`; break;
+      case 'odc': html = `<div class="w-8 h-8 rounded-full flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-box text-xs"></i></div>`; break;
+      case 'odp': html = `<div class="w-8 h-8 rounded-full flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-network-wired text-xs"></i></div>`; break;
+      case 'pole': html = `<div class="w-7 h-7 rounded-sm flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-grip-lines-vertical text-[10px]"></i></div>`; break;
+      case 'client': html = `<div class="w-6 h-6 rounded-full flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-home text-[10px]"></i></div>`; break;
+      default: html = `<div class="w-6 h-6 rounded-full flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-map-pin text-[10px]"></i></div>`;
+    }
+
+    return L.divIcon({
+      className: 'custom-leaflet-icon',
+      html: `<div class="node-marker-wrapper relative transition-transform duration-200 flex flex-col items-center justify-center ${isSelected ? 'scale-100 z-50' : scaleClass}">
+        ${html}
+        <div class="node-label absolute top-full whitespace-nowrap text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-700/50 pointer-events-none shadow-md mt-0.5 ${labelsVisible || isSelected ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200">${node.label || 'Tanpa Label'}</div>
+      </div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+};
+
+const DraggableMarker = React.memo(function DraggableMarker({ node, isSelected, isDown, isDisabled, isUp, currentZoom, showLabels, interactionMode, readOnly, handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode, draggedNodeCoordRef }) {
   const [position, setPosition] = useState([parseFloat(node.latitude), parseFloat(node.longitude)]);
   const isDragging = useRef(false);
   const nodeRef = useRef(node);
   const markerRef = useRef(null);
 
-  // Efek ini hanya mengupdate posisi jika pengguna TIDAK sedang menyeret ikon
   useEffect(() => {
     nodeRef.current = node;
     if (!isDragging.current) {
@@ -127,11 +177,9 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
   }, [node]);
 
   const icon = useMemo(() => {
-    return getMarkerIcon(node, isSelected, edges, showLabels);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node.type, node.status, node.label, node.linked_interface, isSelected, edges, coreInterfaces, showLabels]);
+    return getStaticMarkerIcon(node, isSelected, isDown, isDisabled, isUp, currentZoom, showLabels);
+  }, [node.type, node.status, node.label, node.linked_interface, isSelected, isDown, isDisabled, isUp, currentZoom, showLabels]);
 
-  // Handler seret interaktif yang mengunci pergerakan kabel secara simultan
   const handleDrag = useCallback((e) => {
     if (readOnly) return;
     const marker = markerRef.current;
@@ -145,25 +193,17 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
       map.eachLayer((layer) => {
         if (layer instanceof L.Polyline && layer.options) {
           const { nodeFromId, nodeToId } = layer.options;
-
           if (nodeFromId === currentNodeId || nodeToId === currentNodeId) {
             const latlngs = layer.getLatLngs();
-
             if (latlngs.length >= 2) {
-              if (nodeFromId === currentNodeId) {
-                latlngs[0] = newLatLng;
-              }
-              if (nodeToId === currentNodeId) {
-                latlngs[latlngs.length - 1] = newLatLng;
-              }
+              if (nodeFromId === currentNodeId) latlngs[0] = newLatLng;
+              if (nodeToId === currentNodeId) latlngs[latlngs.length - 1] = newLatLng;
               layer.setLatLngs(latlngs);
-              layer.redraw(); // Paksa render ulang instan untuk layer kabel ini saja
+              layer.redraw();
             }
           }
         }
       });
-      
-      // Update global ref so that re-renders during drag use the latest coordinates
       if (draggedNodeCoordRef) {
         draggedNodeCoordRef.current[currentNodeId] = { lat: newLatLng.lat, lng: newLatLng.lng };
       }
@@ -187,7 +227,7 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
     },
     dragstart: () => {
       if (readOnly) return;
-      isDragging.current = true; // Kunci status menyeret menjadi TRUE
+      isDragging.current = true;
       pushUndo(nodeRef.current.id, nodeRef.current.latitude, nodeRef.current.longitude);
       if (draggedNodeCoordRef) {
         draggedNodeCoordRef.current[nodeRef.current.id] = { lat: nodeRef.current.latitude, lng: nodeRef.current.longitude };
@@ -199,7 +239,6 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
       const newLatLng = e.target.getLatLng();
       const currentNodeId = nodeRef.current.id;
       
-      // Berikan jeda mikro agar Leaflet menyelesaikan animasi internal sebelum status kunci dibuka
       setTimeout(() => {
         isDragging.current = false;
         if (draggedNodeCoordRef) {
@@ -208,42 +247,13 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
       }, 50);
 
       setPosition([newLatLng.lat, newLatLng.lng]);
-      
-      // Kirim koordinat mutakhir ke state penampung utama di page.jsx
       setNodes(prev => prev.map(n => 
         n.id === nodeRef.current.id 
           ? { ...n, latitude: newLatLng.lat, longitude: newLatLng.lng } 
           : n
       ));
     }
-  }), [handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode, readOnly, handleDrag]);
-
-  const isDown = useMemo(() => {
-    const interfaces = coreInterfaces || [];
-    const m = mappings || [];
-    if (node.linked_interface) {
-      // Periksa dari mappings gabungan terlebih dahulu
-      const linkedPrefix = node.linked_interface.toLowerCase();
-      const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === linkedPrefix);
-      
-      if (mappedNode) {
-        if (mappedNode.final_status === 'Offline') return true;
-        else if (mappedNode.final_status === 'Online') return false;
-      } else {
-        // Jika tidak ada di mapping, cek status interface mikrotik murni
-        const matchedIface = interfaces.find(i => i.name && i.name.toLowerCase() === linkedPrefix);
-        if (matchedIface) {
-          return matchedIface.disabled !== 'true' && matchedIface.running !== 'true';
-        }
-      }
-    } else if (node.type?.toLowerCase() !== 'core') {
-      const connectedEdges = edges.filter(e => e.from_node === node.id || e.to_node === node.id || e.from === node.id || e.to === node.id);
-      if (connectedEdges.length === 0) {
-        return false;
-      }
-    }
-    return node.status === 'offline';
-  }, [node.linked_interface, node.type, node.status, node.id, edges, coreInterfaces, mappings]);
+  }), [handleNodeClick, setNodes, pushUndo, setSelectedEdge, setSelectedNode, readOnly, handleDrag, draggedNodeCoordRef]);
 
   const typePriority = useMemo(() => {
     const t = node.type?.toLowerCase() || '';
@@ -272,7 +282,36 @@ function DraggableMarker({ node, isSelected, getMarkerIcon, edges, coreInterface
       zIndexOffset={zIndex}
     />
   );
-}
+});
+
+const MemoizedEdge = React.memo(({ edge, isSelected, edgeColor, edgeDash, interactionMode, readOnly, onEdgeDelete, setEdges, setSelectedEdge, setSelectedNode }) => {
+  return (
+    <Polyline
+      positions={edge.positions}
+      pathOptions={{
+        color: edgeColor,
+        weight: isSelected ? 5 : 3.5,
+        dashArray: edgeDash,
+        opacity: 0.9,
+        nodeFromId: edge.from_node || edge.from,
+        nodeToId: edge.to_node || edge.to
+      }}
+      eventHandlers={{
+        click: (e) => {
+          L.DomEvent.stopPropagation(e.originalEvent || e);
+          if (!readOnly && interactionMode === 'delete_edge') {
+            onEdgeDelete?.(edge.id);
+            setEdges(prev => prev.filter(ed => ed.id !== edge.id));
+            if (isSelected) setSelectedEdge(null);
+          } else {
+            setSelectedNode(null);
+            setSelectedEdge(edge);
+          }
+        }
+      }}
+    />
+  );
+});
 
 export default function TopologyMap({
   mapTheme = 'dark',
@@ -393,85 +432,7 @@ export default function TopologyMap({
     }).filter(Boolean);
   }, [edges, nodes]);
 
-  const getMarkerIcon = (node, isSelected, currentEdges = [], labelsVisible = false) => {
-    let colorClass = 'bg-blue-500 border-blue-200';
-    let isDown = false;
-    let isDisabled = false;
-    let isUp = false;
 
-    if (node.linked_interface) {
-        const linkedPrefix = node.linked_interface.toLowerCase();
-        
-        // 1. Cek dari mappings gabungan
-        const m = mappings || [];
-        const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === linkedPrefix);
-
-        if (mappedNode) {
-            if (mappedNode.final_status === 'Offline') isDown = true;
-            else if (mappedNode.final_status === 'Online') isUp = true;
-        } else {
-            // 2. Cek status interface murni
-            const matchedIface = coreInterfaces.find(i => i.name && i.name.toLowerCase() === linkedPrefix);
-            if (matchedIface) {
-                if (matchedIface.disabled === 'true') isDisabled = true;
-                else if (matchedIface.running === 'true') isUp = true;
-                else isDown = true;
-            }
-        }
-    } else if (node.type?.toLowerCase() !== 'core') {
-        const connectedEdges = currentEdges.filter(e => e.from_node === node.id || e.to_node === node.id || e.from === node.id || e.to === node.id);
-        if (connectedEdges.length === 0) {
-            isDisabled = true;
-        } else {
-            isUp = true;
-        }
-    }
-
-    const t = node.type?.toLowerCase() || '';
-    const isInfrastructure = ['olt', 'odc', 'odp', 'core', 'pole'].includes(t);
-
-    if (isDisabled) colorClass = 'bg-slate-500 border-slate-300';
-    else if (isUp) colorClass = isInfrastructure ? 'bg-blue-500 border-blue-300 ring-2 ring-blue-500/50' : 'bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50';
-    else if (isDown) colorClass = 'bg-red-500 border-red-300 ring-2 ring-red-500/50';
-    else {
-        if (node.status === 'online') colorClass = isInfrastructure ? 'bg-blue-500 border-blue-300 ring-2 ring-blue-500/50' : 'bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50';
-        else if (node.status === 'offline') colorClass = 'bg-red-500 border-red-300 ring-2 ring-red-500/50';
-        else if (t === 'core' || t === 'olt') colorClass = 'bg-blue-600 border-blue-300';
-        else if (t === 'client') colorClass = 'bg-purple-500 border-purple-200';
-        else colorClass = 'bg-slate-500 border-slate-300';
-    }
-
-    // Semakin di-zoom, marker semakin besar
-    let scaleClass = 'scale-60 hover:scale-[1.0]';
-    let labelScale = 'scale-60 mt-3';
-    if (currentZoom >= 8) {
-      scaleClass = 'scale-100 hover:scale-150';
-      labelScale = 'scale-100 hover:scale-105 origin-top mt-1.5';
-    } else if (currentZoom >= 11) {
-      scaleClass = 'scale-80 hover:scale-120';
-      labelScale = 'scale-80 hover:scale-100 origin-top mt-2.5';
-    }
-
-    let html = '';
-    switch (t) {
-      case 'olt': html = `<div class="w-8 h-8 rounded-lg flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-server text-xs"></i></div>`; break;
-      case 'odc': html = `<div class="w-8 h-8 rounded-full flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-box text-xs"></i></div>`; break;
-      case 'odp': html = `<div class="w-8 h-8 rounded-full flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-network-wired text-xs"></i></div>`; break;
-      case 'pole': html = `<div class="w-7 h-7 rounded-sm flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-grip-lines-vertical text-[10px]"></i></div>`; break;
-      case 'client': html = `<div class="w-6 h-6 rounded-full flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-home text-[10px]"></i></div>`; break;
-      default: html = `<div class="w-6 h-6 rounded-full flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-map-pin text-[10px]"></i></div>`;
-    }
-
-    return L.divIcon({
-      className: 'custom-leaflet-icon',
-      html: `<div class="node-marker-wrapper relative transition-transform duration-200 flex flex-col items-center justify-center ${isSelected ? 'scale-100 z-50' : scaleClass}">
-        ${html}
-        <div class="node-label absolute top-full whitespace-nowrap text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-700/50 pointer-events-none shadow-md mt-0.5 ${labelsVisible || isSelected ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200">${node.label || 'Tanpa Label'}</div>
-      </div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-  };
 
   return (
     <MapContainer
@@ -506,53 +467,66 @@ export default function TopologyMap({
 
       {/* Cari blok validEdges.map dan ubah menjadi seperti ini */}
 {validEdges.map(edge => (
-  <Polyline
+  <MemoizedEdge
     key={edge.id}
-    positions={edge.positions}
-    pathOptions={{
-      color: getEdgeColor(edge),
-      weight: selectedEdge?.id === edge.id ? 5 : 3.5,
-      dashArray: getEdgeDash(edge),
-      opacity: 0.9,
-      // ISI DENGAN INI: Simpan ID node langsung di dalam properti native Leaflet path
-      nodeFromId: edge.from_node || edge.from,
-      nodeToId: edge.to_node || edge.to
-    }}
-    eventHandlers={{
-      click: (e) => {
-        L.DomEvent.stopPropagation(e.originalEvent || e);
-        if (!readOnly && interactionMode === 'delete_edge') {
-          onEdgeDelete?.(edge.id);
-          setEdges(prev => prev.filter(ed => ed.id !== edge.id));
-          if (selectedEdge?.id === edge.id) setSelectedEdge(null);
-        } else {
-          setSelectedNode(null);
-          setSelectedEdge(edge);
-        }
-      }
-    }}
+    edge={edge}
+    isSelected={selectedEdge?.id === edge.id}
+    edgeColor={getEdgeColor(edge)}
+    edgeDash={getEdgeDash(edge)}
+    interactionMode={interactionMode}
+    readOnly={readOnly}
+    onEdgeDelete={onEdgeDelete}
+    setEdges={setEdges}
+    setSelectedEdge={setSelectedEdge}
+    setSelectedNode={setSelectedNode}
   />
 ))}
-      {nodes.filter(n => !isNaN(parseFloat(n.latitude)) && !isNaN(parseFloat(n.longitude))).map(node => (
-        <DraggableMarker
-          key={node.id}
-          node={node}
-          isSelected={selectedNode?.id === node.id}
-          getMarkerIcon={getMarkerIcon}
-          edges={edges}
-          coreInterfaces={coreInterfaces}
-          mappings={mappings}
-          showLabels={showLabels}
-          interactionMode={interactionMode}
-          readOnly={readOnly}
-          handleNodeClick={handleNodeClick}
-          setNodes={setNodes}
-          pushUndo={pushUndo}
-          setSelectedEdge={setSelectedEdge}
-          setSelectedNode={setSelectedNode}
-          draggedNodeCoordRef={draggedNodeCoordRef}
-        />
-      ))}
+      {nodes.filter(n => !isNaN(parseFloat(n.latitude)) && !isNaN(parseFloat(n.longitude))).map(node => {
+        let isDown = false, isDisabled = false, isUp = false;
+        if (node.linked_interface) {
+          const linkedPrefix = node.linked_interface.toLowerCase();
+          const m = mappings || [];
+          const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === linkedPrefix);
+          if (mappedNode) {
+            if (mappedNode.final_status === 'Offline') isDown = true;
+            else if (mappedNode.final_status === 'Online') isUp = true;
+          } else {
+            const matchedIface = (coreInterfaces || []).find(i => i.name && i.name.toLowerCase() === linkedPrefix);
+            if (matchedIface) {
+              if (matchedIface.disabled === 'true') isDisabled = true;
+              else if (matchedIface.running === 'true') isUp = true;
+              else isDown = true;
+            }
+          }
+        } else if (node.type?.toLowerCase() !== 'core') {
+          const connectedEdges = edges.filter(e => e.from_node === node.id || e.to_node === node.id || e.from === node.id || e.to === node.id);
+          if (connectedEdges.length === 0) isDisabled = true;
+          else isUp = true;
+        } else {
+            isDown = node.status === 'offline';
+        }
+
+        return (
+          <DraggableMarker
+            key={node.id}
+            node={node}
+            isSelected={selectedNode?.id === node.id}
+            isDown={isDown}
+            isDisabled={isDisabled}
+            isUp={isUp}
+            currentZoom={currentZoom}
+            showLabels={showLabels}
+            interactionMode={interactionMode}
+            readOnly={readOnly}
+            handleNodeClick={handleNodeClick}
+            setNodes={setNodes}
+            pushUndo={pushUndo}
+            setSelectedEdge={setSelectedEdge}
+            setSelectedNode={setSelectedNode}
+            draggedNodeCoordRef={draggedNodeCoordRef}
+          />
+        );
+      })}
     </MapContainer>
   );
 }

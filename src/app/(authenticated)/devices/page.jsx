@@ -197,25 +197,15 @@ export default function Devices() {
     setError(null);
     try {
       const queryParams = forceRefresh ? "?force=true" : "";
-      const [statusRes, ifaceRes, pppoeRes, secretsRes] = await Promise.all([
-        axios
-          .get(`${API_URL}/devices/core/status${queryParams}`)
-          .catch((e) => ({
-            data: {
-              connected: false,
-              error: e.response?.data?.error || e.message,
-            },
-          })),
-        axios
-          .get(`${API_URL}/devices/core/interfaces${queryParams}`)
-          .catch(() => ({ data: [] })),
-        axios
-          .get(`${API_URL}/devices/core/pppoe${queryParams}`)
-          .catch(() => ({ data: [] })),
-        axios
-          .get(`${API_URL}/devices/core/pppoe-secrets${queryParams}`)
-          .catch(() => ({ data: [] })),
-      ]);
+      
+      // Fetch berurutan untuk mencegah bentrok koneksi (race condition) ke RouterOS
+      const statusRes = await axios.get(`${API_URL}/devices/core/status${queryParams}`).catch((e) => ({
+        data: { connected: false, error: e.response?.data?.error || e.message },
+      }));
+      const ifaceRes = await axios.get(`${API_URL}/devices/core/interfaces${queryParams}`).catch(() => ({ data: [] }));
+      const pppoeRes = await axios.get(`${API_URL}/devices/core/pppoe${queryParams}`).catch(() => ({ data: [] }));
+      const secretsRes = await axios.get(`${API_URL}/devices/core/pppoe-secrets${queryParams}`).catch(() => ({ data: [] }));
+
       setCoreStatus(statusRes.data);
       const ifaces = ifaceRes.data || [];
       const pppoeData = pppoeRes.data || [];

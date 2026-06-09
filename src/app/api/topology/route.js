@@ -79,9 +79,18 @@ async function persistMergedTopology(merged, dbNodes, dbEdges) {
     }
 }
 
+let cachedTopology = null;
+let lastTopologyFetchTime = 0;
+const TOPOLOGY_CACHE_TTL = 15000; // 15 seconds
+
 export async function GET(req) {
     try {
         verifyAuth(req);
+
+        const now = Date.now();
+        if (cachedTopology && now - lastTopologyFetchTime < TOPOLOGY_CACHE_TTL) {
+            return NextResponse.json(cachedTopology);
+        }
 
         const { data: nodesData, error: nodesError } = await supabase
             .from('topology_nodes')
@@ -97,11 +106,16 @@ export async function GET(req) {
         const nodes = await enrichTopologyNodesBatch(supabase, nodesData || []);
         const edges = edgesData || [];
 
-        return NextResponse.json({
+        const responseData = {
             nodes,
             edges,
             revision: computeRevision(nodes, edges)
-        });
+        };
+
+        cachedTopology = responseData;
+        lastTopologyFetchTime = now;
+
+        return NextResponse.json(responseData);
     } catch (err) {
         return sendError(err);
     }
@@ -284,6 +298,9 @@ export async function POST(req) {
                 }
             }
         }
+
+        // Invalidate cache
+        lastTopologyFetchTime = 0;
 
         return NextResponse.json({
             success: true,

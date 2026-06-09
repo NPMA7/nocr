@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -41,36 +41,7 @@ const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels, isFront) => {
     });
 };
 
-const MemoizedDashboardMarker = ({ node, coreInterfaces, edges, mappings, showLabels, isActive, onMarkerClick }) => {
-  const { isDown, isUp, isDisabled } = useMemo(() => {
-    let down = false, up = false, disabled = false;
-    if (node.linked_interface) {
-        const linkedPrefix = node.linked_interface.toLowerCase();
-        
-        // 1. Cek dari mappings gabungan
-        const m = mappings || [];
-        const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === linkedPrefix);
-        
-        if (mappedNode) {
-            if (mappedNode.final_status === 'Offline') down = true;
-            else if (mappedNode.final_status === 'Online') up = true;
-        } else {
-            // 2. Cek status interface murni
-            const matchedIface = coreInterfaces.find(i => i.name && i.name.toLowerCase() === linkedPrefix);
-            if (matchedIface) {
-                if (matchedIface.disabled === 'true') disabled = true;
-                else if (matchedIface.running === 'true') up = true;
-                else down = true;
-            }
-        }
-    } else if (node.type?.toLowerCase() !== 'core') {
-        const connectedEdges = edges.filter(e => e.from_node === node.id || e.to_node === node.id || e.from === node.id || e.to === node.id);
-        if (connectedEdges.length === 0) disabled = true;
-        else up = true;
-    }
-    return { isDown: down, isUp: up, isDisabled: disabled };
-  }, [node.linked_interface, node.type, node.id, coreInterfaces, edges, mappings]);
-
+const MemoizedDashboardMarker = React.memo(({ node, isDown, isUp, isDisabled, showLabels, isActive, onMarkerClick }) => {
   const finalIsDown = (!isDisabled && !isDown && node.status === 'offline') ? true : isDown;
 
   const typePriority = useMemo(() => {
@@ -103,7 +74,7 @@ const MemoizedDashboardMarker = ({ node, coreInterfaces, edges, mappings, showLa
       }}
     />
   );
-};
+});
 
 export default function DashboardMap({ topologyNodes = [], edges = [], coreInterfaces = [], mappings = [], mapTheme = 'dark', showLabels = false, networkMode = 'pppoe' }) {
   const [activeNodeId, setActiveNodeId] = useState(null);
@@ -180,9 +151,15 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
 
       if (node) {
         if (node.type === "client" || node.type === "pppoe-client") {
-          const isPPPoE =
+          let isPPPoE =
             node.linked_interface?.toLowerCase().includes("pppoe") ||
             node.type === "pppoe-client";
+            
+          if (!isPPPoE && node.linked_interface) {
+            const m = mappings?.find(map => map.prefix && map.prefix.toLowerCase() === node.linked_interface.toLowerCase());
+            if (m && m.connection_type === 'PPPOE') isPPPoE = true;
+          }
+
           if (isPPPoE) res.pppoe++;
           else res.l2tp++;
         }
@@ -204,9 +181,17 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
     // 3. Filter nodes
     filtered = filtered.filter((n) => {
       if (n.type === "client" || n.type === "pppoe-client") {
-        const isPPPoE =
+        let isPPPoE =
           n.linked_interface?.toLowerCase().includes("pppoe") ||
           n.type === "pppoe-client";
+          
+        if (!isPPPoE && n.linked_interface) {
+          const m = mappings?.find(map => map.prefix && map.prefix.toLowerCase() === n.linked_interface.toLowerCase());
+          if (m && m.connection_type === 'PPPOE') isPPPoE = true;
+        }
+
+        if (!n.linked_interface && n.type === "client") return true;
+        
         if (networkMode === "l2tp") return !isPPPoE;
         if (networkMode === "pppoe") return isPPPoE;
       } else {
@@ -224,7 +209,7 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
     });
 
     return filtered;
-  }, [topologyNodes, edges, networkMode]);
+  }, [topologyNodes, edges, networkMode, mappings]);
 
   const mapNodeIds = useMemo(() => new Set(mapNodes.map((n) => n.id)), [mapNodes]);
 
@@ -301,18 +286,43 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
             />
           );
         })}
-        {mapNodes.filter(n => n.latitude != null && n.longitude != null && n.latitude !== '' && !isNaN(parseFloat(n.latitude))).map(node => (
-          <MemoizedDashboardMarker
-            key={node.id}
-            node={node}
-            coreInterfaces={coreInterfaces}
-            mappings={mappings}
-            edges={edges}
-            showLabels={showLabels}
-            isActive={activeNodeId === node.id}
-            onMarkerClick={(id) => setActiveNodeId(prev => prev === id ? null : id)}
-          />
-        ))}
+        {mapNodes.filter(n => n.latitude != null && n.longitude != null && n.latitude !== '' && !isNaN(parseFloat(n.latitude))).map(node => {
+          let down = false, up = false, disabled = false;
+          if (node.linked_interface) {
+              const linkedPrefix = node.linked_interface.toLowerCase();
+              const m = mappings || [];
+              const mappedNode = m.find(map => map.prefix && map.prefix.toLowerCase() === linkedPrefix);
+              
+              if (mappedNode) {
+                  if (mappedNode.final_status === 'Offline') down = true;
+                  else if (mappedNode.final_status === 'Online') up = true;
+              } else {
+                  const matchedIface = coreInterfaces.find(i => i.name && i.name.toLowerCase() === linkedPrefix);
+                  if (matchedIface) {
+                      if (matchedIface.disabled === 'true') disabled = true;
+                      else if (matchedIface.running === 'true') up = true;
+                      else down = true;
+                  }
+              }
+          } else if (node.type?.toLowerCase() !== 'core') {
+              const connectedEdges = edges.filter(e => e.from_node === node.id || e.to_node === node.id || e.from === node.id || e.to === node.id);
+              if (connectedEdges.length === 0) disabled = true;
+              else up = true;
+          }
+
+          return (
+            <MemoizedDashboardMarker
+              key={node.id}
+              node={node}
+              isDown={down}
+              isUp={up}
+              isDisabled={disabled}
+              showLabels={showLabels}
+              isActive={activeNodeId === node.id}
+              onMarkerClick={(id) => setActiveNodeId(prev => prev === id ? null : id)}
+            />
+          );
+        })}
       </MapContainer>
     </div>
   );

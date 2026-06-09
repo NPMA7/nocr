@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Router, ArrowUpRight, AlertTriangle, Users, Map as MapIcon, Cpu, Clock, HardDrive, Server, CheckCircle2, AlertCircle, Info, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { fetchTopologyCached } from '@/lib/globalCache';
 import { API_URL, socket, useAppState } from '@/App';
 import dynamic from 'next/dynamic';
 
@@ -15,7 +16,7 @@ const DashboardMap = dynamic(() => import('@/components/DashboardMap'), {
   )
 });
 
-const POLL_INTERVAL_MS = 60000; // Increased to 1m (Realtime is handled by WebSockets)
+const POLL_INTERVAL_MS = 300000; // Increased to 5m (Realtime is handled by WebSockets)
 
 export default function Dashboard() {
   const router = useRouter();
@@ -80,12 +81,12 @@ export default function Dashboard() {
     }
   }, []);
 
-  const fetchTopology = useCallback(async () => {
+  const fetchTopology = useCallback(async (force = false) => {
     try {
-      const res = await axios.get(`${API_URL}/topology`);
+      const data = await fetchTopologyCached(force);
       if (mountedRef.current) {
-        setEdges(res.data.edges || []);
-        setTopologyNodes(res.data.nodes || []);
+        setEdges(data.edges || []);
+        setTopologyNodes(data.nodes || []);
         setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
       }
     } catch (e) {
@@ -122,7 +123,13 @@ export default function Dashboard() {
   }, []);
 
   const fetchAllDashboardData = useCallback(async () => {
-    await Promise.all([fetchCoreStatus(), fetchInterfaces(), fetchTopology(), fetchLogs(), fetchMappings(), fetchRuijie()]);
+    // Jalankan secara sekuensial (berurutan) khusus untuk MikroTik untuk menghindari 
+    // bentrokan koneksi / race condition di API RouterOS yang membuat data hilang timbul
+    await fetchCoreStatus();
+    await fetchInterfaces();
+    
+    // Sisanya bisa paralel karena dari Supabase / backend lain
+    await Promise.all([fetchTopology(), fetchLogs(), fetchMappings(), fetchRuijie()]);
   }, [fetchCoreStatus, fetchInterfaces, fetchTopology, fetchLogs, fetchMappings, fetchRuijie]);
 
   const applyTopologyPayload = useCallback((nodes, edgesPayload) => {
@@ -148,7 +155,7 @@ export default function Dashboard() {
       if (payload?.nodes) applyTopologyPayload(payload.nodes, payload.edges || []);
     };
 
-    const handleTopologyRefresh = () => fetchTopology();
+    const handleTopologyRefresh = () => fetchTopology(true);
     const handleInterfaceUpdate = () => fetchInterfaces();
     const handlePppoeUpdate = () => fetchCoreStatus();
     
@@ -362,6 +369,12 @@ export default function Dashboard() {
           <h3 className="flex-shrink-0 text-base font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center gap-2">
             Pratinjau Jaringan
             <div className="flex items-center gap-2 z-10">
+              <button
+                onClick={() => setNetworkMode((prev) => prev === 'pppoe' ? 'l2tp' : 'pppoe')}
+                className="cursor-pointer text-xs bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded flex items-center gap-1 transition"
+              >
+                <span className="fa fa-wifi" /> {networkMode === 'pppoe' ? 'PPPoE' : 'L2TP'}
+              </button>
               <button
                 onClick={() => setMapTheme((t) => (t === 'dark' ? 'colored' : 'dark'))}
                 className="cursor-pointer text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded flex items-center gap-1 transition"

@@ -54,7 +54,8 @@ class MikroTikService {
                 user: device.username || process.env.MIKROTIK_USER,
                 password: device.password || process.env.MIKROTIK_PASS || '',
                 port: device.port || process.env.MIKROTIK_PORT || 8728,
-                timeout: 5000 // Timeout lebih cepat (5s) untuk mencegah hang lama
+                timeout: 15, // Timeout 15 detik agar koneksi lebih stabil
+                keepalive: false // Matikan keepalive bawaan node-routeros karena menyebabkan false-timeout dengan ROS v7
             });
 
             // Prevent unhandled error events from crashing the Node process
@@ -78,11 +79,12 @@ class MikroTikService {
             const api = await connectPromise;
             return { connected: true, api };
         } catch (error) {
-            console.error(`Failed to connect to MikroTik ${device.ip_address}:`, error.message);
-            this.connecting.delete(device.id);
+            console.error(`Failed to connect to MikroTik ${device.ip_address}:`, error?.message || error);
 
+            const errMsg = (error?.message || String(error)).toLowerCase();
+            
             // Auto-Dial VPN jika koneksi gagal (hanya sekali)
-            if (!isRetry && (error.message.toLowerCase().includes('timeout') || error.message.includes('ECONN') || error.message.includes('ENET') || error.message.includes('EHOST'))) {
+            if (!isRetry && (errMsg.includes('timeout') || errMsg.includes('econn') || errMsg.includes('enet') || errMsg.includes('ehost'))) {
                 try {
                     const { connectVpn } = require('./vpn');
                     console.log(`Mencoba auto-dial VPN karena gagal terhubung ke ${device.ip_address}...`);
@@ -102,6 +104,22 @@ class MikroTikService {
         }
     }
 
+    async safeWrite(device, path, params = []) {
+        const api = this.connections.get(device.id);
+        if (!api) throw new Error('Not connected');
+
+        try {
+            return await api.write(path, params);
+        } catch (err) {
+            console.error(`API Write Error [${device.ip_address}] di ${path}:`, err?.message || err);
+            // Tutup secara agresif dan hapus koneksi jika terjadi error/timeout
+            // Ini mencegah koneksi 'zombie' yang membuat status di Dashboard jadi hilang/NaN
+            api.close().catch(() => {});
+            this.connections.delete(device.id);
+            throw err;
+        }
+    }
+
     async getSystemResource(device) {
         if (isDemoMode) {
             return {
@@ -117,7 +135,7 @@ class MikroTikService {
         const api = this.connections.get(device.id);
         if (!api) throw new Error('Not connected');
 
-        const result = await api.write('/system/resource/print');
+        const result = await this.safeWrite(device, '/system/resource/print');
         return result[0];
     }
 
@@ -133,7 +151,7 @@ class MikroTikService {
         const api = this.connections.get(device.id);
         if (!api) throw new Error('Not connected');
 
-        return await api.write('/interface/print');
+        return await this.safeWrite(device, '/interface/print');
     }
 
     async getActivePPPoE(device) {
@@ -146,7 +164,7 @@ class MikroTikService {
         
         try {
             // Filter by service=pppoe to exclude L2TP sessions
-            const results = await api.write('/ppp/active/print', ['?service=pppoe', '=count-only=']);
+            const results = await this.safeWrite(device, '/ppp/active/print', ['?service=pppoe', '=count-only=']);
             return parseInt(results[0]?.ret || 0);
         } catch (e) {
             return 0;
@@ -163,7 +181,7 @@ class MikroTikService {
         
         try {
             // Filter by service=l2tp
-            const results = await api.write('/ppp/active/print', ['?service=l2tp', '=count-only=']);
+            const results = await this.safeWrite(device, '/ppp/active/print', ['?service=l2tp', '=count-only=']);
             return parseInt(results[0]?.ret || 0);
         } catch (e) {
             return 0;
@@ -185,7 +203,7 @@ class MikroTikService {
         if (!api) throw new Error('Not connected');
 
         try {
-            return await api.write('/ppp/active/print');
+            return await this.safeWrite(device, '/ppp/active/print');
         } catch (e) {
             console.error('Error fetching PPPoE details:', e.message);
             return [];
@@ -203,7 +221,7 @@ class MikroTikService {
         if (!api) throw new Error('Not connected');
 
         try {
-            return await api.write('/ppp/secret/print');
+            return await this.safeWrite(device, '/ppp/secret/print');
         } catch (e) {
             console.error('Error fetching PPPoE secrets:', e.message);
             return [];
@@ -217,7 +235,7 @@ class MikroTikService {
         if (!api) throw new Error('Not connected');
 
         try {
-            await api.write('/ppp/secret/add', [
+            await this.safeWrite(device, '/ppp/secret/add', [
                 `=name=${name}`,
                 `=password=${password}`,
                 `=service=${service || 'pppoe'}`,
@@ -240,13 +258,13 @@ class MikroTikService {
                 if (!vlanId || !parentInterface) {
                     throw new Error('VLAN ID dan Parent Interface harus diisi untuk tipe VLAN.');
                 }
-                await api.write('/interface/vlan/add', [
+                await this.safeWrite(device, '/interface/vlan/add', [
                     `=name=${name}`,
                     `=vlan-id=${vlanId}`,
                     `=interface=${parentInterface}`
                 ]);
             } else if (type === 'bridge') {
-                await api.write('/interface/bridge/add', [
+                await this.safeWrite(device, '/interface/bridge/add', [
                     `=name=${name}`
                 ]);
             } else {
@@ -271,7 +289,7 @@ class MikroTikService {
             if (profile) params.push(`=profile=${profile}`);
             if (service) params.push(`=service=${service}`);
 
-            await api.write('/ppp/secret/set', params);
+            await this.safeWrite(device, '/ppp/secret/set', params);
             return true;
         } catch (e) {
             throw new Error('Gagal mengedit pelanggan: ' + e.message);
@@ -285,7 +303,7 @@ class MikroTikService {
         if (!api) throw new Error('Not connected');
 
         try {
-            await api.write('/ppp/secret/remove', [
+            await this.safeWrite(device, '/ppp/secret/remove', [
                 `=.id=${id}`
             ]);
             return true;
@@ -306,7 +324,7 @@ class MikroTikService {
             if (mtu !== undefined) params.push(`=mtu=${mtu}`);
             if (disabled !== undefined) params.push(`=disabled=${disabled}`);
 
-            await api.write('/interface/set', params);
+            await this.safeWrite(device, '/interface/set', params);
             return true;
         } catch (e) {
             throw new Error('Gagal mengedit interface: ' + e.message);
@@ -324,7 +342,7 @@ class MikroTikService {
             if (type === 'vlan') path = '/interface/vlan/remove';
             else if (type === 'bridge') path = '/interface/bridge/remove';
 
-            await api.write(path, [
+            await this.safeWrite(device, path, [
                 `=.id=${id}`
             ]);
             return true;
@@ -340,7 +358,7 @@ class MikroTikService {
         if (!api) throw new Error('Not connected');
 
         try {
-            await api.write('/ppp/active/remove', [
+            await this.safeWrite(device, '/ppp/active/remove', [
                 `=.id=${id}`
             ]);
             return true;

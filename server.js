@@ -172,11 +172,17 @@ app.prepare().then(() => {
     let nodesCache = { data: null, timestamp: 0 };
     let activePppoeCache = { data: null, timestamp: 0 };
 
+    let ruijieDevicesCache = { data: null, timestamp: 0 };
+    let deviceMappingsCache = { data: null, timestamp: 0 };
+    let pppoeSecretsCache = { data: null, timestamp: 0 };
+    let networkInterfacesCache = { data: null, timestamp: 0 };
+
+
     async function getCachedDevices() {
-        if (devicesCache.data && (Date.now() - devicesCache.timestamp < 60000 * 5)) {
+        if (devicesCache.data && (Date.now() - devicesCache.timestamp < 30000)) {
             return devicesCache.data;
         }
-        const { data } = await supabase.from('devices').select('id, name, ip_address, type');
+        const { data } = await supabase.from('devices').select('id, name, ip_address, type, username, password, port');
         devicesCache = { data, timestamp: Date.now() };
         return data;
     }
@@ -205,14 +211,16 @@ app.prepare().then(() => {
     // Supabase Realtime fallback/sync
     const channel = supabase.channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-            if (payload.table === 'network_interfaces') io.emit('interface_update', payload);
+            if (payload.table === 'network_interfaces') { networkInterfacesCache.data = null; io.emit('interface_update', payload); }
             if (payload.table === 'devices') devicesCache.data = null;
+            if (payload.table === 'ruijie_devices') ruijieDevicesCache.data = null;
+            if (payload.table === 'device_mappings') deviceMappingsCache.data = null;
             if (payload.table === 'pppoe_active') {
                 activePppoeCache.data = null;
                 io.emit('pppoe_active_update', payload);
                 // Removed broadcastDashboardCoreStatus() to prevent mass Mikrotik API calls on bulk inserts
             }
-            if (payload.table === 'pppoe_secrets') io.emit('pppoe_secret_update', payload);
+            if (payload.table === 'pppoe_secrets') { pppoeSecretsCache.data = null; io.emit('pppoe_secret_update', payload); }
             if (payload.table === 'topology_nodes' || payload.table === 'topology_edges') {
                 nodesCache.data = null;
                 io.emit('dashboard_topology_refresh');
@@ -423,18 +431,24 @@ app.prepare().then(() => {
     // Jalankan broadcast Ruijie secara otomatis setiap 1 menit (60 detik)
     async function broadcastRuijieDevices() {
         try {
+            if (ruijieDevicesCache.data && (Date.now() - ruijieDevicesCache.timestamp < 30000)) {
+                io.emit('ruijie_update', ruijieDevicesCache.data);
+                return;
+            }
             const { data: devices, error } = await supabase
                 .from('ruijie_devices')
                 .select('*')
                 .order('alias', { ascending: true });
             
             if (!error && devices) {
+                ruijieDevicesCache = { data: devices, timestamp: Date.now() };
                 io.emit('ruijie_update', devices);
             }
         } catch (err) {
             console.error('Ruijie broadcast error:', err.message);
         }
     }
+
 
     broadcastRuijieDevices();
     scheduleAtMinuteBoundary(broadcastRuijieDevices, 0); // Tepat pergantian menit (:00)
@@ -448,18 +462,62 @@ app.prepare().then(() => {
             const conn = await mikrotik.connect(device);
             if (!conn.connected) return;
 
-            const [interfaces, pppoe, secrets] = await Promise.all([
-                mikrotik.getInterfaces(device),
-                mikrotik.getActivePPPoEDetails(device),
-                mikrotik.getPPPoESecrets(device)
-            ]);
+            // Eksekusi secara berurutan untuk menghindari crash/drop koneksi pada RouterOS API (Bug umum di versi 7.x)
+            const interfaces = await mikrotik.getInterfaces(device);
+            const pppoe = await mikrotik.getActivePPPoEDetails(device);
+            const secrets = await mikrotik.getPPPoESecrets(device);
 
             const now = new Date().toISOString();
+            
+            async function syncTable(tableName, items, mapFn) {
+                if (!items || items.length === 0) return;
+                
+                const { data: existing } = await supabase.from(tableName).select('*').eq('device_id', device.id);
+                const existingMap = new Map((existing || []).map(e => [e.ros_id || e.name, e]));
+                
+                const rowsToUpsert = [];
+                const currentKeys = new Set();
+                
+                items.forEach(item => {
+                    const row = mapFn(item);
+                    const key = row.ros_id || row.name;
+                    currentKeys.add(key);
+                    
+                    const exist = existingMap.get(key);
+                    if (!exist) {
+                        rowsToUpsert.push(row);
+                    } else {
+                        let isChanged = false;
+                        for (let k in row) {
+                            if (k !== 'id' && k !== 'synced_at' && row[k] !== exist[k]) {
+                                isChanged = true;
+                                break;
+                            }
+                        }
+                        if (isChanged) {
+                            row.id = exist.id;
+                            rowsToUpsert.push(row);
+                        }
+                    }
+                });
+
+                if (rowsToUpsert.length > 0) {
+                    for (let i = 0; i < rowsToUpsert.length; i += 100) {
+                        await supabase.from(tableName).upsert(rowsToUpsert.slice(i, i + 100));
+                    }
+                }
+                
+                const idsToDelete = (existing || []).filter(e => !currentKeys.has(e.ros_id || e.name)).map(e => e.id);
+                if (idsToDelete.length > 0) {
+                    for (let i = 0; i < idsToDelete.length; i += 100) {
+                        await supabase.from(tableName).delete().in('id', idsToDelete.slice(i, i + 100));
+                    }
+                }
+            }
 
             if (interfaces && interfaces.length > 0) {
                 try {
-                    await supabase.from('network_interfaces').delete().eq('device_id', device.id);
-                    const rows = interfaces.map(iface => ({
+                    await syncTable('network_interfaces', interfaces, iface => ({
                         device_id: device.id,
                         ros_id: iface['.id'] || null,
                         name: iface.name,
@@ -471,7 +529,6 @@ app.prepare().then(() => {
                         comment: iface.comment || null,
                         synced_at: now
                     }));
-                    await supabase.from('network_interfaces').insert(rows);
                 } catch (e) { console.warn('Cache Interface Error:', e.message); }
             }
 
@@ -481,41 +538,33 @@ app.prepare().then(() => {
                         name: p.name || null,
                         address: p.address || null
                     }));
-                    await supabase.from('pppoe_active').delete().eq('device_id', device.id);
-                    if (pppoe.length > 0) {
-                        const rows = pppoe.map(p => ({
-                            device_id: device.id,
-                            ros_id: p['.id'] || null,
-                            name: p.name || null,
-                            address: p.address || null,
-                            caller_id: p['caller-id'] || null,
-                            service: p.service || null,
-                            uptime: p.uptime || null,
-                            synced_at: now
-                        }));
-                        await supabase.from('pppoe_active').insert(rows);
-                    }
+                    await syncTable('pppoe_active', pppoe, p => ({
+                        device_id: device.id,
+                        ros_id: p['.id'] || null,
+                        name: p.name || null,
+                        address: p.address || null,
+                        caller_id: p['caller-id'] || null,
+                        service: p.service || null,
+                        uptime: p.uptime || null,
+                        synced_at: now
+                    }));
                 } catch (e) { console.warn('Cache PPPoE Active Error:', e.message); }
             }
 
             if (secrets && secrets.length >= 0) {
                 try {
-                    await supabase.from('pppoe_secrets').delete().eq('device_id', device.id);
-                    if (secrets.length > 0) {
-                        const rows = secrets.map(sec => ({
-                            device_id: device.id,
-                            ros_id: sec['.id'] || null,
-                            name: sec.name,
-                            password: sec.password || '',
-                            profile: sec.profile || 'default',
-                            service: sec.service || 'any',
-                            disabled: sec.disabled === 'true',
-                            local_address: sec['local-address'] || null,
-                            remote_address: sec['remote-address'] || null,
-                            synced_at: now
-                        }));
-                        await supabase.from('pppoe_secrets').insert(rows);
-                    }
+                    await syncTable('pppoe_secrets', secrets, sec => ({
+                        device_id: device.id,
+                        ros_id: sec['.id'] || null,
+                        name: sec.name,
+                        password: sec.password || '',
+                        profile: sec.profile || 'default',
+                        service: sec.service || 'any',
+                        disabled: sec.disabled === 'true',
+                        local_address: sec['local-address'] || null,
+                        remote_address: sec['remote-address'] || null,
+                        synced_at: now
+                    }));
                 } catch (e) { console.warn('Cache PPPoE Secrets Error:', e.message); }
             }
 
@@ -532,26 +581,29 @@ app.prepare().then(() => {
 
 
 
+
     // Jalankan Sinkronisasi Mappings setiap pergantian menit lewat 5 detik (supaya data mentah Ruijie/Mikrotik masuk dulu)
     async function syncDeviceMappings() {
         try {
             const device = await getCoreDevice();
             if (!device) return;
 
-            const [resRuijie, resManual, resActive, resSecrets, resInterfaces] = await Promise.all([
-                supabase.from('ruijie_devices').select('*'),
-                supabase.from('device_mappings').select('*'),
-                supabase.from('pppoe_active').select('name'),
-                supabase.from('pppoe_secrets').select('name'),
-                supabase.from('network_interfaces').select('name, running, disabled')
+            const fetchCache = async (cacheObj, table, selectQuery) => {
+                if (cacheObj.data && (Date.now() - cacheObj.timestamp < 30000)) return cacheObj.data;
+                const { data } = await supabase.from(table).select(selectQuery);
+                cacheObj.data = data || [];
+                cacheObj.timestamp = Date.now();
+                return cacheObj.data;
+            };
+
+            const [ruijie, mappings, active, secrets, interfaces] = await Promise.all([
+                fetchCache(ruijieDevicesCache, 'ruijie_devices', '*'),
+                fetchCache(deviceMappingsCache, 'device_mappings', '*'),
+                fetchCache(activePppoeCache, 'pppoe_active', 'name'),
+                fetchCache(pppoeSecretsCache, 'pppoe_secrets', 'name'),
+                fetchCache(networkInterfacesCache, 'network_interfaces', 'name, running, disabled')
             ]);
             
-            const ruijie = resRuijie.data || [];
-            const mappings = resManual.data || [];
-            const active = resActive.data || [];
-            const secrets = resSecrets.data || [];
-            const interfaces = resInterfaces.data || [];
-
             const normalizeName = (name) => name ? name.toLowerCase().replace(/[-_\s]/g, '') : '';
 
             const upsertData = ruijie.map(ap => {
@@ -584,7 +636,7 @@ app.prepare().then(() => {
                 };
 
                 if (existing && existing.is_manual) {
-                    secretName = existing.mikrotik_name; // Prioritize mikrotik_name which is the true manual input
+                    secretName = existing.mikrotik_name;
                     if (isPPPoE) {
                         const sec = secrets.find(s => s.name === secretName);
                         if (sec) secretName = sec.name;
@@ -623,11 +675,10 @@ app.prepare().then(() => {
 
                 let autoPrefix = secretName || ap.alias;
                 if (isPPPoE) {
-                    autoPrefix = ap.alias || secretName; // For PPPoE, prioritize Ruijie AP alias
+                    autoPrefix = ap.alias || secretName;
                 }
                 const prefixName = ((existing && existing.is_prefix_manual) ? existing.prefix : autoPrefix)?.toUpperCase();
 
-                // Kembalikan log aktivitas karena dibutuhkan di tabel Log Aktivitas Dashboard
                 const prevStatus = previousMappingsStatus[ap.mac_address];
                 if (prevStatus && prevStatus !== finalStatus) {
                     addActivityLog(`Status pelanggan ${prefixName} berubah menjadi ${finalStatus}`);
@@ -649,24 +700,31 @@ app.prepare().then(() => {
                 };
             });
 
-            // Upsert ke database batch per 100 baris untuk keamanan memori
-            for (let i = 0; i < upsertData.length; i += 100) {
-                const batch = upsertData.slice(i, i + 100);
-                await supabase.from('device_mappings').upsert(batch, { onConflict: 'ruijie_mac' });
+            const changedData = upsertData.filter(d => {
+                const exist = mappings.find(m => m.ruijie_mac === d.ruijie_mac);
+                if (!exist) return true;
+                return exist.final_status !== d.final_status || 
+                       exist.status_mikrotik !== d.status_mikrotik || 
+                       exist.mikrotik_name !== d.mikrotik_name ||
+                       exist.prefix !== d.prefix;
+            });
+
+            if (changedData.length > 0) {
+                for (let i = 0; i < changedData.length; i += 100) {
+                    const batch = changedData.slice(i, i + 100);
+                    await supabase.from('device_mappings').upsert(batch, { onConflict: 'ruijie_mac' });
+                }
             }
 
-            const currentTidakSinkron = upsertData.filter(d => d.status_mikrotik === 'Online' && d.status_ruijie === 'Offline').length;
-            if (currentTidakSinkron !== previousTidakSinkronCount && currentTidakSinkron > 0) {
-                if (global.addActivityLog) global.addActivityLog(`Ditemukan ${currentTidakSinkron} perangkat dengan status Tidak Sinkron`);
+            // Removed Tidak Sinkron logging per user request
+            if (changedData.length > 0) {
+                io.emit('mappings_updated');
             }
-            previousTidakSinkronCount = currentTidakSinkron;
-            
-            // Emit update agar tabel langsung segar
-            io.emit('mappings_updated');
         } catch (err) {
             console.error('Sync Mappings Error:', err.message);
         }
     }
+
     broadcastMikrotikData();
     scheduleAtMinuteBoundary(broadcastMikrotikData, 0); // Tepat pergantian menit (:00)
 
