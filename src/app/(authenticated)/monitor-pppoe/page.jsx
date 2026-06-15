@@ -117,10 +117,10 @@ export default function MonitorPppoe() {
         fetchData(true);
       };
       
-      socket.on('ruijie_update', handleUpdate);
+      socket.on('mappings_updated', handleUpdate);
       
       return () => {
-        socket.off('ruijie_update', handleUpdate);
+        socket.off('mappings_updated', handleUpdate);
         window.removeEventListener('nocr-role-updated', handleRoleUpdate);
       };
     }
@@ -176,6 +176,7 @@ export default function MonitorPppoe() {
       } else {
         setMappings([...mappings, res.data]);
       }
+      if (socket) socket.emit('force_sync_mappings');
       setIsModalOpen(false);
       fetchData(true);
     } catch (e) {
@@ -189,6 +190,7 @@ export default function MonitorPppoe() {
     if (!confirm('Hapus tautan manual dan kembali ke sistem otomatis?')) return;
     try {
       await axios.delete(`/api/mappings?ruijie_mac=${mac_address}`);
+      if (socket) socket.emit('force_sync_mappings');
       fetchData(true);
     } catch (e) {
       alert('Gagal menghapus tautan manual: ' + (e.response?.data?.error || e.message));
@@ -210,6 +212,7 @@ export default function MonitorPppoe() {
       setMappings(mappings.map(m => 
         m.ruijie_mac === device.ruijie_mac ? { ...m, prefix: editPrefixValue.trim(), is_prefix_manual: true } : m
       ));
+      if (socket) socket.emit('force_sync_mappings');
       setEditingPrefixMac(null);
     } catch (e) {
       alert('Gagal menyimpan prefix: ' + (e.response?.data?.error || e.message));
