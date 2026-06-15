@@ -137,11 +137,14 @@ class QueryBuilder {
                 if (this._data.length === 0) return { data: [], error: null };
                 const keys = Object.keys(this._data[0]);
                 const values = this._data.map(obj => keys.map(k => obj[k]));
-                const updates = keys.filter(k => k !== this._onConflict).map(k => format('%I = EXCLUDED.%I', k, k)).join(', ');
+                
+                const conflictKeys = Array.isArray(this._onConflict) ? this._onConflict : [this._onConflict];
+                const updates = keys.filter(k => !conflictKeys.includes(k)).map(k => format('%I = EXCLUDED.%I', k, k)).join(', ');
+                
                 if (updates) {
-                    sql = format('INSERT INTO %I (%I) VALUES %L ON CONFLICT (%I) DO UPDATE SET %s RETURNING *', this.table, keys, values, this._onConflict, updates);
+                    sql = format('INSERT INTO %I (%I) VALUES %L ON CONFLICT (%I) DO UPDATE SET %s RETURNING *', this.table, keys, values, conflictKeys, updates);
                 } else {
-                    sql = format('INSERT INTO %I (%I) VALUES %L ON CONFLICT (%I) DO NOTHING RETURNING *', this.table, keys, values, this._onConflict);
+                    sql = format('INSERT INTO %I (%I) VALUES %L ON CONFLICT (%I) DO NOTHING RETURNING *', this.table, keys, values, conflictKeys);
                 }
             }
 

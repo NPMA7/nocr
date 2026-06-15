@@ -167,6 +167,89 @@ app.prepare().then(() => {
 
     global.addActivityLog = addActivityLog;
 
+    async function updateDailyReportRealtime(ruijieMac, prefixName, finalStatus) {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const now = new Date().toISOString();
+            const isOffline = finalStatus === 'Offline';
+
+            // 1. Cek existing report
+            const { data: allReports } = await db.from('daily_reports').select('*').eq('ruijie_mac', ruijieMac);
+            let existing = (allReports || []).find(r => new Date(r.report_date).toISOString().split('T')[0] === today);
+            if (!existing) {
+                existing = (allReports || []).find(r => r.status_progress === 'Progress');
+            }
+
+            if (existing) {
+                const updateData = {};
+                let needsUpdate = false;
+
+                if (isOffline) {
+                    if (existing.status_progress === 'Done' && new Date(existing.report_date).toISOString().split('T')[0] === today) {
+                        updateData.offline_since = now;
+                        updateData.online_since = null;
+                        updateData.status_progress = 'Progress';
+                        needsUpdate = true;
+                    }
+                } else {
+                    if (existing.status_progress === 'Progress') {
+                        updateData.online_since = now;
+                        updateData.status_progress = 'Done';
+                        needsUpdate = true;
+                    }
+                }
+
+                if (needsUpdate) {
+                    await db.from('daily_reports').update(updateData).eq('id', existing.id);
+                }
+            } else {
+                if (isOffline) {
+                    const { data: sites } = await db.from('sites').select('full_address, latitude, longitude').eq('ruijie_mac', ruijieMac);
+                    let loc = '';
+                    if (sites && sites.length > 0) {
+                        const s = sites[0];
+                        if (s.full_address) loc = s.full_address;
+                        else if (s.latitude && s.longitude) loc = `${s.latitude}, ${s.longitude}`;
+                    }
+
+                    await db.from('daily_reports').insert([{
+                        report_date: today,
+                        ruijie_mac: ruijieMac,
+                        prefix_name: prefixName,
+                        location: loc,
+                        offline_since: now,
+                        online_since: null,
+                        status_progress: 'Progress',
+                        issue: '',
+                        tindakan: ''
+                    }]);
+                } else {
+                    const { data: sites } = await db.from('sites').select('full_address, latitude, longitude').eq('ruijie_mac', ruijieMac);
+                    let loc = '';
+                    if (sites && sites.length > 0) {
+                        const s = sites[0];
+                        if (s.full_address) loc = s.full_address;
+                        else if (s.latitude && s.longitude) loc = `${s.latitude}, ${s.longitude}`;
+                    }
+
+                    await db.from('daily_reports').insert([{
+                        report_date: today,
+                        ruijie_mac: ruijieMac,
+                        prefix_name: prefixName,
+                        location: loc,
+                        offline_since: null,
+                        online_since: now,
+                        status_progress: 'Done',
+                        issue: '',
+                        tindakan: ''
+                    }]);
+                }
+            }
+        } catch (err) {
+            console.error("Realtime Laporan Error:", err.message);
+        }
+    }
+
     // Caches for ping worker
     let devicesCache = { data: null, timestamp: 0 };
     let nodesCache = { data: null, timestamp: 0 };
@@ -269,6 +352,7 @@ app.prepare().then(() => {
         });
 
         socket.on('force_sync_mappings', () => {
+            deviceMappingsCache.data = null;
             syncDeviceMappings();
         });
 
@@ -618,6 +702,7 @@ app.prepare().then(() => {
                 const isPPPoE = ap.connection_type === 'PPPOE';
 
                 const checkActive = (name) => {
+                    if (!name) return false;
                     if (isPPPoE) {
                         const hasActiveSession = active.some(a => a.name === name);
                         const staticIface = interfaces.find(i => 
@@ -631,7 +716,13 @@ app.prepare().then(() => {
                         }
                         return hasActiveSession;
                     } else if (isL2TP) {
-                        const iface = interfaces.find(i => i.name === name);
+                        const iface = interfaces.find(i => 
+                            i.name === name ||
+                            i.name === `<l2tp-${name}>` ||
+                            i.name === `l2tp-${name}` ||
+                            i.name === `L2TP-${name}` ||
+                            i.name === `<l2tp-${name.toLowerCase()}>`
+                        );
                         if (iface) return iface.running && !iface.disabled;
                         return false;
                     }
@@ -640,22 +731,31 @@ app.prepare().then(() => {
 
                 if (existing && existing.is_manual) {
                     secretName = existing.mikrotik_name;
-                    if (isPPPoE) {
+                    if (isPPPoE || isL2TP) {
                         const sec = secrets.find(s => s.name === secretName);
                         if (sec) secretName = sec.name;
-                    } else if (isL2TP) {
-                        const iface = interfaces.find(i => i.name === secretName);
-                        if (iface) secretName = iface.name;
                     }
                     isActive = checkActive(secretName);
                 } else {
                     const normAlias = normalizeName(ap.alias);
-                    if (isPPPoE) {
+                    if (isPPPoE || isL2TP) {
                         const sec = secrets.find(s => normalizeName(s.name) === normAlias);
-                        if (sec) secretName = sec.name;
-                    } else if (isL2TP) {
-                        const iface = interfaces.find(i => normalizeName(i.name) === normAlias);
-                        if (iface) secretName = iface.name;
+                        if (sec) {
+                            secretName = sec.name;
+                        } else if (isL2TP) {
+                            // Fallback to interface matching if secret not found
+                            const iface = interfaces.find(i => {
+                                const nName = normalizeName(i.name);
+                                return nName === normAlias ||
+                                       nName === `<l2tp${normAlias}>` ||
+                                       nName === `l2tp${normAlias}`;
+                            });
+                            if (iface) {
+                                // Extract secret name from interface if possible, or just use interface name
+                                const match = iface.name.match(/<l2tp-(.+)>/i) || iface.name.match(/l2tp-(.+)/i);
+                                secretName = match ? match[1] : iface.name;
+                            }
+                        }
                     }
                     isActive = checkActive(secretName);
                 }
@@ -685,6 +785,7 @@ app.prepare().then(() => {
                 const prevStatus = previousMappingsStatus[ap.mac_address];
                 if (prevStatus && prevStatus !== finalStatus) {
                     addActivityLog(`Status pelanggan ${prefixName} berubah menjadi ${finalStatus}`);
+                    updateDailyReportRealtime(ap.mac_address, prefixName, finalStatus).catch(console.error);
                 }
                 previousMappingsStatus[ap.mac_address] = finalStatus;
 
@@ -709,7 +810,8 @@ app.prepare().then(() => {
                 return exist.final_status !== d.final_status || 
                        exist.status_mikrotik !== d.status_mikrotik || 
                        exist.mikrotik_name !== d.mikrotik_name ||
-                       exist.prefix !== d.prefix;
+                       exist.prefix !== d.prefix ||
+                       exist.issue !== d.issue;
             });
 
             if (changedData.length > 0) {

@@ -73,8 +73,7 @@ export async function POST(req) {
         mikrotik_alias: mikrotik_name,
         prefix: mikrotik_name,
         is_manual: true 
-      }, { onConflict: 'ruijie_mac' })
-      .select();
+      }, { onConflict: 'ruijie_mac' });
       
     if (error) throw error;
     
