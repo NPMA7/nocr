@@ -58,13 +58,13 @@ export async function GET(request) {
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const { id, status_progress, issue, tindakan } = body;
+    const { id, status_progress, issue, tindakan, offline_since, online_since } = body;
 
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     const { data, error } = await db
       .from('daily_reports')
-      .update({ status_progress, issue, tindakan, updated_at: new Date().toISOString() })
+      .update({ status_progress, issue, tindakan, offline_since, online_since, updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) throw error;
