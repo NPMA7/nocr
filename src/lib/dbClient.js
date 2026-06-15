@@ -23,6 +23,10 @@ class QueryBuilder {
     }
 
     select(columns = '*', options = {}) {
+        if (['insert', 'update', 'upsert', 'delete'].includes(this._action)) {
+            this._columns = columns;
+            return this;
+        }
         this._action = 'select';
         this._columns = columns;
         if (options.count) this._count = options.count;
@@ -152,11 +156,13 @@ class QueryBuilder {
                 sql += whereClause;
             }
             
-            if (this._order) {
-                sql += format(' ORDER BY %I %s', this._order.col, this._order.asc ? 'ASC' : 'DESC');
-            }
-            if (this._limit) {
-                sql += format(' LIMIT %L', this._limit);
+            if (this._action === 'select') {
+                if (this._order) {
+                    sql += format(' ORDER BY %I %s', this._order.col, this._order.asc ? 'ASC' : 'DESC');
+                }
+                if (this._limit) {
+                    sql += format(' LIMIT %L', this._limit);
+                }
             }
 
             let countObj = null;
