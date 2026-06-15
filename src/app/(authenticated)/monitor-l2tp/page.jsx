@@ -84,7 +84,7 @@ export default function MonitorDevice() {
     if (!isBackground) setError(null);
     try {
       const [resMappings, resMikrotik] = await Promise.all([
-        axios.get('/api/mappings'),
+        axios.get('/api/mappings' + (isBackground ? '?force=true' : '')),
         axios.get('/api/monitor/mikrotik')
       ]);
       const allMappings = resMappings.data || [];

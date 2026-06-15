@@ -6,10 +6,12 @@ let cachedData = null;
 let lastFetchTime = 0;
 const CACHE_TTL = 15000; // 15 seconds
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const force = searchParams.get('force') === 'true';
     const now = Date.now();
-    if (cachedData && now - lastFetchTime < CACHE_TTL) {
+    if (!force && cachedData && now - lastFetchTime < CACHE_TTL) {
       return NextResponse.json(cachedData);
     }
 
