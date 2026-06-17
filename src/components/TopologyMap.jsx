@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 
 
 const DEFAULT_CENTER = [-7.065, 107.55];;
 
-// Map interaction component
+// Komponen interaksi peta
 function MapEvents({ interactionMode, newNodeType, onAddNode, onSelectEmpty, onZoomChange, readOnly }) {
   const map = useMapEvents({
     click(e) {
@@ -34,7 +34,7 @@ function MapEvents({ interactionMode, newNodeType, onAddNode, onSelectEmpty, onZ
   return null;
 }
 
-// Custom Right-Click to Pan Component
+// Komponen Kustom Klik Kanan untuk Menggeser (Pan)
 function RightClickPan() {
   const map = useMap();
   useEffect(() => {
@@ -43,7 +43,7 @@ function RightClickPan() {
     let startPoint;
     
     const onMouseDown = (e) => {
-      if (e.originalEvent.button === 2) { // Right click
+      if (e.originalEvent.button === 2) { // Klik Kanan
         isPanning = true;
         map.dragging.disable();
         startPoint = e.containerPoint;
@@ -72,7 +72,7 @@ function RightClickPan() {
     map.on('mousemove', onMouseMove);
     map.on('mouseup', onMouseUp);
     
-    // Prevent default context menu
+    // Cegah menu konteks bawaan
     const contextMenuHandler = (e) => e.preventDefault();
     map.getContainer().addEventListener('contextmenu', contextMenuHandler);
 
@@ -86,7 +86,7 @@ function RightClickPan() {
   return null;
 }
 
-// Keyboard shortcut handler (Ctrl+Z to undo last node drag)
+// Pengelola pintasan keyboard (Ctrl+Z untuk membatalkan seretan node terakhir)
 function KeyboardHandler({ onUndo }) {
   const map = useMap();
   useEffect(() => {
@@ -352,7 +352,7 @@ export default function TopologyMap({
     setNodes(prev => prev.map(n => n.id === last.id ? { ...n, latitude: last.lat, longitude: last.lng } : n));
   }, [setNodes]);
 
-  // Helper to determine edge status considering both mappings (final_status) and coreInterfaces
+  // Fungsi pembantu untuk menentukan status edge mempertimbangkan mappings (final_status) dan coreInterfaces
   const getInterfaceStatus = (ifaceName) => {
     if (!ifaceName) return null;
     const lowerName = ifaceName.toLowerCase();
@@ -383,9 +383,9 @@ export default function TopologyMap({
     return edge.status === 'down' ? 'down' : 'up';
   };
 
-  // Edge colors based on status: Disabled=gray, Up=green/blue, Down=red
+  // Warna edge berdasarkan status: Disabled=abu-abu, Up=hijau/biru, Down=merah
   const getEdgeColor = (edge) => {
-    if (selectedEdge?.id === edge.id) return '#93c5fd'; // lighter blue when selected to distinguish from infra links
+    if (selectedEdge?.id === edge.id) return '#93c5fd'; // biru lebih muda saat dipilih untuk membedakan dari tautan infrastruktur
 
     const status = getEdgeDerivedStatus(edge);
     const isInfrastructure = edge.fromNode?.type?.toLowerCase() !== 'client' && edge.toNode?.type?.toLowerCase() !== 'client';

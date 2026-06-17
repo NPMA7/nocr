@@ -15,7 +15,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    // Check if system is initialized
+    // Cek apakah sistem sudah diinisialisasi
     axios.get(`${API_URL}/auth/status`)
       .then(res => {
         if (res.data.error === 'TABEL_TIDAK_DITEMUKAN') {
@@ -41,12 +41,12 @@ export default function Login() {
     try {
       const res = await axios.post(`${API_URL}${endpoint}`, { username, password });
       
-      // Save token
+      // Simpan token
       localStorage.setItem('nocr_token', res.data.token);
       localStorage.setItem('nocr_user', JSON.stringify(res.data.user));
       
-      // Redirect to dashboard
-      window.location.href = '/'; // Full reload to apply axios interceptor
+      // Arahkan ke dashboard
+      window.location.href = '/'; // Muat ulang penuh untuk menerapkan interceptor axios
     } catch (err) {
       setError(err.response?.data?.error || 'Terjadi kesalahan jaringan');
     } finally {

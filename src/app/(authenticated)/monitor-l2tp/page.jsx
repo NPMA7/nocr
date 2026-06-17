@@ -64,13 +64,13 @@ export default function MonitorDevice() {
   const [filterStatus, setFilterStatus] = useState('all');
   const { setLastSyncTime } = useAppState();
 
-  // Modal State
+  // Status Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAp, setSelectedAp] = useState(null);
   const [selectedMikrotikName, setSelectedMikrotikName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Prefix Editing State
+  // Status Edit Prefix
   const [editingPrefixMac, setEditingPrefixMac] = useState(null);
   const [editPrefixValue, setEditPrefixValue] = useState('');
   const [isSavingPrefix, setIsSavingPrefix] = useState(false);
@@ -114,7 +114,7 @@ export default function MonitorDevice() {
 
     if (socket) {
       const handleUpdate = () => {
-        fetchData(true); // Lazy refresh for auto sync
+        fetchData(true); // Refresh lambat untuk sinkronisasi otomatis
       };
       
       socket.on('mappings_updated', handleUpdate);
@@ -170,7 +170,7 @@ export default function MonitorDevice() {
         ruijie_mac: selectedAp.mac_address,
         mikrotik_name: selectedMikrotikName
       });
-      // Update local state
+      // Perbarui status lokal
       const existing = mappings.find(m => m.ruijie_mac === res.data.ruijie_mac);
       if (existing) {
         setMappings(mappings.map(m => m.ruijie_mac === res.data.ruijie_mac ? res.data : m));
@@ -209,7 +209,7 @@ export default function MonitorDevice() {
         new_prefix: editPrefixValue.trim(),
         old_prefix: device.prefix
       });
-      // Update local state
+      // Perbarui status lokal
       setMappings(mappings.map(m => 
         m.ruijie_mac === device.ruijie_mac ? { ...m, prefix: editPrefixValue.trim(), is_prefix_manual: true } : m
       ));

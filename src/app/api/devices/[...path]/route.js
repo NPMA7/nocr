@@ -10,7 +10,7 @@ const sendError = (err, defaultStatus = 500) => {
     );
 };
 
-// Helper: find the core MikroTik device
+// Pembantu: cari perangkat inti MikroTik
 async function getCoreDevice() {
     const { data } = await db
         .from('devices')
@@ -290,7 +290,7 @@ export async function GET(req, { params }) {
 
                 return NextResponse.json(secrets || []);
             }
-        } else if (path.length === 1) { // Single device GET /[id]
+        } else if (path.length === 1) { // GET perangkat tunggal /[id]
             const id = path[0];
             const { data, error } = await db
                 .from('devices')
@@ -485,7 +485,7 @@ export async function DELETE(req, { params }) {
             if (path[1] === 'pppoe' && path[2]) {
                 const id = path[2];
                 
-                // Fetch active session name first for logging
+                // Ambil nama sesi aktif terlebih dahulu untuk logging
                 let sessionName = 'Tidak diketahui';
                 try {
                     const { data: actSess } = await db.from('pppoe_active').select('name').eq('device_id', device.id).eq('ros_id', id).maybeSingle();

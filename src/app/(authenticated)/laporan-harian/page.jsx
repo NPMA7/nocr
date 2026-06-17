@@ -39,7 +39,7 @@ export default function LaporanHarianPage() {
   useEffect(() => {
     fetchReports(date, type);
     
-    // Auto refresh setiap 15 detik (realtime fallback)
+    // Segarkan otomatis setiap 15 detik (realtime fallback)
     const interval = setInterval(() => {
       fetchReports(date, type, true);
     }, 15000);
@@ -65,7 +65,7 @@ export default function LaporanHarianPage() {
   }, [searchQuery, sortConfig, date, type]);
 
   const updateReport = async (id, field, value) => {
-    // Optimistic update
+    // Pembaruan optimis (Optimistic update)
     setReports(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
     
     setSavingId(id);
@@ -75,7 +75,7 @@ export default function LaporanHarianPage() {
       await axios.put('/api/laporan', payload);
     } catch (err) {
       showToast('Gagal menyimpan perubahan', 'error');
-      // Revert if failed (simple version: refetch)
+      // Kembalikan jika gagal (versi sederhana: ambil ulang)
       fetchReports(date, type);
     } finally {
       setSavingId(null);
@@ -98,7 +98,7 @@ export default function LaporanHarianPage() {
   };
 
   const handleCopyTable = () => {
-    // Generate TSV (Tab Separated Values) suitable for pasting into Excel/Google Sheets
+    // Buat format TSV (Tab Separated Values) agar mudah disalin ke Excel/Google Sheets
     const header = [
       'No', 
       type === 'PPPOE' ? 'Nama Dinas' : 'Nama Kecamatan', 
@@ -116,7 +116,7 @@ export default function LaporanHarianPage() {
         formatTimeWIB(r.offline_since),
         formatTimeWIB(r.online_since),
         r.status_progress || '',
-        r.issue ? r.issue.replace(/\n/g, ' ') : '', // avoid multiline breaking paste
+        r.issue ? r.issue.replace(/\n/g, ' ') : '', // hindari multiline agar tidak merusak format saat disalin
         r.tindakan ? r.tindakan.replace(/\n/g, ' ') : '',
         '' // Cek Data Terduplikat
       ].join('\t');
@@ -182,9 +182,9 @@ export default function LaporanHarianPage() {
     return new Date(dateString).toLocaleDateString('id-ID', options);
   };
 
-  // Filter out devices that are online and were never offline recently?
-  // User says "Total Offline", "Total Online Kembali"
-  // If we fetched ALL PPPoE, we might want to only show those that have issue or were offline.
+  // Saring perangkat yang online dan tidak pernah offline baru-baru ini?
+  // Berdasarkan: "Total Offline", "Total Online Kembali"
+  // Jika kita mengambil SEMUA PPPoE, kita mungkin hanya ingin menampilkan yang bermasalah atau sempat offline.
   const handleSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {

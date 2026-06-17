@@ -35,7 +35,7 @@ const statusColor = (running, disabled) => {
   return "bg-red-500/20 text-red-400";
 };
 
-// Toast component
+// Komponen Toast
 function Toast({ toasts }) {
   return (
     <div className="fixed top-4 right-4 z-[2000] flex flex-col gap-2 pointer-events-none">
@@ -63,7 +63,7 @@ function Toast({ toasts }) {
   );
 }
 
-// Confirm Dialog
+// Dialog Konfirmasi
 function ConfirmDialog({
   show,
   title,
@@ -136,7 +136,7 @@ export default function Devices() {
   const [secretSearch, setSecretSearch] = useState("");
   const [toasts, setToasts] = useState([]);
 
-  // Add/Edit Secret state
+  // Status Tambah/Edit Secret
   const [showAddSecret, setShowAddSecret] = useState(false);
   const [editingSecret, setEditingSecret] = useState(null);
   const [secretForm, setSecretForm] = useState({
@@ -150,7 +150,7 @@ export default function Devices() {
   const toggleListPassword = (name) =>
     setShowListPasswords((prev) => ({ ...prev, [name]: !prev[name] }));
 
-  // Add/Edit Interface state
+  // Status Tambah/Edit Interface
   const [showAddInterface, setShowAddInterface] = useState(false);
   const [editingInterface, setEditingInterface] = useState(null);
   const [interfaceForm, setInterfaceForm] = useState({
@@ -162,7 +162,7 @@ export default function Devices() {
     disabled: "false",
   });
 
-  // Confirm delete state
+  // Status Konfirmasi hapus
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {

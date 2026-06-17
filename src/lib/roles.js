@@ -10,12 +10,12 @@ export const PERMISSIONS = {
 };
 
 export const PERMISSION_LABELS = {
-  [PERMISSIONS.SYSTEM_SETTINGS]: 'System Settings (WA, VPN, etc)',
-  [PERMISSIONS.SYSTEM_USERS]: 'User & Role Management',
-  [PERMISSIONS.NETWORK_TOPOLOGY]: 'Topology Map',
-  [PERMISSIONS.NETWORK_DEVICES]: 'Network Devices (Mikrotik, Ruijie)',
-  [PERMISSIONS.CHAT_LIVE]: 'Omnichannel Live Chat',
-  [PERMISSIONS.PASSWORDS_REVEAL]: 'Reveal Passwords',
+  [PERMISSIONS.SYSTEM_SETTINGS]: 'Pengaturan Sistem (WA, VPN, dll)',
+  [PERMISSIONS.SYSTEM_USERS]: 'Manajemen Pengguna & Role',
+  [PERMISSIONS.NETWORK_TOPOLOGY]: 'Peta Topologi',
+  [PERMISSIONS.NETWORK_DEVICES]: 'Perangkat Jaringan (Mikrotik, Ruijie)',
+  [PERMISSIONS.CHAT_LIVE]: 'Live Chat Omnichannel',
+  [PERMISSIONS.PASSWORDS_REVEAL]: 'Melihat Password (Reveal)',
 };
 
 export function hasPermission(user, permission) {

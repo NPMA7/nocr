@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
 import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole } from '@/lib/auth';
 
-// Helper for error responses
+// Helper untuk respon error
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
         { error: err.message || 'Kesalahan Server Internal' },
@@ -195,7 +195,7 @@ export async function PATCH(req, { params }) {
             const isSelf = user.id === id;
             const isAdmin = user.role === 'admin';
 
-            // Check authorization: must be admin or modifying own profile
+            // Cek otorisasi: harus admin atau memodifikasi profil sendiri
             if (!isAdmin && !isSelf) {
                 return NextResponse.json(
                     { error: 'Akses ditolak: Anda tidak memiliki izin untuk mengubah data ini.' },
@@ -245,7 +245,7 @@ export async function PATCH(req, { params }) {
                 );
             }
 
-            // Fetch current user details from DB
+            // Ambil detail pengguna saat ini dari DB
             const targetUser = await db.from('admin_users').select('username, role').eq('id', id).single();
             if (targetUser.error || !targetUser.data) {
                 return NextResponse.json(
@@ -255,7 +255,7 @@ export async function PATCH(req, { params }) {
             }
             const previousRole = normalizeRole(targetUser.data.role);
 
-            // Safety check: Cannot demote the last remaining admin
+            // Cek keamanan: Tidak bisa menurunkan jabatan admin terakhir yang tersisa
             if (updateData.role && updateData.role !== 'admin' && previousRole === 'admin') {
                 const { data: allUsers } = await db.from('admin_users').select('id, role');
                 const adminCount = (allUsers || []).filter(

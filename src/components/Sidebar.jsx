@@ -260,7 +260,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                 }`}
               >
-                <Monitor size={14} /> Sistem Healty & DB
+                <Monitor size={14} /> Kesehatan Sistem & DB
               </Link>
               {isAdmin && (
                 <Link
@@ -287,7 +287,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
                 >
-                  <User size={14} /> User Management
+                  <User size={14} /> Manajemen Pengguna
                 </Link>
               )}
               {isAdmin && (
@@ -301,7 +301,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
                 >
-                  <Shield size={14} /> Role Management
+                  <Shield size={14} /> Manajemen Role
                 </Link>
               )}
               <Link
@@ -314,7 +314,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                 }`}
               >
-                <Key size={14} /> Change Password
+                <Key size={14} /> Ubah Password
               </Link>
             </div>
           )}

@@ -121,7 +121,7 @@ export default function LiveChatPage() {
         text
       });
       if (res.data.success) {
-        // Optimistic append, but it's already handled by 'wa_message_sent' via socket
+        // Tambahkan secara optimis, tapi sudah ditangani oleh 'wa_message_sent' melalui socket
       }
     } catch (e) {
       showToast('Gagal mengirim pesan', 'error');
@@ -138,7 +138,7 @@ export default function LiveChatPage() {
   };
 
   const getAckIcon = (ack) => {
-    if (ack === 1) return <Check size={12} />; // sent to server
+    if (ack === 1) return <Check size={12} />; // terkirim ke server
     if (ack === 2) return <CheckCheck size={12} />; // delivered
     if (ack === 3 || ack === 4) return <CheckCheck size={12} className="text-blue-400" />; // read
     return <Clock size={10} />; // 0 or undefined = pending

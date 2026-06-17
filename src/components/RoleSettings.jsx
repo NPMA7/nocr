@@ -20,7 +20,7 @@ export default function RoleSettings({ showToast }) {
             const res = await axios.get('/api/roles');
             setRoles(res.data);
         } catch (err) {
-            showToast(err.response?.data?.error || 'Failed to load roles', 'error');
+            showToast(err.response?.data?.error || 'Gagal memuat role', 'error');
         } finally {
             setLoading(false);
         }
@@ -41,7 +41,7 @@ export default function RoleSettings({ showToast }) {
 
     const openEdit = (r) => {
         if (r.name === 'admin') {
-            showToast('Built-in Admin role cannot be edited. Please use another role.', 'error');
+            showToast('Role Admin bawaan tidak bisa diedit. Harap gunakan role lain.', 'error');
             return;
         }
         setEditMode(true);
@@ -61,7 +61,7 @@ export default function RoleSettings({ showToast }) {
     };
 
     const saveRole = async () => {
-        if (!formName.trim()) return showToast('Role name cannot be empty', 'error');
+        if (!formName.trim()) return showToast('Nama role tidak boleh kosong', 'error');
         try {
             if (editMode) {
                 await axios.patch(`/api/roles/${formId}`, {
@@ -69,33 +69,33 @@ export default function RoleSettings({ showToast }) {
                     description: formDesc,
                     permissions: formPerms
                 });
-                showToast('Role successfully updated!', 'success');
+                showToast('Role berhasil diperbarui!', 'success');
             } else {
                 await axios.post('/api/roles', {
                     name: formName,
                     description: formDesc,
                     permissions: formPerms
                 });
-                showToast('Role successfully added!', 'success');
+                showToast('Role berhasil ditambahkan!', 'success');
             }
             setShowModal(false);
             fetchRoles();
         } catch (err) {
-            showToast(err.response?.data?.error || 'Failed to save role', 'error');
+            showToast(err.response?.data?.error || 'Gagal menyimpan role', 'error');
         }
     };
 
     const deleteRole = async (r) => {
         if (['admin', 'editor', 'visitor'].includes(r.name)) {
-            return showToast('Built-in system roles cannot be deleted', 'error');
+            return showToast('Role bawaan sistem tidak bisa dihapus', 'error');
         }
-        if (!confirm(`Delete role ${r.name}?`)) return;
+        if (!confirm(`Hapus role ${r.name}?`)) return;
         try {
             await axios.delete(`/api/roles/${r.id}`);
-            showToast('Role successfully deleted', 'success');
+            showToast('Role berhasil dihapus', 'success');
             fetchRoles();
         } catch (err) {
-            showToast(err.response?.data?.error || 'Failed to delete role', 'error');
+            showToast(err.response?.data?.error || 'Gagal menghapus role', 'error');
         }
     };
 
@@ -108,15 +108,15 @@ export default function RoleSettings({ showToast }) {
             <div className="flex items-center justify-between mb-6 relative z-10">
                 <div>
                     <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                        <Shield className="text-blue-400" size={24} /> Role Management
+                        <Shield className="text-blue-400" size={24} /> Manajemen Role
                     </h2>
-                    <p className="text-sm text-slate-400 mt-1">Set specific access rights for each user group</p>
+                    <p className="text-sm text-slate-400 mt-1">Atur hak akses secara spesifik untuk setiap kelompok pengguna</p>
                 </div>
                 <button
                     onClick={openCreate}
                     className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200"
                 >
-                    <Plus size={18} /> Add Role
+                    <Plus size={18} /> Tambah Role
                 </button>
             </div>
 
@@ -124,17 +124,17 @@ export default function RoleSettings({ showToast }) {
                 <table className="w-full text-left">
                     <thead>
                         <tr className="border-b border-slate-700/50 text-slate-400 text-sm">
-                            <th className="pb-3 font-medium">Role Name</th>
-                            <th className="pb-3 font-medium">Description</th>
-                            <th className="pb-3 font-medium">Permissions</th>
-                            <th className="pb-3 font-medium text-right">Actions</th>
+                            <th className="pb-3 font-medium">Nama Role</th>
+                            <th className="pb-3 font-medium">Deskripsi</th>
+                            <th className="pb-3 font-medium">Hak Akses (Permissions)</th>
+                            <th className="pb-3 font-medium text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody className="text-sm text-slate-300">
                         {loading ? (
-                            <tr><td colSpan={4} className="text-center py-8 text-slate-400">Loading data...</td></tr>
+                            <tr><td colSpan={4} className="text-center py-8 text-slate-400">Memuat data...</td></tr>
                         ) : roles.length === 0 ? (
-                            <tr><td colSpan={4} className="text-center py-8 text-slate-400">No additional roles yet</td></tr>
+                            <tr><td colSpan={4} className="text-center py-8 text-slate-400">Belum ada role tambahan</td></tr>
                         ) : roles.map((r) => {
                             let perms = [];
                             try {
@@ -191,7 +191,7 @@ export default function RoleSettings({ showToast }) {
                         <div className="flex items-center justify-between p-5 border-b border-slate-700/50 bg-slate-800/80">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 {editMode ? <Pencil size={20} className="text-blue-400" /> : <Plus size={20} className="text-blue-400" />}
-                                {editMode ? 'Edit Role' : 'Add New Role'}
+                                {editMode ? 'Edit Role' : 'Tambah Role Baru'}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="cursor-pointer text-slate-400 hover:text-white transition">
                                 <X size={20} />
@@ -199,7 +199,7 @@ export default function RoleSettings({ showToast }) {
                         </div>
                         <div className="p-6 flex flex-col gap-5">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Role Name</label>
+                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Nama Role</label>
                                 <input
                                     type="text"
                                     value={formName}
@@ -210,17 +210,17 @@ export default function RoleSettings({ showToast }) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Short Description</label>
+                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Deskripsi Singkat</label>
                                 <input
                                     type="text"
                                     value={formDesc}
                                     onChange={e => setFormDesc(e.target.value)}
-                                    placeholder="Brief explanation of this role's duties"
+                                    placeholder="Penjelasan singkat tugas role ini"
                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-3 border-b border-slate-700 pb-2">Available Permissions</label>
+                                <label className="block text-sm font-medium text-slate-400 mb-3 border-b border-slate-700 pb-2">Hak Akses Tersedia</label>
                                 <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                                     {Object.entries(PERMISSION_LABELS).map(([code, label]) => (
                                         <label key={code} className="flex items-start gap-3 cursor-pointer group">
@@ -251,14 +251,14 @@ export default function RoleSettings({ showToast }) {
                                 onClick={() => setShowModal(false)}
                                 className="cursor-pointer px-5 py-2.5 text-sm font-medium text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
                             >
-                                Cancel
+                                Batal
                             </button>
                             <button
                                 onClick={saveRole}
                                 className="cursor-pointer px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 rounded-lg flex items-center gap-2 transition-all active:scale-95"
                             >
                                 <Save size={16} />
-                                {editMode ? 'Save Changes' : 'Create Role'}
+                                {editMode ? 'Simpan Perubahan' : 'Buat Role'}
                             </button>
                         </div>
                     </div>

@@ -32,12 +32,12 @@ export default function Topbar({ onMenuClick }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Notification State
+  // Status Notifikasi
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // Only increase unread count if the dropdown is closed
+    // Hanya tingkatkan jumlah belum terbaca jika dropdown ditutup
     if (!showNotifications && alerts && alerts.length > 0) {
       setUnreadCount(alerts.length);
     }
@@ -54,7 +54,7 @@ export default function Topbar({ onMenuClick }) {
   useEffect(() => {
     if (query.length >= 5) {
       setLoading(true);
-      // Fetch nodes from topology
+      // Mengambil node dari topologi
       axios.get(`${API_URL}/topology`)
         .then(res => {
           const nodes = res.data.nodes || [];
@@ -98,7 +98,7 @@ export default function Topbar({ onMenuClick }) {
         className="w-full bg-slate-900/50 border border-slate-700/50 rounded-full py-2 pl-10 pr-4 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-slate-900 transition-all duration-300"
       />
       
-      {/* Dropdown Suggestions */}
+      {/* Saran Dropdown */}
       {showSuggestions && (
         <div className="absolute top-12 left-0 right-0 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl max-h-72 overflow-auto">
           {suggestions.length > 0 ? (
@@ -132,7 +132,7 @@ export default function Topbar({ onMenuClick }) {
 
   return (
     <header className="bg-slate-800 border-b border-slate-700/50 flex flex-col md:flex-row md:justify-between md:items-center relative z-[2000] shrink-0">
-      {/* Top Row: Hamburger, Desktop Search, Profile */}
+      {/* Baris Atas: Hamburger, Pencarian Desktop, Profil */}
       <div className="h-[70px] flex justify-between items-center px-4 md:px-6 w-full">
         <div className="flex items-center gap-3 flex-1 md:flex-none md:w-96 relative mr-4">
           <button 
@@ -142,7 +142,7 @@ export default function Topbar({ onMenuClick }) {
             <Menu size={24} />
           </button>
           
-          {/* Desktop Search Bar */}
+          {/* Bilah Pencarian Desktop */}
           <div className="hidden md:block w-full">
             {searchInput}
           </div>
@@ -210,7 +210,7 @@ export default function Topbar({ onMenuClick }) {
 
           <button 
             onClick={handleLogout}
-            title="Logout"
+            title="Keluar"
             className="cursor-pointer text-slate-400 hover:text-red-400 transition-colors flex items-center gap-2"
           >
             <LogOut size={20} />
@@ -218,7 +218,7 @@ export default function Topbar({ onMenuClick }) {
         </div>
       </div>
 
-      {/* Mobile Search Bar (Below Top Row) */}
+      {/* Bilah Pencarian Seluler (Di Bawah Baris Atas) */}
       <div className="md:hidden px-4 pb-4 w-full">
         {searchInput}
       </div>

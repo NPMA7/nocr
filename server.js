@@ -17,7 +17,7 @@ app.prepare().then(() => {
     const server = express();
     const httpServer = http.createServer(server);
     
-    // Socket.io setup
+    // Pengaturan Socket.io
     const io = new Server(httpServer, {
         cors: { origin: '*' }
     });
@@ -29,7 +29,7 @@ app.prepare().then(() => {
     const previousMappingsStatus = {};
     let previousTidakSinkronCount = -1;
 
-    // Node presence registry: nodeId → { userId, username, socketId, since }
+    // Registri presensi node: nodeId → { userId, username, socketId, since }
     const nodePresence = new Map();
 
     function broadcastNodePresence() {
@@ -251,7 +251,7 @@ app.prepare().then(() => {
         }
     }
 
-    // Caches for ping worker
+    // Cache untuk worker ping
     let devicesCache = { data: null, timestamp: 0 };
     let nodesCache = { data: null, timestamp: 0 };
     let activePppoeCache = { data: null, timestamp: 0 };
@@ -302,7 +302,7 @@ app.prepare().then(() => {
             if (payload.table === 'pppoe_active') {
                 activePppoeCache.data = null;
                 io.emit('pppoe_active_update', payload);
-                // Removed broadcastDashboardCoreStatus() to prevent mass Mikrotik API calls on bulk inserts
+                // broadcastDashboardCoreStatus() dihapus untuk mencegah pemanggilan API Mikrotik massal saat bulk insert
             }
             if (payload.table === 'pppoe_secrets') { pppoeSecretsCache.data = null; io.emit('pppoe_secret_update', payload); }
             if (payload.table === 'topology_nodes' || payload.table === 'topology_edges') {
@@ -407,7 +407,7 @@ app.prepare().then(() => {
         });
     });
 
-    // Background Ping Worker
+    // Worker Ping Latar Belakang
     const pingWorker = async () => {
         if (isWorkerRunning) return;
         isWorkerRunning = true;
@@ -840,7 +840,7 @@ app.prepare().then(() => {
     }, 5000);
     scheduleAtMinuteBoundary(syncDeviceMappings, 5); // Tepat di detik ke-05 setiap menit
 
-    // WhatsApp Gateway Express Routes
+    // Rute Express WhatsApp Gateway
     server.use('/api/whatsapp', express.json());
 
     server.get('/api/whatsapp/status', (req, res) => {
@@ -885,9 +885,9 @@ app.prepare().then(() => {
         }
     });
 
-    // Auto-start WA if previously connected or just to init? 
-    // We let user manually start from UI for now, or we can call whatsapp.start() here if settings allow.
-    whatsapp.start(); // Auto-start on server boot.
+    // Mulai otomatis WA jika sebelumnya terhubung atau hanya inisialisasi? 
+    // Kami biarkan pengguna memulai manual dari UI untuk saat ini, atau kita bisa memanggil whatsapp.start() di sini jika pengaturan mengizinkan.
+    whatsapp.start(); // Mulai otomatis saat server booting.
 
     // Default Next.js Handler
     server.all('*', (req, res) => {

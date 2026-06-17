@@ -16,7 +16,7 @@ const DashboardMap = dynamic(() => import('@/components/DashboardMap'), {
   )
 });
 
-const POLL_INTERVAL_MS = 300000; // Increased to 5m (Realtime is handled by WebSockets)
+const POLL_INTERVAL_MS = 300000; // Ditingkatkan ke 5m (Realtime ditangani oleh WebSockets)
 
 export default function Dashboard() {
   const router = useRouter();

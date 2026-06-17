@@ -64,13 +64,13 @@ export default function MonitorPppoe() {
   const [filterStatus, setFilterStatus] = useState('all');
   const { setLastSyncTime } = useAppState();
 
-  // Modal State
+  // Status Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAp, setSelectedAp] = useState(null);
   const [selectedMikrotikName, setSelectedMikrotikName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Prefix Editing State
+  // Status Edit Prefix
   const [editingPrefixMac, setEditingPrefixMac] = useState(null);
   const [editPrefixValue, setEditPrefixValue] = useState('');
   const [isSavingPrefix, setIsSavingPrefix] = useState(false);
@@ -165,7 +165,7 @@ export default function MonitorPppoe() {
     if (!selectedAp || !selectedMikrotikName) return;
     setIsSaving(true);
     try {
-      // Untuk PPPoE, simpan mapping ke endpoint khusus atau reuse /api/mappings
+      // Untuk PPPoE, simpan mapping ke endpoint khusus atau gunakan ulang /api/mappings
       const res = await axios.post('/api/mappings', {
         ruijie_mac: selectedAp.mac_address,
         mikrotik_name: selectedMikrotikName
