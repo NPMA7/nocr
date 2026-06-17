@@ -68,6 +68,19 @@ export default function WhatsAppGateway() {
     }
   };
 
+  const handleToggle = async (key, value) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    try {
+      const res = await axios.post(`${API_URL}/whatsapp/action`, { action: 'settings', settings: newSettings });
+      if (res.data.success) {
+        // Silently succeed or show tiny toast
+      }
+    } catch (e) {
+      showToast(e.response?.data?.error || e.message, 'error');
+    }
+  };
+
   const saveSettings = async (e) => {
     e.preventDefault();
     try {
@@ -174,7 +187,7 @@ export default function WhatsAppGateway() {
                   type="checkbox" 
                   className="sr-only" 
                   checked={settings.botEnabled}
-                  onChange={(e) => setSettings({...settings, botEnabled: e.target.checked})}
+                  onChange={(e) => handleToggle('botEnabled', e.target.checked)}
                 />
                 <div className={`block w-10 h-6 rounded-full transition ${settings.botEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}></div>
                 <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${settings.botEnabled ? 'transform translate-x-4' : ''}`}></div>
@@ -191,7 +204,7 @@ export default function WhatsAppGateway() {
                   type="checkbox" 
                   className="sr-only" 
                   checked={settings.autoReply}
-                  onChange={(e) => setSettings({...settings, autoReply: e.target.checked})}
+                  onChange={(e) => handleToggle('autoReply', e.target.checked)}
                 />
                 <div className={`block w-10 h-6 rounded-full transition ${settings.autoReply ? 'bg-emerald-500' : 'bg-slate-600'}`}></div>
                 <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${settings.autoReply ? 'transform translate-x-4' : ''}`}></div>

@@ -848,6 +848,20 @@ app.prepare().then(() => {
     });
 
     server.post('/api/whatsapp/action', async (req, res) => {
+        // Otentikasi dan otorisasi
+        const authHeader = req.headers['authorization'];
+        if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
+        try {
+            const token = authHeader.split(' ')[1];
+            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'nocr_super_secret_key_123');
+            const perms = decoded.permissions || [];
+            if (!perms.includes('system.settings') && decoded.role !== 'admin') {
+                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
+            }
+        } catch (e) {
+            return res.status(401).json({ error: 'Token tidak valid' });
+        }
+
         const { action, settings } = req.body;
         try {
             let result;
@@ -877,6 +891,20 @@ app.prepare().then(() => {
     });
 
     server.post('/api/whatsapp/chat/send', async (req, res) => {
+        // Otentikasi dan otorisasi
+        const authHeader = req.headers['authorization'];
+        if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
+        try {
+            const token = authHeader.split(' ')[1];
+            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'nocr_super_secret_key_123');
+            const perms = decoded.permissions || [];
+            if (!perms.includes('chat.live') && decoded.role !== 'admin') {
+                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
+            }
+        } catch (e) {
+            return res.status(401).json({ error: 'Token tidak valid' });
+        }
+
         try {
             const result = await whatsapp.sendMessage(req.body.chatId, req.body.text);
             res.json({ success: true, message: result });
@@ -885,8 +913,6 @@ app.prepare().then(() => {
         }
     });
 
-    // Mulai otomatis WA jika sebelumnya terhubung atau hanya inisialisasi? 
-    // Kami biarkan pengguna memulai manual dari UI untuk saat ini, atau kita bisa memanggil whatsapp.start() di sini jika pengaturan mengizinkan.
     whatsapp.start(); // Mulai otomatis saat server booting.
 
     // Default Next.js Handler

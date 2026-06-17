@@ -110,13 +110,23 @@ async function start() {
         }
 
         const settings = getSettings();
-        if (settings.botEnabled && settings.autoReply && !msg.fromMe) {
-            // Contoh logic Auto Reply sederhana
-            if (msg.body.toLowerCase() === 'ping') {
+        
+        // 1. Fitur Bot: Merespon perintah spesifik jika diaktifkan
+        let isHandledByBot = false;
+        if (settings.botEnabled && !msg.fromMe) {
+            if (msg.body.toLowerCase() === '/ping' || msg.body.toLowerCase() === 'ping') {
                 msg.reply('pong');
-            } else if (msg.body.toLowerCase() === 'info') {
+                isHandledByBot = true;
+            } else if (msg.body.toLowerCase() === '/info' || msg.body.toLowerCase() === 'info') {
                 msg.reply('Ini adalah nomor sistem NOCR. Silakan hubungi admin kami untuk bantuan.');
+                isHandledByBot = true;
             }
+        }
+
+        // 2. Pesan Otomatis (Auto Reply): Membalas pesan umum di luar jam kerja jika belum ditangani bot
+        if (settings.autoReply && !msg.fromMe && !isHandledByBot) {
+            // Logika sederhana: selalu membalas jika fitur diaktifkan
+            msg.reply('Terima kasih telah menghubungi kami. Saat ini kami sedang di luar jam kerja/operasional. Kami akan membalas pesan Anda secepatnya.');
         }
     });
 
