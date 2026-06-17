@@ -223,3 +223,39 @@ model vpn_settings {
   linux_password   String?   @db.VarChar(255)
   active_platform  String?   @default("windows") @db.VarChar(50)
 }
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model admin_roles {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(50)
+  description String?   @db.VarChar(255)
+  permissions Json      @default("[]")
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model daily_reports {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  report_date     DateTime  @db.Date
+  ruijie_mac      String    @db.VarChar(50)
+  prefix_name     String?   @db.VarChar(255)
+  location        String?
+  offline_since   DateTime? @db.Timestamptz(6)
+  online_since    DateTime? @db.Timestamptz(6)
+  status_progress String?   @default("Progress") @db.VarChar(50)
+  issue           String?
+  tindakan        String?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([report_date, ruijie_mac])
+  @@index([report_date], map: "idx_daily_reports_date")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model roles {
+  name        String    @id @db.VarChar(50)
+  permissions String    @default("[]")
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+}

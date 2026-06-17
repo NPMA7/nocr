@@ -118,7 +118,17 @@ export async function POST(req, { params }) {
                 return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
             }
 
-            const userRole = normalizeRole(data.role) || 'visitor';
+            const userRole = data.role || 'visitor';
+
+            const roleData = await db.from('admin_roles').select('permissions').eq('name', userRole).single();
+            let permissions = [];
+            if (roleData.data && roleData.data.permissions) {
+                try {
+                    permissions = typeof roleData.data.permissions === 'string' 
+                        ? JSON.parse(roleData.data.permissions) 
+                        : roleData.data.permissions;
+                } catch(e) {}
+            }
 
             const token = jwt.sign(
                 { id: data.id, username: data.username, role: userRole },
@@ -129,7 +139,7 @@ export async function POST(req, { params }) {
             return NextResponse.json({
                 message: 'Login berhasil',
                 token,
-                user: { id: data.id, username: data.username, role: userRole }
+                user: { id: data.id, username: data.username, role: userRole, permissions }
             });
         }
 

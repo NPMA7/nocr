@@ -84,8 +84,8 @@ export default function SiteDetailPage() {
   }, [mac, applyForm]);
 
   useEffect(() => {
-    setCanEdit(canEditTopology(getStoredUser().role));
-    const onRole = () => setCanEdit(canEditTopology(getStoredUser().role));
+    setCanEdit(canEditTopology(getStoredUser()));
+    const onRole = () => setCanEdit(canEditTopology(getStoredUser()));
     window.addEventListener('nocr-role-updated', onRole);
     return () => window.removeEventListener('nocr-role-updated', onRole);
   }, []);

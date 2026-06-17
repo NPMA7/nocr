@@ -11,10 +11,12 @@ Aplikasi ini menggunakan perpaduan **Next.js** untuk antarmuka pengguna (Fronten
 - 📡 **MikroTik Core Management**: Pantau status, antarmuka (interface), dan sumber daya router MikroTik pusat secara *real-time*.
 - 🌐 **L2TP & PPPoE Monitoring**: Deteksi otomatis dan pemantauan klien PPPoE & tunnel L2TP yang terhubung.
 - 📍 **Data Wilayah (Sites)**: Pemetaan dan manajemen koordinat lokasi perangkat untuk visualisasi geografis.
-- 📶 **Ruijie AP Monitoring**: Integrasi *scraper* Python otomatis untuk menarik data kesehatan perangkat dari *cloud* Ruijie.
+- 📶 **Ruijie AP Monitoring**: Integrasi *scraper* otomatis untuk menarik data perangkat dari *cloud* Ruijie.
+- 💬 **Live Chat Omnichannel & WhatsApp Gateway**: Layanan integrasi WhatsApp Web untuk membalas pesan dan mengirimkan notifikasi dari sistem secara otomatis.
+- 📝 **Laporan Harian (Daily Report)**: Pencatatan, pemantauan status *offline/online*, tindakan, dan manajemen laporan gangguan secara sistematis.
 - 🛡️ **VPN Auto-Dial**: Dukungan untuk fitur auto-koneksi VPN (untuk Windows/Linux) jika jaringan terputus.
 - 🖥️ **System & Database Health**: Dasbor khusus admin untuk memantau performa CPU, RAM, Uptime server, ukuran & koneksi PostgreSQL, serta manajemen proses *scraper* PM2.
-- 🔐 **Role-Based Access Control**: Manajemen peran pengguna (Admin, Editor, Visitor).
+- 🔐 **Dynamic Role-Based Access Control**: Manajemen peran pengguna secara dinamis dan spesifik, di mana Admin dapat mengustomisasi hak akses setiap role.
 
 ## Teknologi yang Digunakan
 
@@ -76,11 +78,16 @@ DATABASE_URL=postgresql://postgres:password@192.168.10.6:5432/nocr
 4. **Akses Dashboard**
    Buka browser Anda dan kunjungi alamat IP server atau domain yang telah dikonfigurasi.
 
-## Hak Akses & Peran Pengguna
+Sistem ini sekarang menggunakan fitur **Manajemen Role Dinamis**. Anda dapat mengatur hak akses spesifik di halaman Pengaturan > Manajemen Role.
+Beberapa hak akses (Permissions) yang tersedia meliputi:
+- `system.settings`: Mengelola pengaturan sistem (WA, VPN, dll)
+- `system.users`: Manajemen Pengguna & Role
+- `network.topology`: Mengubah Peta Topologi
+- `network.devices`: Mengatur Perangkat Jaringan (Mikrotik, Ruijie)
+- `chat.live`: Akses Live Chat Omnichannel WhatsApp
+- `passwords.reveal`: Membuka paksa teks rahasia / Reveal Password
 
-- **Admin**: Memiliki kontrol penuh terhadap pengaturan sistem, manajemen pengguna, mengubah password *core*, merestart *scraper*, dan semua fitur manipulasi data.
-- **Editor**: Dapat menambah/mengubah data perangkat, topologi, dan *site*, namun terbatas pada pengaturan utama.
-- **Visitor**: Mode baca-saja (*Read Only*). Hanya bisa melihat statistik, dashboard, peta, dan tabel, tanpa opsi untuk menyimpan perubahan atau mengeksekusi aksi kritis.
+Secara bawaan (*default*), sistem menyediakan peran *Admin* yang memiliki seluruh akses (*All Access*).
 
 ---
 

@@ -1,42 +1,52 @@
 /** Client & server safe role helpers */
 
-export const ROLES = ['admin', 'editor', 'visitor'];
+export const PERMISSIONS = {
+  SYSTEM_SETTINGS: 'system.settings',
+  SYSTEM_USERS: 'system.users',
+  NETWORK_TOPOLOGY: 'network.topology',
+  NETWORK_DEVICES: 'network.devices',
+  CHAT_LIVE: 'chat.live',
+  PASSWORDS_REVEAL: 'passwords.reveal',
+};
 
+export const PERMISSION_LABELS = {
+  [PERMISSIONS.SYSTEM_SETTINGS]: 'System Settings (WA, VPN, etc)',
+  [PERMISSIONS.SYSTEM_USERS]: 'User & Role Management',
+  [PERMISSIONS.NETWORK_TOPOLOGY]: 'Topology Map',
+  [PERMISSIONS.NETWORK_DEVICES]: 'Network Devices (Mikrotik, Ruijie)',
+  [PERMISSIONS.CHAT_LIVE]: 'Omnichannel Live Chat',
+  [PERMISSIONS.PASSWORDS_REVEAL]: 'Reveal Passwords',
+};
+
+export function hasPermission(user, permission) {
+  if (!user || !user.permissions) return false;
+  return user.permissions.includes(permission);
+}
+
+// Fallbacks for hardcoded places if we still have user.role = 'admin' without permissions
+function isLegacyAdmin(user) {
+    return user?.role === 'admin' && (!user.permissions || user.permissions.length === 0);
+}
+
+// We don't normalize role names anymore since they are dynamic
 export function normalizeRole(role) {
-  const r = String(role ?? '').trim().toLowerCase();
-  if (r === 'admin' || r === 'administrator') return 'admin';
-  if (r === 'editor' || r === 'edit') return 'editor';
-  if (r === 'visitor' || r === 'user' || r === 'readonly') return 'visitor';
-  return null;
+  return String(role ?? '').trim().toLowerCase();
 }
 
-export function isAdminRole(role) {
-  return normalizeRole(role) === 'admin';
+export function isAdminRole(user) {
+  return hasPermission(user, PERMISSIONS.SYSTEM_USERS) || isLegacyAdmin(user);
 }
 
-export function isEditorRole(role) {
-  return normalizeRole(role) === 'editor';
+export function canEditTopology(user) {
+  return hasPermission(user, PERMISSIONS.NETWORK_TOPOLOGY) || isLegacyAdmin(user);
 }
 
-export function isVisitorRole(role) {
-  return normalizeRole(role) === 'visitor';
+export function canMutateApp(user) {
+  return hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) || isLegacyAdmin(user);
 }
 
-/** Full edit on topology map */
-export function canEditTopology(role) {
-  const r = normalizeRole(role);
-  return r === 'admin' || r === 'editor';
-}
-
-/** Mutate devices, settings, users, VPN */
-export function canMutateApp(role) {
-  return isAdminRole(role);
-}
-
-/** Reveal passwords in read-only views (devices/settings lists) */
-export function canRevealPasswords(role) {
-  const r = normalizeRole(role);
-  return r === 'admin' || r === 'editor';
+export function canRevealPasswords(user) {
+  return hasPermission(user, PERMISSIONS.PASSWORDS_REVEAL) || isLegacyAdmin(user);
 }
 
 export function getStoredUser() {
@@ -54,7 +64,8 @@ export function applySessionUser(user) {
   const next = {
     id: user.id,
     username: user.username,
-    role: normalizeRole(user.role) || 'visitor'
+    role: user.role,
+    permissions: user.permissions || []
   };
   localStorage.setItem('nocr_user', JSON.stringify(next));
   window.dispatchEvent(new CustomEvent('nocr-role-updated', { detail: next }));
@@ -62,9 +73,6 @@ export function applySessionUser(user) {
 }
 
 export function getRoleLabel(role) {
-  const r = normalizeRole(role);
-  if (r === 'admin') return 'Admin';
-  if (r === 'editor') return 'Editor';
-  if (r === 'visitor') return 'Visitor';
-  return 'Visitor';
+  if (!role) return 'Visitor';
+  return String(role).charAt(0).toUpperCase() + String(role).slice(1);
 }

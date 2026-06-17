@@ -1,13 +1,13 @@
 import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
-import { normalizeRole, ROLES, canEditTopology } from '@/lib/roles';
+import { normalizeRole, canEditTopology, isAdminRole, canMutateApp, canRevealPasswords } from '@/lib/roles';
 
-export { normalizeRole, ROLES, canEditTopology, canMutateApp, canRevealPasswords } from '@/lib/roles';
+export { normalizeRole, canEditTopology, isAdminRole, canMutateApp, canRevealPasswords } from '@/lib/roles';
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'nocr_super_secret_key_123';
 
 export function isValidRole(role) {
-    return ROLES.includes(normalizeRole(role));
+    return !!normalizeRole(role);
 }
 
 export function verifyAuth(req) {
@@ -38,30 +38,41 @@ export async function resolveAuth(req) {
         throw Object.assign(new Error('User tidak ditemukan atau tidak aktif'), { status: 401 });
     }
 
+    const roleData = await db.from('admin_roles').select('permissions').eq('name', data.role).single();
+    let permissions = [];
+    if (roleData.data && roleData.data.permissions) {
+        try {
+            permissions = typeof roleData.data.permissions === 'string' 
+                ? JSON.parse(roleData.data.permissions) 
+                : roleData.data.permissions;
+        } catch(e) {}
+    }
+
     return {
         id: data.id,
         username: data.username,
-        role: normalizeRole(data.role) || 'visitor'
+        role: data.role,
+        permissions
     };
 }
 
 export function enforceAdmin(user) {
-    if (normalizeRole(user?.role) !== 'admin') {
-        throw Object.assign(new Error('Akses Ditolak: Anda bukan Administrator'), { status: 403 });
+    // Requires system.users permission for full admin
+    if (!user || (!user.permissions?.includes('system.users') && user.role !== 'admin')) {
+        throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin Administrator'), { status: 403 });
     }
 }
 
 export function enforceRoleForMutation(req, user) {
     if (req.method !== 'GET') {
-        const role = normalizeRole(user?.role);
-        if (role !== 'admin') {
-            throw Object.assign(new Error('Akses Ditolak: Fitur ini hanya untuk Administrator'), { status: 403 });
+        if (!user || (!user.permissions?.includes('system.settings') && user.role !== 'admin')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin memodifikasi sistem'), { status: 403 });
         }
     }
 }
 
 export function enforceTopologyMutation(user) {
-    if (!canEditTopology(user?.role)) {
+    if (!canEditTopology(user)) {
         throw Object.assign(new Error('Akses Ditolak: Edit topologi hanya untuk Admin atau Editor'), { status: 403 });
     }
 }

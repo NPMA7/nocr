@@ -104,9 +104,9 @@ export default function MonitorDevice() {
     fetchData();
 
     const syncRoles = () => {
-      const role = getStoredUser().role;
-      setIsAdmin(isAdminRole(role));
-      setCanEditPrefix(canEditTopology(role));
+      const user = getStoredUser();
+      setIsAdmin(isAdminRole(user));
+      setCanEditPrefix(canEditTopology(user));
     };
     syncRoles();
     const handleRoleUpdate = () => syncRoles();

@@ -47,5 +47,11 @@ Thumbs.db
 # Database / Prisma generated
 *.sqlite
 *.db
+*.db-journal
 /src/generated/prisma/
 src/lib/data/
+
+# WhatsApp Web JS
+.wwebjs_auth/
+.wwebjs_cache/
+

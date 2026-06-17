@@ -117,8 +117,8 @@ export default function Devices() {
 
   const syncRoleFlags = () => {
     const userData = getStoredUser();
-    setIsAdmin(isAdminRole(userData.role));
-    setCanShowPassword(canRevealPasswords(userData.role));
+    setIsAdmin(isAdminRole(userData));
+    setCanShowPassword(canRevealPasswords(userData));
   };
   const [tab, setTab] = useState("interfaces");
   const [coreStatus, setCoreStatus] = useState(null);

@@ -31,7 +31,7 @@ function isClientNode(node) {
 function isInfrastructureNode(node) {
   return INFRA_NODE_TYPES.includes((node?.type || "").toLowerCase());
 }
-import { canEditTopology, getStoredUser, isVisitorRole } from "@/lib/roles";
+import { canEditTopology, getStoredUser } from "@/lib/roles";
 import axios from "axios";
 import { fetchTopologyCached, updateTopologyCacheLocally } from "@/lib/globalCache";
 import { API_URL, socket, useAppState } from "@/App";
@@ -222,7 +222,7 @@ function TopologyContent() {
   const [toasts, setToasts] = useState([]);
   const { sessionUser, setLastSyncTime } = useAppState();
   const [canEdit, setCanEdit] = useState(false);
-  const readOnly = isVisitorRole(sessionUser?.role);
+  const readOnly = !canEdit;
   const [saving, setSaving] = useState(false);
 
   // Presence & conflict states
@@ -232,7 +232,7 @@ function TopologyContent() {
 
 
   const syncEditPermission = () => {
-    setCanEdit(canEditTopology(getStoredUser().role));
+    setCanEdit(canEditTopology(getStoredUser()));
   };
 
   // Manual Add Modal State
@@ -1130,11 +1130,11 @@ function TopologyContent() {
   return (
     <div className="flex flex-col h-full min-h-0 -m-4 md:-m-6 relative overflow-hidden bg-slate-950">
       {/* Map Control Toolbar */}
-      <div className="flex-shrink-0 bg-slate-800 border-b border-slate-700/50 px-3 py-2 md:px-6 md:py-3 flex flex-col md:flex-row justify-between items-start md:items-center z-[1000] gap-3 md:gap-4 overflow-visible relative">
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 w-full md:w-auto">
+      <div className="flex-shrink-0 bg-slate-800 border-b border-slate-700/50 px-3 py-2 xl:px-6 xl:py-3 flex flex-col xl:flex-row justify-between items-start xl:items-center z-[1000] gap-3 xl:gap-4 overflow-visible relative">
+        <div className="flex flex-col xl:flex-row items-start xl:items-center gap-2 xl:gap-3 w-full xl:w-auto">
           {/* Main Buttons */}
-          <div className="w-full md:w-auto pb-1 md:pb-0 flex-shrink-0 min-md:flex">
-            {readOnly && isVisitorRole(getStoredUser().role) ? (
+          <div className="w-full xl:w-auto pb-1 xl:pb-0 flex-shrink-0">
+            {readOnly ? (
               <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5">
                 <Eye size={14} className="text-amber-400" />
                 <span className="text-xs font-semibold text-amber-300">
@@ -1212,7 +1212,7 @@ function TopologyContent() {
               </button>
               <button
                 onClick={() => setShowMobileMode((prev) => !prev)}
-                className={`cursor-pointer md:hidden flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${showMobileMode ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                className={`cursor-pointer xl:hidden flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${showMobileMode ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
               >
                 <Settings size={14} /> Mode
               </button>
@@ -1221,7 +1221,7 @@ function TopologyContent() {
 
           {/* Node Type Selector (Floating) */}
           {!readOnly && interactionMode === "add_node" && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 md:left-6 md:translate-x-0 mt-2 z-[1001] shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 xl:left-6 xl:translate-x-0 mt-2 z-[1001] shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center gap-1.5 bg-slate-900 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)] rounded-lg p-1.5 w-max">
                 <span className="text-[10px] text-slate-400 uppercase font-bold px-2 whitespace-nowrap">
                   PILIH TIPE:
@@ -1249,7 +1249,7 @@ function TopologyContent() {
             </span>
           )}
         </div>
-        <div className="flex flex-wrap justify-center md:justify-end items-center gap-2 md:gap-3 w-full md:w-auto border-t border-slate-700/50 md:border-0">
+        <div className="flex flex-wrap justify-center xl:justify-end items-center gap-2 xl:gap-3 w-full xl:w-auto border-t border-slate-700/50 xl:border-0 pt-2 xl:pt-0">
           <button
             onClick={() => fetchTopology(true)}
             className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"

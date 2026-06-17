@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const ping = require('ping');
 const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');
+const whatsapp = require('./src/lib/whatsapp');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -838,6 +839,55 @@ app.prepare().then(() => {
         syncDeviceMappings();
     }, 5000);
     scheduleAtMinuteBoundary(syncDeviceMappings, 5); // Tepat di detik ke-05 setiap menit
+
+    // WhatsApp Gateway Express Routes
+    server.use('/api/whatsapp', express.json());
+
+    server.get('/api/whatsapp/status', (req, res) => {
+        res.json(whatsapp.getStatus());
+    });
+
+    server.post('/api/whatsapp/action', async (req, res) => {
+        const { action, settings } = req.body;
+        try {
+            let result;
+            if (action === 'start') result = await whatsapp.start();
+            else if (action === 'stop') result = await whatsapp.stop();
+            else if (action === 'logout') result = await whatsapp.logout();
+            else if (action === 'settings') {
+                whatsapp.saveSettings(settings);
+                result = { success: true, message: 'Pengaturan disimpan' };
+            } else {
+                return res.status(400).json({ error: 'Invalid action' });
+            }
+            res.json(result);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    server.get('/api/whatsapp/chat', async (req, res) => {
+        const chats = await whatsapp.getChats();
+        res.json(chats);
+    });
+
+    server.get('/api/whatsapp/chat/:id', async (req, res) => {
+        const messages = await whatsapp.getChatMessages(req.params.id);
+        res.json(messages);
+    });
+
+    server.post('/api/whatsapp/chat/send', async (req, res) => {
+        try {
+            const result = await whatsapp.sendMessage(req.body.chatId, req.body.text);
+            res.json({ success: true, message: result });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Auto-start WA if previously connected or just to init? 
+    // We let user manually start from UI for now, or we can call whatsapp.start() here if settings allow.
+    whatsapp.start(); // Auto-start on server boot.
 
     // Default Next.js Handler
     server.all('*', (req, res) => {

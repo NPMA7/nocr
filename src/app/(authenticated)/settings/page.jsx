@@ -3,8 +3,10 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API_URL, useAppState } from '@/App';
-import { Save, Server, Shield, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key, Activity, HardDrive, Cpu, RefreshCw, Play, Square } from 'lucide-react';
+import { Save, Server, Shield , SettingsIcon, User, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key, Activity, HardDrive, Cpu, RefreshCw, Play, Square } from 'lucide-react';
 import { isAdminRole, canRevealPasswords, getStoredUser, getRoleLabel } from '@/lib/roles';
+import RoleSettings from '@/components/RoleSettings';
+import WhatsAppGateway from '@/components/WhatsAppGateway';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -42,10 +44,16 @@ function UserManagement() {
   const [newPassword, setNewPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
 
-  const fetchUsers = async () => {
+  const [availableRoles, setAvailableRoles] = useState([]);
+
+  const fetchUsersAndRoles = async () => {
     try {
-      const res = await axios.get(`${API_URL}/auth/users`);
-      setUsers(res.data);
+      const [resUsers, resRoles] = await Promise.all([
+        axios.get(`${API_URL}/auth/users`),
+        axios.get(`${API_URL}/roles`)
+      ]);
+      setUsers(resUsers.data);
+      setAvailableRoles(resRoles.data);
       setRoleEdits({});
     } catch (err) {
       console.error(err);
@@ -55,7 +63,7 @@ function UserManagement() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsersAndRoles();
   }, []);
 
   const handleCreate = async (e) => {
@@ -68,7 +76,7 @@ function UserManagement() {
         role: form.role
       });
       setForm({ username: '', password: '', role: 'visitor' });
-      fetchUsers();
+      fetchUsersAndRoles();
       if (showToast) showToast('Pengguna berhasil dibuat', 'success');
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -84,7 +92,7 @@ function UserManagement() {
     setSavingRoleId(userId);
     try {
       await axios.patch(`${API_URL}/auth/users/${userId}`, { role: newRole });
-      await fetchUsers();
+      await fetchUsersAndRoles();
       if (showToast) showToast('Role pengguna diperbarui', 'success');
     } catch (err) {
       if (showToast) showToast(err.response?.data?.error || err.message, 'error');
@@ -97,7 +105,7 @@ function UserManagement() {
     if (window.confirm('Yakin ingin menghapus pengguna ini?')) {
       try {
         await axios.delete(`${API_URL}/auth/users/${id}`);
-        fetchUsers();
+        fetchUsersAndRoles();
       } catch (err) {
         if (showToast) showToast(err.response?.data?.error || err.message, 'error');
       }
@@ -126,13 +134,13 @@ function UserManagement() {
 
   return (
     <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg p-5">
-      <h2 className="text-lg font-bold text-slate-100 mb-4">Manajemen Pengguna</h2>
+      <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 mb-4"><User size={20} className="text-blue-500" /> Manajemen Pengguna</h2>
       <h3 className="text-sm font-bold text-slate-200 mb-3">Buat Pengguna Baru</h3>
       {error && <div className="mb-3 text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">{error}</div>}
       <form onSubmit={handleCreate} className="mb-3 flex gap-3 flex-wrap">
-        <input type="text" value={form.username} onChange={e=>setForm({...form, username: e.target.value})} placeholder="Username" required className="bg-slate-900 border border-slate-700 p-2 text-sm text-white rounded-lg flex-1 min-w-[150px] outline-none focus:border-blue-500" />
+        <input type="text" value={form.username} onChange={e=>setForm({...form, username: e.target.value})} placeholder="Username" required className="bg-slate-900 border border-slate-700 p-2.5 text-sm text-slate-100 rounded-lg flex-1 min-w-[150px] outline-none focus:border-blue-500" />
         <div className="relative flex-1 min-w-[150px]">
-          <input type={showPassword ? "text" : "password"} value={form.password} onChange={e=>setForm({...form, password: e.target.value})} placeholder="Password" required className="bg-slate-900 border border-slate-700 p-2 text-sm text-white rounded-lg outline-none focus:border-blue-500 w-full pr-10" />
+          <input type={showPassword ? "text" : "password"} value={form.password} onChange={e=>setForm({...form, password: e.target.value})} placeholder="Password" required className="bg-slate-900 border border-slate-700 p-2.5 text-sm text-slate-100 rounded-lg outline-none focus:border-blue-500 w-full pr-10" />
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
             {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
           </button>
@@ -141,18 +149,24 @@ function UserManagement() {
           name="role"
           value={form.role}
           onChange={(e) => setForm({ ...form, role: e.target.value })}
-          className="bg-slate-900 border border-slate-700 p-2 text-sm text-white rounded-lg w-32 outline-none focus:border-blue-500"
+          className="bg-slate-900 border border-slate-700 p-2.5 text-sm text-slate-100 rounded-lg w-32 outline-none focus:border-blue-500 capitalize"
         >
-          <option value="visitor">Visitor</option>
-          <option value="editor">Editor</option>
-          <option value="admin">Admin</option>
+          {availableRoles.length > 0 ? availableRoles.map(r => (
+            <option key={r.id} value={r.name}>{r.name}</option>
+          )) : (
+            <>
+              <option value="visitor">Visitor</option>
+              <option value="editor">Editor</option>
+              <option value="admin">Admin</option>
+            </>
+          )}
         </select>
-        <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center"><UserPlus size={16}/></button>
+        <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center"><UserPlus size={16} className="mr-2" /> Tambah</button>
       </form>
       {/* List */}
       <div className="mb-3 overflow-hidden rounded-lg border border-slate-700">
         <table className="w-full text-left">
-          <thead className="bg-slate-900/50">
+          <thead className="bg-slate-900/50 border-b border-slate-700/50">
             <tr>
               <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Username</th>
               <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Role</th>
@@ -171,11 +185,17 @@ function UserManagement() {
                     <select
                       value={editRole}
                       onChange={(e) => setRoleEdits((prev) => ({ ...prev, [u.id]: e.target.value }))}
-                      className="bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white rounded-lg outline-none focus:border-blue-500"
+                      className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize"
                     >
-                      <option value="visitor">Visitor</option>
-                      <option value="editor">Editor</option>
-                      <option value="admin">Admin</option>
+                      {availableRoles.length > 0 ? availableRoles.map(r => (
+                        <option key={r.id} value={r.name}>{r.name}</option>
+                      )) : (
+                        <>
+                          <option value="visitor">Visitor</option>
+                          <option value="editor">Editor</option>
+                          <option value="admin">Admin</option>
+                        </>
+                      )}
                     </select>
                     {roleDirty && (
                       <button
@@ -183,9 +203,9 @@ function UserManagement() {
                         title="Simpan role"
                         disabled={savingRoleId === u.id}
                         onClick={() => handleUpdateRole(u.id)}
-                        className="text-blue-400 hover:text-blue-300 p-1 transition disabled:opacity-50"
+                        className="text-blue-400 hover:text-blue-300 p-1.5 transition disabled:opacity-50"
                       >
-                        <Pencil size={14} />
+                        <Save size={14} />
                       </button>
                     )}
                   </div>
@@ -195,14 +215,14 @@ function UserManagement() {
                     <button 
                       title="Ubah Password" 
                       onClick={() => setSelectedUserForPassword(u)} 
-                      className="text-slate-500 hover:text-blue-400 p-1 transition cursor-pointer"
+                      className="text-slate-500 hover:text-blue-400 p-1.5 transition cursor-pointer"
                     >
                       <Key size={16} />
                     </button>
                     <button 
                       title="Hapus" 
                       onClick={() => handleDelete(u.id)} 
-                      className="text-slate-500 hover:text-red-400 p-1 transition cursor-pointer"
+                      className="text-slate-500 hover:text-red-400 p-1.5 transition cursor-pointer"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -218,7 +238,7 @@ function UserManagement() {
       {/* Modal Ubah Password untuk Admin */}
       {selectedUserForPassword && (
         <div className="fixed inset-0 bg-slate-950/70 flex items-center justify-center z-[3000] p-4 backdrop-blur-sm">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-slate-700">
               <h3 className="text-lg font-bold text-slate-100">Ubah Password Pengguna</h3>
               <p className="text-xs text-slate-400 mt-1">Mengubah password untuk akun <strong className="text-blue-400">{selectedUserForPassword.username}</strong></p>
@@ -288,36 +308,39 @@ function PasswordChangeSettings() {
   };
 
   return (
-    <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
-      <div className="p-5 border-b border-slate-700/50">
-        <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2"><Key size={20} className="text-blue-500" /> Ubah Password Saya</h2>
-        <p className="text-xs text-slate-400 mt-1">Gunakan form di bawah ini untuk memperbarui password login Anda.</p>
-      </div>
-      <div className="p-5">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-md">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400">Password Baru</label>
-            <div className="relative">
-              <input 
-                type={showPwd ? "text" : "password"}
-                value={form.newPassword}
-                onChange={e => setForm({...form, newPassword: e.target.value})}
-                placeholder="Masukkan password baru"
-                required
-                minLength={4}
-                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full pr-10" 
-              />
-              <button
-                type="button"
-                onClick={() => setShowPwd(!showPwd)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
-              >
-                {showPwd ? <EyeOff size={16}/> : <Eye size={16}/>}
-              </button>
-            </div>
+    <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg p-5">
+      <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 mb-4">
+        <Key size={20} className="text-blue-500" /> Ubah Password Saya
+      </h2>
+      <p className="text-sm text-slate-400 mb-6">
+        Gunakan form di bawah ini untuk memperbarui kata sandi akun Anda. Pastikan password baru Anda kuat dan aman.
+      </p>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Password Baru</label>
+          <div className="relative">
+            <input 
+              type={showPwd ? "text" : "password"}
+              value={form.newPassword}
+              onChange={e => setForm({...form, newPassword: e.target.value})}
+              placeholder="Masukkan password baru"
+              required
+              minLength={4}
+              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600" 
+            />
+            <button
+              type="button"
+              onClick={() => setShowPwd(!showPwd)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+            >
+              {showPwd ? <EyeOff size={16}/> : <Eye size={16}/>}
+            </button>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400">Konfirmasi Password Baru</label>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Konfirmasi Password Baru</label>
+          <div className="relative">
             <input 
               type={showPwd ? "text" : "password"}
               value={form.confirmPassword}
@@ -325,16 +348,32 @@ function PasswordChangeSettings() {
               placeholder="Konfirmasi password baru"
               required
               minLength={4}
-              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full" 
+              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600" 
             />
-          </div>
-          <div className="flex justify-end mt-2">
-            <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg text-sm transition disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-lg shadow-blue-500/20">
-              <Save size={16} /> {loading ? 'Menyimpan...' : 'Perbarui Password'}
+            <button
+              type="button"
+              onClick={() => setShowPwd(!showPwd)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+            >
+              {showPwd ? <EyeOff size={16}/> : <Eye size={16}/>}
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+        
+        <div className="mt-2">
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-6 rounded-lg text-sm transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Menyimpan...</>
+            ) : (
+              <><Save size={16} /> Simpan Perubahan Password</>
+            )}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -531,15 +570,15 @@ function Settings() {
 
   const syncRoleFlags = () => {
     const userData = sessionUser?.role ? sessionUser : getStoredUser();
-    setIsAdmin(isAdminRole(userData.role));
-    setCanShowPassword(canRevealPasswords(userData.role));
+    setIsAdmin(isAdminRole(userData));
+    setCanShowPassword(canRevealPasswords(userData));
   };
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'core';
   const readOnlySettings = !isAdmin;
 
   const [coreDevice, setCoreDevice] = useState({
-    name: 'MikroTik Pusat',
+    name: 'MikroTik Gateway',
     ip_address: '',
     username: 'admin',
     password: '',
@@ -628,7 +667,7 @@ function Settings() {
       } else {
         await axios.post(`${API_URL}/devices`, coreDevice);
       }
-      showToast('Konfigurasi MikroTik Pusat berhasil disimpan!', 'success');
+      showToast('Konfigurasi MikroTik berhasil disimpan!', 'success');
       if (refreshDevices) refreshDevices();
     } catch (err) {
       showToast('Gagal menyimpan: ' + (err.response?.data?.error || err.message), 'error');
@@ -676,7 +715,7 @@ function Settings() {
   return (
     <div className="h-full min-h-0 overflow-y-auto flex flex-col gap-6 max-w-4xl mx-auto w-full pb-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">  <Database size={24} /> Pengaturan Sistem</h1>
+        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">  <Shield size={24} /> Pengaturan Sistem</h1>
         <p className="text-sm text-slate-400">Konfigurasi pusat untuk NOCR dan Perangkat Core</p>
       </div>
 
@@ -686,7 +725,7 @@ function Settings() {
           {activeTab === 'core' && (
             <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
               <div className="p-5 border-b border-slate-700/50">
-                <h2 className="text-lg font-bold text-slate-100">MikroTik Pusat (Core Router)</h2>
+                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2"><Server size={20} /> MikroTik Gateway</h2>                  
                 <p className="text-xs text-slate-400 mt-1">
                   Router utama ini akan menjadi pusat monitoring untuk PPPoE, ONT, dan interface pelanggan lainnya.
                 </p>
@@ -764,7 +803,7 @@ function Settings() {
                   
                   {isAdmin && (
                     <div className="mt-4 flex justify-end">
-                      <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition shadow-lg shadow-blue-500/20">
+                      <button type="submit" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition shadow-lg shadow-blue-500/20">
                         <Save size={16} /> Simpan Konfigurasi
                       </button>
                     </div>
@@ -778,7 +817,7 @@ function Settings() {
             <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
               <div className="p-5 border-b border-slate-700/50 flex justify-between items-start">
                 <div>
-                  <h2 className="text-lg font-bold text-emerald-400 flex items-center gap-2"><Network size={20} /> VPN Auto-Dial (Windows / Linux)</h2>
+                  <h2 className="text-lg font-bold text-emerald-400 flex items-center gap-2"><Network size={20} /> VPN Connection (Windows / Linux)</h2>
                   <p className="text-xs text-slate-400 mt-1">
                     Biarkan backend memanggil koneksi VPN secara otomatis saat jaringan terputus. Pada Windows menggunakan profil VPN Windows (rasdial), sedangkan pada Linux menggunakan PPPoE/VPN peers (pon/poff).
                   </p>
@@ -795,7 +834,7 @@ function Settings() {
                           type="button"
                           disabled={readOnlySettings}
                           onClick={() => setVpnConfig({ ...vpnConfig, active_platform: 'windows' })}
-                          className={`py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
+                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
                             vpnConfig.active_platform === 'windows'
                               ? 'bg-blue-600 text-white shadow-md'
                               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
@@ -808,7 +847,7 @@ function Settings() {
                           type="button"
                           disabled={readOnlySettings}
                           onClick={() => setVpnConfig({ ...vpnConfig, active_platform: 'linux' })}
-                          className={`py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
+                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
                             vpnConfig.active_platform === 'linux'
                               ? 'bg-orange-600 text-white shadow-md'
                               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
@@ -909,17 +948,17 @@ function Settings() {
                     <div className="flex items-center gap-2">
                       {isAdmin && (
                         <>
-                          <button type="button" onClick={testVpnConnect} disabled={vpnConnecting} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">
+                          <button type="button" onClick={testVpnConnect} disabled={vpnConnecting} className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">
                             Tes Hubungkan
                           </button>
-                          <button type="button" onClick={testVpnDisconnect} disabled={vpnConnecting} className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">
+                          <button type="button" onClick={testVpnDisconnect} disabled={vpnConnecting} className="cursor-pointer bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">
                             Putuskan
                           </button>
                         </>
                       )}
                     </div>
                     {isAdmin && (
-                      <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg text-sm transition">
+                      <button type="submit" className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg text-sm transition">
                         <Save size={16} /> Simpan Pengaturan
                       </button>
                     )}
@@ -934,12 +973,20 @@ function Settings() {
             <UserManagement />
           )}
 
+          {activeTab === 'roles' && isAdmin && (
+            <RoleSettings showToast={showToast} />
+          )}
+
           {activeTab === 'password' && (
             <PasswordChangeSettings />
           )}
 
-          {(activeTab === 'health') && (
+          {activeTab === 'health' && (
             <SystemHealth isAdmin={isAdmin} />
+          )}
+
+          {activeTab === 'whatsapp' && isAdmin && (
+            <WhatsAppGateway />
           )}
         </div>
       </div>
