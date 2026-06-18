@@ -224,7 +224,8 @@ async function getChats() {
             lastMessage: c.lastMessage ? {
                 body: c.lastMessage.body,
                 timestamp: c.lastMessage.timestamp,
-                fromMe: c.lastMessage.fromMe
+                fromMe: c.lastMessage.fromMe,
+                hasMedia: c.lastMessage.hasMedia
             } : null
         }));
     } catch (e) {

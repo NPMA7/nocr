@@ -117,7 +117,7 @@ export default function LiveChatPage() {
       const chatIndex = prev.findIndex(c => c.id === msg.from || c.id === msg.to);
       if (chatIndex > -1) {
         const newChats = [...prev];
-        newChats[chatIndex].lastMessage = { body: msg.body, timestamp: msg.timestamp, fromMe: msg.fromMe };
+        newChats[chatIndex].lastMessage = { body: msg.body, timestamp: msg.timestamp, fromMe: msg.fromMe, hasMedia: msg.hasMedia };
         newChats[chatIndex].timestamp = msg.timestamp;
         if (!msg.fromMe && (!selectedChat || selectedChat.id !== msg.from)) {
           newChats[chatIndex].unreadCount = (newChats[chatIndex].unreadCount || 0) + 1;
@@ -250,11 +250,12 @@ export default function LiveChatPage() {
                       <span className="text-[10px] text-slate-500 whitespace-nowrap">{formatTime(chat.timestamp)}</span>
                     </div>
                     <div className="flex justify-between items-center gap-2">
-                      <p className="text-xs text-slate-400 truncate flex-1">
+                      <p className="text-xs text-slate-400 truncate flex-1 flex items-center">
                         {chat.lastMessage ? (
                           <>
-                            {chat.lastMessage.fromMe && <span className="text-blue-400 mr-1">✓</span>}
-                            {chat.lastMessage.body}
+                            {chat.lastMessage.fromMe && <span className="text-blue-400 mr-1 flex-shrink-0">✓</span>}
+                            {chat.lastMessage.hasMedia && <ImageIcon size={12} className="inline mr-1 flex-shrink-0 text-slate-400" />}
+                            <span className="truncate">{chat.lastMessage.body || (chat.lastMessage.hasMedia ? 'Media' : '')}</span>
                           </>
                         ) : 'Pesan media/sistem'}
                       </p>
