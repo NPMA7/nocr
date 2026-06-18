@@ -49,7 +49,16 @@ async function start() {
         authStrategy: new LocalAuth({ dataPath: path.join(__dirname, '../../.wwebjs_auth') }),
         puppeteer: {
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-extensions']
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox', 
+                '--disable-extensions',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu'
+            ]
         }
     });
 
@@ -230,6 +239,12 @@ async function getChats() {
         }));
     } catch (e) {
         console.error('Failed to get chats', e);
+        if (e.message && (e.message.includes('detached Frame') || e.message.includes('Target closed'))) {
+            console.log('Detached Frame/Target closed terdeteksi. Memulai ulang klien secara otomatis...');
+            setTimeout(() => {
+                stop().then(() => start());
+            }, 1000);
+        }
         return [];
     }
 }
@@ -251,6 +266,9 @@ async function getChatMessages(chatId, limit = 50) {
         }));
     } catch (e) {
         console.error('Failed to get messages', e);
+        if (e.message && (e.message.includes('detached Frame') || e.message.includes('Target closed'))) {
+            setTimeout(() => { stop().then(() => start()); }, 1000);
+        }
         return [];
     }
 }
