@@ -2,8 +2,67 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_URL, socket, useAppState } from '@/App';
-import { MessageCircle, Send, User, Clock, Check, CheckCheck, Loader2, ShieldAlert } from 'lucide-react';
+import { MessageCircle, Send, User, Clock, Check, CheckCheck, Loader2, ShieldAlert, Download, Image as ImageIcon } from 'lucide-react';
 import { hasPermission, PERMISSIONS, isAdminRole } from '@/lib/roles';
+
+function MediaMessage({ msgId }) {
+  const [media, setMedia] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  const fetchMedia = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await axios.get(`${API_URL}/whatsapp/chat/media/${msgId}`);
+      if (res.data.success && res.data.media) {
+        setMedia(res.data);
+      } else {
+        setError(true);
+      }
+    } catch (err) {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMedia();
+  }, [msgId]);
+
+  if (media) {
+    if (media.mimetype.startsWith('image/')) {
+      return <img src={`data:${media.mimetype};base64,${media.media}`} alt="Media" className="w-full max-w-[400px] rounded-md mt-1 mb-1 max-h-[400px] object-contain bg-slate-900/50" />;
+    } else if (media.mimetype.startsWith('video/')) {
+      return <video controls src={`data:${media.mimetype};base64,${media.media}`} className="w-full max-w-[400px] rounded-md mt-1 mb-1 max-h-[400px] bg-slate-900/50" />;
+    } else if (media.mimetype.startsWith('audio/')) {
+      return <audio controls src={`data:${media.mimetype};base64,${media.media}`} className="w-full mt-1 mb-1 max-w-[200px]" />;
+    }
+    return (
+      <a href={`data:${media.mimetype};base64,${media.media}`} download={media.filename || 'berkas'} className="inline-flex items-center gap-1 text-blue-300 hover:text-blue-200 underline text-xs mt-1 mb-1 p-2 bg-slate-800/50 rounded">
+        <Download size={14} /> Unduh {media.filename || 'Berkas'}
+      </a>
+    );
+  }
+
+  return (
+    <div className="text-xs mb-1 border border-slate-500/30 p-2 rounded bg-slate-800/50 flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="italic flex items-center gap-1 text-slate-300">
+          <ImageIcon size={14} /> {loading ? 'Memuat media...' : 'Terdapat media'}
+        </span>
+        {loading && <Loader2 size={12} className="animate-spin text-slate-400" />}
+      </div>
+      {error && (
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <span className="text-red-400 text-[10px]">Gagal memuat media.</span>
+          <button onClick={fetchMedia} className="text-[10px] bg-slate-600 px-2 py-1 rounded text-white">Coba lagi</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LiveChatPage() {
   const { showToast, sessionUser } = useAppState();
@@ -239,8 +298,8 @@ export default function LiveChatPage() {
                     return (
                       <div key={msg.id} className={`flex flex-col max-w-[75%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
                         <div className={`p-2.5 rounded-xl text-sm shadow-md ${isMe ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-slate-700 text-slate-100 rounded-tl-sm'}`}>
-                          {msg.hasMedia && <div className="text-xs opacity-70 mb-1 italic">📷 Media file</div>}
-                          <div className="whitespace-pre-wrap break-words">{msg.body}</div>
+                          {msg.hasMedia && <MediaMessage msgId={msg.id} />}
+                          {msg.body && <div className="whitespace-pre-wrap break-words">{msg.body}</div>}
                         </div>
                         <div className={`text-[10px] ${isMe ? 'text-slate-400' : 'text-slate-500'} mt-1 flex items-center gap-1`}>
                           {formatTime(msg.timestamp)} {isMe && getAckIcon(msg.ack)}

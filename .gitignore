@@ -54,4 +54,4 @@ src/lib/data/
 # WhatsApp Web JS
 .wwebjs_auth/
 .wwebjs_cache/
-
+core*

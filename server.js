@@ -853,7 +853,7 @@ app.prepare().then(() => {
         if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
         try {
             const token = authHeader.split(' ')[1];
-            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'nocr_super_secret_key_123');
+            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
             const perms = decoded.permissions || [];
             if (!perms.includes('system.settings') && decoded.role !== 'admin') {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
@@ -896,7 +896,7 @@ app.prepare().then(() => {
         if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
         try {
             const token = authHeader.split(' ')[1];
-            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'nocr_super_secret_key_123');
+            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
             const perms = decoded.permissions || [];
             if (!perms.includes('chat.live') && decoded.role !== 'admin') {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
@@ -908,6 +908,25 @@ app.prepare().then(() => {
         try {
             const result = await whatsapp.sendMessage(req.body.chatId, req.body.text);
             res.json({ success: true, message: result });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    server.get('/api/whatsapp/chat/media/:msgId', async (req, res) => {
+        const authHeader = req.headers['authorization'];
+        if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
+        try {
+            const token = authHeader.split(' ')[1];
+            require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+        } catch (e) {
+            return res.status(401).json({ error: 'Token tidak valid' });
+        }
+
+        try {
+            const media = await whatsapp.getMessageMedia(req.params.msgId);
+            if (!media) return res.status(404).json({ error: 'Media tidak ditemukan atau kedaluwarsa' });
+            res.json({ success: true, media: media.data, mimetype: media.mimetype, filename: media.filename });
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

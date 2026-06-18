@@ -105,7 +105,8 @@ async function start() {
                 to: msg.to,
                 body: msg.body,
                 timestamp: msg.timestamp,
-                fromMe: msg.fromMe
+                fromMe: msg.fromMe,
+                hasMedia: msg.hasMedia
             });
         }
 
@@ -140,6 +141,7 @@ async function start() {
                 body: msg.body,
                 timestamp: msg.timestamp,
                 fromMe: msg.fromMe,
+                hasMedia: msg.hasMedia,
                 ack: msg.ack
             });
         }
@@ -252,6 +254,20 @@ async function getChatMessages(chatId, limit = 50) {
     }
 }
 
+async function getMessageMedia(msgId) {
+    if (status !== 'connected' || !client) return null;
+    try {
+        const msg = await client.getMessageById(msgId);
+        if (msg && msg.hasMedia) {
+            const media = await msg.downloadMedia();
+            return media;
+        }
+    } catch (e) {
+        console.error('Failed to download media for', msgId, e);
+    }
+    return null;
+}
+
 async function sendMessage(chatId, body) {
     if (status !== 'connected' || !client) throw new Error('WhatsApp tidak terhubung');
     try {
@@ -279,5 +295,6 @@ module.exports = {
     saveSettings,
     getChats,
     getChatMessages,
+    getMessageMedia,
     sendMessage
 };
