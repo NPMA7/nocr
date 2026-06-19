@@ -76,6 +76,7 @@ app.prepare().then(() => {
     }
 
     const targetStatuses = {};
+    const failCounters = {};
 
     async function getCoreDevice() {
         const devices = await getCachedDevices();
@@ -441,7 +442,19 @@ app.prepare().then(() => {
                 
                 try {
                     const res = await ping.promise.probe(target.ip, { timeout: 2 });
-                    const status = res.alive ? 'online' : 'offline';
+                    let status = res.alive ? 'online' : 'offline';
+                    
+                    if (status === 'offline') {
+                        failCounters[target.id] = (failCounters[target.id] || 0) + 1;
+                        // Butuh 3 kali gagal berturut-turut untuk benar-benar dianggap offline
+                        if (failCounters[target.id] < 3) {
+                            // Jika belum mencapai threshold, kita anggap masih online / mempertahankan status sebelumnya
+                            status = targetStatuses[target.id] === 'online' ? 'online' : 'offline';
+                        }
+                    } else {
+                        failCounters[target.id] = 0;
+                    }
+
                     const latency = res.alive ? Math.round(res.time) : 0;
                     const timestamp = new Date().toISOString();
 
