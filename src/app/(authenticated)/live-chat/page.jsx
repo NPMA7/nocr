@@ -73,6 +73,7 @@ export default function LiveChatPage() {
   const [loadingChats, setLoadingChats] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const messagesEndRef = useRef(null);
 
@@ -203,6 +204,33 @@ export default function LiveChatPage() {
     return <Clock size={10} />; // 0 or undefined = pending
   };
 
+  const filteredChats = chats.filter(chat => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    
+    const nameMatch = chat.name && chat.name.toLowerCase().includes(q);
+    const idMatch = chat.id && chat.id.toLowerCase().includes(q);
+    const messageMatch = chat.lastMessage && chat.lastMessage.body && chat.lastMessage.body.toLowerCase().includes(q);
+    
+    let phoneMatch = false;
+    const qDigits = q.replace(/\D/g, '');
+    if (qDigits.length > 0) {
+      let qDigits62 = qDigits;
+      if (qDigits.startsWith('0')) {
+        qDigits62 = '62' + qDigits.substring(1);
+      }
+      const nameDigits = chat.name ? chat.name.replace(/\D/g, '') : '';
+      const idDigits = chat.id ? chat.id.replace(/\D/g, '') : '';
+      
+      phoneMatch = nameDigits.includes(qDigits) || 
+                   idDigits.includes(qDigits) || 
+                   nameDigits.includes(qDigits62) || 
+                   idDigits.includes(qDigits62);
+    }
+
+    return nameMatch || idMatch || messageMatch || phoneMatch;
+  });
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-900 border border-slate-700/50 rounded-xl shadow-2xl">
       <div className="flex-none p-4 border-b border-slate-700/50 bg-slate-800 flex justify-between items-center">
@@ -220,7 +248,9 @@ export default function LiveChatPage() {
           <div className="p-3 border-b border-slate-700/50">
             <input 
               type="text" 
-              placeholder="Cari chat..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari..." 
               className="w-full bg-slate-900 border border-slate-700 p-2 text-sm text-slate-200 rounded-lg outline-none focus:border-blue-500"
             />
           </div>
@@ -234,8 +264,12 @@ export default function LiveChatPage() {
               <div className="p-5 text-center text-slate-500 text-sm">
                 Tidak ada obrolan atau WhatsApp belum terhubung.
               </div>
+            ) : filteredChats.length === 0 ? (
+              <div className="p-5 text-center text-slate-500 text-sm">
+                Tidak ada obrolan yang cocok dengan pencarian.
+              </div>
             ) : (
-              chats.map(chat => (
+              filteredChats.map(chat => (
                 <div 
                   key={chat.id} 
                   onClick={() => loadChat(chat)}
