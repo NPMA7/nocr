@@ -27,6 +27,19 @@ app.prepare().then(() => {
     const clients = new Set();
     let isWorkerRunning = false;
     const previousMappingsStatus = {};
+    
+    // Inisialisasi status awal dari database agar tidak hilang log saat server di-restart
+    db.from('device_mappings').select('ruijie_mac, final_status').then(
+        ({ data }) => {
+            if (data) {
+                data.forEach(m => {
+                    previousMappingsStatus[m.ruijie_mac] = m.final_status;
+                });
+            }
+        },
+        (err) => console.error('Gagal memuat state awal:', err.message)
+    );
+
     let previousTidakSinkronCount = -1;
 
     // Registri presensi node: nodeId → { userId, username, socketId, since }

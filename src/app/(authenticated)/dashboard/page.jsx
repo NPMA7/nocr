@@ -369,12 +369,7 @@ export default function Dashboard() {
           <h3 className="flex-shrink-0 text-base font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center gap-2">
             Pratinjau Jaringan
             <div className="flex items-center gap-2 z-10">
-              <button
-                onClick={() => setNetworkMode((prev) => prev === 'pppoe' ? 'l2tp' : 'pppoe')}
-                className="cursor-pointer text-xs bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded flex items-center gap-1 transition"
-              >
-                <span className="fa fa-wifi" /> {networkMode === 'pppoe' ? 'PPPoE' : 'L2TP'}
-              </button>
+
               <button
                 onClick={() => setMapTheme((t) => (t === 'dark' ? 'colored' : 'dark'))}
                 className="cursor-pointer text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded flex items-center gap-1 transition"

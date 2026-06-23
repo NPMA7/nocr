@@ -1195,18 +1195,20 @@ function TopologyContent() {
             <div className="cursor-pointer flex flex-wrap bg-slate-900 rounded-lg p-1 border border-slate-700">
               <div className="w-px bg-slate-700/50 mx-1 hidden sm:block"></div>
               <button
-                onClick={() =>
-                  setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 })
-                }
-                className="cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white hover:bg-slate-800"
+                onClick={() => {
+                  setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
+                  setNetworkMode("pppoe");
+                }}
+                className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${networkMode === "pppoe" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
               >
                 <Search size={14} /> Zoom OPD
               </button>
               <button
-                onClick={() =>
-                  setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 })
-                }
-                className="cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white hover:bg-slate-800"
+                onClick={() => {
+                  setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 });
+                  setNetworkMode("l2tp");
+                }}
+                className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${networkMode === "l2tp" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
               >
                 <MapPin size={14} /> Zoom All
               </button>

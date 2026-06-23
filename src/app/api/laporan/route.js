@@ -27,7 +27,11 @@ export async function GET(request) {
     // jam online juga harus dateStr
     const filteredReports = (updatedReports || []).filter(r => {
       // Cek tipe koneksi
-      if (typeMap[r.ruijie_mac] !== type) return false;
+      if (r.ruijie_mac && r.ruijie_mac.startsWith('MANUAL_')) {
+        if (!r.ruijie_mac.startsWith(`MANUAL_${type}`)) return false;
+      } else if (typeMap[r.ruijie_mac] !== type) {
+        return false;
+      }
 
       const reportDateOnly = r.report_date ? new Date(r.report_date).toISOString().split('T')[0] : '';
       const isDateStr = reportDateOnly === dateStr;
@@ -68,6 +72,49 @@ export async function PUT(request) {
       .eq('id', id);
 
     if (error) throw error;
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+    const { error } = await db.from('daily_reports').delete().eq('id', id);
+    if (error) throw error;
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const { date, type, prefix_name, offline_since, online_since, status_progress, issue, tindakan } = body;
+    
+    if (!date) return NextResponse.json({ error: 'Missing date' }, { status: 400 });
+    
+    const newReport = {
+      report_date: date,
+      ruijie_mac: `MANUAL_${type}_${Date.now()}`,
+      prefix_name: prefix_name || 'MANUAL ENTRY',
+      location: '',
+      offline_since: offline_since || null,
+      online_since: online_since || null,
+      status_progress: status_progress || 'Progress',
+      issue: issue || '',
+      tindakan: tindakan || ''
+    };
+    
+    const { data, error } = await db.from('daily_reports').insert([newReport]);
+    if (error) throw error;
+    
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

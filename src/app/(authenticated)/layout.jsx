@@ -15,6 +15,7 @@ export default function AuthenticatedLayout({ children }) {
   const [devices, setDevices] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [toast, setToast] = useState(null);
   const [sessionUser, setSessionUser] = useState(() =>
     typeof window !== 'undefined' ? getStoredUser() : {}
@@ -182,6 +183,14 @@ export default function AuthenticatedLayout({ children }) {
     setLastSyncTime
   };
 
+  const toggleSidebar = () => {
+    if (window.innerWidth >= 768) {
+      setIsDesktopSidebarOpen(prev => !prev);
+    } else {
+      setIsMobileMenuOpen(prev => !prev);
+    }
+  };
+
   return (
     <AppStateContext.Provider value={contextValue}>
       <div className="fixed inset-0 flex bg-slate-900 text-slate-50 overflow-hidden">
@@ -195,14 +204,20 @@ export default function AuthenticatedLayout({ children }) {
         )}
 
         {/* Sidebar with mobile slide-in */}
-        <div className={`fixed inset-y-0 left-0 z-[3000] transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex`}>
-          <Suspense fallback={<div className="w-64 bg-slate-800 border-r border-slate-700/50 flex-shrink-0"></div>}>
-            <Sidebar isConnected={isConnected} onNavigate={() => setIsMobileMenuOpen(false)} />
+        <div className={`fixed inset-y-0 left-0 z-[3000] flex transition-all duration-300 ease-in-out overflow-hidden ${
+          isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'
+        } md:relative ${
+          isDesktopSidebarOpen ? 'md:translate-x-0 md:w-64' : 'md:-translate-x-full md:w-0'
+        }`}>
+          <Suspense fallback={<div className="w-64 h-full bg-slate-800 border-r border-slate-700/50 flex-shrink-0"></div>}>
+            <div className="w-64 h-full flex-shrink-0">
+              <Sidebar isConnected={isConnected} onNavigate={() => setIsMobileMenuOpen(false)} />
+            </div>
           </Suspense>
         </div>
         
         <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-          <Topbar onMenuClick={() => setIsMobileMenuOpen(true)} />
+          <Topbar onMenuClick={toggleSidebar} isSidebarOpen={isDesktopSidebarOpen} />
           
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 md:p-6">
             {children}

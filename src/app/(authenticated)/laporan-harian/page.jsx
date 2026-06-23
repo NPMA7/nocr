@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ClipboardList, Calendar, Download, RefreshCw, Copy, Check, Info, Pencil } from 'lucide-react';
+import { ClipboardList, Calendar, Download, RefreshCw, Copy, Check, Info, Pencil, Trash2, Plus } from 'lucide-react';
 import { useAppState } from '@/App';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,6 +19,9 @@ export default function LaporanHarianPage() {
   const [editingDate, setEditingDate] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newReportForm, setNewReportForm] = useState({ prefix_name: '', status_progress: 'Progress', offline_since: '', online_since: '', issue: '', tindakan: '' });
   const { showToast, socket, user } = useAppState();
   
   const isVisitor = user?.role === 'visitor';
@@ -79,6 +82,42 @@ export default function LaporanHarianPage() {
       fetchReports(date, type);
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await axios.delete(`/api/laporan?id=${deleteConfirmId}`);
+      setReports(prev => prev.filter(r => r.id !== deleteConfirmId));
+      showToast('Laporan berhasil dihapus', 'success');
+    } catch (err) {
+      showToast('Gagal menghapus laporan', 'error');
+    } finally {
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const handleAddReport = async () => {
+    if (!newReportForm.prefix_name) {
+      showToast('Nama harus diisi', 'error');
+      return;
+    }
+    try {
+      const payload = {
+        date,
+        type,
+        ...newReportForm,
+        offline_since: newReportForm.offline_since ? new Date(newReportForm.offline_since).toISOString() : null,
+        online_since: newReportForm.online_since ? new Date(newReportForm.online_since).toISOString() : null,
+      };
+      await axios.post('/api/laporan', payload);
+      showToast('Laporan berhasil ditambahkan', 'success');
+      setShowAddModal(false);
+      setNewReportForm({ prefix_name: '', status_progress: 'Progress', offline_since: '', online_since: '', issue: '', tindakan: '' });
+      fetchReports(date, type);
+    } catch (err) {
+      showToast('Gagal menambahkan laporan', 'error');
     }
   };
 
@@ -274,6 +313,14 @@ export default function LaporanHarianPage() {
           </div>
           <button
             type="button"
+            onClick={() => setShowAddModal(true)}
+            className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 transition whitespace-nowrap"
+          >
+            <Plus size={16} />
+            Tambah Data
+          </button>
+          <button
+            type="button"
             onClick={handleCopyTable}
             className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition whitespace-nowrap"
           >
@@ -420,12 +467,13 @@ export default function LaporanHarianPage() {
                       {sortConfig.key === 'issue' && (<span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>)}
                     </div>
                   </th>
-                  <th onClick={() => handleSort('tindakan')} className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase cursor-pointer hover:bg-slate-800 transition">
+                  <th onClick={() => handleSort('tindakan')} className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 cursor-pointer hover:bg-slate-800 transition">
                     <div className="flex items-center justify-between">
                       Tindakan
                       {sortConfig.key === 'tindakan' && (<span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>)}
                     </div>
                   </th>
+                  <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase w-12">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/30">
@@ -505,7 +553,7 @@ export default function LaporanHarianPage() {
                         placeholder={isVisitor ? "-" : "Ketik issue..."}
                       />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2 border-r border-slate-700/30">
                       <input 
                         type="text" 
                         value={r.tindakan || ''} 
@@ -515,6 +563,13 @@ export default function LaporanHarianPage() {
                         placeholder={isVisitor ? "-" : "Ketik tindakan..."}
                       />
                     </td>
+                    <td className="px-2 py-2 text-center">
+                      {!isVisitor && (
+                        <button onClick={() => setDeleteConfirmId(r.id)} className="text-slate-500 hover:text-red-400 transition p-1 cursor-pointer" title="Hapus Laporan">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -522,6 +577,128 @@ export default function LaporanHarianPage() {
           )}
         </div>
       </div>
+
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-700/50">
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Trash2 size={20} className="text-red-400" />
+                Konfirmasi Hapus
+              </h3>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-slate-300">
+                Apakah Anda yakin ingin menghapus laporan ini? Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 rounded-lg transition cursor-pointer"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-700/50">
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Plus size={20} className="text-blue-400" />
+                Tambah Laporan Manual
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Nama {type === 'PPPOE' ? 'Dinas/Lokasi' : 'Kecamatan-Desa'}</label>
+                <input 
+                  type="text" 
+                  value={newReportForm.prefix_name}
+                  onChange={(e) => setNewReportForm(p => ({...p, prefix_name: e.target.value}))}
+                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition"
+                  placeholder={type === 'PPPOE' ? 'Contoh: DISKOMINFO-SERVER' : 'Contoh: BALEENDAH-JELEKONG'}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Jam Offline</label>
+                  <input 
+                    type="datetime-local" 
+                    value={newReportForm.offline_since}
+                    onChange={(e) => setNewReportForm(p => ({...p, offline_since: e.target.value}))}
+                    className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Jam Online</label>
+                  <input 
+                    type="datetime-local" 
+                    value={newReportForm.online_since}
+                    onChange={(e) => setNewReportForm(p => ({...p, online_since: e.target.value}))}
+                    className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
+                <select 
+                  value={newReportForm.status_progress}
+                  onChange={(e) => setNewReportForm(p => ({...p, status_progress: e.target.value}))}
+                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition cursor-pointer"
+                >
+                  <option value="Progress">Progress</option>
+                  <option value="Done">Done</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Issue</label>
+                <input 
+                  type="text" 
+                  value={newReportForm.issue}
+                  onChange={(e) => setNewReportForm(p => ({...p, issue: e.target.value}))}
+                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition"
+                  placeholder="Opsional..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Tindakan</label>
+                <input 
+                  type="text" 
+                  value={newReportForm.tindakan}
+                  onChange={(e) => setNewReportForm(p => ({...p, tindakan: e.target.value}))}
+                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition"
+                  placeholder="Opsional..."
+                />
+              </div>
+            </div>
+            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleAddReport}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 rounded-lg transition cursor-pointer"
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

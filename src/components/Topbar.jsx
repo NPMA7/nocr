@@ -1,12 +1,12 @@
 'use client';
-import { Search, Bell, MapPin, LogOut, Menu } from 'lucide-react';
+import { Search, Bell, MapPin, LogOut, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API_URL, useAppState } from '@/App';
 import { normalizeRole, getRoleLabel, getStoredUser } from '@/lib/roles';
 
-export default function Topbar({ onMenuClick }) {
+export default function Topbar({ onMenuClick, isSidebarOpen }) {
   const { sessionUser, lastSyncTime, alerts } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
 
@@ -137,9 +137,14 @@ export default function Topbar({ onMenuClick }) {
         <div className="flex items-center gap-3 flex-1 md:flex-none md:w-96 relative mr-4">
           <button 
             onClick={onMenuClick}
-            className="cursor-pointer md:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition"
+            className="cursor-pointer text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition flex items-center justify-center"
           >
-            <Menu size={24} />
+            <div className="hidden md:block">
+              {isSidebarOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
+            </div>
+            <div className="block md:hidden">
+              <Menu size={24} />
+            </div>
           </button>
           
           {/* Bilah Pencarian Desktop */}
