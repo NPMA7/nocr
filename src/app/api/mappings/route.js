@@ -18,13 +18,14 @@ export async function GET(req) {
     const { data, error } = await db.from('device_mappings').select('*');
     if (error) throw error;
 
-    const { data: ruijieData } = await db.from('ruijie_devices').select('mac_address, last_online, connection_type');
+    const { data: ruijieData } = await db.from('ruijie_devices').select('mac_address, last_online, connection_type, last_log_history');
     const { data: pppoeData } = await db.from('pppoe_secrets').select('name, last_logged_out, remote_address');
     
     const enrichedData = (data || []).map(m => {
       let offlineTime = null;
       let remoteAddr = null;
       let connType = 'L2TP'; // fallback
+      let lastLogHistory = null;
 
       const sec = (pppoeData || []).find(s => s.name === m.mikrotik_alias);
       if (sec) {
@@ -34,6 +35,7 @@ export async function GET(req) {
       const ap = (ruijieData || []).find(r => r.mac_address === m.ruijie_mac);
       if (ap) {
         connType = ap.connection_type || 'L2TP';
+        lastLogHistory = ap.last_log_history;
         if (m.status_ruijie === 'Offline' && ap.last_online) {
           offlineTime = ap.last_online;
         }
@@ -43,7 +45,7 @@ export async function GET(req) {
         if (sec && sec.last_logged_out) offlineTime = sec.last_logged_out;
       }
       
-      return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType };
+      return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType, last_log_history: lastLogHistory };
     });
 
     cachedData = enrichedData;
