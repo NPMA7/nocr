@@ -18,7 +18,8 @@ export function siteFieldsFromTopologyNode(node) {
     phone: (node?.pic_phone || picFromSite?.phone || '').trim() || null,
   };
   return {
-    vendor: (node?.vendor || fromSite?.vendor || '').trim() || null,
+    vendor: node?.vendor !== undefined ? (node.vendor || null) : (fromSite?.vendor || null),
+    customer_id: node?.customer_id !== undefined ? (node.customer_id || null) : (fromSite?.customer_id || null),
     latitude:
       fromSite?.latitude != null
         ? Number(fromSite.latitude)
@@ -40,6 +41,7 @@ export function topologyFieldsFromSite(site, pics = []) {
   const first = firstPicFromList(pics);
   return {
     vendor: site?.vendor?.trim() || null,
+    customer_id: site?.customer_id?.trim() || null,
     pic_name: first.name,
     pic_phone: first.phone,
   };
@@ -156,9 +158,11 @@ export async function syncTopologyNodeToSite(db, node) {
     updated_at: new Date().toISOString(),
   };
 
+  // Only update vendor and customer_id if they are explicitly passed from topology UI
+  if (node.vendor !== undefined) sitePayload.vendor = fields.vendor;
+  if (node.customer_id !== undefined) sitePayload.customer_id = fields.customer_id;
+
   if (site?.id) {
-    // Only update coords and link. Do not overwrite vendor/pics for existing sites 
-    // to prevent accidental mass wipes from topology page.
     const { data: updated, error } = await db
       .from('sites')
       .update(sitePayload)
@@ -168,8 +172,9 @@ export async function syncTopologyNodeToSite(db, node) {
     if (error) throw error;
     site = updated;
   } else {
-    // For new sites, insert with vendor
+    // For new sites, ensure vendor & customer_id are included
     sitePayload.vendor = fields.vendor;
+    sitePayload.customer_id = fields.customer_id;
     const { data: inserted, error } = await db
       .from('sites')
       .insert(sitePayload)
@@ -215,6 +220,7 @@ export async function autoLinkTopologyNode(db, node) {
         ruijie_mac: mapping.ruijie_mac,
         connection_type: 'l2tp',
         vendor: fromNode.vendor,
+        customer_id: fromNode.customer_id,
         latitude: fromNode.latitude,
         longitude: fromNode.longitude,
         topology_node_id: node.id,
@@ -263,6 +269,7 @@ export async function enrichTopologyNodeWithSite(db, node) {
       ...node,
       site_id: site.id,
       vendor: fields.vendor,
+      customer_id: fields.customer_id,
       pic_name: fields.pic_name,
       pic_phone: fields.pic_phone,
       site: {
@@ -386,6 +393,7 @@ export async function enrichTopologyNodesBatch(db, nodes) {
       ...node,
       site_id: site.id,
       vendor: fields.vendor,
+      customer_id: fields.customer_id,
       pic_name: fields.pic_name,
       pic_phone: fields.pic_phone,
       site: {
@@ -404,7 +412,7 @@ export async function syncTopologyBatchToSites(db, nodes) {
   for (const node of nodes || []) {
     if (!node?.linked_interface?.trim() && !node?.site_id) continue;
     try {
-      if (node.site_id || node.vendor || node.pic_name || node.pic_phone) {
+      if (node.site_id || node.vendor !== undefined || node.customer_id !== undefined || node.pic_name !== undefined || node.pic_phone !== undefined) {
         await syncTopologyNodeToSite(db, node);
       } else {
         await autoLinkTopologyNode(db, node);

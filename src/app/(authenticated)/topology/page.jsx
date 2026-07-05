@@ -33,7 +33,10 @@ function isInfrastructureNode(node) {
 }
 import { canEditTopology, getStoredUser } from "@/lib/roles";
 import axios from "axios";
-import { fetchTopologyCached, updateTopologyCacheLocally } from "@/lib/globalCache";
+import {
+  fetchTopologyCached,
+  updateTopologyCacheLocally,
+} from "@/lib/globalCache";
 import { API_URL, socket, useAppState } from "@/App";
 import {
   buildBaselineMap,
@@ -90,7 +93,9 @@ const TopologyMap = dynamic(() => import("@/components/TopologyMap"), {
 });
 
 function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
-  const [selected, setSelected] = useState(() => new Set(conflicts.map((c) => c.id)));
+  const [selected, setSelected] = useState(
+    () => new Set(conflicts.map((c) => c.id)),
+  );
 
   const toggleAll = () => {
     if (selected.size === conflicts.length) setSelected(new Set());
@@ -115,13 +120,18 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
             ⚠️
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-amber-300 text-base">Konflik Perubahan Terdeteksi</h3>
+            <h3 className="font-bold text-amber-300 text-base">
+              Konflik Perubahan Terdeteksi
+            </h3>
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              {conflicts.length} node sudah diubah user lain sejak kamu mulai mengedit.
-              Pilih tindakan untuk setiap node di bawah ini.
+              {conflicts.length} node sudah diubah user lain sejak kamu mulai
+              mengedit. Pilih tindakan untuk setiap node di bawah ini.
             </p>
           </div>
-          <button onClick={onDismiss} className="text-slate-500 hover:text-white transition flex-shrink-0">
+          <button
+            onClick={onDismiss}
+            className="text-slate-500 hover:text-white transition flex-shrink-0"
+          >
             <X size={18} />
           </button>
         </div>
@@ -137,13 +147,19 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
               onChange={toggleAll}
               className="w-4 h-4 accent-amber-500 cursor-pointer"
             />
-            <label htmlFor="conflict-select-all" className="text-xs font-semibold text-slate-300 cursor-pointer">
+            <label
+              htmlFor="conflict-select-all"
+              className="text-xs font-semibold text-slate-300 cursor-pointer"
+            >
               Pilih Semua ({conflicts.length} node)
             </label>
           </div>
 
           {conflicts.map((c) => (
-            <div key={c.id} className={`px-5 py-3 flex items-start gap-3 transition ${selected.has(c.id) ? "bg-amber-500/5" : ""}`}>
+            <div
+              key={c.id}
+              className={`px-5 py-3 flex items-start gap-3 transition ${selected.has(c.id) ? "bg-amber-500/5" : ""}`}
+            >
               <input
                 type="checkbox"
                 id={`conflict-${c.id}`}
@@ -151,15 +167,23 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
                 onChange={() => toggle(c.id)}
                 className="w-4 h-4 mt-0.5 accent-amber-500 cursor-pointer flex-shrink-0"
               />
-              <label htmlFor={`conflict-${c.id}`} className="flex-1 min-w-0 cursor-pointer">
-                <p className="text-sm font-semibold text-slate-100 truncate">{c.label}</p>
+              <label
+                htmlFor={`conflict-${c.id}`}
+                className="flex-1 min-w-0 cursor-pointer"
+              >
+                <p className="text-sm font-semibold text-slate-100 truncate">
+                  {c.label}
+                </p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-mono">
                     {c.id}
                   </span>
                   <span className="text-[10px] text-slate-500">
-                    DB diubah: {c.dbVersion?.last_modified_at
-                      ? new Date(c.dbVersion.last_modified_at).toLocaleTimeString("id-ID")
+                    DB diubah:{" "}
+                    {c.dbVersion?.last_modified_at
+                      ? new Date(
+                          c.dbVersion.last_modified_at,
+                        ).toLocaleTimeString("id-ID")
                       : "tidak diketahui"}
                   </span>
                 </div>
@@ -171,7 +195,9 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
         {/* Actions */}
         <div className="p-5 border-t border-slate-700/50 bg-slate-800/30 flex flex-col gap-3">
           <p className="text-[11px] text-slate-500 text-center">
-            {selected.size === 0 ? "Tidak ada node dipilih" : `${selected.size} node terpilih`}
+            {selected.size === 0
+              ? "Tidak ada node dipilih"
+              : `${selected.size} node terpilih`}
           </p>
           <div className="flex gap-2">
             <button
@@ -212,7 +238,7 @@ function TopologyContent() {
   const [showLabels, setShowLabels] = useState(false);
   /** 'all' | 'client' | 'infrastructure' — filter tampilan untuk semua role */
   const [nodeViewFilter, setNodeViewFilter] = useState("all");
-  const [activeNodeTab, setActiveNodeTab] = useState("identitas");
+  const [activeNodeTab, setActiveNodeTab] = useState("informasi");
   const [networkMode, setNetworkMode] = useState("l2tp");
 
   const [interactionMode, setInteractionMode] = useState("select");
@@ -229,7 +255,6 @@ function TopologyContent() {
   const [nodePresenceMap, setNodePresenceMap] = useState({}); // { nodeId: { username, userId } }
   const [conflictQueue, setConflictQueue] = useState([]); // array of conflict objects to resolve
   const [forceSaveQueue, setForceSaveQueue] = useState([]); // nodes user pilih untuk force-save
-
 
   const syncEditPermission = () => {
     setCanEdit(canEditTopology(getStoredUser()));
@@ -320,7 +345,8 @@ function TopologyContent() {
       ) {
         options.push({
           name: m.prefix,
-          type: m.connection_type === 'PPPOE' ? "PPPoE Gabungan" : "L2TP Gabungan",
+          type:
+            m.connection_type === "PPPOE" ? "PPPoE Gabungan" : "L2TP Gabungan",
           label: m.prefix,
           isMapping: true,
         });
@@ -328,7 +354,12 @@ function TopologyContent() {
     });
     (coreInterfaces || []).forEach((i) => {
       // Jangan masukkan l2tp-in atau pppoe-in lagi karena sudah digantikan oleh Gabungan (mappings)
-      if (i.type && (i.type.toLowerCase() === "l2tp-in" || i.type.toLowerCase() === "pppoe-in")) return;
+      if (
+        i.type &&
+        (i.type.toLowerCase() === "l2tp-in" ||
+          i.type.toLowerCase() === "pppoe-in")
+      )
+        return;
 
       if (
         i.name &&
@@ -549,9 +580,13 @@ function TopologyContent() {
     setCoreLoading(true);
     try {
       // Fetch berurutan untuk mencegah bentrok koneksi (race condition) ke RouterOS
-      const statusRes = await axios.get(`${API_URL}/devices/core/status`).catch(() => ({ data: null }));
-      const ifaceRes = await axios.get(`${API_URL}/devices/core/interfaces`).catch(() => ({ data: [] }));
-      
+      const statusRes = await axios
+        .get(`${API_URL}/devices/core/status`)
+        .catch(() => ({ data: null }));
+      const ifaceRes = await axios
+        .get(`${API_URL}/devices/core/interfaces`)
+        .catch(() => ({ data: [] }));
+
       setCoreStatus(statusRes?.data || null);
       setCoreInterfaces(ifaceRes?.data || []);
       setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
@@ -614,7 +649,11 @@ function TopologyContent() {
         payload.edges || [],
         payload.revision,
       );
-      updateTopologyCacheLocally({ nodes: payload.nodes, edges: payload.edges || [], revision: payload.revision });
+      updateTopologyCacheLocally({
+        nodes: payload.nodes,
+        edges: payload.edges || [],
+        revision: payload.revision,
+      });
     };
 
     const handleMikrotikUpdate = (data) => {
@@ -882,7 +921,8 @@ function TopologyContent() {
         (!ifacePanelSearch ||
           (i.name &&
             i.name.toLowerCase().includes(ifacePanelSearch.toLowerCase()))) &&
-        i.type !== "l2tp-in" && i.type !== "pppoe-in",
+        i.type !== "l2tp-in" &&
+        i.type !== "pppoe-in",
     );
 
     filteredCore.forEach((i) => {
@@ -903,9 +943,13 @@ function TopologyContent() {
     );
 
     if (filteredMappings.length > 0) {
-      const l2tpMappings = filteredMappings.filter(m => m.connection_type !== 'PPPOE');
-      const pppoeMappings = filteredMappings.filter(m => m.connection_type === 'PPPOE');
-      
+      const l2tpMappings = filteredMappings.filter(
+        (m) => m.connection_type !== "PPPOE",
+      );
+      const pppoeMappings = filteredMappings.filter(
+        (m) => m.connection_type === "PPPOE",
+      );
+
       if (l2tpMappings.length > 0) {
         groups["l2tp-in (gabungan)"] = l2tpMappings.map((m) => ({
           name: m.prefix || m.mikrotik_alias || m.ruijie_mac,
@@ -937,7 +981,7 @@ function TopologyContent() {
     mappings.forEach((m) => {
       if (m.final_status === "Online") {
         up++;
-        if (m.connection_type !== 'PPPOE') l2tpOnline++;
+        if (m.connection_type !== "PPPOE") l2tpOnline++;
       } else down++;
     });
     return {
@@ -993,17 +1037,25 @@ function TopologyContent() {
         }
       }
     };
-    
-    processQueue();
-    
-    nodes.filter(n => n.type === "odc" && !visitedBFS.has(n.id)).forEach(n => {
-       visitedBFS.add(n.id); queue.push(n.id);
-    });
+
     processQueue();
 
-    nodes.filter(n => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id)).forEach(n => {
-       visitedBFS.add(n.id); queue.push(n.id);
-    });
+    nodes
+      .filter((n) => n.type === "odc" && !visitedBFS.has(n.id))
+      .forEach((n) => {
+        visitedBFS.add(n.id);
+        queue.push(n.id);
+      });
+    processQueue();
+
+    nodes
+      .filter(
+        (n) => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id),
+      )
+      .forEach((n) => {
+        visitedBFS.add(n.id);
+        queue.push(n.id);
+      });
     processQueue();
 
     // 2. Count downstream clients for each node
@@ -1023,10 +1075,15 @@ function TopologyContent() {
           let isPPPoE =
             node.linked_interface?.toLowerCase().includes("pppoe") ||
             node.type === "pppoe-client";
-            
+
           if (!isPPPoE && node.linked_interface) {
-            const m = mappings.find(map => map.prefix && map.prefix.toLowerCase() === node.linked_interface.toLowerCase());
-            if (m && m.connection_type === 'PPPOE') isPPPoE = true;
+            const m = mappings.find(
+              (map) =>
+                map.prefix &&
+                map.prefix.toLowerCase() ===
+                  node.linked_interface.toLowerCase(),
+            );
+            if (m && m.connection_type === "PPPOE") isPPPoE = true;
           }
           if (isPPPoE) res.pppoe++;
           else res.l2tp++;
@@ -1052,14 +1109,18 @@ function TopologyContent() {
         let isPPPoE =
           n.linked_interface?.toLowerCase().includes("pppoe") ||
           n.type === "pppoe-client";
-          
+
         if (!isPPPoE && n.linked_interface) {
-          const m = mappings.find(map => map.prefix && map.prefix.toLowerCase() === n.linked_interface.toLowerCase());
-          if (m && m.connection_type === 'PPPOE') isPPPoE = true;
+          const m = mappings.find(
+            (map) =>
+              map.prefix &&
+              map.prefix.toLowerCase() === n.linked_interface.toLowerCase(),
+          );
+          if (m && m.connection_type === "PPPOE") isPPPoE = true;
         }
-        
+
         if (!n.linked_interface && n.type === "client") return true; // Selalu tampilkan node baru yang belum ditautkan
-        
+
         if (networkMode === "l2tp") return !isPPPoE;
         if (networkMode === "pppoe") return isPPPoE;
       } else {
@@ -1115,12 +1176,16 @@ function TopologyContent() {
 
   useEffect(() => {
     if (mapNodes.length > 0) {
-      const lats = mapNodes.map(n => parseFloat(n.latitude)).filter(n => !isNaN(n));
-      const lngs = mapNodes.map(n => parseFloat(n.longitude)).filter(n => !isNaN(n));
+      const lats = mapNodes
+        .map((n) => parseFloat(n.latitude))
+        .filter((n) => !isNaN(n));
+      const lngs = mapNodes
+        .map((n) => parseFloat(n.longitude))
+        .filter((n) => !isNaN(n));
       if (lats.length > 0) {
         const bounds = [
           [Math.min(...lats), Math.min(...lngs)],
-          [Math.max(...lats), Math.max(...lngs)]
+          [Math.max(...lats), Math.max(...lngs)],
         ];
         setFlyToTarget({ bounds });
       }
@@ -1270,7 +1335,11 @@ function TopologyContent() {
             Sync Sekarang
           </button>
           {!readOnly && (
-            <button onClick={() => saveLayout()} disabled={saving} className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap">
+            <button
+              onClick={() => saveLayout()}
+              disabled={saving}
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
+            >
               {saving ? (
                 <>
                   <RefreshCw size={16} className="animate-spin" />
@@ -1850,7 +1919,7 @@ function TopologyContent() {
                   className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30"
                 >
                   <Wifi size={12} />
-                  Jaringan: {networkMode === "pppoe" ?  "PPPoE" : "L2TP"} 
+                  Jaringan: {networkMode === "pppoe" ? "PPPoE" : "L2TP"}
                 </button>
                 <div className="h-px bg-slate-700/50 w-full my-1"></div>
                 <button
@@ -1969,364 +2038,387 @@ function TopologyContent() {
           </div>
 
           {/* Indikator: node ini sedang diedit user lain */}
-          {currentSelectedNode && nodePresenceMap[currentSelectedNode.id] &&
-            nodePresenceMap[currentSelectedNode.id].userId !== (sessionUser?.id?.toString() || sessionUser?.username) && (
-            <div className="mx-3 mt-2 flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
-              <span className="text-amber-400 text-sm">🔒</span>
-              <p className="text-xs text-amber-300 font-medium leading-snug">
-                Sedang diedit oleh&nbsp;
-                <span className="font-bold text-amber-200">
-                  {nodePresenceMap[currentSelectedNode.id].username}
-                </span>
-              </p>
-            </div>
-          )}
-
-          {currentSelectedNode && (
-            <div className="flex border-b border-slate-700/50 bg-slate-850/40">
-              <button
-                onClick={() => setActiveNodeTab("identitas")}
-                className={`cursor-pointer flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all ${
-                  activeNodeTab === "identitas"
-                    ? "border-blue-500 text-blue-400 bg-blue-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-700/20"
-                }`}
-              >
-                Identitas
-              </button>
-              <button
-                onClick={() => setActiveNodeTab("detail")}
-                className={`cursor-pointer flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all ${
-                  activeNodeTab === "detail"
-                    ? "border-blue-500 text-blue-400 bg-blue-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-700/20"
-                }`}
-              >
-                Detail
-              </button>
-            </div>
-          )}
+          {currentSelectedNode &&
+            nodePresenceMap[currentSelectedNode.id] &&
+            nodePresenceMap[currentSelectedNode.id].userId !==
+              (sessionUser?.id?.toString() || sessionUser?.username) && (
+              <div className="mx-3 mt-2 flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                <span className="text-amber-400 text-sm">🔒</span>
+                <p className="text-xs text-amber-300 font-medium leading-snug">
+                  Sedang diedit oleh&nbsp;
+                  <span className="font-bold text-amber-200">
+                    {nodePresenceMap[currentSelectedNode.id].username}
+                  </span>
+                </p>
+              </div>
+            )}
 
           <div className="p-5 flex-1 overflow-auto flex flex-col gap-4">
             {currentSelectedNode && (
               <>
-                {activeNodeTab === "identitas" ? (
-                  <>
-                    <div className="flex justify-between items-center border-b border-slate-700/30">
-                      <span className="text-xs text-slate-400">Tipe Node</span>
-                      <span className="text-xs font-semibold text-blue-400 uppercase">
-                        {currentSelectedNode.type}
-                      </span>
-                    </div>
+                <div className="flex justify-between items-center border-b border-slate-700/30">
+                  <span className="text-xs text-slate-400">Tipe Node</span>
+                  <span className="text-xs font-semibold text-blue-400 uppercase">
+                    {currentSelectedNode.type}
+                  </span>
+                </div>
 
-                    {/* Link node to core MikroTik interface */}
-                    {combinedInterfaceOptions.length > 0 && (
-                      <div className="flex flex-col gap-1.5 relative">
-                        {currentSelectedNode.linked_interface &&
-                          (() => {
-                            const linked = combinedInterfaceOptions.find(
-                              (i) =>
-                                i.name === currentSelectedNode.linked_interface,
-                            );
-                            if (!linked) return null;
+                {/* Link node to core MikroTik interface */}
+                {combinedInterfaceOptions.length > 0 && (
+                  <div className="flex flex-col gap-1.5 relative">
+                    {currentSelectedNode.linked_interface &&
+                      (() => {
+                        const linked = combinedInterfaceOptions.find(
+                          (i) =>
+                            i.name === currentSelectedNode.linked_interface,
+                        );
+                        if (!linked) return null;
 
-                            let isUp = false;
-                            let isDown = false;
-                            let statusText = "Unknown";
-                            let offlineSince = null;
+                        let isUp = false;
+                        let isDown = false;
+                        let statusText = "Unknown";
+                        let offlineSince = null;
 
-                            if (linked.isMapping) {
-                              const m = mappings.find(
-                                (x) => x.prefix === linked.name,
-                              );
-                              if (m) {
-                                isUp = m.final_status === "Online";
-                                isDown = m.final_status === "Offline";
-                                statusText = m.final_status;
-                                offlineSince = m.offline_since;
-                              }
-                            } else {
-                              const c = coreInterfaces.find(
-                                (x) => x.name === linked.name,
-                              );
-                              if (c) {
-                                isUp = c.running === "true";
-                                isDown = c.running !== "true";
-                                statusText =
-                                  c.disabled === "true"
-                                    ? "Disabled"
-                                    : isUp
-                                      ? "Up"
-                                      : "Down";
-                              }
-                            }
+                        let mData = null;
+                        if (linked.isMapping) {
+                          const m = mappings.find(
+                            (x) => x.prefix === linked.name,
+                          );
+                          if (m) {
+                            isUp = m.final_status === "Online";
+                            isDown = m.final_status === "Offline";
+                            statusText = m.final_status;
+                            offlineSince = m.offline_since;
+                            mData = m;
+                          }
+                        } else {
+                          const c = coreInterfaces.find(
+                            (x) => x.name === linked.name,
+                          );
+                          if (c) {
+                            isUp = c.running === "true";
+                            isDown = c.running !== "true";
+                            statusText =
+                              c.disabled === "true"
+                                ? "Disabled"
+                                : isUp
+                                  ? "Up"
+                                  : "Down";
+                          }
+                        }
 
-                            return (
-                              <div
-                                className={`flex flex-col gap-1.5 p-2.5 rounded-lg text-xs border ${isUp ? "bg-emerald-500/10 border-emerald-500/30" : "bg-red-500/10 border-red-500/30"}`}
+                        return (
+                          <div
+                            className={`flex flex-col gap-1.5 p-2.5 rounded-lg text-xs border ${isUp ? "bg-emerald-500/10 border-emerald-500/30" : "bg-red-500/10 border-red-500/30"}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">
+                                Status Interface
+                              </span>
+                              <span
+                                className={`font-bold px-2 py-0.5 rounded ${isUp ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}
                               >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-slate-400">
-                                    Status Interface
-                                  </span>
-                                  <span
-                                    className={`font-bold px-2 py-0.5 rounded ${isUp ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}
-                                  >
-                                    {statusText}
-                                  </span>
-                                </div>
-                                {isDown && offlineSince && (
-                                  <div className="text-[10px] text-red-400 flex items-center justify-end gap-1">
-                                    <Clock size={10} /> Sejak {offlineSince}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                      </div>
-                    )}
-
-                    {/* Link node to core MikroTik interface */}
-                    {combinedInterfaceOptions.length > 0 && (
-                      <div className="flex flex-col gap-1.5 relative">
-                        <label className="text-xs font-semibold text-slate-400">
-                          Interface / Prefix
-                        </label>
-                        <input
-                          type="text"
-                          readOnly={readOnly}
-                          placeholder="Ketik untuk mencari prefix/interface..."
-                          value={nodeIfaceSearch}
-                          onChange={(e) => {
-                            setNodeIfaceSearch(e.target.value);
-                            setShowNodeIfaceDropdown(true);
-                          }}
-                          onFocus={() =>
-                            !readOnly && setShowNodeIfaceDropdown(true)
-                          }
-                          onBlur={() =>
-                            setTimeout(
-                              () => setShowNodeIfaceDropdown(false),
-                              200,
-                            )
-                          }
-                          className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
-                        />
-
-                        {!readOnly && showNodeIfaceDropdown && (
-                          <div className="absolute top-[64px] left-0 right-0 z-[2000] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl max-h-52 overflow-auto">
-                            <div
-                              className="px-3 py-2.5 text-xs text-slate-400 hover:bg-slate-700 cursor-pointer"
-                              onClick={() => {
-                                setNodesFromUser((prev) =>
-                                  prev.map((n) =>
-                                    n.id === currentSelectedNode.id
-                                      ? { ...n, linked_interface: "" }
-                                      : n,
-                                  ),
-                                );
-                                setNodeIfaceSearch("");
-                                setShowNodeIfaceDropdown(false);
-                              }}
-                            >
-                              -- Tidak ada (manual) --
+                                {statusText}
+                              </span>
                             </div>
-                            {combinedInterfaceOptions
-                              .filter(
-                                (i) =>
-                                  !nodeIfaceSearch ||
-                                  i.name
-                                    .toLowerCase()
-                                    .includes(nodeIfaceSearch.toLowerCase()) ||
-                                  (currentSelectedNode.linked_interface &&
-                                    nodeIfaceSearch ===
-                                      currentSelectedNode.linked_interface),
-                              )
-                              .map((iface, i) => {
-                                const isUsedByOther = nodes.some(
-                                  (n) =>
-                                    n.id !== currentSelectedNode.id &&
-                                    n.linked_interface === iface.name,
-                                );
-                                return (
-                                  <div
-                                    key={i}
-                                    className={`px-3 py-2.5 text-xs border-t border-slate-700/30 flex justify-between items-center ${isUsedByOther ? "text-slate-500 bg-slate-800/50 cursor-not-allowed" : "text-slate-200 hover:bg-slate-700 cursor-pointer"}`}
-                                    onClick={() => {
-                                      if (isUsedByOther) return;
-                                      setNodesFromUser((prev) =>
-                                        prev.map((n) =>
-                                          n.id === currentSelectedNode.id
-                                            ? {
-                                                ...n,
-                                                linked_interface: iface.name,
-                                                label: iface.name,
-                                              }
-                                            : n,
-                                        ),
-                                      );
-                                      setNodeIfaceSearch(iface.name);
-                                      setShowNodeIfaceDropdown(false);
-                                    }}
-                                  >
-                                    <span className="font-medium flex items-center gap-1.5">
-                                      {iface.name}
-                                      {isUsedByOther && (
-                                        <span className="text-[9px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded">
-                                          Terpakai
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="text-[10px] text-slate-500 uppercase">
-                                      {iface.type}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            {combinedInterfaceOptions.filter(
-                              (i) =>
-                                nodeIfaceSearch &&
-                                i.name
-                                  .toLowerCase()
-                                  .includes(nodeIfaceSearch.toLowerCase()),
-                            ).length === 0 && (
-                              <div className="px-3 py-3 text-xs text-slate-500 text-center">
-                                Tidak ditemukan
+                            {isDown && offlineSince && (
+                              <div className="text-[10px] text-red-400 flex items-center justify-end gap-1">
+                                <Clock size={10} /> Sejak {offlineSince}
                               </div>
                             )}
+
+                            {mData && (
+                              <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-400 text-[10px] uppercase tracking-wider">
+                                    Status Ruijie
+                                  </span>
+                                  <span
+                                    className={`text-[10px] font-bold ${mData.status_ruijie === "Online" ? "text-emerald-400" : mData.status_ruijie === "Offline" ? "text-red-500" : "text-slate-500"}`}
+                                  >
+                                    {mData.status_ruijie === "Online"
+                                      ? "UP"
+                                      : mData.status_ruijie === "Offline"
+                                        ? "DOWN"
+                                        : "-"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-400 text-[10px] uppercase tracking-wider">
+                                    Status Mikrotik
+                                  </span>
+                                  <span
+                                    className={`text-[10px] font-bold ${mData.status_mikrotik === "Online" ? "text-emerald-400" : mData.status_mikrotik === "Offline" ? "text-red-500" : "text-slate-500"}`}
+                                  >
+                                    {mData.status_mikrotik === "Online"
+                                      ? "UP"
+                                      : mData.status_mikrotik === "Offline"
+                                        ? "DOWN"
+                                        : "-"}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                  </div>
+                )}
+
+                {/* Link node to core MikroTik interface */}
+                {combinedInterfaceOptions.length > 0 && (
+                  <div className="flex flex-col gap-1.5 relative">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Interface / Prefix
+                    </label>
+                    <input
+                      type="text"
+                      readOnly={readOnly}
+                      placeholder="Ketik untuk mencari prefix/interface..."
+                      value={nodeIfaceSearch}
+                      onChange={(e) => {
+                        setNodeIfaceSearch(e.target.value);
+                        setShowNodeIfaceDropdown(true);
+                      }}
+                      onFocus={() =>
+                        !readOnly && setShowNodeIfaceDropdown(true)
+                      }
+                      onBlur={() =>
+                        setTimeout(() => setShowNodeIfaceDropdown(false), 200)
+                      }
+                      className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    />
+
+                    {!readOnly && showNodeIfaceDropdown && (
+                      <div className="absolute top-[64px] left-0 right-0 z-[2000] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl max-h-52 overflow-auto">
+                        <div
+                          className="px-3 py-2.5 text-xs text-slate-400 hover:bg-slate-700 cursor-pointer"
+                          onClick={() => {
+                            setNodesFromUser((prev) =>
+                              prev.map((n) =>
+                                n.id === currentSelectedNode.id
+                                  ? { ...n, linked_interface: "" }
+                                  : n,
+                              ),
+                            );
+                            setNodeIfaceSearch("");
+                            setShowNodeIfaceDropdown(false);
+                          }}
+                        >
+                          -- Tidak ada (manual) --
+                        </div>
+                        {combinedInterfaceOptions
+                          .filter(
+                            (i) =>
+                              !nodeIfaceSearch ||
+                              i.name
+                                .toLowerCase()
+                                .includes(nodeIfaceSearch.toLowerCase()) ||
+                              (currentSelectedNode.linked_interface &&
+                                nodeIfaceSearch ===
+                                  currentSelectedNode.linked_interface),
+                          )
+                          .map((iface, i) => {
+                            const isUsedByOther = nodes.some(
+                              (n) =>
+                                n.id !== currentSelectedNode.id &&
+                                n.linked_interface === iface.name,
+                            );
+                            return (
+                              <div
+                                key={i}
+                                className={`px-3 py-2.5 text-xs border-t border-slate-700/30 flex justify-between items-center ${isUsedByOther ? "text-slate-500 bg-slate-800/50 cursor-not-allowed" : "text-slate-200 hover:bg-slate-700 cursor-pointer"}`}
+                                onClick={() => {
+                                  if (isUsedByOther) return;
+                                  setNodesFromUser((prev) =>
+                                    prev.map((n) =>
+                                      n.id === currentSelectedNode.id
+                                        ? {
+                                            ...n,
+                                            linked_interface: iface.name,
+                                            label: iface.name,
+                                          }
+                                        : n,
+                                    ),
+                                  );
+                                  setNodeIfaceSearch(iface.name);
+                                  setShowNodeIfaceDropdown(false);
+                                }}
+                              >
+                                <span className="font-medium flex items-center gap-1.5">
+                                  {iface.name}
+                                  {isUsedByOther && (
+                                    <span className="text-[9px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded">
+                                      Terpakai
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-[10px] text-slate-500 uppercase">
+                                  {iface.type}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        {combinedInterfaceOptions.filter(
+                          (i) =>
+                            nodeIfaceSearch &&
+                            i.name
+                              .toLowerCase()
+                              .includes(nodeIfaceSearch.toLowerCase()),
+                        ).length === 0 && (
+                          <div className="px-3 py-3 text-xs text-slate-500 text-center">
+                            Tidak ditemukan
                           </div>
                         )}
                       </div>
                     )}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Vendor / Merek ISP
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={readOnly}
-                        placeholder="Contoh: Telkom, Biznet, Iconnet..."
-                        value={currentSelectedNode.vendor || ""}
-                        onChange={(e) =>
-                          setNodesFromUser((prev) =>
-                            prev.map((n) =>
-                              n.id === currentSelectedNode.id
-                                ? { ...n, vendor: e.target.value }
-                                : n,
-                            ),
-                          )
-                        }
-                        className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
-                      />
-                    </div>
-                    {/* Metrics if linked to device */}
-                    {currentSelectedNode.device_id &&
-                      nodeDetail &&
-                      !nodeDetail.loading &&
-                      !nodeDetail.error && (
-                        <div className="flex flex-col gap-3 mt-1 bg-slate-900/40 p-3 rounded-lg border border-slate-700/40">
-                          <p className="text-[10px] text-slate-500 uppercase font-bold">
-                            Live Metrics
-                          </p>
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-slate-400">Uptime</span>
-                            <span className="text-slate-200">
-                              {nodeDetail?.uptime || "-"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-slate-400">PPPoE Aktif</span>
-                            <span className="text-emerald-400 font-semibold">
-                              {nodeDetail?.pppoe_active || 0} user
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-slate-400">CPU</span>
-                            <span className="text-slate-200">
-                              {nodeDetail?.cpu || 0}%
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    {currentSelectedNode.device_id && nodeDetail?.loading && (
-                      <p className="text-xs text-slate-500">
-                        Memuat status perangkat...
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Lat, Long (Lintang, Bujur)
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={readOnly}
-                        placeholder="-7.154376768491, 107.69818606047"
-                        value={`${currentSelectedNode.latitude ?? ""}${currentSelectedNode.latitude && currentSelectedNode.longitude ? ", " : ""}${currentSelectedNode.longitude ?? ""}`}
-                        onChange={(e) => {
-                          const [lat = "", lng = ""] = e.target.value
-                            .split(",")
-                            .map((v) => v.trim());
-                          setNodesFromUser((prev) =>
-                            prev.map((n) =>
-                              n.id === currentSelectedNode.id
-                                ? { ...n, latitude: lat, longitude: lng }
-                                : n,
-                            ),
-                          );
-                        }}
-                        className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
-                        style={{ minWidth: 0 }}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Nama PIC
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={readOnly}
-                        placeholder="Nama penanggung jawab titik"
-                        value={currentSelectedNode.pic_name || ""}
-                        onChange={(e) =>
-                          setNodesFromUser((prev) =>
-                            prev.map((n) =>
-                              n.id === currentSelectedNode.id
-                                ? { ...n, pic_name: e.target.value }
-                                : n,
-                            ),
-                          )
-                        }
-                        className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Nomor PIC
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={readOnly}
-                        placeholder="Contoh: 08123456789"
-                        value={currentSelectedNode.pic_phone || ""}
-                        onChange={(e) =>
-                          setNodesFromUser((prev) =>
-                            prev.map((n) =>
-                              n.id === currentSelectedNode.id
-                                ? { ...n, pic_phone: e.target.value }
-                                : n,
-                            ),
-                          )
-                        }
-                        className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
-                      />
-                    </div>
-                  </>
+                  </div>
                 )}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Vendor / Merek ISP
+                  </label>
+                  <input
+                    type="text"
+                    readOnly={readOnly}
+                    placeholder="Contoh: Telkom, Biznet, Iconnet..."
+                    value={currentSelectedNode.vendor || ""}
+                    onChange={(e) =>
+                      setNodesFromUser((prev) =>
+                        prev.map((n) =>
+                          n.id === currentSelectedNode.id
+                            ? { ...n, vendor: e.target.value }
+                            : n,
+                        ),
+                      )
+                    }
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    ID Pelanggan
+                  </label>
+                  <input
+                    type="text"
+                    readOnly={readOnly}
+                    placeholder="Contoh: 131175137140"
+                    value={currentSelectedNode.customer_id !== undefined ? currentSelectedNode.customer_id : (currentSelectedNode.site?.customer_id || "")}
+                    onChange={(e) =>
+                      setNodesFromUser((prev) =>
+                        prev.map((n) =>
+                          n.id === currentSelectedNode.id
+                            ? { ...n, customer_id: e.target.value }
+                            : n,
+                        ),
+                      )
+                    }
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                  />
+                </div>
+                {/* Metrics if linked to device */}
+                {currentSelectedNode.device_id &&
+                  nodeDetail &&
+                  !nodeDetail.loading &&
+                  !nodeDetail.error && (
+                    <div className="flex flex-col gap-3 mt-1 bg-slate-900/40 p-3 rounded-lg border border-slate-700/40">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">
+                        Live Metrics
+                      </p>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">Uptime</span>
+                        <span className="text-slate-200">
+                          {nodeDetail?.uptime || "-"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">PPPoE Aktif</span>
+                        <span className="text-emerald-400 font-semibold">
+                          {nodeDetail?.pppoe_active || 0} user
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">CPU</span>
+                        <span className="text-slate-200">
+                          {nodeDetail?.cpu || 0}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                {currentSelectedNode.device_id && nodeDetail?.loading && (
+                  <p className="text-xs text-slate-500">
+                    Memuat status perangkat...
+                  </p>
+                )}
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Nama PIC
+                  </label>
+                  <input
+                    type="text"
+                    readOnly={readOnly}
+                    placeholder="Nama penanggung jawab titik"
+                    value={currentSelectedNode.pic_name || ""}
+                    onChange={(e) =>
+                      setNodesFromUser((prev) =>
+                        prev.map((n) =>
+                          n.id === currentSelectedNode.id
+                            ? { ...n, pic_name: e.target.value }
+                            : n,
+                        ),
+                      )
+                    }
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Nomor PIC
+                  </label>
+                  <input
+                    type="text"
+                    readOnly={readOnly}
+                    placeholder="Contoh: 08123456789"
+                    value={currentSelectedNode.pic_phone || ""}
+                    onChange={(e) =>
+                      setNodesFromUser((prev) =>
+                        prev.map((n) =>
+                          n.id === currentSelectedNode.id
+                            ? { ...n, pic_phone: e.target.value }
+                            : n,
+                        ),
+                      )
+                    }
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Lat, Long (Lintang, Bujur)
+                  </label>
+                  <input
+                    type="text"
+                    readOnly={readOnly}
+                    placeholder="-7.154376768491, 107.69818606047"
+                    value={`${currentSelectedNode.latitude ?? ""}${currentSelectedNode.latitude && currentSelectedNode.longitude ? ", " : ""}${currentSelectedNode.longitude ?? ""}`}
+                    onChange={(e) => {
+                      const [lat = "", lng = ""] = e.target.value
+                        .split(",")
+                        .map((v) => v.trim());
+                      setNodesFromUser((prev) =>
+                        prev.map((n) =>
+                          n.id === currentSelectedNode.id
+                            ? { ...n, latitude: lat, longitude: lng }
+                            : n,
+                        ),
+                      );
+                    }}
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    style={{ minWidth: 0 }}
+                  />
+                </div>
 
                 {!readOnly && (
                   <button

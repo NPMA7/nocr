@@ -331,10 +331,10 @@ export default function LiveChatPage() {
                   messages.map(msg => {
                     const isMe = msg.fromMe;
                     return (
-                      <div key={msg.id} className={`flex flex-col max-w-[75%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
-                        <div className={`p-2.5 rounded-xl text-sm shadow-md ${isMe ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-slate-700 text-slate-100 rounded-tl-sm'}`}>
+                      <div key={msg.id} className={`flex flex-col max-w-[80%] min-w-0 ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                        <div className={`p-2.5 rounded-xl text-sm shadow-md overflow-hidden ${isMe ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-slate-700 text-slate-100 rounded-tl-sm'}`}>
                           {msg.hasMedia && <MediaMessage msgId={msg.id} />}
-                          {msg.body && <div className="whitespace-pre-wrap break-words">{msg.body}</div>}
+                          {msg.body && <div className="whitespace-pre-wrap break-words [word-break:break-word] [overflow-wrap:anywhere]">{msg.body}</div>}
                         </div>
                         <div className={`text-[10px] ${isMe ? 'text-slate-400' : 'text-slate-500'} mt-1 flex items-center gap-1`}>
                           {formatTime(msg.timestamp)} {isMe && getAckIcon(msg.ack)}
