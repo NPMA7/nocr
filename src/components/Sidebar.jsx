@@ -144,7 +144,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
             onClick={onNavigate}
             scroll={false}
             className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium ${
-              pathname.startsWith("/devices") || pathname.startsWith("/ruijie")
+              pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt")
                 ? "bg-slate-800/50 text-white"
                 : "text-slate-400 hover:bg-slate-800 hover:text-white"
             }`}
@@ -152,10 +152,10 @@ export default function Sidebar({ isConnected, onNavigate }) {
             <div className="flex items-center gap-3">
               <Server size={18} /> Perangkat Jaringan
             </div>
-            <ChevronDown size={16} className={`transition-transform ${pathname.startsWith("/devices") || pathname.startsWith("/ruijie") ? "rotate-180" : ""}`} />
+            <ChevronDown size={16} className={`transition-transform ${pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt") ? "rotate-180" : ""}`} />
           </Link>
 
-          {(pathname.startsWith("/devices") || pathname.startsWith("/ruijie")) && (
+          {(pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt")) && (
             <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
               <Link
                 href="/ruijie"
@@ -180,6 +180,18 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 }`}
               >
                 <Server size={14} /> Mikrotik RO
+              </Link>
+              <Link
+                href="/hsgq-olt"
+                onClick={onNavigate}
+                scroll={false}
+                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                  pathname.startsWith("/hsgq-olt")
+                    ? "text-purple-400 bg-purple-500/10"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                }`}
+              >
+                <Server size={14} /> HSGQ OLT
               </Link>
             </div>
           )}
