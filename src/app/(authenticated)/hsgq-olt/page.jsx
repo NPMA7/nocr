@@ -93,6 +93,10 @@ export default function HsgqOltPage() {
     else if (displayType === 'ONT Version') fieldVal = String(isArray ? row[5] : (row.ont_version || '-'));
     else if (displayType === 'Equipment ID') fieldVal = String(isArray ? (activeTab === 'Version Information' ? row[6] : row[4]) : (row.equipmentid || '-'));
     else if (displayType === 'Line Profile ID') fieldVal = String(isArray ? row[5] : (row.lprofid ?? '-'));
+    else if (displayType === 'SSID') {
+      const wifi = row.wifi && row.wifi[0];
+      fieldVal = String(isArray ? '' : (wifi?.wifiname || ''));
+    }
     else if (displayType === 'Running state') {
       const rstateVal = isArray ? row[4] : row.rstate;
       fieldVal = rstateVal === 1 ? 'online' : (rstateVal === 0 ? 'initial' : 'offline');
@@ -156,6 +160,8 @@ export default function HsgqOltPage() {
                 <option value="Equipment ID">Equipment ID</option>
                 <option value="Line Profile ID">Line Profile ID</option>
               </>
+            ) : activeTab === 'WLAN' ? (
+              <option value="SSID">SSID</option>
             ) : (
               <option value="Running state">Running state</option>
             )}
@@ -170,7 +176,6 @@ export default function HsgqOltPage() {
                 setCurrentPage(1);
               }}
             >
-              <option value="">Select...</option>
               <option value="initial">initial</option>
               <option value="online">online</option>
               <option value="offline">offline</option>
@@ -263,6 +268,17 @@ export default function HsgqOltPage() {
                     <th className="px-4 py-3">Srv Profile ID</th>
                     <th className="px-4 py-3">Srv Profile Name</th>
                   </>
+                ) : activeTab === 'WLAN' ? (
+                  <>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">SSID</th>
+                    <th className="px-4 py-3">Share key</th>
+                    <th className="px-4 py-3">Band Width</th>
+                    <th className="px-4 py-3">Isolation</th>
+                    <th className="px-4 py-3">Broadcast</th>
+                    <th className="px-4 py-3">Channel</th>
+                  </>
                 ) : (
                   <>
                     <th className="px-4 py-3">State</th>
@@ -350,6 +366,55 @@ export default function HsgqOltPage() {
                         <td className="px-4 py-3">{lprofName}</td>
                         <td className="px-4 py-3">{sprofId}</td>
                         <td className="px-4 py-3">{sprofName}</td>
+                      </tr>
+                    )
+                  }
+
+                  if (activeTab === 'WLAN') {
+                    const wifi = row.wifi && row.wifi[0] ? row.wifi[0] : {};
+                    const typeStr = wifi.instance === 2 ? '5G' : '2.4G';
+                    const status = wifi.enable === 1;
+                    const ssid = wifi.wifiname || '-';
+                    const sharekey = wifi.sharekey || '-';
+                    const bandwidth = wifi.bandwidth === 0 ? '20mhz' : (wifi.bandwidth === 1 ? '40mhz' : 'auto');
+                    const isolation = wifi.isolation === 1;
+                    const broadcast = wifi.broadcast === 1;
+                    const channel = wifi.channel === 0 ? 'auto' : wifi.channel;
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-700/20 transition-colors">
+                        <td className="px-4 py-3">{ontId}</td>
+                        <td className="px-4 py-3">{name}</td>
+                        <td className="px-4 py-3">{sn}</td>
+                        <td className="px-4 py-3">{typeStr}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-slate-300">{status ? 'Enable' : 'Disable'}</span>
+                            <div className={`w-8 h-4 rounded-full relative ${status ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${status ? 'left-[18px]' : 'left-0.5'}`}></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{ssid}</td>
+                        <td className="px-4 py-3">{sharekey}</td>
+                        <td className="px-4 py-3">{bandwidth}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-slate-300">{isolation ? 'Enable' : 'Disable'}</span>
+                            <div className={`w-8 h-4 rounded-full relative ${isolation ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${isolation ? 'left-[18px]' : 'left-0.5'}`}></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-slate-300">{broadcast ? 'Enable' : 'Disable'}</span>
+                            <div className={`w-8 h-4 rounded-full relative ${broadcast ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${broadcast ? 'left-[18px]' : 'left-0.5'}`}></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{channel}</td>
                       </tr>
                     )
                   }

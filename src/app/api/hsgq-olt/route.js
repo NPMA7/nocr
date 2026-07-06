@@ -13,6 +13,7 @@ export async function GET(request) {
     let endpoint = '/ontinfo_table';
     if (type === 'Version Information') endpoint = '/ontversion_table';
     else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
+    else if (type === 'WLAN') endpoint = '/ontwificonfig_table';
     const response = await axios.get(`${url}${endpoint}`, {
       timeout: 10000 // 10 seconds timeout
     });
