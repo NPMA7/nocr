@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { socket, AppStateContext, API_URL } from '@/App';
@@ -11,7 +11,6 @@ import { Network } from 'lucide-react';
 export default function AuthenticatedLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [tokenChecked, setTokenChecked] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [devices, setDevices] = useState([]);
@@ -110,7 +109,8 @@ export default function AuthenticatedLayout({ children }) {
     
     // Handle settings sub-tabs separately
     if (currentPath === 'settings') {
-        const tab = searchParams.get('tab') || 'core';
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab') || 'core';
         const tabToMenuKeyMap = {
             'core': 'settings-mikrotik',
             'vpn': 'settings-vpn',
@@ -129,7 +129,7 @@ export default function AuthenticatedLayout({ children }) {
             router.push('/dashboard');
         }
     }
-  }, [tokenChecked, sessionUser, pathname, searchParams, router]);
+  }, [tokenChecked, sessionUser, pathname, router]);
 
   useEffect(() => {
     if (!tokenChecked) return;

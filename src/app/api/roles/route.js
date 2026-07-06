@@ -53,9 +53,7 @@ export async function POST(req) {
             throw error;
         }
         
-        if (global.addActivityLog) {
-            global.addActivityLog(`Role baru "${normalizedName}" dibuat oleh Administrator`);
-        }
+
 
         return NextResponse.json(data[0]);
     } catch (err) {

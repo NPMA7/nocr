@@ -57,9 +57,7 @@ export async function PATCH(req, { params }) {
             throw error;
         }
 
-        if (global.addActivityLog) {
-            global.addActivityLog(`Role "${data[0].name}" diperbarui oleh Administrator`);
-        }
+
 
         return NextResponse.json(data[0]);
     } catch (err) {
@@ -92,9 +90,7 @@ export async function DELETE(req, { params }) {
         const { error } = await db.from('access_roles').delete().eq('id', id);
         if (error) throw error;
 
-        if (global.addActivityLog) {
-            global.addActivityLog(`Role "${roleQuery.data.name}" dihapus oleh Administrator`);
-        }
+
 
         return NextResponse.json({ success: true });
     } catch (err) {
