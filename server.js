@@ -82,7 +82,7 @@ app.prepare().then(() => {
                     return;
                 }
             }
-            console.log(`Log database dipangkas: ${excess} entri lama dihapus.`);
+            console.info(`Log database dipangkas: ${excess} entri lama dihapus.`);
         } catch (err) {
             console.error('Gagal memangkas log aktivitas:', err.message);
         }
@@ -967,6 +967,6 @@ app.prepare().then(() => {
 
     httpServer.listen(port, (err) => {
         if (err) throw err;
-        console.log(`> Ready on http://${hostname}:${port}`);
+        console.info(`> Ready on http://${hostname}:${port}`);
     });
 });

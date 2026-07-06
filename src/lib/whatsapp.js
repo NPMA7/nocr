@@ -78,7 +78,7 @@ async function start() {
     client.on('ready', () => {
         status = 'connected';
         qrCodeDataURL = null;
-        console.log('WhatsApp Client is ready!');
+        console.info('WhatsApp Client is ready!');
         broadcastStatus();
         if (global.addActivityLog) {
             global.addActivityLog('WhatsApp Gateway terhubung dan siap digunakan.');
@@ -86,7 +86,7 @@ async function start() {
     });
 
     client.on('authenticated', () => {
-        console.log('WhatsApp Authenticated');
+        console.info('WhatsApp Authenticated');
     });
 
     client.on('auth_failure', (msg) => {
@@ -96,7 +96,7 @@ async function start() {
     });
 
     client.on('disconnected', (reason) => {
-        console.log('WhatsApp Client disconnected', reason);
+        console.warn('WhatsApp Client disconnected', reason);
         status = 'disconnected';
         client = null;
         broadcastStatus();
@@ -240,7 +240,7 @@ async function getChats() {
     } catch (e) {
         console.error('Failed to get chats', e);
         if (e.message && (e.message.includes('detached Frame') || e.message.includes('Target closed'))) {
-            console.log('Detached Frame/Target closed terdeteksi. Memulai ulang klien secara otomatis...');
+            console.warn('Detached Frame/Target closed terdeteksi. Memulai ulang klien secara otomatis...');
             setTimeout(() => {
                 stop().then(() => start());
             }, 1000);

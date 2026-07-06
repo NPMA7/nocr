@@ -11,6 +11,8 @@ import {
   Search,
   Zap,
   Server,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { socket, useAppState } from "@/App";
 import { getStoredUser, hasAccess } from "@/lib/roles";
@@ -24,6 +26,7 @@ export default function HsgqOltPage() {
   const [displayValue, setDisplayValue] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const { sessionUser } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
@@ -84,7 +87,7 @@ export default function HsgqOltPage() {
         tableData = tableData.data;
       } else if (!Array.isArray(tableData)) {
         // Fallback dummy data or empty
-        console.log("Unrecognized data format:", tableData);
+        console.warn("Unrecognized data format:", tableData);
         tableData = [];
       }
 
@@ -291,7 +294,7 @@ export default function HsgqOltPage() {
             <option value="ONT ID">ONT ID</option>
             <option value="Name">Name</option>
             <option value="Serial Number">Serial Number</option>
-            <option value="Device Type">Device Type</option>
+
             {activeTab === "Version Information" ? (
               <>
                 <option value="Vendor ID">Vendor ID</option>
@@ -396,7 +399,7 @@ export default function HsgqOltPage() {
               }}
               className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm transition-colors"
             >
-              Reset
+              Reset Query
             </button>
           </div>
         </div>
@@ -448,10 +451,7 @@ export default function HsgqOltPage() {
                   </>
                 ) : (
                   <>
-                    <th className="px-4 py-3">State</th>
                     <th className="px-4 py-3">Running state</th>
-                    <th className="px-4 py-3">Config state</th>
-                    <th className="px-4 py-3">Device Type</th>
                     <th className="px-4 py-3">Receive Power</th>
                     <th className="px-4 py-3">Last up time</th>
                     <th className="px-4 py-3">Last down time</th>
@@ -609,7 +609,27 @@ export default function HsgqOltPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">{ssid}</td>
-                        <td className="px-4 py-3">{sharekey}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono bg-slate-900/50 px-2 py-1 rounded text-slate-300">
+                              {visiblePasswords[ontId] ? sharekey : "••••••••"}
+                            </span>
+                            {canManageOlt && (
+                              <button
+                                onClick={() =>
+                                  setVisiblePasswords((prev) => ({
+                                    ...prev,
+                                    [ontId]: !prev[ontId],
+                                  }))
+                                }
+                                className="cursor-pointer text-slate-400 hover:text-blue-400 transition-colors"
+                                title={visiblePasswords[ontId] ? "Sembunyikan Password" : "Lihat Password"}
+                              >
+                                {visiblePasswords[ontId] ? <EyeOff size={14} /> : <Eye size={14} />}
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">{bandwidth}</td>
                         <td className="px-4 py-3">
                           <div
@@ -702,7 +722,6 @@ export default function HsgqOltPage() {
                       <td className="px-4 py-3">{ontId}</td>
                       <td className="px-4 py-3">{name}</td>
                       <td className="px-4 py-3">{sn}</td>
-                      <td className="px-4 py-3">{state}</td>
                       <td className="px-4 py-3">
                         <span
                           className={`px-2 py-1 rounded text-xs font-medium ${
@@ -714,8 +733,6 @@ export default function HsgqOltPage() {
                           {runningState}
                         </span>
                       </td>
-                      <td className="px-4 py-3">{configState}</td>
-                      <td className="px-4 py-3">{deviceType}</td>
                       <td className="px-4 py-3">{rxPower}</td>
                       <td className="px-4 py-3 text-xs">{lastUp}</td>
                       <td className="px-4 py-3 text-xs">{lastDown}</td>

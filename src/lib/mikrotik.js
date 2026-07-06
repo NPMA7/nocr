@@ -87,9 +87,9 @@ class MikroTikService {
             if (!isRetry && (errMsg.includes('timeout') || errMsg.includes('econn') || errMsg.includes('enet') || errMsg.includes('ehost'))) {
                 try {
                     const { connectVpn } = require('./vpn');
-                    console.log(`Mencoba auto-dial VPN karena gagal terhubung ke ${device.ip_address}...`);
+                    console.info(`Mencoba auto-dial VPN karena gagal terhubung ke ${device.ip_address}...`);
                     await connectVpn();
-                    console.log('Auto-dial VPN berhasil, mencoba ulang koneksi MikroTik...');
+                    console.info('Auto-dial VPN berhasil, mencoba ulang koneksi MikroTik...');
                     return await this.connect(device, true); // Coba lagi
                 } catch (vpnErr) {
                     if (vpnErr.message !== 'VPN belum dikonfigurasi') {

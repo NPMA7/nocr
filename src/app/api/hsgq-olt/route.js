@@ -9,6 +9,40 @@ export const revalidate = 0;
 if (!global.pendingWifiUpdates) {
   global.pendingWifiUpdates = {};
 }
+if (!global.hsgqTokenCache) {
+  global.hsgqTokenCache = null;
+}
+
+async function getHsgqToken(forceRefresh = false) {
+  if (!forceRefresh && global.hsgqTokenCache) return global.hsgqTokenCache;
+  
+  const url = process.env.HSGQ_OLT_URL;
+  const username = process.env.HSGQ_OLT_USERNAME;
+  const key = process.env.HSGQ_OLT_KEY;
+  const value = process.env.HSGQ_OLT_VALUE;
+  
+  if (!username || !key || !value) {
+    return process.env.HSGQ_OLT_TOKEN || '';
+  }
+  
+  try {
+    const payload = {
+        method: "set",
+        param: { name: username, key: key, value: value, captcha_v: "", captcha_f: "" }
+    };
+    const res = await axios.post(`${url}/userlogin?form=login`, payload, {
+        headers: { 'Content-Type': 'application/json;charset=UTF-8', 'x-token': 'null' },
+        timeout: 10000
+    });
+    if (res.data && res.data.code === 1 && res.headers['x-token']) {
+      global.hsgqTokenCache = res.headers['x-token'];
+      return global.hsgqTokenCache;
+    }
+  } catch (e) {
+  }
+  
+  return process.env.HSGQ_OLT_TOKEN || '';
+}
 
 export async function GET(request) {
   try {
@@ -24,13 +58,20 @@ export async function GET(request) {
     if (type === 'Version Information') endpoint = '/ontversion_table';
     else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
     else if (type === 'WLAN') endpoint = '/ontwificonfig_table';
-    const token = process.env.HSGQ_OLT_TOKEN;
-    const response = await axios.get(`${url}${endpoint}?_t=${Date.now()}`, {
-      headers: {
-        ...(token ? { 'x-token': token } : {})
-      },
-      timeout: 10000 // 10 seconds timeout
-    });
+    const doRequest = async (token) => {
+      return await axios.get(`${url}${endpoint}?_t=${Date.now()}`, {
+        headers: { ...(token ? { 'x-token': token } : {}) },
+        timeout: 10000
+      });
+    };
+
+    let token = await getHsgqToken();
+    let response = await doRequest(token);
+    
+    if (response.data && response.data.code === 0 && response.data.message === 'Token Check Failed') {
+       token = await getHsgqToken(true);
+       response = await doRequest(token);
+    }
 
     const data = response.data;
     
@@ -80,15 +121,21 @@ export async function POST(request) {
 
     if (action === 'set_wifi') {
       const body = await request.json();
-      const token = process.env.HSGQ_OLT_TOKEN;
       
-      const response = await axios.post(`${url}/gponont_mgmt?form=wificonfig`, body, {
-        headers: {
-          'x-token': token,
-          'Content-Type': 'application/json;charset=UTF-8'
-        },
-        timeout: 10000
-      });
+      const doPost = async (token) => {
+         return await axios.post(`${url}/gponont_mgmt?form=wificonfig`, body, {
+            headers: { 'x-token': token, 'Content-Type': 'application/json;charset=UTF-8' },
+            timeout: 10000
+         });
+      };
+      
+      let token = await getHsgqToken();
+      let response = await doPost(token);
+      
+      if (response.data && response.data.code === 0 && response.data.message === 'Token Check Failed') {
+          token = await getHsgqToken(true);
+          response = await doPost(token);
+      }
       
       // Force OLT to flush/sync its table by calling this specific GET endpoint
       try {
