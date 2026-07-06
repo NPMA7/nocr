@@ -18,7 +18,7 @@ export async function GET(req, { params }) {
     try {
         if (path[0] === 'status') {
             const { count, error } = await db
-                .from('admin_users')
+                .from('users')
                 .select('*', { count: 'exact', head: true });
 
             if (error) {
@@ -39,7 +39,7 @@ export async function GET(req, { params }) {
             const user = await resolveAuth(req);
             enforceAdmin(user, 'settings-users');
             
-            const { data, error } = await db.from('admin_users').select('id, username, role, created_at');
+            const { data, error } = await db.from('users').select('id, username, role, created_at');
             if (error) throw error;
             return NextResponse.json(
                 (data || []).map((u) => ({
@@ -67,7 +67,7 @@ export async function POST(req, { params }) {
                 return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
             }
 
-            const { count } = await db.from('admin_users').select('*', { count: 'exact', head: true });
+            const { count } = await db.from('users').select('*', { count: 'exact', head: true });
             if (count > 0) {
                 return NextResponse.json({ error: 'Sistem sudah dikonfigurasi. Silakan login.' }, { status: 403 });
             }
@@ -76,7 +76,7 @@ export async function POST(req, { params }) {
             const password_hash = await bcrypt.hash(password, salt);
 
             const { data, error } = await db
-                .from('admin_users')
+                .from('users')
                 .insert([{ username, password_hash, role: 'admin' }])
                 .select();
 
@@ -104,7 +104,7 @@ export async function POST(req, { params }) {
             }
 
             const { data, error } = await db
-                .from('admin_users')
+                .from('users')
                 .select('*')
                 .eq('username', username)
                 .single();
@@ -166,7 +166,7 @@ export async function POST(req, { params }) {
             const password_hash = await bcrypt.hash(password, salt);
 
             const { data, error } = await db
-                .from('admin_users')
+                .from('users')
                 .insert([{ username: username.trim(), password_hash, role: normalizedRole }])
                 .select('id, username, role, created_at');
                 
@@ -246,7 +246,7 @@ export async function PATCH(req, { params }) {
             }
 
             // Ambil detail pengguna saat ini dari DB
-            const targetUser = await db.from('admin_users').select('username, role').eq('id', id).single();
+            const targetUser = await db.from('users').select('username, role').eq('id', id).single();
             if (targetUser.error || !targetUser.data) {
                 return NextResponse.json(
                     { error: 'Pengguna tidak ditemukan.' },
@@ -257,7 +257,7 @@ export async function PATCH(req, { params }) {
 
             // Cek keamanan: Tidak bisa menurunkan jabatan admin terakhir yang tersisa
             if (updateData.role && updateData.role !== 'admin' && previousRole === 'admin') {
-                const { data: allUsers } = await db.from('admin_users').select('id, role');
+                const { data: allUsers } = await db.from('users').select('id, role');
                 const adminCount = (allUsers || []).filter(
                     (u) => normalizeRole(u.role) === 'admin'
                 ).length;
@@ -270,7 +270,7 @@ export async function PATCH(req, { params }) {
             }
 
             const { data, error } = await db
-                .from('admin_users')
+                .from('users')
                 .update(updateData)
                 .eq('id', id)
                 .select('id, username, role, created_at')
@@ -325,7 +325,7 @@ export async function DELETE(req, { params }) {
                 return NextResponse.json({ error: 'Tidak dapat menghapus akun Anda sendiri' }, { status: 400 });
             }
             
-            const { error } = await db.from('admin_users').delete().eq('id', id);
+            const { error } = await db.from('users').delete().eq('id', id);
             if (error) throw error;
             
             return NextResponse.json({ success: true });

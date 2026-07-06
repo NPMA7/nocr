@@ -18,7 +18,7 @@ model activity_logs {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model admin_users {
+model users {
   id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   username      String    @unique @db.VarChar(255)
   password_hash String    @db.VarChar(255)

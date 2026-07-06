@@ -29,7 +29,7 @@ export function verifyAuth(req) {
 export async function resolveAuth(req) {
     const decoded = verifyAuth(req);
     const { data, error } = await db
-        .from('admin_users')
+        .from('users')
         .select('id, username, role')
         .eq('id', decoded.id)
         .single();

@@ -19,7 +19,7 @@ export default function Login() {
     axios.get(`${API_URL}/auth/status`)
       .then(res => {
         if (res.data.error === 'TABEL_TIDAK_DITEMUKAN') {
-          setError('Tabel admin_users tidak ditemukan di database Supabase. Silakan jalankan perintah SQL Setup.');
+          setError('Tabel users tidak ditemukan di database Supabase. Silakan jalankan perintah SQL Setup.');
         } else if (!res.data.initialized) {
           setIsSetup(true);
         }

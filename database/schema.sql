@@ -11,14 +11,14 @@ CREATE TABLE "activity_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "admin_users" (
+CREATE TABLE "users" (
     "id" UUID NOT NULL DEFAULT extensions.uuid_generate_v4(),
     "username" VARCHAR(255) NOT NULL,
     "password_hash" VARCHAR(255) NOT NULL,
     "role" VARCHAR(50) DEFAULT 'visitor',
     "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "admin_users_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -247,7 +247,7 @@ CREATE TABLE "daily_reports" (
 CREATE INDEX "idx_activity_logs_time" ON "activity_logs"("time");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "admin_users_username_key" ON "admin_users"("username");
+CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "device_mappings_ruijie_mac_key" ON "device_mappings"("ruijie_mac");

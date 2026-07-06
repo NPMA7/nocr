@@ -173,6 +173,13 @@ export default function AuthenticatedLayout({ children }) {
         }
       };
 
+      const handleRoleNameChanged = (payload) => {
+        const me = getStoredUser();
+        if (payload?.oldName === me.role) {
+          refreshSessionUser();
+        }
+      };
+
       socket.on('connect', handleConnect);
       socket.on('disconnect', handleDisconnect);
       socket.on('status', handleStatus);
@@ -180,6 +187,7 @@ export default function AuthenticatedLayout({ children }) {
       socket.on('initial_logs', handleInitialLogs);
       socket.on('device-status', handleDeviceStatus);
       socket.on('user_role_updated', handleRoleUpdated);
+      socket.on('role_name_changed', handleRoleNameChanged);
 
       socket.emit('request_initial_logs');
 
@@ -197,6 +205,7 @@ export default function AuthenticatedLayout({ children }) {
         socket.off('initial_logs', handleInitialLogs);
         socket.off('device-status', handleDeviceStatus);
         socket.off('user_role_updated', handleRoleUpdated);
+        socket.off('role_name_changed', handleRoleNameChanged);
       };
     }
   }, [tokenChecked]);

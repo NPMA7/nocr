@@ -42,6 +42,16 @@ export async function PATCH(req, { params }) {
             .eq('id', id)
             .select();
 
+        // Cascade role rename to users table
+        if (updateData.name && roleQuery.data.name !== updateData.name) {
+            await db.from('users').update({ role: updateData.name }).eq('role', roleQuery.data.name);
+            
+            // Emit socket event so connected users with this role can refresh their session
+            if (global.io) {
+                global.io.emit('role_name_changed', { oldName: roleQuery.data.name, newName: updateData.name });
+            }
+        }
+
         if (error) {
             if (error.code === '23505') return NextResponse.json({ error: 'Role dengan nama ini sudah ada' }, { status: 400 });
             throw error;
@@ -74,7 +84,7 @@ export async function DELETE(req, { params }) {
         }
 
         // Check if any users are using this role
-        const usersQuery = await db.from('admin_users').select('*').eq('role', roleQuery.data.name);
+        const usersQuery = await db.from('users').select('*').eq('role', roleQuery.data.name);
         if (usersQuery.data && usersQuery.data.length > 0) {
             return NextResponse.json({ error: `Tidak bisa menghapus role. Ada ${usersQuery.data.length} pengguna yang masih menggunakan role ini.` }, { status: 400 });
         }
