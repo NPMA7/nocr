@@ -12,7 +12,8 @@ import {
   Zap,
   Server,
 } from "lucide-react";
-import { socket } from "@/App";
+import { socket, useAppState } from "@/App";
+import { getStoredUser, hasPermission, isAdminRole, PERMISSIONS } from "@/lib/roles";
 
 export default function HsgqOltPage() {
   const [data, setData] = useState([]);
@@ -23,6 +24,15 @@ export default function HsgqOltPage() {
   const [displayValue, setDisplayValue] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  const { sessionUser } = useAppState();
+  const [userData, setUserData] = useState(() => getStoredUser());
+  
+  useEffect(() => {
+    if (sessionUser?.username) setUserData(sessionUser);
+  }, [sessionUser]);
+
+  const canManageOlt = hasPermission(userData, PERMISSIONS.NETWORK_DEVICES) || isAdminRole(userData);
 
   // Real-time WebSocket listener for immediate sync across all users
   useEffect(() => {
@@ -89,6 +99,11 @@ export default function HsgqOltPage() {
   };
 
   const handleWifiToggle = async (row, field, currentValue) => {
+    if (!canManageOlt) {
+      alert("Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi OLT");
+      return;
+    }
+    
     try {
       const wifi = row.wifi && row.wifi[0];
       if (!wifi) return;
@@ -575,12 +590,12 @@ export default function HsgqOltPage() {
                         <td className="px-4 py-3">{typeStr}</td>
                         <td className="px-4 py-3">
                           <div
-                            className="flex flex-col gap-1 cursor-pointer group"
+                            className={`flex flex-col gap-1 ${canManageOlt ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}
                             onClick={() =>
-                              handleWifiToggle(row, "enable", wifi.enable)
+                              canManageOlt && handleWifiToggle(row, "enable", wifi.enable)
                             }
                           >
-                            <span className="text-xs text-slate-300 group-hover:text-blue-400 transition-colors">
+                            <span className={`text-xs transition-colors ${canManageOlt ? 'text-slate-300 group-hover:text-blue-400' : 'text-slate-400'}`}>
                               {status ? "Enable" : "Disable"}
                             </span>
                             <div
@@ -597,12 +612,12 @@ export default function HsgqOltPage() {
                         <td className="px-4 py-3">{bandwidth}</td>
                         <td className="px-4 py-3">
                           <div
-                            className="flex flex-col gap-1 cursor-pointer group"
+                            className={`flex flex-col gap-1 ${canManageOlt ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}
                             onClick={() =>
-                              handleWifiToggle(row, "isolation", wifi.isolation)
+                              canManageOlt && handleWifiToggle(row, "isolation", wifi.isolation)
                             }
                           >
-                            <span className="text-xs text-slate-300 group-hover:text-blue-400 transition-colors">
+                            <span className={`text-xs transition-colors ${canManageOlt ? 'text-slate-300 group-hover:text-blue-400' : 'text-slate-400'}`}>
                               {isolation ? "Enable" : "Disable"}
                             </span>
                             <div
@@ -616,12 +631,12 @@ export default function HsgqOltPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div
-                            className="flex flex-col gap-1 cursor-pointer group"
+                            className={`flex flex-col gap-1 ${canManageOlt ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}
                             onClick={() =>
-                              handleWifiToggle(row, "broadcast", wifi.broadcast)
+                              canManageOlt && handleWifiToggle(row, "broadcast", wifi.broadcast)
                             }
                           >
-                            <span className="text-xs text-slate-300 group-hover:text-blue-400 transition-colors">
+                            <span className={`text-xs transition-colors ${canManageOlt ? 'text-slate-300 group-hover:text-blue-400' : 'text-slate-400'}`}>
                               {broadcast ? "Enable" : "Disable"}
                             </span>
                             <div

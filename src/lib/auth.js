@@ -76,3 +76,9 @@ export function enforceTopologyMutation(user) {
         throw Object.assign(new Error('Akses Ditolak: Edit topologi hanya untuk Admin atau Editor'), { status: 403 });
     }
 }
+
+export function enforceNetworkDevicesMutation(user) {
+    if (!user || (!user.permissions?.includes('network.devices') && user.role !== 'admin')) {
+        throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi perangkat jaringan'), { status: 403 });
+    }
+}
