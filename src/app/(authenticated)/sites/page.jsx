@@ -10,7 +10,9 @@ import {
   Building2,
   Wifi,
   WifiOff,
+  AlertTriangle
 } from "lucide-react";
+import { getStoredUser, hasAccess } from '@/lib/roles';
 
 function encodeMac(mac) {
   return encodeURIComponent(mac || "");
@@ -48,6 +50,15 @@ export default function SitesListPage() {
   const [search, setSearch] = useState("");
   const [filterProfile, setFilterProfile] = useState("all");
   const [filterType, setFilterType] = useState("L2TP");
+
+  const [hasReadAccess, setHasReadAccess] = useState(true);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user && user.role && !hasAccess(user, 'sites', 'read')) {
+      setHasReadAccess(false);
+    }
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -88,6 +99,15 @@ export default function SitesListPage() {
 
   const typeItems = filterType === "all" ? items : items.filter((d) => d.connection_type === filterType);
   const withProfile = typeItems.filter((d) => d.has_site_profile).length;
+
+  if (!hasReadAccess) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+        <AlertTriangle size={48} className="text-red-500/50" />
+        <p>Akses Ditolak: Anda tidak memiliki izin (Read) ke Data Wilayah.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">

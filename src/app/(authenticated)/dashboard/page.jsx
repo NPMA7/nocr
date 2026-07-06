@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { fetchTopologyCached } from '@/lib/globalCache';
 import { API_URL, socket, useAppState } from '@/App';
+import { getStoredUser, hasAccess } from '@/lib/roles';
 import dynamic from 'next/dynamic';
 
 const DashboardMap = dynamic(() => import('@/components/DashboardMap'), {
@@ -32,6 +33,15 @@ export default function Dashboard() {
   const [networkMode, setNetworkMode] = useState('pppoe');
   const [dbLogs, setDbLogs] = useState([]); // State penampung log aktivitas dari database
   const mountedRef = useRef(true);
+
+  const [hasReadAccess, setHasReadAccess] = useState(true);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user && user.role && !hasAccess(user, 'dashboard', 'read')) {
+      setHasReadAccess(false);
+    }
+  }, []);
 
   const getLogStyle = (msg) => {
     if (!msg) return { bgColor: 'bg-blue-950/10 border-blue-500/20 text-slate-300', icon: 'info' };
@@ -250,6 +260,15 @@ export default function Dashboard() {
       return false;
     }).length;
   }, [topologyNodes, edges, coreInterfaces]);
+
+  if (!hasReadAccess) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+        <AlertTriangle size={48} className="text-red-500/50" />
+        <p>Akses Ditolak: Anda tidak memiliki izin (Read) ke Dashboard.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3 md:gap-4 overflow-y-auto lg:overflow-hidden">

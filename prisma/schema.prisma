@@ -225,7 +225,7 @@ model vpn_settings {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model admin_roles {
+model access_roles {
   id          Int       @id @default(autoincrement())
   name        String    @unique @db.VarChar(50)
   description String?   @db.VarChar(255)
@@ -252,10 +252,3 @@ model daily_reports {
   @@index([report_date], map: "idx_daily_reports_date")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model roles {
-  name        String    @id @db.VarChar(50)
-  permissions String    @default("[]")
-  description String?
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-}

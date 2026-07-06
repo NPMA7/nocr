@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
-import { normalizeRole, canEditTopology, isAdminRole, canMutateApp, canRevealPasswords } from '@/lib/roles';
+import { normalizeRole, hasAccess } from '@/lib/roles';
 
-export { normalizeRole, canEditTopology, isAdminRole, canMutateApp, canRevealPasswords } from '@/lib/roles';
+export { normalizeRole, hasAccess } from '@/lib/roles';
 
 export const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -38,7 +38,7 @@ export async function resolveAuth(req) {
         throw Object.assign(new Error('User tidak ditemukan atau tidak aktif'), { status: 401 });
     }
 
-    const roleData = await db.from('admin_roles').select('permissions').eq('name', data.role).single();
+    const roleData = await db.from('access_roles').select('permissions').eq('name', data.role).single();
     let permissions = [];
     if (roleData.data && roleData.data.permissions) {
         try {
@@ -56,29 +56,28 @@ export async function resolveAuth(req) {
     };
 }
 
-export function enforceAdmin(user) {
-    // Requires system.users permission for full admin
-    if (!user || (!user.permissions?.includes('system.users') && user.role !== 'admin')) {
+export function enforceAdmin(user, requiredKey = 'settings-users') {
+    if (!hasAccess(user, requiredKey, 'update')) {
         throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin Administrator'), { status: 403 });
     }
 }
 
-export function enforceRoleForMutation(req, user) {
+export function enforceRoleForMutation(req, user, requiredKey = 'settings-mikrotik') {
     if (req.method !== 'GET') {
-        if (!user || (!user.permissions?.includes('system.settings') && user.role !== 'admin')) {
+        if (!hasAccess(user, requiredKey, 'update')) {
             throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin memodifikasi sistem'), { status: 403 });
         }
     }
 }
 
 export function enforceTopologyMutation(user) {
-    if (!canEditTopology(user)) {
+    if (!hasAccess(user, 'topology', 'update')) {
         throw Object.assign(new Error('Akses Ditolak: Edit topologi hanya untuk Admin atau Editor'), { status: 403 });
     }
 }
 
 export function enforceNetworkDevicesMutation(user) {
-    if (!user || (!user.permissions?.includes('network.devices') && user.role !== 'admin')) {
+    if (!hasAccess(user, 'devices-mikrotik', 'update')) {
         throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi perangkat jaringan'), { status: 403 });
     }
 }

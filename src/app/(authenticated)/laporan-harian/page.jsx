@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ClipboardList, Calendar, Download, RefreshCw, Copy, Check, Info, Pencil, Trash2, Plus } from 'lucide-react';
+import { ClipboardList, Calendar, Download, RefreshCw, Copy, Check, Info, Pencil, Trash2, Plus, Shield } from 'lucide-react';
 import { useAppState } from '@/App';
+import { hasAccess, getStoredUser } from '@/lib/roles';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FileText } from 'lucide-react';
@@ -22,9 +23,20 @@ export default function LaporanHarianPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newReportForm, setNewReportForm] = useState({ prefix_name: '', status_progress: 'Progress', offline_since: '', online_since: '', issue: '', tindakan: '' });
-  const { showToast, socket, user } = useAppState();
-  
-  const isVisitor = user?.role === 'visitor';
+  const { showToast, socket, sessionUser } = useAppState();
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    setCurrentUser(getStoredUser());
+    const onRole = (e) => setCurrentUser(e.detail);
+    window.addEventListener("nocr-role-updated", onRole);
+    return () => window.removeEventListener("nocr-role-updated", onRole);
+  }, []);
+
+  const canRead = hasAccess(currentUser, 'laporan-harian', 'read');
+  const canCreate = hasAccess(currentUser, 'laporan-harian', 'create');
+  const canUpdate = hasAccess(currentUser, 'laporan-harian', 'update');
+  const canDelete = hasAccess(currentUser, 'laporan-harian', 'delete');
 
   const fetchReports = async (selectedDate, selectedType, isPolling = false) => {
     if (!isPolling) setLoading(true);
@@ -40,6 +52,8 @@ export default function LaporanHarianPage() {
   };
 
   useEffect(() => {
+    if (!canRead) return;
+    
     fetchReports(date, type);
     
     // Segarkan otomatis setiap 15 detik (realtime fallback)
@@ -48,7 +62,7 @@ export default function LaporanHarianPage() {
     }, 15000);
     
     return () => clearInterval(interval);
-  }, [date, type]);
+  }, [date, type, canRead]);
 
   useEffect(() => {
     if (!socket) return;
@@ -273,6 +287,16 @@ export default function LaporanHarianPage() {
   const totalOffline = reports.filter(r => r.status_progress === 'Progress' || (!r.online_since && r.offline_since)).length;
   const totalOnlineKembali = reports.filter(r => r.status_progress === 'Done' || (r.online_since && r.offline_since)).length;
 
+  if (currentUser && !canRead) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-slate-500 py-20">
+        <Shield size={64} className="mb-4 text-red-500 opacity-80" />
+        <h2 className="text-2xl font-bold text-slate-300">Akses Ditolak</h2>
+        <p className="mt-2 text-slate-400">Anda tidak memiliki izin untuk melihat modul ini.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
       <div className="flex-shrink-0 flex flex-col gap-3">
@@ -311,14 +335,16 @@ export default function LaporanHarianPage() {
               className="bg-transparent text-slate-200 text-sm outline-none cursor-pointer"
             />
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 transition whitespace-nowrap"
-          >
-            <Plus size={16} />
-            Tambah Data
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 transition whitespace-nowrap"
+            >
+              <Plus size={16} />
+              Tambah Data
+            </button>
+          )}
           <button
             type="button"
             onClick={handleCopyTable}
@@ -492,7 +518,7 @@ export default function LaporanHarianPage() {
                           type="datetime-local"
                           className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded px-1 py-1 text-xs text-slate-300 outline-none transition"
                           autoFocus
-                          disabled={isVisitor}
+                          disabled={!canUpdate}
                           defaultValue={r.offline_since ? r.offline_since.substring(0, 16) : ''}
                           onBlur={(e) => handleDateUpdate(r.id, 'offline_since', e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); else if (e.key === 'Escape') setEditingDate(null); }}
@@ -500,7 +526,7 @@ export default function LaporanHarianPage() {
                       ) : (
                         <div className="flex items-center justify-between">
                           <span>{formatTimeWIB(r.offline_since)}</span>
-                          {!isVisitor && (
+                          {canUpdate && (
                             <button onClick={() => setEditingDate({id: r.id, field: 'offline_since'})} className="opacity-0 group-hover/time:opacity-100 hover:text-blue-400 transition p-1 cursor-pointer">
                               <Pencil size={12} />
                             </button>
@@ -514,7 +540,7 @@ export default function LaporanHarianPage() {
                           type="datetime-local"
                           className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded px-1 py-1 text-xs text-slate-300 outline-none transition"
                           autoFocus
-                          disabled={isVisitor}
+                          disabled={!canUpdate}
                           defaultValue={r.online_since ? r.online_since.substring(0, 16) : ''}
                           onBlur={(e) => handleDateUpdate(r.id, 'online_since', e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); else if (e.key === 'Escape') setEditingDate(null); }}
@@ -522,7 +548,7 @@ export default function LaporanHarianPage() {
                       ) : (
                         <div className="flex items-center justify-between">
                           <span>{formatTimeWIB(r.online_since)}</span>
-                          {!isVisitor && (
+                          {canUpdate && (
                             <button onClick={() => setEditingDate({id: r.id, field: 'online_since'})} className="opacity-0 group-hover/time:opacity-100 hover:text-blue-400 transition p-1 cursor-pointer">
                               <Pencil size={12} />
                             </button>
@@ -534,7 +560,7 @@ export default function LaporanHarianPage() {
                       <select 
                         value={r.status_progress || 'Progress'} 
                         onChange={(e) => updateReport(r.id, 'status_progress', e.target.value)}
-                        disabled={isVisitor}
+                        disabled={!canUpdate}
                         className={`w-full bg-slate-900/50 border rounded px-2 py-1.5 text-xs font-bold outline-none cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed
                           ${r.status_progress === 'Done' ? 'text-emerald-400 border-emerald-500/30' : 'text-amber-400 border-amber-500/30'}
                         `}
@@ -548,9 +574,9 @@ export default function LaporanHarianPage() {
                         type="text" 
                         value={r.issue || ''} 
                         onChange={(e) => updateReport(r.id, 'issue', e.target.value)}
-                        disabled={isVisitor}
+                        disabled={!canUpdate}
                         className="w-full bg-transparent border border-transparent hover:border-slate-600 focus:border-blue-500 rounded px-2 py-1.5 text-sm text-slate-300 outline-none transition disabled:opacity-70 disabled:cursor-not-allowed"
-                        placeholder={isVisitor ? "-" : "Ketik issue..."}
+                        placeholder={!canUpdate ? "-" : "Ketik issue..."}
                       />
                     </td>
                     <td className="px-2 py-2 border-r border-slate-700/30">
@@ -558,13 +584,13 @@ export default function LaporanHarianPage() {
                         type="text" 
                         value={r.tindakan || ''} 
                         onChange={(e) => updateReport(r.id, 'tindakan', e.target.value)}
-                        disabled={isVisitor}
+                        disabled={!canUpdate}
                         className="w-full bg-transparent border border-transparent hover:border-slate-600 focus:border-blue-500 rounded px-2 py-1.5 text-sm text-slate-300 outline-none transition disabled:opacity-70 disabled:cursor-not-allowed"
-                        placeholder={isVisitor ? "-" : "Ketik tindakan..."}
+                        placeholder={!canUpdate ? "-" : "Ketik tindakan..."}
                       />
                     </td>
                     <td className="px-2 py-2 text-center">
-                      {!isVisitor && (
+                      {canDelete && (
                         <button onClick={() => setDeleteConfirmId(r.id)} className="text-slate-500 hover:text-red-400 transition p-1 cursor-pointer" title="Hapus Laporan">
                           <Trash2 size={16} />
                         </button>

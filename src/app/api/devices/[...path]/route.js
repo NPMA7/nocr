@@ -279,8 +279,6 @@ export async function GET(req, { params }) {
                             const { error: insErr } = await db.from('pppoe_secrets').insert(rows);
                             if (insErr) {
                                 console.error('⚠️ [Cache] Gagal menyisipkan PPPoE secrets baru ke Supabase:', insErr.message, insErr.details);
-                            } else {
-                                console.log(`✅ [Cache] Berhasil menyinkronkan ${rows.length} PPPoE secrets ke database.`);
                             }
                         } catch (dbErr) {
                             console.error('⚠️ [Cache] Exception terjadi saat sinkronisasi PPPoE secrets:', dbErr);
@@ -313,7 +311,7 @@ export async function POST(req, { params }) {
     
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user);
+        enforceRoleForMutation(req, user, 'devices-mikrotik');
 
         if (path[0] === 'core') {
             const device = await getCoreDevice();
@@ -378,7 +376,7 @@ export async function PUT(req, { params }) {
     
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user);
+        enforceRoleForMutation(req, user, 'devices-mikrotik');
 
         if (path[0] === 'core') {
             const device = await getCoreDevice();
@@ -456,7 +454,7 @@ export async function DELETE(req, { params }) {
 
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user);
+        enforceRoleForMutation(req, user, 'devices-mikrotik');
 
         if (path[0] === 'core') {
             const device = await getCoreDevice();

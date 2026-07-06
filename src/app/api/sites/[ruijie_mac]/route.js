@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import { fetchSitesBundle, upsertSiteProfile } from '@/lib/sitesApi';
-import { resolveAuth, enforceTopologyMutation } from '@/lib/auth';
+import { resolveAuth } from '@/lib/auth';
+import { hasAccess } from '@/lib/roles';
 
 function decodeMac(raw) {
   try {
@@ -62,7 +63,9 @@ export async function GET(_req, { params }) {
 export async function PATCH(req, { params }) {
   try {
     const user = await resolveAuth(req);
-    enforceTopologyMutation(user);
+    if (!hasAccess(user, 'sites', 'update')) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
 
     const ruijie_mac = decodeMac(params.ruijie_mac);
     if (!ruijie_mac) {

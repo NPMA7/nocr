@@ -60,7 +60,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const user = await resolveAuth(req);
-    enforceRoleForMutation(req, user); // Only admin for manual link
+    enforceRoleForMutation(req, user, 'monitoring-l2tp'); // Only admin for manual link
 
     const body = await req.json();
     const { ruijie_mac, mikrotik_name } = body;
@@ -91,7 +91,7 @@ export async function POST(req) {
 export async function DELETE(req) {
   try {
     const user = await resolveAuth(req);
-    enforceRoleForMutation(req, user);
+    enforceRoleForMutation(req, user, 'monitoring-l2tp');
 
     const { searchParams } = new URL(req.url);
     const ruijie_mac = searchParams.get('ruijie_mac');

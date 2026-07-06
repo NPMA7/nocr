@@ -22,8 +22,7 @@ import {
   Server,
 } from "lucide-react";
 import {
-  isAdminRole,
-  canRevealPasswords,
+  hasAccess,
   getStoredUser,
   getRoleLabel,
   isEditorRole,
@@ -94,13 +93,13 @@ function ConfirmDialog({
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
           >
             Batal
           </button>
           <button
             onClick={onConfirm}
-            className={`text-white px-4 py-2 rounded-lg text-sm font-semibold transition ${danger ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}`}
+            className={`cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-semibold transition ${danger ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}`}
           >
             {danger ? "Ya, Hapus" : "Konfirmasi"}
           </button>
@@ -112,13 +111,17 @@ function ConfirmDialog({
 
 export default function Devices() {
   const { sessionUser } = useAppState();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [canManage, setCanManage] = useState(false);
   const [canShowPassword, setCanShowPassword] = useState(false);
 
   const syncRoleFlags = () => {
     const userData = getStoredUser();
-    setIsAdmin(isAdminRole(userData));
-    setCanShowPassword(canRevealPasswords(userData));
+    setCanManage(hasAccess(userData, 'devices-mikrotik', 'update'));
+    if (userData && userData.role && !hasAccess(userData, 'devices-mikrotik', 'read')) {
+      window.location.href = '/dashboard';
+      return;
+    }
+    setCanShowPassword(hasAccess(userData, 'devices-mikrotik', 'update'));
   };
   const [tab, setTab] = useState("interfaces");
   const [coreStatus, setCoreStatus] = useState(null);
@@ -474,7 +477,7 @@ export default function Devices() {
     !coreStatus.connected &&
     coreStatus.error?.includes("dikonfigurasi");
   const actionBtnClass =
-    "p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition";
+    "cursor-pointer p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition";
 
   const dataPanelClass =
     "flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden";
@@ -529,7 +532,7 @@ export default function Devices() {
           <button
             onClick={() => fetchAll(true)}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />{" "}
             Sync Sekarang
@@ -694,7 +697,7 @@ export default function Devices() {
               <span className="text-xs text-slate-500">
                 {filteredInterfaces.length} / {interfaces.length}
               </span>
-              {isAdmin && (
+              {canManage && (
                 <button
                   id="btn-tambah-interface"
                   onClick={openAddInterface}
@@ -739,11 +742,11 @@ export default function Devices() {
                             ? "Running"
                             : "Down"}
                       </span>
-                      {isAdmin && (
+                      {canManage && (
                         <button
                           title="Edit"
                           onClick={() => openEditInterface(iface)}
-                          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
+                          className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
                         >
                           <Edit2 size={18} />
                         </button>
@@ -773,7 +776,7 @@ export default function Devices() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Status
                     </th>
-                    {isAdmin && (
+                    {canManage && (
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Aksi
                       </th>
@@ -819,7 +822,7 @@ export default function Devices() {
                                 : "Down"}
                           </span>
                         </td>
-                        {isAdmin && (
+                        {canManage && (
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1 justify-end">
                               <button
@@ -914,12 +917,12 @@ export default function Devices() {
                         Uptime: {p.uptime || "-"}
                       </p>
                     </div>
-                    {isAdmin && (
+                    {canManage && (
                       <button
                         onClick={() =>
                           setConfirmDelete({ type: "pppoe", item: p })
                         }
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold flex-shrink-0"
+                        className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold flex-shrink-0"
                       >
                         <WifiOff size={15} /> Putus
                       </button>
@@ -948,7 +951,7 @@ export default function Devices() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Caller ID
                     </th>
-                    {isAdmin && (
+                    {canManage && (
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Aksi
                       </th>
@@ -990,7 +993,7 @@ export default function Devices() {
                         <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                           {p["caller-id"] || "-"}
                         </td>
-                        {isAdmin && (
+                        {canManage && (
                           <td className="px-4 py-3">
                             <div className="flex justify-end">
                               <button
@@ -998,7 +1001,7 @@ export default function Devices() {
                                 onClick={() =>
                                   setConfirmDelete({ type: "pppoe", item: p })
                                 }
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold"
+                                className="cursor-pointer flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold"
                               >
                                 <WifiOff size={12} /> Putuskan
                               </button>
@@ -1026,7 +1029,7 @@ export default function Devices() {
               onChange={(e) => setSecretSearch(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
-            {isAdmin && (
+            {canManage && (
               <button
                 id="btn-tambah-pelanggan"
                 onClick={openAddSecret}
@@ -1067,11 +1070,11 @@ export default function Devices() {
                           {s.profile || "-"} · {s.service || "pppoe"}
                         </p>
                       </div>
-                      {isAdmin && (
+                      {canManage && (
                         <div className="flex gap-2 flex-shrink-0">
                           <button
                             onClick={() => openEditSecret(s)}
-                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
+                            className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
                           >
                             <Edit2 size={18} />
                           </button>
@@ -1079,7 +1082,7 @@ export default function Devices() {
                             onClick={() =>
                               setConfirmDelete({ type: "secret", item: s })
                             }
-                            className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                            className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -1116,7 +1119,7 @@ export default function Devices() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Status
                     </th>
-                    {isAdmin && (
+                    {canManage && (
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Aksi
                       </th>
@@ -1156,7 +1159,7 @@ export default function Devices() {
                                 <button
                                   type="button"
                                   onClick={() => toggleListPassword(s.name)}
-                                  className="text-slate-500 hover:text-slate-300"
+                                  className="cursor-pointer text-slate-500 hover:text-slate-300"
                                 >
                                   {showListPasswords[s.name] ? (
                                     <EyeOff size={14} />
@@ -1208,7 +1211,7 @@ export default function Devices() {
                               {s.disabled === "true" ? "Disabled" : "Enabled"}
                             </span>
                           </td>
-                          {isAdmin && (
+                          {canManage && (
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1 justify-end">
                                 <button
@@ -1258,7 +1261,7 @@ export default function Devices() {
               </h3>
               <button
                 onClick={() => setShowAddSecret(false)}
-                className="text-slate-400 hover:text-white transition"
+                className="cursor-pointer text-slate-400 hover:text-white transition"
               >
                 <X size={18} />
               </button>
@@ -1304,7 +1307,7 @@ export default function Devices() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                   >
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
@@ -1344,7 +1347,7 @@ export default function Devices() {
                 <button
                   type="button"
                   onClick={() => setShowAddSecret(false)}
-                  className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                  className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
                 >
                   Batal
                 </button>
@@ -1374,7 +1377,7 @@ export default function Devices() {
               </h3>
               <button
                 onClick={() => setShowAddInterface(false)}
-                className="text-slate-400 hover:text-white transition"
+                className="cursor-pointer text-slate-400 hover:text-white transition"
               >
                 <X size={18} />
               </button>
@@ -1518,7 +1521,7 @@ export default function Devices() {
                 <button
                   type="button"
                   onClick={() => setShowAddInterface(false)}
-                  className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                  className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
                 >
                   Batal
                 </button>

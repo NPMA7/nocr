@@ -22,16 +22,7 @@ import {
   Settings,
 } from "lucide-react";
 
-const INFRA_NODE_TYPES = ["olt", "odc", "odp", "pole"];
-
-function isClientNode(node) {
-  return (node?.type || "").toLowerCase() === "client";
-}
-
-function isInfrastructureNode(node) {
-  return INFRA_NODE_TYPES.includes((node?.type || "").toLowerCase());
-}
-import { canEditTopology, getStoredUser } from "@/lib/roles";
+import { hasAccess, getStoredUser } from "@/lib/roles";
 import axios from "axios";
 import {
   fetchTopologyCached,
@@ -47,9 +38,20 @@ import {
   mergeRemoteIntoLocal,
   syncBaselineAfterMerge,
 } from "@/lib/topologyMerge";
+
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
+
+const INFRA_NODE_TYPES = ["olt", "odc", "odp", "pole"];
+
+function isClientNode(node) {
+  return (node?.type || "").toLowerCase() === "client";
+}
+
+function isInfrastructureNode(node) {
+  return INFRA_NODE_TYPES.includes((node?.type || "").toLowerCase());
+}
 
 // Mini badge
 function StatusBadge({ online }) {
@@ -257,7 +259,7 @@ function TopologyContent() {
   const [forceSaveQueue, setForceSaveQueue] = useState([]); // nodes user pilih untuk force-save
 
   const syncEditPermission = () => {
-    setCanEdit(canEditTopology(getStoredUser()));
+    setCanEdit(hasAccess(getStoredUser(), 'topology', 'update'));
   };
 
   // Manual Add Modal State

@@ -16,7 +16,7 @@ import {
   X,
   Plus,
 } from 'lucide-react';
-import { getStoredUser, canEditTopology } from '@/lib/roles';
+import { getStoredUser, hasAccess } from '@/lib/roles';
 import { useAppState } from '@/App';
 
 const SiteCoordinateMap = dynamic(() => import('@/components/SiteCoordinateMap'), {
@@ -84,8 +84,8 @@ export default function SiteDetailPage() {
   }, [mac, applyForm]);
 
   useEffect(() => {
-    setCanEdit(canEditTopology(getStoredUser()));
-    const onRole = () => setCanEdit(canEditTopology(getStoredUser()));
+    setCanEdit(hasAccess(getStoredUser(), 'sites', 'update'));
+    const onRole = () => setCanEdit(hasAccess(getStoredUser(), 'sites', 'update'));
     window.addEventListener('nocr-role-updated', onRole);
     return () => window.removeEventListener('nocr-role-updated', onRole);
   }, []);

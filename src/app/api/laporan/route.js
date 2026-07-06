@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
+import { resolveAuth } from '@/lib/auth';
+import { hasAccess } from '@/lib/roles';
 
 export async function GET(request) {
   try {
+    let user;
+    try {
+      user = await resolveAuth(request);
+    } catch(e) {
+      return NextResponse.json({ error: e.message || 'Unauthorized' }, { status: 401 });
+    }
+    if (!hasAccess(user, 'laporan-harian', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Membaca Laporan Harian' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const dateStr = searchParams.get('date');
     const type = searchParams.get('type') || 'PPPOE';
@@ -61,6 +73,10 @@ export async function GET(request) {
 
 export async function PUT(request) {
   try {
+    let user;
+    try { user = await resolveAuth(request); } catch(e) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+    if (!hasAccess(user, 'laporan-harian', 'update')) return NextResponse.json({ error: 'Akses Ditolak: Update Laporan Harian' }, { status: 403 });
+
     const body = await request.json();
     const { id, status_progress, issue, tindakan, offline_since, online_since } = body;
 
@@ -80,6 +96,10 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
+    let user;
+    try { user = await resolveAuth(request); } catch(e) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+    if (!hasAccess(user, 'laporan-harian', 'delete')) return NextResponse.json({ error: 'Akses Ditolak: Hapus Laporan Harian' }, { status: 403 });
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -95,6 +115,10 @@ export async function DELETE(request) {
 
 export async function POST(request) {
   try {
+    let user;
+    try { user = await resolveAuth(request); } catch(e) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+    if (!hasAccess(user, 'laporan-harian', 'create')) return NextResponse.json({ error: 'Akses Ditolak: Tambah Laporan Harian' }, { status: 403 });
+
     const body = await request.json();
     const { date, type, prefix_name, offline_since, online_since, status_progress, issue, tindakan } = body;
     

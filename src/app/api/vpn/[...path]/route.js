@@ -56,7 +56,7 @@ export async function POST(req, { params }) {
     
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user);
+        enforceRoleForMutation(req, user, 'settings-vpn');
         const config = await fetchDbConfig();
 
         if (routePath[0] === 'connect') {

@@ -4,11 +4,11 @@ import Link from 'next/link';
 import axios from 'axios';
 import { API_URL, socket, useAppState } from '@/App';
 import { Monitor, Wifi, WifiOff, RefreshCw, Search, AlertTriangle, Link as LinkIcon, Unlink, X, Save, Edit2, Clock, MapPin } from 'lucide-react';
-import { getStoredUser, isAdminRole, canEditTopology } from '@/lib/roles';
+import { getStoredUser, hasAccess } from '@/lib/roles';
 import UptimeTimer from '@/components/UptimeTimer';
 
 /** Alias Mikrotik + tautan manual (admin) muncul saat hover di sel yang sama */
-function MikrotikAliasCell({ device, isAdmin, onLink, onUnlink, status, className = '' }) {
+function MikrotikAliasCell({ device, canUpdate, onLink, onUnlink, status, className = '' }) {
   return (
     <div className={`flex flex-col group/mikrotik min-w-0 ${className}`}>
       <div className="flex items-center gap-2">
@@ -27,7 +27,7 @@ function MikrotikAliasCell({ device, isAdmin, onLink, onUnlink, status, classNam
             <LinkIcon size={10} />
           </span>
         )}
-        {isAdmin &&
+        {canUpdate &&
           (device.is_manual ? (
             <button
               type="button"
@@ -77,8 +77,7 @@ export default function MonitorPppoe() {
   const [isSavingPrefix, setIsSavingPrefix] = useState(false);
 
   // Role: admin = tautan manual; admin/editor = edit prefix
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [canEditPrefix, setCanEditPrefix] = useState(false);
+  const [canUpdate, setCanUpdate] = useState(false);
 
   const fetchData = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -106,8 +105,10 @@ export default function MonitorPppoe() {
 
     const syncRoles = () => {
       const user = getStoredUser();
-      setIsAdmin(isAdminRole(user));
-      setCanEditPrefix(canEditTopology(user));
+      setCanUpdate(hasAccess(user, 'monitoring-pppoe', 'update'));
+      if (user && user.role && !hasAccess(user, 'monitoring-pppoe', 'read')) {
+        window.location.href = '/dashboard';
+      }
     };
     syncRoles();
     const handleRoleUpdate = () => syncRoles();
@@ -392,7 +393,7 @@ export default function MonitorPppoe() {
                             <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded min-w-[52px] text-center">Mikrotik</span>
                             <MikrotikAliasCell
                               device={d}
-                              isAdmin={isAdmin}
+                              canUpdate={canUpdate}
                               onLink={handleOpenModal}
                               onUnlink={handleRemoveMapping}
                               status={getSourceStatus(d.status_mikrotik)}
@@ -441,7 +442,7 @@ export default function MonitorPppoe() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Alias (Ruijie)</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Alias (Mikrotik PPPoE)
-                      {isAdmin && (
+                      {canUpdate && (
                         <span className="block text-[9px] font-normal text-slate-600 normal-case mt-0.5">
                           Hover untuk tautan manual
                         </span>
@@ -488,7 +489,7 @@ export default function MonitorPppoe() {
                         ) : (
                           <div className="flex items-center gap-2 group/prefix">
                             <span>{d.prefix ? String(d.prefix).toUpperCase() : '-'}</span>
-                            {canEditPrefix && (
+                            {canUpdate && (
                               <button
                                 onClick={() => {
                                   setEditingPrefixMac(d.ruijie_mac);
@@ -512,7 +513,7 @@ export default function MonitorPppoe() {
                       <td className="px-4 py-3 max-w-[220px]">
                         <MikrotikAliasCell
                           device={d}
-                          isAdmin={isAdmin}
+                          canUpdate={canUpdate}
                           onLink={handleOpenModal}
                           onUnlink={handleRemoveMapping}
                         />

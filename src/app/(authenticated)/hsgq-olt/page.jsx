@@ -13,7 +13,7 @@ import {
   Server,
 } from "lucide-react";
 import { socket, useAppState } from "@/App";
-import { getStoredUser, hasPermission, isAdminRole, PERMISSIONS } from "@/lib/roles";
+import { getStoredUser, hasAccess } from "@/lib/roles";
 
 export default function HsgqOltPage() {
   const [data, setData] = useState([]);
@@ -32,7 +32,8 @@ export default function HsgqOltPage() {
     if (sessionUser?.username) setUserData(sessionUser);
   }, [sessionUser]);
 
-  const canManageOlt = hasPermission(userData, PERMISSIONS.NETWORK_DEVICES) || isAdminRole(userData);
+  const canManageOlt = hasAccess(userData, 'devices-hsgq', 'update');
+  const canRead = hasAccess(userData, 'devices-hsgq', 'read');
 
   // Real-time WebSocket listener for immediate sync across all users
   useEffect(() => {
@@ -142,8 +143,8 @@ export default function HsgqOltPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [activeTab]);
+    if (canRead) fetchData();
+  }, [activeTab, canRead]);
 
   // Calculate stats dynamically from API data
   const stats = {

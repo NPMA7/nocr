@@ -10,7 +10,9 @@ import {
   Clock,
   Users,
   Activity,
+  AlertTriangle
 } from "lucide-react";
+import { getStoredUser, hasAccess } from '@/lib/roles';
 
 export default function Ruijie() {
   const [devices, setDevices] = useState([]);
@@ -20,6 +22,15 @@ export default function Ruijie() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const { setLastSyncTime } = useAppState();
+
+  const [hasReadAccess, setHasReadAccess] = useState(true);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user && user.role && !hasAccess(user, 'devices-ruijie', 'read')) {
+      setHasReadAccess(false);
+    }
+  }, []);
 
   const fetchDevices = async () => {
     setLoading(true);
@@ -120,6 +131,15 @@ export default function Ruijie() {
   const dataPanelClass =
     "flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden";
   const dataScrollClass = "flex-1 min-h-0 overflow-y-auto overscroll-contain";
+
+  if (!hasReadAccess) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+        <AlertTriangle size={48} className="text-red-500/50" />
+        <p>Akses Ditolak: Anda tidak memiliki izin (Read) ke Perangkat Jaringan (Ruijie).</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden relative">

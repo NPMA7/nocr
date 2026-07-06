@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API_URL, useAppState } from '@/App';
 import { Save, Server, Shield , SettingsIcon, User, Database, Network, Trash2, UserPlus, Eye, EyeOff, Monitor, Terminal, Pencil, Key, Activity, HardDrive, Cpu, RefreshCw, Play, Square } from 'lucide-react';
-import { isAdminRole, canRevealPasswords, getStoredUser, getRoleLabel } from '@/lib/roles';
+import { hasAccess, getStoredUser, getRoleLabel } from '@/lib/roles';
 import RoleSettings from '@/components/RoleSettings';
 import WhatsAppGateway from '@/components/WhatsAppGateway';
 
@@ -52,11 +52,13 @@ function UserManagement() {
         axios.get(`${API_URL}/auth/users`),
         axios.get(`${API_URL}/roles`)
       ]);
-      setUsers(resUsers.data);
-      setAvailableRoles(resRoles.data);
+      setUsers(Array.isArray(resUsers.data) ? resUsers.data : []);
+      setAvailableRoles(Array.isArray(resRoles.data) ? resRoles.data : []);
       setRoleEdits({});
     } catch (err) {
       console.error(err);
+      setUsers([]);
+      setAvailableRoles([]);
     } finally {
       setLoading(false);
     }
@@ -565,17 +567,22 @@ export default function SettingsWrapper(props) {
 
 function Settings() {
   const { devices, refreshDevices, showToast, sessionUser } = useAppState();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [canShowPassword, setCanShowPassword] = useState(false);
+  const [perms, setPerms] = useState({});
 
   const syncRoleFlags = () => {
     const userData = sessionUser?.role ? sessionUser : getStoredUser();
-    setIsAdmin(isAdminRole(userData));
-    setCanShowPassword(canRevealPasswords(userData));
+    setPerms({
+      mikrotikUpdate: hasAccess(userData, 'settings-mikrotik', 'update'),
+      vpnUpdate: hasAccess(userData, 'settings-vpn', 'update'),
+      healthUpdate: hasAccess(userData, 'settings-health', 'update'),
+      waRead: hasAccess(userData, 'settings-wa', 'read'),
+      usersRead: hasAccess(userData, 'settings-users', 'read'),
+      rolesRead: hasAccess(userData, 'settings-roles', 'read'),
+      passwordUpdate: hasAccess(userData, 'settings-password', 'update')
+    });
   };
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'core';
-  const readOnlySettings = !isAdmin;
 
   const [coreDevice, setCoreDevice] = useState({
     name: 'MikroTik Gateway',
@@ -658,9 +665,9 @@ function Settings() {
     }).catch(console.error);
   }, []);
 
-  const handleSave = async (e) => {
+  const handleSaveCore = async (e) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!perms.mikrotikUpdate) return;
     try {
       if (existingId) {
         await axios.put(`${API_URL}/devices/${existingId}`, coreDevice);
@@ -676,7 +683,7 @@ function Settings() {
 
   const handleSaveVpn = async (e) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!perms.vpnUpdate) return;
     try {
       const res = await axios.post(`${API_URL}/vpn/settings`, vpnConfig);
       const isWarning = res.data.message && res.data.message.includes('gagal');
@@ -731,13 +738,13 @@ function Settings() {
                 </p>
               </div>
               <div className="p-5">
-                <form onSubmit={handleSave} className="flex flex-col gap-4">
-                  <div className={`grid grid-cols-2 gap-4 ${readOnlySettings ? 'opacity-90' : ''}`}>
+                <form onSubmit={handleSaveCore} className="flex flex-col gap-4">
+                  <div className={`grid grid-cols-2 gap-4 ${!perms.mikrotikUpdate ? 'opacity-90' : ''}`}>
                     <div className="flex flex-col gap-1.5 col-span-2 md:col-span-1">
                       <label className="text-xs font-semibold text-slate-400">Nama Router</label>
                       <input 
                         type="text" 
-                        readOnly={readOnlySettings}
+                        readOnly={!perms.mikrotikUpdate}
                         value={coreDevice.name} 
                         onChange={e => setCoreDevice({...coreDevice, name: e.target.value})}
                         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none" 
@@ -748,7 +755,7 @@ function Settings() {
                       <label className="text-xs font-semibold text-slate-400">IP Address</label>
                       <input 
                         type="text" 
-                        readOnly={readOnlySettings}
+                        readOnly={!perms.mikrotikUpdate}
                         value={coreDevice.ip_address} 
                         onChange={e => setCoreDevice({...coreDevice, ip_address: e.target.value})}
                         placeholder="Contoh: 192.168.100.1"
@@ -760,7 +767,7 @@ function Settings() {
                       <label className="text-xs font-semibold text-slate-400">Username API</label>
                       <input 
                         type="text" 
-                        readOnly={readOnlySettings}
+                        readOnly={!perms.mikrotikUpdate}
                         value={coreDevice.username} 
                         onChange={e => setCoreDevice({...coreDevice, username: e.target.value})}
                         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none" 
@@ -772,7 +779,7 @@ function Settings() {
                       <div className="relative">
                         <input 
                           type={showCorePassword ? "text" : "password"} 
-                          readOnly={readOnlySettings}
+                          readOnly={!perms.mikrotikUpdate}
                           value={coreDevice.password} 
                           onChange={e => setCoreDevice({...coreDevice, password: e.target.value})}
                           placeholder={existingId ? "Kosongkan jika tidak diubah" : "Masukkan password"}
@@ -780,9 +787,8 @@ function Settings() {
                         />
                         <button
                           type="button"
-                          disabled={!canShowPassword}
-                          onClick={() => canShowPassword && setShowCorePassword(!showCorePassword)}
-                          className={`absolute right-3 top-1/2 -translate-y-1/2 ${canShowPassword ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 cursor-not-allowed'}`}
+                          onClick={() => setShowCorePassword(!showCorePassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                         >
                           {showCorePassword ? <EyeOff size={16}/> : <Eye size={16}/>}
                         </button>
@@ -792,7 +798,7 @@ function Settings() {
                       <label className="text-xs font-semibold text-slate-400">Port API</label>
                       <input 
                         type="number" 
-                        readOnly={readOnlySettings}
+                        readOnly={!perms.mikrotikUpdate}
                         value={coreDevice.port} 
                         onChange={e => setCoreDevice({...coreDevice, port: parseInt(e.target.value)})}
                         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none" 
@@ -801,7 +807,7 @@ function Settings() {
                     </div>
                   </div>
                   
-                  {isAdmin && (
+                  {perms.mikrotikUpdate && (
                     <div className="mt-4 flex justify-end">
                       <button type="submit" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition shadow-lg shadow-blue-500/20">
                         <Save size={16} /> Simpan Konfigurasi
@@ -832,7 +838,6 @@ function Settings() {
                       <div className="grid grid-cols-2 bg-slate-900 p-1.5 rounded-lg border border-slate-700 gap-1.5">
                         <button
                           type="button"
-                          disabled={readOnlySettings}
                           onClick={() => setVpnConfig({ ...vpnConfig, active_platform: 'windows' })}
                           className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
                             vpnConfig.active_platform === 'windows'
@@ -845,7 +850,6 @@ function Settings() {
                         </button>
                         <button
                           type="button"
-                          disabled={readOnlySettings}
                           onClick={() => setVpnConfig({ ...vpnConfig, active_platform: 'linux' })}
                           className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
                             vpnConfig.active_platform === 'linux'
@@ -874,6 +878,7 @@ function Settings() {
                             <label className="text-xs font-semibold text-slate-400">Nama Profil VPN (rasdial)</label>
                             <input 
                               type="text" 
+                              readOnly={!perms.vpnUpdate}
                               value={vpnConfig.windows_name} 
                               onChange={e => setVpnConfig({...vpnConfig, windows_name: e.target.value})}
                               placeholder='Contoh: "VPN_DISKOMINFO_KABBDG"'
@@ -885,6 +890,7 @@ function Settings() {
                             <label className="text-xs font-semibold text-slate-400">Username VPN (Opsional)</label>
                             <input 
                               type="text" 
+                              readOnly={!perms.vpnUpdate}
                               value={vpnConfig.windows_username} 
                               onChange={e => setVpnConfig({...vpnConfig, windows_username: e.target.value})}
                               className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-emerald-500 outline-none" 
@@ -946,7 +952,7 @@ function Settings() {
 
                   <div className="flex justify-between items-center mt-4">
                     <div className="flex items-center gap-2">
-                      {isAdmin && (
+                      {perms.vpnUpdate && (
                         <>
                           <button type="button" onClick={testVpnConnect} disabled={vpnConnecting} className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">
                             Tes Hubungkan
@@ -957,7 +963,7 @@ function Settings() {
                         </>
                       )}
                     </div>
-                    {isAdmin && (
+                    {perms.vpnUpdate && (
                       <button type="submit" className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg text-sm transition">
                         <Save size={16} /> Simpan Pengaturan
                       </button>
@@ -969,11 +975,11 @@ function Settings() {
             </div>
           )}
 
-          {activeTab === 'users' && isAdmin && (
+          {activeTab === 'users' && perms.usersRead && (
             <UserManagement />
           )}
 
-          {activeTab === 'roles' && isAdmin && (
+          {activeTab === 'roles' && perms.rolesRead && (
             <RoleSettings showToast={showToast} />
           )}
 
@@ -982,10 +988,10 @@ function Settings() {
           )}
 
           {activeTab === 'health' && (
-            <SystemHealth isAdmin={isAdmin} />
+            <SystemHealth isAdmin={perms.healthUpdate} />
           )}
 
-          {activeTab === 'whatsapp' && isAdmin && (
+          {activeTab === 'whatsapp' && perms.waRead && (
             <WhatsAppGateway />
           )}
         </div>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_URL, socket, useAppState } from '@/App';
 import { MessageCircle, Send, User, Clock, Check, CheckCheck, Loader2, ShieldAlert, Download, Image as ImageIcon } from 'lucide-react';
-import { hasPermission, PERMISSIONS, isAdminRole } from '@/lib/roles';
+import { hasAccess } from '@/lib/roles';
 
 function MediaMessage({ msgId }) {
   const [media, setMedia] = useState(null);
@@ -347,7 +347,7 @@ export default function LiveChatPage() {
               </div>
 
               {/* Input Area */}
-              {hasPermission(sessionUser, PERMISSIONS.CHAT_LIVE) || isAdminRole(sessionUser) ? (
+              {hasAccess(sessionUser, 'chat', 'create') ? (
                 <div className="p-3 bg-slate-800 border-t border-slate-700/50">
                   <form onSubmit={sendMessage} className="flex gap-2">
                     <input 

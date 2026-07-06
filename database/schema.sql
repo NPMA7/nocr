@@ -214,14 +214,14 @@ CREATE TABLE "vpn_settings" (
 );
 
 -- CreateTable
-CREATE TABLE "admin_roles" (
+CREATE TABLE "access_roles" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(50) NOT NULL,
     "description" VARCHAR(255),
     "permissions" JSONB NOT NULL DEFAULT '[]',
     "created_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "admin_roles_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "access_roles_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -242,15 +242,6 @@ CREATE TABLE "daily_reports" (
     CONSTRAINT "daily_reports_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "roles" (
-    "name" VARCHAR(50) NOT NULL,
-    "permissions" TEXT NOT NULL DEFAULT '[]',
-    "description" TEXT,
-    "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "roles_pkey" PRIMARY KEY ("name")
-);
 
 -- CreateIndex
 CREATE INDEX "idx_activity_logs_time" ON "activity_logs"("time");
@@ -295,7 +286,7 @@ CREATE UNIQUE INDEX "idx_topology_nodes_site_id_unique" ON "topology_nodes"("sit
 CREATE INDEX "idx_topology_nodes_site_id" ON "topology_nodes"("site_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "admin_roles_name_key" ON "admin_roles"("name");
+CREATE UNIQUE INDEX "access_roles_name_key" ON "access_roles"("name");
 
 -- CreateIndex
 CREATE INDEX "idx_daily_reports_date" ON "daily_reports"("report_date");

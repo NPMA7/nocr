@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
-import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole } from '@/lib/auth';
+import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole, hasAccess } from '@/lib/auth';
 
 // Helper untuk respon error
 const sendError = (err, defaultStatus = 500) => {
@@ -36,8 +36,8 @@ export async function GET(req, { params }) {
         }
 
         if (path[0] === 'users') {
-            const user = verifyAuth(req);
-            enforceAdmin(user);
+            const user = await resolveAuth(req);
+            enforceAdmin(user, 'settings-users');
             
             const { data, error } = await db.from('admin_users').select('id, username, role, created_at');
             if (error) throw error;
@@ -120,7 +120,7 @@ export async function POST(req, { params }) {
 
             const userRole = data.role || 'visitor';
 
-            const roleData = await db.from('admin_roles').select('permissions').eq('name', userRole).single();
+            const roleData = await db.from('access_roles').select('permissions').eq('name', userRole).single();
             let permissions = [];
             if (roleData.data && roleData.data.permissions) {
                 try {
@@ -144,8 +144,8 @@ export async function POST(req, { params }) {
         }
 
         if (path[0] === 'users') {
-            const user = verifyAuth(req);
-            enforceAdmin(user);
+            const user = await resolveAuth(req);
+            enforceAdmin(user, 'settings-users');
             
             const body = await req.json();
             const { username, password, role } = body;
@@ -188,15 +188,15 @@ export async function PATCH(req, { params }) {
 
     try {
         if (path[0] === 'users' && path[1]) {
-            const user = verifyAuth(req);
+            const user = await resolveAuth(req);
             const id = path[1];
             const body = await req.json();
 
             const isSelf = user.id === id;
-            const isAdmin = user.role === 'admin';
+            const canManageUsers = hasAccess(user, 'settings-users', 'update');
 
-            // Cek otorisasi: harus admin atau memodifikasi profil sendiri
-            if (!isAdmin && !isSelf) {
+            // Cek otorisasi: harus bisa mengelola pengguna atau memodifikasi profil sendiri
+            if (!canManageUsers && !isSelf) {
                 return NextResponse.json(
                     { error: 'Akses ditolak: Anda tidak memiliki izin untuk mengubah data ini.' },
                     { status: 403 }
@@ -207,9 +207,9 @@ export async function PATCH(req, { params }) {
 
             // 1. Role Update (Admin only)
             if (body.role !== undefined) {
-                if (!isAdmin) {
+                if (!canManageUsers) {
                     return NextResponse.json(
-                        { error: 'Akses ditolak: Hanya Administrator yang dapat mengubah role.' },
+                        { error: 'Akses ditolak: Hanya peran dengan izin yang dapat mengubah role.' },
                         { status: 403 }
                     );
                 }
@@ -317,8 +317,8 @@ export async function DELETE(req, { params }) {
     
     try {
         if (path[0] === 'users' && path[1]) {
-            const user = verifyAuth(req);
-            enforceAdmin(user);
+            const user = await resolveAuth(req);
+            enforceAdmin(user, 'settings-users');
             
             const id = path[1];
             if (user.id === id) {

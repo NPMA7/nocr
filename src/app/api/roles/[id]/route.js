@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, enforceAdmin } from '@/lib/auth';
+import { resolveAuth, enforceAdmin } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -11,8 +11,8 @@ const sendError = (err, defaultStatus = 500) => {
 
 export async function PATCH(req, { params }) {
     try {
-        const user = verifyAuth(req);
-        enforceAdmin(user);
+        const user = await resolveAuth(req);
+        enforceAdmin(user, 'settings-roles');
 
         const id = (await params).id;
         const body = await req.json();
@@ -21,14 +21,14 @@ export async function PATCH(req, { params }) {
         const updateData = {};
         if (name !== undefined) updateData.name = name.trim().toLowerCase();
         if (description !== undefined) updateData.description = description;
-        if (permissions !== undefined) updateData.permissions = JSON.stringify(Array.isArray(permissions) ? permissions : []);
+        if (permissions !== undefined) updateData.permissions = JSON.stringify((typeof permissions === 'object' && permissions !== null) ? permissions : {});
 
         if (Object.keys(updateData).length === 0) {
             return NextResponse.json({ error: 'Tidak ada data yang diubah' }, { status: 400 });
         }
 
         // Prevent modifying admin role permissions to lock it out
-        const roleQuery = await db.from('admin_roles').select('*').eq('id', id).single();
+        const roleQuery = await db.from('access_roles').select('*').eq('id', id).single();
         if (roleQuery.error || !roleQuery.data) {
             return NextResponse.json({ error: 'Role tidak ditemukan' }, { status: 404 });
         }
@@ -37,7 +37,7 @@ export async function PATCH(req, { params }) {
             return NextResponse.json({ error: 'Tidak bisa mengubah nama role admin bawaan' }, { status: 403 });
         }
 
-        const { data, error } = await db.from('admin_roles')
+        const { data, error } = await db.from('access_roles')
             .update(updateData)
             .eq('id', id)
             .select();
@@ -59,12 +59,12 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
     try {
-        const user = verifyAuth(req);
-        enforceAdmin(user);
+        const user = await resolveAuth(req);
+        enforceAdmin(user, 'settings-roles');
 
         const id = (await params).id;
 
-        const roleQuery = await db.from('admin_roles').select('*').eq('id', id).single();
+        const roleQuery = await db.from('access_roles').select('*').eq('id', id).single();
         if (roleQuery.error || !roleQuery.data) {
             return NextResponse.json({ error: 'Role tidak ditemukan' }, { status: 404 });
         }
@@ -79,7 +79,7 @@ export async function DELETE(req, { params }) {
             return NextResponse.json({ error: `Tidak bisa menghapus role. Ada ${usersQuery.data.length} pengguna yang masih menggunakan role ini.` }, { status: 400 });
         }
 
-        const { error } = await db.from('admin_roles').delete().eq('id', id);
+        const { error } = await db.from('access_roles').delete().eq('id', id);
         if (error) throw error;
 
         if (global.addActivityLog) {

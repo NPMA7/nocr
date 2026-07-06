@@ -1,15 +1,17 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { socket, AppStateContext, API_URL } from '@/App';
-import { applySessionUser, getStoredUser, getRoleLabel } from '@/lib/roles';
+import { applySessionUser, getStoredUser, getRoleLabel, hasAccess } from '@/lib/roles';
 import axios from 'axios';
 import { Network } from 'lucide-react';
 
 export default function AuthenticatedLayout({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [tokenChecked, setTokenChecked] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [devices, setDevices] = useState([]);
@@ -84,6 +86,50 @@ export default function AuthenticatedLayout({ children }) {
       window.removeEventListener('nocr-role-updated', handleRoleEvent);
     };
   }, [tokenChecked]);
+
+  // Central Route Guard
+  useEffect(() => {
+    if (!tokenChecked || !sessionUser?.role) return;
+    
+    // Default to dashboard route if path is just /
+    const currentPath = pathname === '/' ? 'dashboard' : pathname.replace(/^\//, '');
+    
+    const routeToMenuKeyMap = {
+      'topology': 'topology',
+      'sites': 'sites',
+      'laporan-harian': 'laporan-harian',
+      'live-chat': 'chat',
+      'monitor-l2tp': 'monitoring-l2tp',
+      'monitor-pppoe': 'monitoring-pppoe',
+      'ruijie': 'devices-ruijie',
+      'devices': 'devices-mikrotik',
+      'hsgq-olt': 'devices-hsgq',
+    };
+
+    let requiredMenuKey = routeToMenuKeyMap[currentPath];
+    
+    // Handle settings sub-tabs separately
+    if (currentPath === 'settings') {
+        const tab = searchParams.get('tab') || 'core';
+        const tabToMenuKeyMap = {
+            'core': 'settings-mikrotik',
+            'vpn': 'settings-vpn',
+            'health': 'settings-health',
+            'whatsapp': 'settings-wa',
+            'users': 'settings-users',
+            'roles': 'settings-roles',
+            'password': 'settings-password'
+        };
+        requiredMenuKey = tabToMenuKeyMap[tab];
+    }
+
+    if (requiredMenuKey) {
+        if (!hasAccess(sessionUser, requiredMenuKey, 'read')) {
+            showToast(`Akses Ditolak: Anda tidak memiliki izin untuk melihat ${requiredMenuKey}`, 'error');
+            router.push('/dashboard');
+        }
+    }
+  }, [tokenChecked, sessionUser, pathname, searchParams, router]);
 
   useEffect(() => {
     if (!tokenChecked) return;

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, enforceAdmin } from '@/lib/auth';
+import { resolveAuth, enforceAdmin } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -11,12 +11,12 @@ const sendError = (err, defaultStatus = 500) => {
 
 export async function GET(req) {
     try {
-        const user = verifyAuth(req);
+        const user = await resolveAuth(req);
         // Only admins can manage roles, but we might want users to see roles, so maybe we just allow logged in users to read
         // For now let's enforce admin for viewing roles list
-        enforceAdmin(user);
+        enforceAdmin(user, 'settings-roles');
 
-        const { data, error } = await db.from('admin_roles').select('*').order('created_at', { ascending: true });
+        const { data, error } = await db.from('access_roles').select('*').order('created_at', { ascending: true });
         if (error) throw error;
         
         return NextResponse.json(data || []);
@@ -27,8 +27,8 @@ export async function GET(req) {
 
 export async function POST(req) {
     try {
-        const user = verifyAuth(req);
-        enforceAdmin(user);
+        const user = await resolveAuth(req);
+        enforceAdmin(user, 'settings-roles');
 
         const body = await req.json();
         const { name, description, permissions } = body;
@@ -38,13 +38,13 @@ export async function POST(req) {
         }
 
         const normalizedName = name.trim().toLowerCase();
-        const permsArray = Array.isArray(permissions) ? permissions : [];
+        const permsData = (typeof permissions === 'object' && permissions !== null) ? permissions : {};
 
-        const { data, error } = await db.from('admin_roles')
+        const { data, error } = await db.from('access_roles')
             .insert({
                 name: normalizedName,
                 description: description || '',
-                permissions: JSON.stringify(permsArray)
+                permissions: JSON.stringify(permsData)
             })
             .select();
 

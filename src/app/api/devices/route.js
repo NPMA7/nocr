@@ -46,7 +46,7 @@ export async function GET(req) {
 export async function POST(req) {
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user);
+        enforceRoleForMutation(req, user, 'devices-mikrotik');
 
         const body = await req.json();
         const { name, ip_address, username, password, port, type } = body;

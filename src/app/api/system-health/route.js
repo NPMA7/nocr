@@ -78,7 +78,7 @@ export async function GET(req) {
 export async function POST(req) {
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user);
+        enforceRoleForMutation(req, user, 'settings-health');
 
         const body = await req.json();
         
