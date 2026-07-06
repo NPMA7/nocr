@@ -10,8 +10,9 @@ export async function GET(request) {
     
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
-    const endpoint = type === 'Version Information' ? '/ontversion_table' : '/ontinfo_table';
-
+    let endpoint = '/ontinfo_table';
+    if (type === 'Version Information') endpoint = '/ontversion_table';
+    else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
     const response = await axios.get(`${url}${endpoint}`, {
       timeout: 10000 // 10 seconds timeout
     });
