@@ -13,7 +13,7 @@ export const PERMISSION_LABELS = {
   [PERMISSIONS.SYSTEM_SETTINGS]: 'Pengaturan Sistem (WA, VPN, dll)',
   [PERMISSIONS.SYSTEM_USERS]: 'Manajemen Pengguna & Role',
   [PERMISSIONS.NETWORK_TOPOLOGY]: 'Peta Topologi',
-  [PERMISSIONS.NETWORK_DEVICES]: 'Perangkat Jaringan (Mikrotik, Ruijie)',
+  [PERMISSIONS.NETWORK_DEVICES]: 'Perangkat Jaringan (Mikrotik, Ruijie, OLT HSGQ)',
   [PERMISSIONS.CHAT_LIVE]: 'Live Chat Omnichannel',
   [PERMISSIONS.PASSWORDS_REVEAL]: 'Melihat Password (Reveal)',
 };

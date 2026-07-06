@@ -1,6 +1,6 @@
 # NOCR (Network Operations Center)
 
-NOCR adalah sistem monitoring jaringan terpusat (Network Operations Center) yang dikembangkan untuk memonitor, mengelola, dan memetakan infrastruktur jaringan, termasuk MikroTik (Core), perangkat L2TP/PPPoE, dan Access Point Ruijie.
+NOCR adalah sistem monitoring jaringan terpusat (Network Operations Center) yang dikembangkan untuk memonitor, mengelola, dan memetakan infrastruktur jaringan, termasuk MikroTik (Core), perangkat L2TP/PPPoE, OLT HSGQ, dan Access Point Ruijie.
 
 Aplikasi ini menggunakan perpaduan **Next.js** untuk antarmuka pengguna (Frontend), **Node.js** untuk backend/WebSocket server, serta skrip **Python** untuk menjalankan *scraper* di latar belakang.
 
@@ -12,6 +12,7 @@ Aplikasi ini menggunakan perpaduan **Next.js** untuk antarmuka pengguna (Fronten
 - 🌐 **L2TP & PPPoE Monitoring**: Deteksi otomatis dan pemantauan klien PPPoE & tunnel L2TP yang terhubung.
 - 📍 **Data Wilayah (Sites)**: Pemetaan dan manajemen koordinat lokasi perangkat untuk visualisasi geografis.
 - 📶 **Ruijie AP Monitoring**: Integrasi *scraper* otomatis untuk menarik data perangkat dari *cloud* Ruijie.
+- 🖧 **HSGQ OLT Management**: Konfigurasi dan monitoring status pelanggan, profil, serta pengaturan WLAN (Wi-Fi) OLT HSGQ secara *real-time* menggunakan sinkronisasi WebSocket.
 - 💬 **Live Chat Omnichannel & WhatsApp Gateway**: Layanan integrasi WhatsApp Web untuk membalas pesan dan mengirimkan notifikasi dari sistem secara otomatis.
 - 📝 **Laporan Harian (Daily Report)**: Pencatatan, pemantauan status *offline/online*, tindakan, dan manajemen laporan gangguan secara sistematis.
 - 🛡️ **VPN Auto-Dial**: Dukungan untuk fitur auto-koneksi VPN (untuk Windows/Linux) jika jaringan terputus.
@@ -83,7 +84,7 @@ Beberapa hak akses (Permissions) yang tersedia meliputi:
 - `system.settings`: Mengelola pengaturan sistem (WA, VPN, dll)
 - `system.users`: Manajemen Pengguna & Role
 - `network.topology`: Mengubah Peta Topologi
-- `network.devices`: Mengatur Perangkat Jaringan (Mikrotik, Ruijie)
+- `network.devices`: Mengatur Perangkat Jaringan (Mikrotik, Ruijie, OLT)
 - `chat.live`: Akses Live Chat Omnichannel WhatsApp
 - `passwords.reveal`: Membuka paksa teks rahasia / Reveal Password
 
