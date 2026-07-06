@@ -163,7 +163,7 @@ function UserManagement() {
             </>
           )}
         </select>
-        <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center"><UserPlus size={16} className="mr-2" /> Tambah</button>
+        <button type="submit" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center"><UserPlus size={16} className="mr-2" /> Tambah</button>
       </form>
       {/* List */}
       <div className="mb-3 overflow-hidden rounded-lg border border-slate-700">
@@ -490,7 +490,7 @@ function SystemHealth({ isAdmin }) {
           <button 
             onClick={() => fetchHealth(true)} 
             disabled={refreshing}
-            className={`text-slate-400 hover:text-slate-200 p-1.5 rounded-lg bg-slate-900 border border-slate-700 transition ${refreshing ? 'animate-spin text-blue-400' : ''}`}
+            className={`cursor-pointer text-slate-400 hover:text-slate-200 p-1.5 rounded-lg bg-slate-900 border border-slate-700 transition ${refreshing ? 'animate-spin text-blue-400' : ''}`}
             title="Muat Ulang"
           >
             <RefreshCw size={14} />
@@ -788,7 +788,7 @@ function Settings() {
                         <button
                           type="button"
                           onClick={() => setShowCorePassword(!showCorePassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                          className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                         >
                           {showCorePassword ? <EyeOff size={16}/> : <Eye size={16}/>}
                         </button>
