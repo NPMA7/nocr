@@ -489,7 +489,7 @@ export default function Devices() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold flex items-center text-slate-100 gap-3">
-             <Server size={24} className="text-emerald-400" /> Perangkat Jaringan
+             <Server size={24} className="text-emerald-400" /> Mikrotik RO
             </h1>
             {syncStatus?.syncedAt && (
               <span

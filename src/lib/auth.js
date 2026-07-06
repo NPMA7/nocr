@@ -4,7 +4,7 @@ import { normalizeRole, canEditTopology, isAdminRole, canMutateApp, canRevealPas
 
 export { normalizeRole, canEditTopology, isAdminRole, canMutateApp, canRevealPasswords } from '@/lib/roles';
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'nocr_super_secret_key_123';
+export const JWT_SECRET = process.env.JWT_SECRET;
 
 export function isValidRole(role) {
     return !!normalizeRole(role);
