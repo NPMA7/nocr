@@ -88,9 +88,11 @@ export default function HsgqOltPage() {
     }
     else if (displayType === 'Name') fieldVal = String(isArray ? row[1] : (row.ont_name || row.name || `ONT01/00${idx}`));
     else if (displayType === 'Serial Number') fieldVal = String(isArray ? row[2] : (row.ont_sn || row.sn || row.serial_number || '-'));
-    else if (displayType === 'Device Type') fieldVal = String(isArray ? (activeTab === 'Version Information' ? row[3] : row[6]) : (row.dev_type || row.device_type || ''));
+    else if (displayType === 'Device Type') fieldVal = String(isArray ? (activeTab === 'Version Information' || activeTab === 'Bind Profile Info' ? row[3] : row[6]) : (row.dev_type || row.device_type || ''));
     else if (displayType === 'Vendor ID') fieldVal = String(isArray ? row[4] : (row.vendorid || '-'));
     else if (displayType === 'ONT Version') fieldVal = String(isArray ? row[5] : (row.ont_version || '-'));
+    else if (displayType === 'Equipment ID') fieldVal = String(isArray ? (activeTab === 'Version Information' ? row[6] : row[4]) : (row.equipmentid || '-'));
+    else if (displayType === 'Line Profile ID') fieldVal = String(isArray ? row[5] : (row.lprofid ?? '-'));
     else if (displayType === 'Running state') {
       const rstateVal = isArray ? row[4] : row.rstate;
       fieldVal = rstateVal === 1 ? 'online' : (rstateVal === 0 ? 'initial' : 'offline');
@@ -148,6 +150,11 @@ export default function HsgqOltPage() {
               <>
                 <option value="Vendor ID">Vendor ID</option>
                 <option value="ONT Version">ONT Version</option>
+              </>
+            ) : activeTab === 'Bind Profile Info' ? (
+              <>
+                <option value="Equipment ID">Equipment ID</option>
+                <option value="Line Profile ID">Line Profile ID</option>
               </>
             ) : (
               <option value="Running state">Running state</option>
@@ -247,6 +254,15 @@ export default function HsgqOltPage() {
                     <th className="px-4 py-3">Main Software Version</th>
                     <th className="px-4 py-3">Standby Software Version</th>
                   </>
+                ) : activeTab === 'Bind Profile Info' ? (
+                  <>
+                    <th className="px-4 py-3">Device Type</th>
+                    <th className="px-4 py-3">Equipment ID</th>
+                    <th className="px-4 py-3">Line Profile ID</th>
+                    <th className="px-4 py-3">Line Profile Name</th>
+                    <th className="px-4 py-3">Srv Profile ID</th>
+                    <th className="px-4 py-3">Srv Profile Name</th>
+                  </>
                 ) : (
                   <>
                     <th className="px-4 py-3">State</th>
@@ -311,6 +327,29 @@ export default function HsgqOltPage() {
                         <td className="px-4 py-3">{equipId}</td>
                         <td className="px-4 py-3">{mainVer}</td>
                         <td className="px-4 py-3">{stbVer}</td>
+                      </tr>
+                    )
+                  }
+
+                  if (activeTab === 'Bind Profile Info') {
+                    const devType = isArray ? row[3] : (row.dev_type || row.device_type || '-');
+                    const equipId = isArray ? row[4] : (row.equipmentid || '-');
+                    const lprofId = isArray ? row[5] : (row.lprofid ?? '-');
+                    const lprofName = isArray ? row[6] : (row.lprofname || '-');
+                    const sprofId = isArray ? row[7] : (row.sprofid ?? '-');
+                    const sprofName = isArray ? row[8] : (row.sprofname || '-');
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-700/20 transition-colors">
+                        <td className="px-4 py-3">{ontId}</td>
+                        <td className="px-4 py-3">{name}</td>
+                        <td className="px-4 py-3">{sn}</td>
+                        <td className="px-4 py-3">{devType}</td>
+                        <td className="px-4 py-3">{equipId}</td>
+                        <td className="px-4 py-3">{lprofId}</td>
+                        <td className="px-4 py-3">{lprofName}</td>
+                        <td className="px-4 py-3">{sprofId}</td>
+                        <td className="px-4 py-3">{sprofName}</td>
                       </tr>
                     )
                   }
