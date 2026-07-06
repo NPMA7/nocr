@@ -7,6 +7,7 @@ export default function HsgqOltPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('Authenticate List');
   const [displayType, setDisplayType] = useState('All');
   const [displayValue, setDisplayValue] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -17,7 +18,7 @@ export default function HsgqOltPage() {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get('/api/hsgq-olt');
+      const response = await axios.get(`/api/hsgq-olt?type=${activeTab}`);
       
       // Jika data adalah array, simpan. Jika object tapi punya properti array, sesuaikan.
       // Karena kita tidak tahu struktur pastinya, kita asumsikan response.data adalah array atau punya .data
@@ -40,7 +41,7 @@ export default function HsgqOltPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeTab]);
 
   // Calculate stats dynamically from API data
   const stats = {
@@ -72,15 +73,29 @@ export default function HsgqOltPage() {
     const isArray = Array.isArray(row);
     let fieldVal = '';
     
-    if (displayType === 'ONT ID') fieldVal = String(isArray ? row[0] : (row.ont_id || row.id || `PON0${Math.floor(idx/10)}/${idx%10}`));
+    if (displayType === 'ONT ID') {
+      let genId = '';
+      const rawName = row.ont_name || row.name || '';
+      if (rawName && rawName.includes('/')) {
+        const parts = rawName.split('/');
+        genId = `${parts[0].replace('ONT', 'PON')}/${parseInt(parts[1], 10)}`;
+      } else if (row.identifier !== undefined) {
+        genId = `PON0${(row.identifier >> 8) & 255}/${row.identifier & 255}`;
+      } else {
+        genId = `PON0${Math.floor(idx/10)}/${idx%10}`;
+      }
+      fieldVal = String(isArray ? row[0] : (row.ont_id || row.id || genId));
+    }
+    else if (displayType === 'Name') fieldVal = String(isArray ? row[1] : (row.ont_name || row.name || `ONT01/00${idx}`));
+    else if (displayType === 'Serial Number') fieldVal = String(isArray ? row[2] : (row.ont_sn || row.sn || row.serial_number || '-'));
+    else if (displayType === 'Device Type') fieldVal = String(isArray ? (activeTab === 'Version Information' ? row[3] : row[6]) : (row.dev_type || row.device_type || ''));
+    else if (displayType === 'Vendor ID') fieldVal = String(isArray ? row[4] : (row.vendorid || '-'));
+    else if (displayType === 'ONT Version') fieldVal = String(isArray ? row[5] : (row.ont_version || '-'));
     else if (displayType === 'Running state') {
       const rstateVal = isArray ? row[4] : row.rstate;
       fieldVal = rstateVal === 1 ? 'online' : (rstateVal === 0 ? 'initial' : 'offline');
       return fieldVal.toLowerCase() === displayValue.toLowerCase();
     }
-    else if (displayType === 'Name') fieldVal = String(isArray ? row[1] : (row.ont_name || row.name || `ONT01/00${idx}`));
-    else if (displayType === 'Serial Number') fieldVal = String(isArray ? row[2] : (row.ont_sn || row.sn || row.serial_number || '-'));
-    else if (displayType === 'Device Type') fieldVal = String(isArray ? row[6] : (row.dev_type || row.device_type || ''));
     return fieldVal.toLowerCase().includes(displayValue.toLowerCase());
   });
 
@@ -95,8 +110,14 @@ export default function HsgqOltPage() {
         {['Authenticate List', 'Version Information', 'Bind Profile Info', 'WLAN'].map((tab, idx) => (
           <button 
             key={idx}
+            onClick={() => {
+              setActiveTab(tab);
+              setDisplayType('All');
+              setDisplayValue('');
+              setCurrentPage(1);
+            }}
             className={`cursor-pointer px-4 py-3 whitespace-nowrap text-sm font-medium transition-colors ${
-              idx === 0 
+              activeTab === tab 
                 ? 'text-blue-400 border-b-2 border-blue-400' 
                 : 'text-slate-400 hover:text-slate-200'
             }`}
@@ -109,9 +130,9 @@ export default function HsgqOltPage() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-sm">Display Type:</span>
+          <span className="text-slate-400 text-sm">Query Method:</span>
           <select 
-            className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+            className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
             value={displayType}
             onChange={(e) => {
               setDisplayType(e.target.value);
@@ -119,11 +140,18 @@ export default function HsgqOltPage() {
             }}
           >
             <option value="All">All</option>
-            <option value="Running state">Running state</option>
             <option value="ONT ID">ONT ID</option>
             <option value="Name">Name</option>
             <option value="Serial Number">Serial Number</option>
             <option value="Device Type">Device Type</option>
+            {activeTab === 'Version Information' ? (
+              <>
+                <option value="Vendor ID">Vendor ID</option>
+                <option value="ONT Version">ONT Version</option>
+              </>
+            ) : (
+              <option value="Running state">Running state</option>
+            )}
           </select>
           
           {displayType === 'Running state' ? (
@@ -155,30 +183,34 @@ export default function HsgqOltPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div 
-            onClick={() => { setDisplayType('All'); setDisplayValue(''); setCurrentPage(1); }}
-            className="flex bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-md text-sm border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors"
-          >
-            Registered: {stats.registered}
-          </div>
-          <div 
-            onClick={() => { setDisplayType('Running state'); setDisplayValue('initial'); setCurrentPage(1); }}
-            className="flex bg-red-500/10 text-red-400 px-3 py-1.5 rounded-md text-sm border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors"
-          >
-            Unregistered: {stats.unregistered}
-          </div>
-          <div 
-            onClick={() => { setDisplayType('Running state'); setDisplayValue('online'); setCurrentPage(1); }}
-            className="flex bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-md text-sm border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-colors"
-          >
-            Online: {stats.online}
-          </div>
-          <div 
-            onClick={() => { setDisplayType('Running state'); setDisplayValue('offline'); setCurrentPage(1); }}
-            className="flex bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-md text-sm border border-rose-500/20 cursor-pointer hover:bg-rose-500/20 transition-colors"
-          >
-            Offline: {stats.offline}
-          </div>
+          {activeTab === 'Authenticate List' && (
+            <>
+              <div 
+                onClick={() => { setDisplayType('All'); setDisplayValue(''); setCurrentPage(1); }}
+                className="flex bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-md text-sm border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors"
+              >
+                Registered: {stats.registered}
+              </div>
+              <div 
+                onClick={() => { setDisplayType('Running state'); setDisplayValue('initial'); setCurrentPage(1); }}
+                className="flex bg-red-500/10 text-red-400 px-3 py-1.5 rounded-md text-sm border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors"
+              >
+                Unregistered: {stats.unregistered}
+              </div>
+              <div 
+                onClick={() => { setDisplayType('Running state'); setDisplayValue('online'); setCurrentPage(1); }}
+                className="flex bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-md text-sm border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+              >
+                Online: {stats.online}
+              </div>
+              <div 
+                onClick={() => { setDisplayType('Running state'); setDisplayValue('offline'); setCurrentPage(1); }}
+                className="flex bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-md text-sm border border-rose-500/20 cursor-pointer hover:bg-rose-500/20 transition-colors"
+              >
+                Offline: {stats.offline}
+              </div>
+            </>
+          )}
 
           <div className="flex items-center gap-2 ml-4">
             <button onClick={fetchData} className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm transition-colors">
@@ -206,14 +238,27 @@ export default function HsgqOltPage() {
                 <th className="px-4 py-3">ONT ID</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Serial Number</th>
-                <th className="px-4 py-3">State</th>
-                <th className="px-4 py-3">Running state</th>
-                <th className="px-4 py-3">Config state</th>
-                <th className="px-4 py-3">Device Type</th>
-                <th className="px-4 py-3">Receive Power</th>
-                <th className="px-4 py-3">Last up time</th>
-                <th className="px-4 py-3">Last down time</th>
-                <th className="px-4 py-3">Last down cause</th>
+                {activeTab === 'Version Information' ? (
+                  <>
+                    <th className="px-4 py-3">Device Type</th>
+                    <th className="px-4 py-3">Vendor ID</th>
+                    <th className="px-4 py-3">ONT Version</th>
+                    <th className="px-4 py-3">Equipment ID</th>
+                    <th className="px-4 py-3">Main Software Version</th>
+                    <th className="px-4 py-3">Standby Software Version</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-4 py-3">State</th>
+                    <th className="px-4 py-3">Running state</th>
+                    <th className="px-4 py-3">Config state</th>
+                    <th className="px-4 py-3">Device Type</th>
+                    <th className="px-4 py-3">Receive Power</th>
+                    <th className="px-4 py-3">Last up time</th>
+                    <th className="px-4 py-3">Last down time</th>
+                    <th className="px-4 py-3">Last down cause</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
@@ -232,11 +277,44 @@ export default function HsgqOltPage() {
                   // Jika API mengembalikan array object tapi key tidak diketahui, coba mapping manual
                   // Default field mappings fallback to row[0], row[1] etc jika format array of arrays
                   const isArray = Array.isArray(row);
+                  const rawName = row.ont_name || row.name || '';
+                  let genId = '';
+                  if (rawName && rawName.includes('/')) {
+                    const parts = rawName.split('/');
+                    genId = `${parts[0].replace('ONT', 'PON')}/${parseInt(parts[1], 10)}`;
+                  } else if (row.identifier !== undefined) {
+                    genId = `PON0${(row.identifier >> 8) & 255}/${row.identifier & 255}`;
+                  } else {
+                    genId = `PON0${Math.floor(idx/10)}/${idx%10}`;
+                  }
                   
-                  const ontId = isArray ? row[0] : (row.ont_id || row.id || `PON0${Math.floor(idx/10)}/${idx%10}`); // Coba generate dari name jika ada
+                  const ontId = isArray ? row[0] : (row.ont_id || row.id || genId); 
                   const name = isArray ? row[1] : (row.ont_name || row.name || `ONT01/00${idx}`);
                   const sn = isArray ? row[2] : (row.ont_sn || row.sn || row.serial_number || '-');
                   
+                  if (activeTab === 'Version Information') {
+                    const devType = isArray ? row[3] : (row.dev_type || row.device_type || '-');
+                    const vendorId = isArray ? row[4] : (row.vendorid || '-');
+                    const ontVersion = isArray ? row[5] : (row.ont_version || '-');
+                    const equipId = isArray ? row[6] : (row.equipmentid || '-');
+                    const mainVer = isArray ? row[7] : (row.mainversion || '-');
+                    const stbVer = isArray ? row[8] : (row.stbversion || '-');
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-700/20 transition-colors">
+                        <td className="px-4 py-3">{ontId}</td>
+                        <td className="px-4 py-3">{name}</td>
+                        <td className="px-4 py-3">{sn}</td>
+                        <td className="px-4 py-3">{devType}</td>
+                        <td className="px-4 py-3">{vendorId}</td>
+                        <td className="px-4 py-3">{ontVersion}</td>
+                        <td className="px-4 py-3">{equipId}</td>
+                        <td className="px-4 py-3">{mainVer}</td>
+                        <td className="px-4 py-3">{stbVer}</td>
+                      </tr>
+                    )
+                  }
+
                   // Parsing state fields
                   const stateVal = isArray ? row[3] : row.state;
                   const rstateVal = isArray ? row[4] : row.rstate;
@@ -256,7 +334,7 @@ export default function HsgqOltPage() {
                     <tr key={idx} className="hover:bg-slate-700/20 transition-colors">
                       <td className="px-4 py-3">{ontId}</td>
                       <td className="px-4 py-3">{name}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{sn}</td>
+                      <td className="px-4 py-3">{sn}</td>
                       <td className="px-4 py-3">{state}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${

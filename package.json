@@ -1,7 +1,7 @@
 {
   "name": "nocr-dashboard",
   "version": "1.0.0",
-  "description": "MikroTik Network Operations Center Dashboard",
+  "description": "Network Operations Center Dashboard by NPMA",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
