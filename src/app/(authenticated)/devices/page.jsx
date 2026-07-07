@@ -111,12 +111,13 @@ function ConfirmDialog({
 
 export default function Devices() {
   const { sessionUser } = useAppState();
-  const [canManage, setCanManage] = useState(false);
+  const [canCreate, setCanCreate] = useState(false);
+  const [canUpdate, setCanUpdate] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
   const [canShowPassword, setCanShowPassword] = useState(false);
 
   const syncRoleFlags = () => {
     const userData = getStoredUser();
-    setCanManage(hasAccess(userData, "devices-mikrotik", "update"));
     if (
       userData &&
       userData.role &&
@@ -125,6 +126,9 @@ export default function Devices() {
       window.location.href = "/dashboard";
       return;
     }
+    setCanCreate(hasAccess(userData, "devices-mikrotik", "create"));
+    setCanUpdate(hasAccess(userData, "devices-mikrotik", "update"));
+    setCanDelete(hasAccess(userData, "devices-mikrotik", "delete"));
     setCanShowPassword(hasAccess(userData, "devices-mikrotik", "update"));
   };
   const [tab, setTab] = useState("interfaces");
@@ -715,7 +719,7 @@ export default function Devices() {
               <span className="text-xs text-slate-500">
                 {filteredInterfaces.length} / {interfaces.length}
               </span>
-              {canManage && (
+              {canCreate && (
                 <button
                   id="btn-tambah-interface"
                   onClick={openAddInterface}
@@ -760,7 +764,7 @@ export default function Devices() {
                             ? "Running"
                             : "Down"}
                       </span>
-                      {canManage && (
+                      {canUpdate && (
                         <button
                           title="Edit"
                           onClick={() => openEditInterface(iface)}
@@ -794,7 +798,7 @@ export default function Devices() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Status
                     </th>
-                    {canManage && (
+                    {(canUpdate || canDelete) && (
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Aksi
                       </th>
@@ -840,17 +844,19 @@ export default function Devices() {
                                 : "Down"}
                           </span>
                         </td>
-                        {canManage && (
+                        {(canUpdate || canDelete) && (
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1 justify-end">
-                              <button
-                                title="Edit Interface"
-                                onClick={() => openEditInterface(iface)}
-                                className={actionBtnClass}
-                              >
-                                <Edit2 size={14} />
-                              </button>
-                              {(iface.type === "vlan" ||
+                              {canUpdate && (
+                                <button
+                                  title="Edit Interface"
+                                  onClick={() => openEditInterface(iface)}
+                                  className={actionBtnClass}
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                              )}
+                              {canDelete && (iface.type === "vlan" ||
                                 iface.type === "bridge") && (
                                 <button
                                   title="Hapus Interface"
@@ -935,7 +941,7 @@ export default function Devices() {
                         Uptime: {p.uptime || "-"}
                       </p>
                     </div>
-                    {canManage && (
+                    {canDelete && (
                       <button
                         onClick={() =>
                           setConfirmDelete({ type: "pppoe", item: p })
@@ -969,7 +975,7 @@ export default function Devices() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Caller ID
                     </th>
-                    {canManage && (
+                    {canDelete && (
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Aksi
                       </th>
@@ -1011,7 +1017,7 @@ export default function Devices() {
                         <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                           {p["caller-id"] || "-"}
                         </td>
-                        {canManage && (
+                        {canDelete && (
                           <td className="px-4 py-3">
                             <div className="flex justify-end">
                               <button
@@ -1047,7 +1053,7 @@ export default function Devices() {
               onChange={(e) => setSecretSearch(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
-            {canManage && (
+            {canCreate && (
               <button
                 id="btn-tambah-pelanggan"
                 onClick={openAddSecret}
@@ -1088,22 +1094,26 @@ export default function Devices() {
                           {s.profile || "-"} · {s.service || "pppoe"}
                         </p>
                       </div>
-                      {canManage && (
+                      {(canUpdate || canDelete) && (
                         <div className="flex gap-2 flex-shrink-0">
-                          <button
-                            onClick={() => openEditSecret(s)}
-                            className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button
-                            onClick={() =>
-                              setConfirmDelete({ type: "secret", item: s })
-                            }
-                            className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {canUpdate && (
+                            <button
+                              onClick={() => openEditSecret(s)}
+                              className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() =>
+                                setConfirmDelete({ type: "secret", item: s })
+                              }
+                              className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1137,7 +1147,7 @@ export default function Devices() {
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Status
                     </th>
-                    {canManage && (
+                    {(canUpdate || canDelete) && (
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Aksi
                       </th>
@@ -1229,28 +1239,32 @@ export default function Devices() {
                               {s.disabled === "true" ? "Disabled" : "Enabled"}
                             </span>
                           </td>
-                          {canManage && (
+                          {(canUpdate || canDelete) && (
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1 justify-end">
-                                <button
-                                  title="Edit Pelanggan"
-                                  onClick={() => openEditSecret(s)}
-                                  className={actionBtnClass}
-                                >
-                                  <Edit2 size={14} />
-                                </button>
-                                <button
-                                  title="Hapus Pelanggan"
-                                  onClick={() =>
-                                    setConfirmDelete({
-                                      type: "secret",
-                                      item: s,
-                                    })
-                                  }
-                                  className={`${actionBtnClass} hover:text-red-400 hover:bg-red-500/10`}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                {canUpdate && (
+                                  <button
+                                    title="Edit Pelanggan"
+                                    onClick={() => openEditSecret(s)}
+                                    className={actionBtnClass}
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    title="Hapus Pelanggan"
+                                    onClick={() =>
+                                      setConfirmDelete({
+                                        type: "secret",
+                                        item: s,
+                                      })
+                                    }
+                                    className={`${actionBtnClass} hover:text-red-400 hover:bg-red-500/10`}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           )}

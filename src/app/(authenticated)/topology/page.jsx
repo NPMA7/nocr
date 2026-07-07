@@ -249,7 +249,10 @@ function TopologyContent() {
   const [deviceConfig, setDeviceConfig] = useState(null);
   const [toasts, setToasts] = useState([]);
   const { sessionUser, setLastSyncTime } = useAppState();
-  const [canEdit, setCanEdit] = useState(false);
+  const [canCreate, setCanCreate] = useState(false);
+  const [canUpdate, setCanUpdate] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const canEdit = canCreate || canUpdate || canDelete;
   const readOnly = !canEdit;
   const [saving, setSaving] = useState(false);
 
@@ -259,7 +262,10 @@ function TopologyContent() {
   const [forceSaveQueue, setForceSaveQueue] = useState([]); // nodes user pilih untuk force-save
 
   const syncEditPermission = () => {
-    setCanEdit(hasAccess(getStoredUser(), "topology", "update"));
+    const userData = getStoredUser();
+    setCanCreate(hasAccess(userData, "topology", "create"));
+    setCanUpdate(hasAccess(userData, "topology", "update"));
+    setCanDelete(hasAccess(userData, "topology", "delete"));
   };
 
   // Manual Add Modal State
@@ -767,7 +773,7 @@ function TopologyContent() {
     linkedInterface = null,
     vendor = null,
   ) => {
-    if (readOnly) return;
+    if (!canCreate) return;
     const newNode = {
       id: "node_" + Date.now(),
       label: label || `Node Baru (${type.toUpperCase()})`,
@@ -791,6 +797,7 @@ function TopologyContent() {
       return;
     }
     if (interactionMode === "add_edge") {
+      if (!canCreate) return;
       if (!linkStartNode) {
         setLinkStartNode(node.id);
       } else {
@@ -1205,57 +1212,65 @@ function TopologyContent() {
               <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2 py-1">
                 <Eye size={14} className="text-amber-400" />
                 <span className="text-xs font-semibold text-amber-300">
-                  Readonly (Visitor)
+                  Readonly
                 </span>
               </div>
             ) : canEdit ? (
               <div className="flex flex-wrap bg-slate-900 rounded-lg p-1 border border-slate-700">
-                <button
-                  onClick={() => {
-                    setInteractionMode("select");
-                    setLinkStartNode(null);
-                  }}
-                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "select" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
-                >
-                  <MapPin size={14} /> Geser & Pilih
-                </button>
-                <button
-                  onClick={() => {
-                    setInteractionMode("add_node");
-                    setLinkStartNode(null);
-                  }}
-                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
-                >
-                  <Plus size={14} /> + Node
-                </button>
-                <button
-                  onClick={() => {
-                    setShowManualAddModal(true);
-                    setManualIfaceSearch("");
-                    setShowManualIfaceDropdown(false);
-                  }}
-                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
-                >
-                  <MapPin size={14} /> Titik Lokasi
-                </button>
-                <button
-                  onClick={() => {
-                    setInteractionMode("add_edge");
-                    setLinkStartNode(null);
-                  }}
-                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_edge" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
-                >
-                  <GitCommit size={14} /> + Kabel FO
-                </button>
-                <button
-                  onClick={() => {
-                    setInteractionMode("delete_edge");
-                    setLinkStartNode(null);
-                  }}
-                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "delete_edge" ? "bg-red-600 text-white" : "text-slate-400 hover:text-white hover:bg-red-500/10"}`}
-                >
-                  <Trash2 size={14} /> Hapus Kabel
-                </button>
+                {canUpdate && (
+                  <button
+                    onClick={() => {
+                      setInteractionMode("select");
+                      setLinkStartNode(null);
+                    }}
+                    className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "select" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  >
+                    <MapPin size={14} /> Geser & Pilih
+                  </button>
+                )}
+                {canCreate && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setInteractionMode("add_node");
+                        setLinkStartNode(null);
+                      }}
+                      className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                    >
+                      <Plus size={14} /> + Node
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowManualAddModal(true);
+                        setManualIfaceSearch("");
+                        setShowManualIfaceDropdown(false);
+                      }}
+                      className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                    >
+                      <MapPin size={14} /> Titik Lokasi
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInteractionMode("add_edge");
+                        setLinkStartNode(null);
+                      }}
+                      className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_edge" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                    >
+                      <GitCommit size={14} /> + Kabel FO
+                    </button>
+                  </>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={() => {
+                      setInteractionMode("delete_edge");
+                      setLinkStartNode(null);
+                    }}
+                    className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "delete_edge" ? "bg-red-600 text-white" : "text-slate-400 hover:text-white hover:bg-red-500/10"}`}
+                  >
+                    <Trash2 size={14} /> Hapus Kabel
+                  </button>
+                )}
                 <div className="w-px bg-slate-700/50 mx-1 hidden sm:block"></div>
               </div>
             ) : null}
@@ -1289,7 +1304,7 @@ function TopologyContent() {
           </div>
 
           {/* Node Type Selector (Floating) */}
-          {!readOnly && interactionMode === "add_node" && (
+          {canCreate && interactionMode === "add_node" && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 xl:left-6 xl:translate-x-0 mt-2 z-[1001] shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center gap-1.5 bg-slate-900 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)] rounded-lg p-1.5 w-max">
                 <span className="text-[10px] text-slate-400 uppercase font-bold px-2 whitespace-nowrap">
@@ -1307,12 +1322,12 @@ function TopologyContent() {
               </div>
             </div>
           )}
-          {!readOnly && linkStartNode && (
+          {canCreate && linkStartNode && (
             <span className="text-xs text-amber-400 animate-pulse font-medium whitespace-nowrap flex-shrink-0">
               Klik node tujuan...
             </span>
           )}
-          {!readOnly && interactionMode === "delete_edge" && (
+          {canDelete && interactionMode === "delete_edge" && (
             <span className="text-xs text-red-400 font-medium bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 whitespace-nowrap flex-shrink-0">
               Klik kabel untuk menghapus
             </span>
@@ -1336,7 +1351,7 @@ function TopologyContent() {
             />{" "}
             Sync Sekarang
           </button>
-          {!readOnly && (
+          {canEdit && (
             <button
               onClick={() => saveLayout()}
               disabled={saving}
@@ -1373,7 +1388,7 @@ function TopologyContent() {
         </div>
 
         {/* Manual Add Modal */}
-        {!readOnly && showManualAddModal && (
+        {canCreate && showManualAddModal && (
           <div className="absolute inset-0 z-[3000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md max-h-[min(90dvh,100%)] my-auto flex flex-col overflow-hidden animate-fade-in-up">
               <div className="flex-shrink-0 p-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
@@ -2419,7 +2434,7 @@ function TopologyContent() {
                   />
                 </div>
 
-                {!readOnly && (
+                {canDelete && (
                   <button
                     onClick={() => {
                       markNodeDeleted(selectedNode.id);
@@ -2560,7 +2575,7 @@ function TopologyContent() {
                   </div>
                 )}
 
-                {!readOnly && (
+                {canDelete && (
                   <button
                     onClick={() => {
                       markEdgeDeleted(selectedEdge.id);

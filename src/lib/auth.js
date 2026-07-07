@@ -71,13 +71,13 @@ export function enforceRoleForMutation(req, user, requiredKey = 'settings-mikrot
 }
 
 export function enforceTopologyMutation(user) {
-    if (!hasAccess(user, 'topology', 'update')) {
-        throw Object.assign(new Error('Akses Ditolak: Edit topologi hanya untuk Admin atau Editor'), { status: 403 });
+    if (
+        !hasAccess(user, 'topology', 'update') &&
+        !hasAccess(user, 'topology', 'create') &&
+        !hasAccess(user, 'topology', 'delete')
+    ) {
+        throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk mengubah topologi'), { status: 403 });
     }
 }
 
-export function enforceNetworkDevicesMutation(user) {
-    if (!hasAccess(user, 'devices-mikrotik', 'update')) {
-        throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi perangkat jaringan'), { status: 403 });
-    }
-}
+

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import mikrotik from '@/lib/mikrotik';
-import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
+import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -311,7 +311,9 @@ export async function POST(req, { params }) {
     
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user, 'devices-mikrotik');
+        if (!hasAccess(user, 'devices-mikrotik', 'create')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk menambah data'), { status: 403 });
+        }
 
         if (path[0] === 'core') {
             const device = await getCoreDevice();
@@ -376,7 +378,9 @@ export async function PUT(req, { params }) {
     
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user, 'devices-mikrotik');
+        if (!hasAccess(user, 'devices-mikrotik', 'update')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk mengubah data'), { status: 403 });
+        }
 
         if (path[0] === 'core') {
             const device = await getCoreDevice();
@@ -454,7 +458,9 @@ export async function DELETE(req, { params }) {
 
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user, 'devices-mikrotik');
+        if (!hasAccess(user, 'devices-mikrotik', 'delete')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk menghapus data'), { status: 403 });
+        }
 
         if (path[0] === 'core') {
             const device = await getCoreDevice();

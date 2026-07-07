@@ -7,6 +7,26 @@ const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');
 const whatsapp = require('./src/lib/whatsapp');
 
+function hasServerAccess(permissions, menuKey, action, legacyPerm) {
+    if (!permissions) return false;
+    let perms = permissions;
+    if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch(e) { perms = {}; }
+    }
+    if (Array.isArray(perms)) {
+        return perms.includes(legacyPerm);
+    }
+    if (perms && typeof perms === 'object') {
+        if (Array.isArray(perms[menuKey]) && perms[menuKey].includes(action)) {
+            return true;
+        }
+        if (menuKey.startsWith('settings-') && Array.isArray(perms['settings']) && perms['settings'].includes(action)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
@@ -880,8 +900,9 @@ app.prepare().then(() => {
         try {
             const token = authHeader.split(' ')[1];
             const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-            const perms = decoded.permissions || [];
-            if (!perms.includes('system.settings') && decoded.role !== 'admin') {
+            const perms = decoded.permissions;
+            const isAuthorized = decoded.role === 'admin' || hasServerAccess(perms, 'settings-wa', 'update', 'system.settings');
+            if (!isAuthorized) {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
             }
         } catch (e) {
@@ -923,8 +944,9 @@ app.prepare().then(() => {
         try {
             const token = authHeader.split(' ')[1];
             const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-            const perms = decoded.permissions || [];
-            if (!perms.includes('chat.live') && decoded.role !== 'admin') {
+            const perms = decoded.permissions;
+            const isAuthorized = decoded.role === 'admin' || hasServerAccess(perms, 'chat', 'create', 'chat.live');
+            if (!isAuthorized) {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
             }
         } catch (e) {

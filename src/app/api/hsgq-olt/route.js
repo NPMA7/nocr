@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import { verifyAuth, resolveAuth, enforceNetworkDevicesMutation } from '@/lib/auth';
+import { verifyAuth, resolveAuth, hasAccess } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -110,7 +110,9 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const user = await resolveAuth(request);
-    enforceNetworkDevicesMutation(user);
+    if (!hasAccess(user, 'devices-hsgq', 'update')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi OLT' }, { status: 403 });
+    }
     const url = process.env.HSGQ_OLT_URL;
     if (!url) {
       return NextResponse.json({ error: 'HSGQ_OLT_URL is not configured' }, { status: 500 });

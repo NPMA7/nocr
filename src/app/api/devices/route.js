@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
+import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -46,7 +46,9 @@ export async function GET(req) {
 export async function POST(req) {
     try {
         const user = await resolveAuth(req);
-        enforceRoleForMutation(req, user, 'devices-mikrotik');
+        if (!hasAccess(user, 'devices-mikrotik', 'create')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk menambah perangkat'), { status: 403 });
+        }
 
         const body = await req.json();
         const { name, ip_address, username, password, port, type } = body;
