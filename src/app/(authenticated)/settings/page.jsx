@@ -831,6 +831,9 @@ function Settings() {
       vpnUpdate: hasAccess(userData, "settings-vpn", "update"),
       healthUpdate: hasAccess(userData, "settings-health", "update"),
       waRead: hasAccess(userData, "settings-wa", "read"),
+      waCreate: hasAccess(userData, "settings-wa", "create"),
+      waUpdate: hasAccess(userData, "settings-wa", "update"),
+      waDelete: hasAccess(userData, "settings-wa", "delete"),
       usersRead: hasAccess(userData, "settings-users", "read"),
       usersCreate: hasAccess(userData, "settings-users", "create"),
       usersUpdate: hasAccess(userData, "settings-users", "update"),
@@ -1421,7 +1424,13 @@ function Settings() {
             <SystemHealth isAdmin={perms.healthUpdate} />
           )}
 
-          {activeTab === "whatsapp" && perms.waRead && <WhatsAppGateway />}
+          {activeTab === "whatsapp" && perms.waRead && (
+            <WhatsAppGateway
+              canCreate={perms.waCreate}
+              canUpdate={perms.waUpdate}
+              canDelete={perms.waDelete}
+            />
+          )}
         </div>
       </div>
     </div>

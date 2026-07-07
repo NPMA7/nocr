@@ -12,7 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-export default function WhatsAppGateway() {
+export default function WhatsAppGateway({ canCreate = true, canUpdate = true, canDelete = true }) {
   const { showToast } = useAppState();
   const [status, setStatus] = useState("loading");
   const [qrCode, setQrCode] = useState(null);
@@ -169,7 +169,7 @@ export default function WhatsAppGateway() {
             )}
 
             <div className="flex flex-wrap gap-2">
-              {status === "disconnected" && (
+              {status === "disconnected" && canCreate && (
                 <button
                   onClick={() => performAction("start")}
                   disabled={loading}
@@ -180,7 +180,7 @@ export default function WhatsAppGateway() {
               )}
               {(status === "connected" ||
                 status === "qr" ||
-                status === "loading") && (
+                status === "loading") && canDelete && (
                 <button
                   onClick={() => performAction("stop")}
                   disabled={loading}
@@ -189,7 +189,7 @@ export default function WhatsAppGateway() {
                   <Square size={16} /> Hentikan Klien
                 </button>
               )}
-              {status === "connected" && (
+              {status === "connected" && canDelete && (
                 <button
                   onClick={() => {
                     if (
@@ -226,10 +226,11 @@ export default function WhatsAppGateway() {
                   type="checkbox"
                   className="sr-only"
                   checked={settings.botEnabled}
-                  onChange={(e) => handleToggle("botEnabled", e.target.checked)}
+                  disabled={!canUpdate}
+                  onChange={(e) => canUpdate && handleToggle("botEnabled", e.target.checked)}
                 />
                 <div
-                  className={`block w-10 h-6 rounded-full transition ${settings.botEnabled ? "bg-emerald-500" : "bg-slate-600"}`}
+                  className={`block w-10 h-6 rounded-full transition ${settings.botEnabled ? "bg-emerald-500" : "bg-slate-600"} ${!canUpdate ? "opacity-50" : ""}`}
                 ></div>
                 <div
                   className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${settings.botEnabled ? "transform translate-x-4" : ""}`}
@@ -251,10 +252,11 @@ export default function WhatsAppGateway() {
                   type="checkbox"
                   className="sr-only"
                   checked={settings.autoReply}
-                  onChange={(e) => handleToggle("autoReply", e.target.checked)}
+                  disabled={!canUpdate}
+                  onChange={(e) => canUpdate && handleToggle("autoReply", e.target.checked)}
                 />
                 <div
-                  className={`block w-10 h-6 rounded-full transition ${settings.autoReply ? "bg-emerald-500" : "bg-slate-600"}`}
+                  className={`block w-10 h-6 rounded-full transition ${settings.autoReply ? "bg-emerald-500" : "bg-slate-600"} ${!canUpdate ? "opacity-50" : ""}`}
                 ></div>
                 <div
                   className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${settings.autoReply ? "transform translate-x-4" : ""}`}
@@ -271,12 +273,18 @@ export default function WhatsAppGateway() {
             </label>
 
             <div className="mt-auto pt-4">
-              <button
-                type="submit"
-                className="cursor-pointer w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg text-xs transition shadow-lg shadow-blue-500/20"
-              >
-                Simpan Pengaturan
-              </button>
+              {canUpdate ? (
+                <button
+                  type="submit"
+                  className="cursor-pointer w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg text-xs transition shadow-lg shadow-blue-500/20"
+                >
+                  Simpan Pengaturan
+                </button>
+              ) : (
+                <div className="text-center text-xs text-slate-500 bg-slate-800 border border-slate-700 py-2 rounded-lg">
+                  🔒 Anda hanya memiliki akses baca
+                </div>
+              )}
             </div>
           </form>
         </div>
