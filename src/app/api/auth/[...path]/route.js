@@ -161,8 +161,16 @@ export async function POST(req, { params }) {
             const normalizedRole = normalizeRole(role);
             if (!normalizedRole) {
                 return NextResponse.json(
-                    { error: 'Role tidak valid. Gunakan admin, editor, atau visitor.' },
+                    { error: 'Role tidak valid.' },
                     { status: 400 }
+                );
+            }
+
+            const requestorRole = normalizeRole(user.role);
+            if (normalizedRole === 'admin' && requestorRole !== 'admin') {
+                return NextResponse.json(
+                    { error: 'Akses ditolak: Hanya administrator yang dapat membuat pengguna dengan role admin.' },
+                    { status: 403 }
                 );
             }
 
@@ -196,6 +204,16 @@ export async function PATCH(req, { params }) {
             const id = path[1];
             const body = await req.json();
 
+            // Ambil detail pengguna saat ini dari DB
+            const targetUser = await db.from('users').select('username, role').eq('id', id).single();
+            if (targetUser.error || !targetUser.data) {
+                return NextResponse.json(
+                    { error: 'Pengguna tidak ditemukan.' },
+                    { status: 404 }
+                );
+            }
+            const previousRole = normalizeRole(targetUser.data.role);
+
             const isSelf = user.id === id;
             const canManageUsers = hasAccess(user, 'settings-users', 'update');
 
@@ -207,21 +225,25 @@ export async function PATCH(req, { params }) {
                 );
             }
 
+            const requestorRole = normalizeRole(user.role);
+            const isTargetAdmin = previousRole === 'admin';
+            const isSettingToAdmin = body.role !== undefined && normalizeRole(body.role) === 'admin';
+
+            if ((isTargetAdmin || isSettingToAdmin) && requestorRole !== 'admin') {
+                return NextResponse.json(
+                    { error: 'Akses ditolak: Hanya administrator yang dapat memodifikasi akun administrator atau menunjuk role admin.' },
+                    { status: 403 }
+                );
+            }
+
             const updateData = {};
 
             // 1. Role Update (Admin only)
             if (body.role !== undefined) {
-                if (!canManageUsers) {
-                    return NextResponse.json(
-                        { error: 'Akses ditolak: Hanya peran dengan izin yang dapat mengubah role.' },
-                        { status: 403 }
-                    );
-                }
-
                 const normalizedRole = normalizeRole(body.role);
                 if (!normalizedRole) {
                     return NextResponse.json(
-                        { error: 'Role tidak valid. Gunakan admin, editor, atau visitor.' },
+                        { error: 'Role tidak valid.' },
                         { status: 400 }
                     );
                 }
@@ -256,14 +278,7 @@ export async function PATCH(req, { params }) {
             }
 
             // Ambil detail pengguna saat ini dari DB
-            const targetUser = await db.from('users').select('username, role').eq('id', id).single();
-            if (targetUser.error || !targetUser.data) {
-                return NextResponse.json(
-                    { error: 'Pengguna tidak ditemukan.' },
-                    { status: 404 }
-                );
-            }
-            const previousRole = normalizeRole(targetUser.data.role);
+            // (pembacaan dipindah ke awal handler PATCH)
 
             // Cek keamanan: Tidak bisa menurunkan jabatan admin terakhir yang tersisa
             if (updateData.role && updateData.role !== 'admin' && previousRole === 'admin') {
@@ -335,6 +350,34 @@ export async function DELETE(req, { params }) {
             const id = path[1];
             if (user.id === id) {
                 return NextResponse.json({ error: 'Tidak dapat menghapus akun Anda sendiri' }, { status: 400 });
+            }
+
+            const targetUser = await db.from('users').select('role').eq('id', id).single();
+            if (targetUser.error || !targetUser.data) {
+                return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 });
+            }
+
+            const targetRole = normalizeRole(targetUser.data.role);
+
+            if (targetRole === 'admin') {
+                const requestorRole = normalizeRole(user.role);
+                if (requestorRole !== 'admin') {
+                    return NextResponse.json(
+                        { error: 'Akses ditolak: Hanya administrator yang dapat menghapus akun administrator.' },
+                        { status: 403 }
+                    );
+                }
+
+                const { data: allUsers } = await db.from('users').select('id, role');
+                const adminCount = (allUsers || []).filter(
+                    (u) => normalizeRole(u.role) === 'admin'
+                ).length;
+                if (adminCount <= 1) {
+                    return NextResponse.json(
+                        { error: 'Tidak dapat menghapus pengguna: minimal harus ada satu Administrator.' },
+                        { status: 400 }
+                    );
+                }
             }
             
             const { error } = await db.from('users').delete().eq('id', id);

@@ -57,6 +57,10 @@ class ErrorBoundary extends React.Component {
 
 function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }) {
   const { showToast } = useAppState();
+  const currentUser = getStoredUser();
+  const requestorRole = (currentUser?.role || "").toLowerCase().trim();
+  const isRequestorAdmin = requestorRole === "admin";
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
@@ -77,20 +81,31 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
   const [availableRoles, setAvailableRoles] = useState([]);
 
   const fetchUsersAndRoles = async () => {
+    setLoading(true);
     try {
-      const [resUsers, resRoles] = await Promise.all([
-        axios.get(`${API_URL}/auth/users`),
-        axios.get(`${API_URL}/roles`),
-      ]);
+      const resUsers = await axios.get(`${API_URL}/auth/users`);
       setUsers(Array.isArray(resUsers.data) ? resUsers.data : []);
-      setAvailableRoles(Array.isArray(resRoles.data) ? resRoles.data : []);
-      setRoleEdits({});
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching users:", err);
       setUsers([]);
+      if (showToast) {
+        showToast(err.response?.data?.error || "Gagal memuat daftar pengguna", "error");
+      }
+    }
+
+    try {
+      const resRoles = await axios.get(`${API_URL}/roles`);
+      const rolesData = Array.isArray(resRoles.data) ? resRoles.data : [];
+      setAvailableRoles(rolesData);
+      if (rolesData.length > 0) {
+        setForm((prev) => ({ ...prev, role: rolesData[0].name }));
+      }
+    } catch (err) {
+      console.error("Error fetching roles:", err);
       setAvailableRoles([]);
     } finally {
       setLoading(false);
+      setRoleEdits({});
     }
   };
 
@@ -139,6 +154,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
       try {
         await axios.delete(`${API_URL}/auth/users/${id}`);
         fetchUsersAndRoles();
+        if (showToast) showToast("Pengguna berhasil dihapus", "success");
       } catch (err) {
         if (showToast)
           showToast(err.response?.data?.error || err.message, "error");
@@ -217,19 +233,21 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
               name="role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg w-32 outline-none focus:border-blue-500 capitalize"
+              className="cursor-pointer bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg w-32 outline-none focus:border-blue-500 capitalize"
             >
               {availableRoles.length > 0 ? (
-                availableRoles.map((r) => (
-                  <option key={r.id} value={r.name}>
-                    {r.name}
-                  </option>
-                ))
+                availableRoles
+                  .filter((r) => isRequestorAdmin || r.name !== "admin")
+                  .map((r) => (
+                    <option key={r.id} value={r.name}>
+                      {r.name}
+                    </option>
+                  ))
               ) : (
                 <>
                   <option value="visitor">Visitor</option>
                   <option value="editor">Editor</option>
-                  <option value="admin">Admin</option>
+                  {isRequestorAdmin && <option value="admin">Admin</option>}
                 </>
               )}
             </select>
@@ -272,31 +290,47 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <select
-                        value={editRole}
-                        disabled={!canUpdate}
-                        onChange={(e) =>
-                          setRoleEdits((prev) => ({
-                            ...prev,
-                            [u.id]: e.target.value,
-                          }))
-                        }
-                        className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize disabled:opacity-50"
-                      >
-                        {availableRoles.length > 0 ? (
-                          availableRoles.map((r) => (
-                            <option key={r.id} value={r.name}>
-                              {r.name}
-                            </option>
-                          ))
-                        ) : (
-                          <>
-                            <option value="visitor">Visitor</option>
-                            <option value="editor">Editor</option>
-                            <option value="admin">Admin</option>
-                          </>
-                        )}
-                      </select>
+                      {u.role === "admin" && !isRequestorAdmin ? (
+                        <span className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-400 rounded-lg capitalize">
+                          Admin
+                        </span>
+                      ) : (
+                        <select
+                          value={editRole}
+                          disabled={!canUpdate}
+                          onChange={(e) =>
+                            setRoleEdits((prev) => ({
+                              ...prev,
+                              [u.id]: e.target.value,
+                            }))
+                          }
+                          className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize disabled:opacity-50"
+                        >
+                          {(() => {
+                            // Build options from availableRoles, or fallback to unique roles from users list
+                            let roleOptions = availableRoles.length > 0
+                              ? availableRoles.map((r) => ({ id: r.id, name: r.name }))
+                              : [...new Set(users.map((usr) => usr.role))]
+                                  .map((name) => ({ id: name, name }));
+
+                            // Filter out admin option for non-admins
+                            if (!isRequestorAdmin) {
+                              roleOptions = roleOptions.filter((r) => r.name !== "admin");
+                            }
+
+                            // Always ensure current editRole is in the list
+                            if (!roleOptions.find((r) => r.name === editRole)) {
+                              roleOptions = [{ id: editRole, name: editRole }, ...roleOptions];
+                            }
+
+                            return roleOptions.map((r) => (
+                              <option key={r.id} value={r.name} className="capitalize">
+                                {r.name}
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                      )}
                       {roleDirty && (
                         <button
                           type="button"
@@ -312,7 +346,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end items-center gap-2">
-                      {canUpdate && (
+                      {canUpdate && (isRequestorAdmin || u.role !== "admin") && (
                         <button
                           title="Ubah Password"
                           onClick={() => setSelectedUserForPassword(u)}
@@ -321,7 +355,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                           <Key size={16} />
                         </button>
                       )}
-                      {canDelete && (
+                      {canDelete && (isRequestorAdmin || u.role !== "admin") && (
                         <button
                           title="Hapus"
                           onClick={() => handleDelete(u.id)}
