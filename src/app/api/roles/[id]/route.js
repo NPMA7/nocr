@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { resolveAuth, enforceAdmin } from '@/lib/auth';
+import { resolveAuth, enforceAdmin, hasAccess } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -12,7 +12,9 @@ const sendError = (err, defaultStatus = 500) => {
 export async function PATCH(req, { params }) {
     try {
         const user = await resolveAuth(req);
-        enforceAdmin(user, 'settings-roles');
+        if (!hasAccess(user, 'settings-roles', 'update')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk mengubah Role'), { status: 403 });
+        }
 
         const id = (await params).id;
         const body = await req.json();
@@ -68,7 +70,9 @@ export async function PATCH(req, { params }) {
 export async function DELETE(req, { params }) {
     try {
         const user = await resolveAuth(req);
-        enforceAdmin(user, 'settings-roles');
+        if (!hasAccess(user, 'settings-roles', 'delete')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk menghapus Role'), { status: 403 });
+        }
 
         const id = (await params).id;
 

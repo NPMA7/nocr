@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { resolveAuth, enforceAdmin } from '@/lib/auth';
+import { resolveAuth, enforceAdmin, hasAccess } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -12,9 +12,9 @@ const sendError = (err, defaultStatus = 500) => {
 export async function GET(req) {
     try {
         const user = await resolveAuth(req);
-        // Only admins can manage roles, but we might want users to see roles, so maybe we just allow logged in users to read
-        // For now let's enforce admin for viewing roles list
-        enforceAdmin(user, 'settings-roles');
+        if (!hasAccess(user, 'settings-roles', 'read')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk melihat Manajemen Role'), { status: 403 });
+        }
 
         const { data, error } = await db.from('access_roles').select('*').order('created_at', { ascending: true });
         if (error) throw error;
@@ -28,7 +28,9 @@ export async function GET(req) {
 export async function POST(req) {
     try {
         const user = await resolveAuth(req);
-        enforceAdmin(user, 'settings-roles');
+        if (!hasAccess(user, 'settings-roles', 'create')) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk menambah Role'), { status: 403 });
+        }
 
         const body = await req.json();
         const { name, description, permissions } = body;

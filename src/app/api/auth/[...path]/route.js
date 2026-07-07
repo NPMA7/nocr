@@ -37,7 +37,9 @@ export async function GET(req, { params }) {
 
         if (path[0] === 'users') {
             const user = await resolveAuth(req);
-            enforceAdmin(user, 'settings-users');
+            if (!hasAccess(user, 'settings-users', 'read')) {
+                throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk melihat Pengguna'), { status: 403 });
+            }
             
             const { data, error } = await db.from('users').select('id, username, role, created_at');
             if (error) throw error;
@@ -145,7 +147,9 @@ export async function POST(req, { params }) {
 
         if (path[0] === 'users') {
             const user = await resolveAuth(req);
-            enforceAdmin(user, 'settings-users');
+            if (!hasAccess(user, 'settings-users', 'create')) {
+                throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk menambah Pengguna'), { status: 403 });
+            }
             
             const body = await req.json();
             const { username, password, role } = body;
@@ -324,7 +328,9 @@ export async function DELETE(req, { params }) {
     try {
         if (path[0] === 'users' && path[1]) {
             const user = await resolveAuth(req);
-            enforceAdmin(user, 'settings-users');
+            if (!hasAccess(user, 'settings-users', 'delete')) {
+                throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk menghapus Pengguna'), { status: 403 });
+            }
             
             const id = path[1];
             if (user.id === id) {

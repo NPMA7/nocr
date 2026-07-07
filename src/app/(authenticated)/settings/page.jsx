@@ -55,7 +55,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function UserManagement() {
+function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }) {
   const { showToast } = useAppState();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -177,67 +177,71 @@ function UserManagement() {
       <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 mb-4">
         <User size={20} className="text-blue-500" /> Manajemen Pengguna
       </h2>
-      <h3 className="text-xs font-bold text-slate-200 mb-3">
-        Buat Pengguna Baru
-      </h3>
-      {error && (
-        <div className="mb-3 text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">
-          {error}
-        </div>
-      )}
-      <form onSubmit={handleCreate} className="mb-3 flex gap-3 flex-wrap">
-        <input
-          type="text"
-          value={form.username}
-          onChange={(e) => setForm({ ...form, username: e.target.value })}
-          placeholder="Username"
-          required
-          className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg flex-1 min-w-[150px] outline-none focus:border-blue-500"
-        />
-        <div className="relative flex-1 min-w-[150px]">
-          <input
-            type={showPassword ? "text" : "password"}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="Password"
-            required
-            className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg outline-none focus:border-blue-500 w-full pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-          >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        </div>
-        <select
-          name="role"
-          value={form.role}
-          onChange={(e) => setForm({ ...form, role: e.target.value })}
-          className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg w-32 outline-none focus:border-blue-500 capitalize"
-        >
-          {availableRoles.length > 0 ? (
-            availableRoles.map((r) => (
-              <option key={r.id} value={r.name}>
-                {r.name}
-              </option>
-            ))
-          ) : (
-            <>
-              <option value="visitor">Visitor</option>
-              <option value="editor">Editor</option>
-              <option value="admin">Admin</option>
-            </>
+      {canCreate && (
+        <>
+          <h3 className="text-xs font-bold text-slate-200 mb-3">
+            Buat Pengguna Baru
+          </h3>
+          {error && (
+            <div className="mb-3 text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">
+              {error}
+            </div>
           )}
-        </select>
-        <button
-          type="submit"
-          className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center"
-        >
-          <UserPlus size={16} className="mr-2" /> Tambah
-        </button>
-      </form>
+          <form onSubmit={handleCreate} className="mb-3 flex gap-3 flex-wrap">
+            <input
+              type="text"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              placeholder="Username"
+              required
+              className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg flex-1 min-w-[150px] outline-none focus:border-blue-500"
+            />
+            <div className="relative flex-1 min-w-[150px]">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Password"
+                required
+                className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg outline-none focus:border-blue-500 w-full pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <select
+              name="role"
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-slate-100 rounded-lg w-32 outline-none focus:border-blue-500 capitalize"
+            >
+              {availableRoles.length > 0 ? (
+                availableRoles.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="visitor">Visitor</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </>
+              )}
+            </select>
+            <button
+              type="submit"
+              className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center"
+            >
+              <UserPlus size={16} className="mr-2" /> Tambah
+            </button>
+          </form>
+        </>
+      )}
       {/* List */}
       <div className="mb-3 overflow-hidden rounded-lg border border-slate-700">
         <table className="w-full text-left">
@@ -270,13 +274,14 @@ function UserManagement() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <select
                         value={editRole}
+                        disabled={!canUpdate}
                         onChange={(e) =>
                           setRoleEdits((prev) => ({
                             ...prev,
                             [u.id]: e.target.value,
                           }))
                         }
-                        className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize"
+                        className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize disabled:opacity-50"
                       >
                         {availableRoles.length > 0 ? (
                           availableRoles.map((r) => (
@@ -307,20 +312,24 @@ function UserManagement() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end items-center gap-2">
-                      <button
-                        title="Ubah Password"
-                        onClick={() => setSelectedUserForPassword(u)}
-                        className="text-slate-500 hover:text-blue-400 p-1.5 transition cursor-pointer"
-                      >
-                        <Key size={16} />
-                      </button>
-                      <button
-                        title="Hapus"
-                        onClick={() => handleDelete(u.id)}
-                        className="text-slate-500 hover:text-red-400 p-1.5 transition cursor-pointer"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {canUpdate && (
+                        <button
+                          title="Ubah Password"
+                          onClick={() => setSelectedUserForPassword(u)}
+                          className="text-slate-500 hover:text-blue-400 p-1.5 transition cursor-pointer"
+                        >
+                          <Key size={16} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          title="Hapus"
+                          onClick={() => handleDelete(u.id)}
+                          className="text-slate-500 hover:text-red-400 p-1.5 transition cursor-pointer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -789,7 +798,13 @@ function Settings() {
       healthUpdate: hasAccess(userData, "settings-health", "update"),
       waRead: hasAccess(userData, "settings-wa", "read"),
       usersRead: hasAccess(userData, "settings-users", "read"),
+      usersCreate: hasAccess(userData, "settings-users", "create"),
+      usersUpdate: hasAccess(userData, "settings-users", "update"),
+      usersDelete: hasAccess(userData, "settings-users", "delete"),
       rolesRead: hasAccess(userData, "settings-roles", "read"),
+      rolesCreate: hasAccess(userData, "settings-roles", "create"),
+      rolesUpdate: hasAccess(userData, "settings-roles", "update"),
+      rolesDelete: hasAccess(userData, "settings-roles", "delete"),
       passwordUpdate: hasAccess(userData, "settings-password", "update"),
     });
   };
@@ -1347,10 +1362,21 @@ function Settings() {
             </div>
           )}
 
-          {activeTab === "users" && perms.usersRead && <UserManagement />}
+          {activeTab === "users" && perms.usersRead && (
+            <UserManagement
+              canCreate={perms.usersCreate}
+              canUpdate={perms.usersUpdate}
+              canDelete={perms.usersDelete}
+            />
+          )}
 
           {activeTab === "roles" && perms.rolesRead && (
-            <RoleSettings showToast={showToast} />
+            <RoleSettings
+              showToast={showToast}
+              canCreate={perms.rolesCreate}
+              canUpdate={perms.rolesUpdate}
+              canDelete={perms.rolesDelete}
+            />
           )}
 
           {activeTab === "password" && (

@@ -3,7 +3,7 @@ import axios from "axios";
 import { Trash2, Pencil, Shield, Plus, X, Save } from "lucide-react";
 import { MENUS, ACTIONS } from "@/lib/roles";
 
-export default function RoleSettings({ showToast }) {
+export default function RoleSettings({ showToast, canCreate = true, canUpdate = true, canDelete = true }) {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -137,12 +137,14 @@ export default function RoleSettings({ showToast }) {
             Atur hak akses secara spesifik untuk setiap kelompok pengguna
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200"
-        >
-          <Plus size={18} /> Tambah Role
-        </button>
+        {canCreate && (
+          <button
+            onClick={openCreate}
+            className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200"
+          >
+            <Plus size={18} /> Tambah Role
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto relative z-10">
@@ -225,22 +227,26 @@ export default function RoleSettings({ showToast }) {
                     </td>
                     <td className="py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEdit(r)}
-                          disabled={r.name === "admin"}
-                          className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${r.name === "admin" ? "text-slate-600 cursor-not-allowed" : "bg-slate-700/50 text-slate-300 hover:text-blue-400 hover:bg-slate-700"}`}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => deleteRole(r)}
-                          disabled={["admin", "editor", "visitor"].includes(
-                            r.name,
-                          )}
-                          className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${["admin", "editor", "visitor"].includes(r.name) ? "text-slate-600 cursor-not-allowed" : "bg-slate-700/50 text-slate-300 hover:text-red-400 hover:bg-slate-700"}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {canUpdate && (
+                          <button
+                            onClick={() => openEdit(r)}
+                            disabled={r.name === "admin"}
+                            className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${r.name === "admin" ? "text-slate-600 cursor-not-allowed" : "bg-slate-700/50 text-slate-300 hover:text-blue-400 hover:bg-slate-700"}`}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => deleteRole(r)}
+                            disabled={["admin", "editor", "visitor"].includes(
+                              r.name,
+                            )}
+                            className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${["admin", "editor", "visitor"].includes(r.name) ? "text-slate-600 cursor-not-allowed" : "bg-slate-700/50 text-slate-300 hover:text-red-400 hover:bg-slate-700"}`}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
