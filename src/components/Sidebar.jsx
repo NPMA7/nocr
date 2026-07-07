@@ -46,7 +46,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
   const getLinkClass = (href) => {
     const isActive =
       pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-    return `flex items-center gap-3 px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition duration-200 font-medium ${
+    return `flex items-center gap-3 px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition duration-200 font-medium text-sm ${
       isActive ? "bg-blue-600 text-white hover:bg-blue-700" : ""
     }`;
   };
@@ -55,14 +55,14 @@ export default function Sidebar({ isConnected, onNavigate }) {
 
   return (
     <aside className="w-64 bg-slate-800 border-r border-slate-700/50 flex flex-col z-10 h-full">
-      <div className="p-6 text-xl font-bold text-blue-500 flex flex-col gap-1 border-b border-slate-700/50">
+      <div className="p-6 text-lg font-bold text-blue-500 flex flex-col gap-1 border-b border-slate-700/50">
         <div className="flex items-center gap-2">
           <img
             src="/logo.png"
             alt="NOCR Logo"
             className="w-10 h-10 border-2 border-slate-600 rounded-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
           />
-          <h1 className="text-xl font-bold text-blue-500">NOCR</h1>
+          <h1 className="text-lg font-bold text-blue-500">NOCR</h1>
           <div className="flex flex-col justify-center items-center">
             <span className="text-[10px] text-slate-400 font-normal">
               by: npma
@@ -78,7 +78,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
       </div>
 
       <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto custom-scrollbar">
-        {hasAccess(currentUser, 'dashboard', 'read') && (
+        {hasAccess(currentUser, "dashboard", "read") && (
           <Link
             href="/dashboard"
             onClick={onNavigate}
@@ -88,8 +88,8 @@ export default function Sidebar({ isConnected, onNavigate }) {
             <PieChart size={18} /> Dashboard
           </Link>
         )}
-        
-        {hasAccess(currentUser, 'topology', 'read') && (
+
+        {hasAccess(currentUser, "topology", "read") && (
           <Link
             href="/topology"
             onClick={onNavigate}
@@ -99,15 +99,18 @@ export default function Sidebar({ isConnected, onNavigate }) {
             <GitGraph size={18} /> Peta Topologi
           </Link>
         )}
-        
-        {['monitoring-l2tp', 'monitoring-pppoe'].some(k => hasAccess(currentUser, k, 'read')) && (
+
+        {["monitoring-l2tp", "monitoring-pppoe"].some((k) =>
+          hasAccess(currentUser, k, "read"),
+        ) && (
           <div className="flex flex-col gap-0.5">
             <Link
               href="/monitor-l2tp"
               onClick={onNavigate}
               scroll={false}
-              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium ${
-                pathname.startsWith("/monitor-l2tp") || pathname.startsWith("/monitor-pppoe")
+              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm ${
+                pathname.startsWith("/monitor-l2tp") ||
+                pathname.startsWith("/monitor-pppoe")
                   ? "bg-slate-800/50 text-white"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
@@ -115,12 +118,16 @@ export default function Sidebar({ isConnected, onNavigate }) {
               <div className="flex items-center gap-3">
                 <Monitor size={18} /> Monitoring
               </div>
-              <ChevronDown size={16} className={`transition-transform ${pathname.startsWith("/monitor-l2tp") || pathname.startsWith("/monitor-pppoe") ? "rotate-180" : ""}`} />
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${pathname.startsWith("/monitor-l2tp") || pathname.startsWith("/monitor-pppoe") ? "rotate-180" : ""}`}
+              />
             </Link>
 
-            {(pathname.startsWith("/monitor-l2tp") || pathname.startsWith("/monitor-pppoe")) && (
-              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
-                {hasAccess(currentUser, 'monitoring-l2tp', 'read') && (
+            {(pathname.startsWith("/monitor-l2tp") ||
+              pathname.startsWith("/monitor-pppoe")) && (
+              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2 ">
+                {hasAccess(currentUser, "monitoring-l2tp", "read") && (
                   <Link
                     href="/monitor-l2tp"
                     onClick={onNavigate}
@@ -134,7 +141,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <Monitor size={14} /> Monitor L2TP
                   </Link>
                 )}
-                {hasAccess(currentUser, 'monitoring-pppoe', 'read') && (
+                {hasAccess(currentUser, "monitoring-pppoe", "read") && (
                   <Link
                     href="/monitor-pppoe"
                     onClick={onNavigate}
@@ -153,14 +160,18 @@ export default function Sidebar({ isConnected, onNavigate }) {
           </div>
         )}
 
-        {['devices-ruijie', 'devices-mikrotik', 'devices-hsgq'].some(k => hasAccess(currentUser, k, 'read')) && (
+        {["devices-ruijie", "devices-mikrotik", "devices-hsgq"].some((k) =>
+          hasAccess(currentUser, k, "read"),
+        ) && (
           <div className="flex flex-col gap-0.5">
             <Link
               href="/ruijie"
               onClick={onNavigate}
               scroll={false}
-              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium ${
-                pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt")
+              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm ${
+                pathname.startsWith("/devices") ||
+                pathname.startsWith("/ruijie") ||
+                pathname.startsWith("/hsgq-olt")
                   ? "bg-slate-800/50 text-white"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
@@ -168,12 +179,17 @@ export default function Sidebar({ isConnected, onNavigate }) {
               <div className="flex items-center gap-3">
                 <Server size={18} /> Perangkat Jaringan
               </div>
-              <ChevronDown size={16} className={`transition-transform ${pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt") ? "rotate-180" : ""}`} />
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt") ? "rotate-180" : ""}`}
+              />
             </Link>
 
-            {(pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt")) && (
+            {(pathname.startsWith("/devices") ||
+              pathname.startsWith("/ruijie") ||
+              pathname.startsWith("/hsgq-olt")) && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
-                {hasAccess(currentUser, 'devices-ruijie', 'read') && (
+                {hasAccess(currentUser, "devices-ruijie", "read") && (
                   <Link
                     href="/ruijie"
                     onClick={onNavigate}
@@ -187,7 +203,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <Wifi size={14} /> Ruijie AP
                   </Link>
                 )}
-                {hasAccess(currentUser, 'devices-mikrotik', 'read') && (
+                {hasAccess(currentUser, "devices-mikrotik", "read") && (
                   <Link
                     href="/devices"
                     onClick={onNavigate}
@@ -201,7 +217,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <Server size={14} /> Mikrotik RO
                   </Link>
                 )}
-                {hasAccess(currentUser, 'devices-hsgq', 'read') && (
+                {hasAccess(currentUser, "devices-hsgq", "read") && (
                   <Link
                     href="/hsgq-olt"
                     onClick={onNavigate}
@@ -220,7 +236,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
           </div>
         )}
 
-        {hasAccess(currentUser, 'sites', 'read') && (
+        {hasAccess(currentUser, "sites", "read") && (
           <Link
             href="/sites"
             onClick={onNavigate}
@@ -231,7 +247,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
           </Link>
         )}
 
-        {hasAccess(currentUser, 'laporan-harian', 'read') && (
+        {hasAccess(currentUser, "laporan-harian", "read") && (
           <Link
             href="/laporan-harian"
             onClick={onNavigate}
@@ -242,7 +258,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
           </Link>
         )}
 
-        {hasAccess(currentUser, 'chat', 'read') && (
+        {hasAccess(currentUser, "chat", "read") && (
           <Link
             href="/live-chat"
             onClick={onNavigate}
@@ -252,8 +268,16 @@ export default function Sidebar({ isConnected, onNavigate }) {
             <MessageCircle size={18} /> Live Chat Omni
           </Link>
         )}
-        
-        {['settings-mikrotik', 'settings-vpn', 'settings-health', 'settings-wa', 'settings-users', 'settings-roles', 'settings-password'].some(k => hasAccess(currentUser, k, 'read')) && (
+
+        {[
+          "settings-mikrotik",
+          "settings-vpn",
+          "settings-health",
+          "settings-wa",
+          "settings-users",
+          "settings-roles",
+          "settings-password",
+        ].some((k) => hasAccess(currentUser, k, "read")) && (
           <div className="flex flex-col gap-0.5">
             <Link
               href="/settings?tab=core"
@@ -264,12 +288,15 @@ export default function Sidebar({ isConnected, onNavigate }) {
               <div className="flex items-center gap-3">
                 <Settings size={18} /> Pengaturan
               </div>
-              <ChevronDown size={16} className={`transition-transform ${pathname.startsWith("/settings") ? "rotate-180" : ""}`} />
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${pathname.startsWith("/settings") ? "rotate-180" : ""}`}
+              />
             </Link>
 
             {pathname.startsWith("/settings") && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
-                {hasAccess(currentUser, 'settings-mikrotik', 'read') && (
+                {hasAccess(currentUser, "settings-mikrotik", "read") && (
                   <Link
                     href="/settings?tab=core"
                     onClick={onNavigate}
@@ -283,7 +310,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <Server size={14} /> MikroTik Gateway
                   </Link>
                 )}
-                {hasAccess(currentUser, 'settings-vpn', 'read') && (
+                {hasAccess(currentUser, "settings-vpn", "read") && (
                   <Link
                     href="/settings?tab=vpn"
                     onClick={onNavigate}
@@ -298,7 +325,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                   </Link>
                 )}
 
-                {hasAccess(currentUser, 'settings-health', 'read') && (
+                {hasAccess(currentUser, "settings-health", "read") && (
                   <Link
                     href="/settings?tab=health"
                     onClick={onNavigate}
@@ -312,7 +339,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <Monitor size={14} /> Kesehatan Sistem & DB
                   </Link>
                 )}
-                {hasAccess(currentUser, 'settings-wa', 'read') && (
+                {hasAccess(currentUser, "settings-wa", "read") && (
                   <Link
                     href="/settings?tab=whatsapp"
                     onClick={onNavigate}
@@ -326,7 +353,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <MessageCircle size={14} /> WhatsApp Gateway
                   </Link>
                 )}
-                {hasAccess(currentUser, 'settings-users', 'read') && (
+                {hasAccess(currentUser, "settings-users", "read") && (
                   <Link
                     href="/settings?tab=users"
                     onClick={onNavigate}
@@ -340,7 +367,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <User size={14} /> Manajemen Pengguna
                   </Link>
                 )}
-                {hasAccess(currentUser, 'settings-roles', 'read') && (
+                {hasAccess(currentUser, "settings-roles", "read") && (
                   <Link
                     href="/settings?tab=roles"
                     onClick={onNavigate}
@@ -354,7 +381,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     <Shield size={14} /> Manajemen Role
                   </Link>
                 )}
-                {hasAccess(currentUser, 'settings-password', 'read') && (
+                {hasAccess(currentUser, "settings-password", "read") && (
                   <Link
                     href="/settings?tab=password"
                     onClick={onNavigate}

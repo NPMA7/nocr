@@ -1,20 +1,34 @@
-'use client';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Router, ArrowUpRight, AlertTriangle, Users, Map as MapIcon, Cpu, Clock, HardDrive, Server, CheckCircle2, AlertCircle, Info, Settings } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
-import { fetchTopologyCached } from '@/lib/globalCache';
-import { API_URL, socket, useAppState } from '@/App';
-import { getStoredUser, hasAccess } from '@/lib/roles';
-import dynamic from 'next/dynamic';
+"use client";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  Router,
+  ArrowUpRight,
+  AlertTriangle,
+  Users,
+  Map as MapIcon,
+  Cpu,
+  Clock,
+  HardDrive,
+  Server,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  Settings,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { fetchTopologyCached } from "@/lib/globalCache";
+import { API_URL, socket, useAppState } from "@/App";
+import { getStoredUser, hasAccess } from "@/lib/roles";
+import dynamic from "next/dynamic";
 
-const DashboardMap = dynamic(() => import('@/components/DashboardMap'), {
+const DashboardMap = dynamic(() => import("@/components/DashboardMap"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-400">
       Memuat Peta...
     </div>
-  )
+  ),
 });
 
 const POLL_INTERVAL_MS = 300000; // Ditingkatkan ke 5m (Realtime ditangani oleh WebSockets)
@@ -29,8 +43,8 @@ export default function Dashboard() {
   const [topologyNodes, setTopologyNodes] = useState([]);
   const [mappings, setMappings] = useState([]);
   const [ruijieDevices, setRuijieDevices] = useState([]);
-  const [mapTheme, setMapTheme] = useState('colored');
-  const [networkMode, setNetworkMode] = useState('pppoe');
+  const [mapTheme, setMapTheme] = useState("colored");
+  const [networkMode, setNetworkMode] = useState("pppoe");
   const [dbLogs, setDbLogs] = useState([]); // State penampung log aktivitas dari database
   const mountedRef = useRef(true);
 
@@ -38,35 +52,47 @@ export default function Dashboard() {
 
   useEffect(() => {
     const user = getStoredUser();
-    if (user && user.role && !hasAccess(user, 'dashboard', 'read')) {
+    if (user && user.role && !hasAccess(user, "dashboard", "read")) {
       setHasReadAccess(false);
     }
   }, []);
 
   const getLogStyle = (msg) => {
-    if (!msg) return { bgColor: 'bg-blue-950/10 border-blue-500/20 text-slate-300', icon: 'info' };
+    if (!msg)
+      return {
+        bgColor: "bg-blue-950/10 border-blue-500/20 text-slate-300",
+        icon: "info",
+      };
     const lowercaseMsg = msg.toLowerCase();
-    if (lowercaseMsg.includes('berhasil') || lowercaseMsg.includes('online')) {
+    if (lowercaseMsg.includes("berhasil") || lowercaseMsg.includes("online")) {
       return {
-        bgColor: 'bg-emerald-950/10 border-emerald-500/20 text-slate-300',
-        icon: 'check'
+        bgColor: "bg-emerald-950/10 border-emerald-500/20 text-slate-300",
+        icon: "check",
       };
     }
-    if (lowercaseMsg.includes('gagal') || lowercaseMsg.includes('offline') || lowercaseMsg.includes('dihapus')) {
+    if (
+      lowercaseMsg.includes("gagal") ||
+      lowercaseMsg.includes("offline") ||
+      lowercaseMsg.includes("dihapus")
+    ) {
       return {
-        bgColor: 'bg-rose-950/10 border-rose-500/20 text-slate-300',
-        icon: 'alert'
+        bgColor: "bg-rose-950/10 border-rose-500/20 text-slate-300",
+        icon: "alert",
       };
     }
-    if (lowercaseMsg.includes('simpan') || lowercaseMsg.includes('diperbarui') || lowercaseMsg.includes('ditambahkan')) {
+    if (
+      lowercaseMsg.includes("simpan") ||
+      lowercaseMsg.includes("diperbarui") ||
+      lowercaseMsg.includes("ditambahkan")
+    ) {
       return {
-        bgColor: 'bg-amber-950/10 border-amber-500/20 text-slate-300',
-        icon: 'settings'
+        bgColor: "bg-amber-950/10 border-amber-500/20 text-slate-300",
+        icon: "settings",
       };
     }
     return {
-      bgColor: 'bg-blue-950/10 border-blue-500/20 text-slate-300',
-      icon: 'info'
+      bgColor: "bg-blue-950/10 border-blue-500/20 text-slate-300",
+      icon: "info",
     };
   };
 
@@ -75,7 +101,7 @@ export default function Dashboard() {
       const res = await axios.get(`${API_URL}/devices/core/status?max_age=12`);
       if (mountedRef.current) {
         setCoreStatus(res.data);
-        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+        setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
       }
     } catch {
       if (mountedRef.current) setCoreStatus(null);
@@ -84,25 +110,30 @@ export default function Dashboard() {
 
   const fetchInterfaces = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/devices/core/interfaces?max_age=12`);
+      const res = await axios.get(
+        `${API_URL}/devices/core/interfaces?max_age=12`,
+      );
       if (mountedRef.current) setCoreInterfaces(res.data || []);
     } catch {
       if (mountedRef.current) setCoreInterfaces([]);
     }
   }, []);
 
-  const fetchTopology = useCallback(async (force = false) => {
-    try {
-      const data = await fetchTopologyCached(force);
-      if (mountedRef.current) {
-        setEdges(data.edges || []);
-        setTopologyNodes(data.nodes || []);
-        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+  const fetchTopology = useCallback(
+    async (force = false) => {
+      try {
+        const data = await fetchTopologyCached(force);
+        if (mountedRef.current) {
+          setEdges(data.edges || []);
+          setTopologyNodes(data.nodes || []);
+          setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
+        }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [setLastSyncTime]);
+    },
+    [setLastSyncTime],
+  );
 
   // Mengambil data log langsung dari database melalui API backend
   const fetchLogs = useCallback(async () => {
@@ -116,7 +147,7 @@ export default function Dashboard() {
 
   const fetchMappings = useCallback(async () => {
     try {
-      const res = await axios.get('/api/mappings');
+      const res = await axios.get("/api/mappings");
       if (mountedRef.current) setMappings(res.data || []);
     } catch (e) {
       console.error(e);
@@ -125,7 +156,7 @@ export default function Dashboard() {
 
   const fetchRuijie = useCallback(async () => {
     try {
-      const res = await axios.get('/api/ruijie');
+      const res = await axios.get("/api/ruijie");
       if (mountedRef.current) setRuijieDevices(res.data || []);
     } catch (e) {
       console.error("Gagal memuat data Ruijie", e);
@@ -133,20 +164,35 @@ export default function Dashboard() {
   }, []);
 
   const fetchAllDashboardData = useCallback(async () => {
-    // Jalankan secara sekuensial (berurutan) khusus untuk MikroTik untuk menghindari 
+    // Jalankan secara sekuensial (berurutan) khusus untuk MikroTik untuk menghindari
     // bentrokan koneksi / race condition di API RouterOS yang membuat data hilang timbul
     await fetchCoreStatus();
     await fetchInterfaces();
-    
-    // Sisanya bisa paralel karena dari Supabase / backend lain
-    await Promise.all([fetchTopology(), fetchLogs(), fetchMappings(), fetchRuijie()]);
-  }, [fetchCoreStatus, fetchInterfaces, fetchTopology, fetchLogs, fetchMappings, fetchRuijie]);
 
-  const applyTopologyPayload = useCallback((nodes, edgesPayload) => {
-    if (nodes) setTopologyNodes(nodes);
-    if (edgesPayload) setEdges(edgesPayload);
-    setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
-  }, [setLastSyncTime]);
+    // Sisanya bisa paralel karena dari Supabase / backend lain
+    await Promise.all([
+      fetchTopology(),
+      fetchLogs(),
+      fetchMappings(),
+      fetchRuijie(),
+    ]);
+  }, [
+    fetchCoreStatus,
+    fetchInterfaces,
+    fetchTopology,
+    fetchLogs,
+    fetchMappings,
+    fetchRuijie,
+  ]);
+
+  const applyTopologyPayload = useCallback(
+    (nodes, edgesPayload) => {
+      if (nodes) setTopologyNodes(nodes);
+      if (edgesPayload) setEdges(edgesPayload);
+      setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
+    },
+    [setLastSyncTime],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -157,25 +203,28 @@ export default function Dashboard() {
     const handleCoreUpdate = (data) => {
       if (data) {
         setCoreStatus(data);
-        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+        setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
       }
     };
 
     const handleTopologyUpdated = (payload) => {
-      if (payload?.nodes) applyTopologyPayload(payload.nodes, payload.edges || []);
+      if (payload?.nodes)
+        applyTopologyPayload(payload.nodes, payload.edges || []);
     };
 
     const handleTopologyRefresh = () => fetchTopology(true);
     const handleInterfaceUpdate = () => fetchInterfaces();
     const handlePppoeUpdate = () => fetchCoreStatus();
-    
+
     // Refresh log aktivitas otomatis ketika ada broadcast event log baru dari socket
     const handleNewActivityLog = () => fetchLogs();
 
     const handleDeviceStatus = ({ id, status }) => {
       if (!id || !status) return;
       setTopologyNodes((prev) =>
-        prev.map((n) => (n.id === id || n.device_id === id ? { ...n, status } : n))
+        prev.map((n) =>
+          n.id === id || n.device_id === id ? { ...n, status } : n,
+        ),
       );
     };
 
@@ -188,60 +237,77 @@ export default function Dashboard() {
     const handleMappingsUpdated = () => fetchMappings();
 
     if (socket) {
-      socket.on('dashboard_core_update', handleCoreUpdate);
-      socket.on('topology_updated', handleTopologyUpdated);
-      socket.on('topology_refresh', handleTopologyRefresh);
-      socket.on('interfaces_updated', handleInterfaceUpdate);
-      socket.on('pppoe_updated', handlePppoeUpdate);
-      socket.on('device-status', handleDeviceStatus);
-      socket.on('mikrotik_full_update', handleMikrotikFull);
-      socket.on('activity_log', handleNewActivityLog);
-      socket.on('mappings_updated', handleMappingsUpdated);
+      socket.on("dashboard_core_update", handleCoreUpdate);
+      socket.on("topology_updated", handleTopologyUpdated);
+      socket.on("topology_refresh", handleTopologyRefresh);
+      socket.on("interfaces_updated", handleInterfaceUpdate);
+      socket.on("pppoe_updated", handlePppoeUpdate);
+      socket.on("device-status", handleDeviceStatus);
+      socket.on("mikrotik_full_update", handleMikrotikFull);
+      socket.on("activity_log", handleNewActivityLog);
+      socket.on("mappings_updated", handleMappingsUpdated);
     }
 
     return () => {
       clearInterval(pollId);
       mountedRef.current = false;
       if (socket) {
-        socket.off('dashboard_core_update', handleCoreUpdate);
-        socket.off('topology_updated', handleTopologyUpdated);
-        socket.off('topology_refresh', handleTopologyRefresh);
-        socket.off('interfaces_updated', handleInterfaceUpdate);
-        socket.off('pppoe_updated', handlePppoeUpdate);
-        socket.off('device-status', handleDeviceStatus);
-        socket.off('mikrotik_full_update', handleMikrotikFull);
-        socket.off('activity_log', handleNewActivityLog);
-        socket.off('mappings_updated', handleMappingsUpdated);
+        socket.off("dashboard_core_update", handleCoreUpdate);
+        socket.off("topology_updated", handleTopologyUpdated);
+        socket.off("topology_refresh", handleTopologyRefresh);
+        socket.off("interfaces_updated", handleInterfaceUpdate);
+        socket.off("pppoe_updated", handlePppoeUpdate);
+        socket.off("device-status", handleDeviceStatus);
+        socket.off("mikrotik_full_update", handleMikrotikFull);
+        socket.off("activity_log", handleNewActivityLog);
+        socket.off("mappings_updated", handleMappingsUpdated);
       }
     };
-  }, [fetchAllDashboardData, applyTopologyPayload, fetchTopology, fetchInterfaces, fetchCoreStatus, fetchLogs, fetchMappings]);
+  }, [
+    fetchAllDashboardData,
+    applyTopologyPayload,
+    fetchTopology,
+    fetchInterfaces,
+    fetchCoreStatus,
+    fetchLogs,
+    fetchMappings,
+  ]);
 
   const totalNodes = topologyNodes.length;
-  const oltCount = topologyNodes.filter((n) => n.type === 'olt').length;
-  const odcCount = topologyNodes.filter((n) => n.type === 'odc').length;
-  const odpCount = topologyNodes.filter((n) => n.type === 'odp').length;
+  const oltCount = topologyNodes.filter((n) => n.type === "olt").length;
+  const odcCount = topologyNodes.filter((n) => n.type === "odc").length;
+  const odpCount = topologyNodes.filter((n) => n.type === "odp").length;
   const infrasCount = oltCount + odcCount + odpCount;
-  const clientCount = topologyNodes.filter((n) => n.type === 'client').length;
+  const clientCount = topologyNodes.filter((n) => n.type === "client").length;
 
   const totalL2tpRuijie = ruijieDevices.length;
-  const offlineL2tpRuijie = ruijieDevices.filter(d => d.status === 'OFF' && d.connection_type === 'L2TP').length;
-  const offlinePppoeRuijie = ruijieDevices.filter(d => d.status === 'OFF' && d.connection_type === 'PPPOE').length;
-  const activeRuijieClients = ruijieDevices.reduce((sum, d) => sum + (Number(d.clients) || 0), 0);
+  const offlineL2tpRuijie = ruijieDevices.filter(
+    (d) => d.status === "OFF" && d.connection_type === "L2TP",
+  ).length;
+  const offlinePppoeRuijie = ruijieDevices.filter(
+    (d) => d.status === "OFF" && d.connection_type === "PPPOE",
+  ).length;
+  const activeRuijieClients = ruijieDevices.reduce(
+    (sum, d) => sum + (Number(d.clients) || 0),
+    0,
+  );
 
   const offlineCount = useMemo(() => {
     return topologyNodes.filter((node) => {
-      if (node.type?.toLowerCase() === 'core') return false;
+      if (node.type?.toLowerCase() === "core") return false;
 
       let isDown = false;
       let isDisabled = false;
 
       if (node.linked_interface) {
         const matchedIface = coreInterfaces.find(
-          (i) => i.name && i.name.toLowerCase() === node.linked_interface.toLowerCase()
+          (i) =>
+            i.name &&
+            i.name.toLowerCase() === node.linked_interface.toLowerCase(),
         );
         if (matchedIface) {
-          if (matchedIface.disabled === 'true') isDisabled = true;
-          else if (matchedIface.running !== 'true') isDown = true;
+          if (matchedIface.disabled === "true") isDisabled = true;
+          else if (matchedIface.running !== "true") isDown = true;
         }
       } else {
         const connectedEdges = edges.filter(
@@ -249,14 +315,14 @@ export default function Dashboard() {
             e.from_node === node.id ||
             e.to_node === node.id ||
             e.from === node.id ||
-            e.to === node.id
+            e.to === node.id,
         );
         if (connectedEdges.length === 0) isDisabled = true;
       }
 
       if (isDisabled) return false;
       if (isDown) return true;
-      if (node.status === 'offline') return true;
+      if (node.status === "offline") return true;
       return false;
     }).length;
   }, [topologyNodes, edges, coreInterfaces]);
@@ -274,19 +340,21 @@ export default function Dashboard() {
     <div className="h-full min-h-0 flex flex-col gap-3 md:gap-4 overflow-y-auto lg:overflow-hidden">
       <div className="flex-shrink-0 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Dashboard Utama</h1>
-          <p className="text-sm text-slate-400">Ringkasan status jaringan & resource MikroTik Pusat</p>
+          <h1 className="text-xl font-bold text-slate-100">Dashboard Utama</h1>
+          <p className="text-xs text-slate-400">
+            Ringkasan status jaringan & resource MikroTik Pusat
+          </p>
         </div>
         <span className="flex items-center gap-1.5 text-[10px] font-semibold bg-slate-800/80 border border-slate-700/50 px-2.5 py-1 rounded-full select-none">
           <span
             className={`w-1.5 h-1.5 rounded-full ${
               isConnected
-                ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse'
-                : 'bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]'
+                ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse"
+                : "bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"
             }`}
           />
           <span className="text-slate-400 uppercase tracking-wider">
-            {isConnected ? 'Live' : 'Terputus'}
+            {isConnected ? "Live" : "Terputus"}
           </span>
         </span>
       </div>
@@ -295,30 +363,46 @@ export default function Dashboard() {
       <div className="flex-shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
           <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <Cpu size={13} className="text-blue-400" /> <span className="text-[11px] font-semibold uppercase">CPU Load</span>
+            <Cpu size={13} className="text-blue-400" />{" "}
+            <span className="text-[11px] font-semibold uppercase">
+              CPU Load
+            </span>
           </div>
-          <span className="text-lg font-bold text-slate-100">{coreStatus ? `${coreStatus.cpu}%` : '--'}</span>
-        </div>
-        <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
-          <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <HardDrive size={13} className="text-emerald-400" /> <span className="text-[11px] font-semibold uppercase">Memory Free</span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {coreStatus ? `${(coreStatus.free_memory / 1024 / 1024).toFixed(1)} MB` : '--'}
+          <span className="text-base font-bold text-slate-100">
+            {coreStatus ? `${coreStatus.cpu}%` : "--"}
           </span>
         </div>
         <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
           <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <Clock size={13} className="text-orange-400" /> <span className="text-[11px] font-semibold uppercase">Uptime</span>
+            <HardDrive size={13} className="text-emerald-400" />{" "}
+            <span className="text-[11px] font-semibold uppercase">
+              Memory Free
+            </span>
           </div>
-          <span className="text-lg font-bold text-slate-100">{coreStatus ? coreStatus.uptime : '--'}</span>
+          <span className="text-base font-bold text-slate-100">
+            {coreStatus
+              ? `${(coreStatus.free_memory / 1024 / 1024).toFixed(1)} MB`
+              : "--"}
+          </span>
         </div>
         <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
           <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <Server size={13} className="text-purple-400" /> <span className="text-[11px] font-semibold uppercase">Versi RouterOS</span>
+            <Clock size={13} className="text-orange-400" />{" "}
+            <span className="text-[11px] font-semibold uppercase">Uptime</span>
           </div>
           <span className="text-base font-bold text-slate-100">
-            {coreStatus ? `${coreStatus.board} (v${coreStatus.version})` : '--'}
+            {coreStatus ? coreStatus.uptime : "--"}
+          </span>
+        </div>
+        <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
+          <div className="flex items-center gap-2 text-slate-400 mb-1.5">
+            <Server size={13} className="text-purple-400" />{" "}
+            <span className="text-[11px] font-semibold uppercase">
+              Versi RouterOS
+            </span>
+          </div>
+          <span className="text-sm font-bold text-slate-100">
+            {coreStatus ? `${coreStatus.board} (v${coreStatus.version})` : "--"}
           </span>
         </div>
       </div>
@@ -326,74 +410,111 @@ export default function Dashboard() {
       <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 md:gap-3">
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
           <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Router size={14} className="text-blue-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Interfaces</span>
+            <Router size={14} className="text-blue-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Total Interfaces
+            </span>
           </div>
-          <span className="text-xl font-bold text-slate-100">{totalNodes}</span>
+          <span className="text-lg font-bold text-slate-100">{totalNodes}</span>
         </div>
 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
           <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Users size={14} className="text-amber-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Node Client Terpasang</span>
+            <Users size={14} className="text-amber-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Node Client Terpasang
+            </span>
           </div>
-          <span className="text-xl font-bold text-slate-100">{clientCount}</span>
+          <span className="text-lg font-bold text-slate-100">
+            {clientCount}
+          </span>
         </div>
 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
           <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Server size={14} className="text-purple-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Infrastruktur (OLT,ODC,ODP)</span>
+            <Server size={14} className="text-purple-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Infrastruktur (OLT,ODC,ODP)
+            </span>
           </div>
-          <span className="text-xl font-bold text-slate-100">{infrasCount}</span>
-        </div>
-
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <AlertTriangle size={14} className="text-red-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Offline (Mikrotik)</span>
-          </div>
-          <span className="text-xl font-bold text-slate-100">{offlineCount}</span>
-        </div>
-            
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Router size={14} className="text-cyan-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Interface (Ruijie)</span>
-          </div>
-          <span className="text-xl font-bold text-slate-100">{totalL2tpRuijie}</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <ArrowUpRight size={14} className="text-orange-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Client Aktif (Ruijie)</span>
-          </div>
-          <span className="text-xl font-bold text-slate-100">{activeRuijieClients}</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <AlertTriangle size={14} className="text-red-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Offline L2TP (Ruijie)</span>
-          </div>
-          <span className="text-xl font-bold text-slate-100">{offlineL2tpRuijie}</span>
+          <span className="text-lg font-bold text-slate-100">
+            {infrasCount}
+          </span>
         </div>
 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
           <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <AlertTriangle size={14} className="text-red-500" /> <span className="text-[10px] font-bold uppercase tracking-wider">Total Offline PPPoE (Ruijie)</span>
+            <AlertTriangle size={14} className="text-red-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Total Offline (Mikrotik)
+            </span>
           </div>
-          <span className="text-xl font-bold text-slate-100">{offlinePppoeRuijie}</span>
+          <span className="text-lg font-bold text-slate-100">
+            {offlineCount}
+          </span>
         </div>
 
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <Router size={14} className="text-cyan-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Total Interface (Ruijie)
+            </span>
+          </div>
+          <span className="text-lg font-bold text-slate-100">
+            {totalL2tpRuijie}
+          </span>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <ArrowUpRight size={14} className="text-orange-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Client Aktif (Ruijie)
+            </span>
+          </div>
+          <span className="text-lg font-bold text-slate-100">
+            {activeRuijieClients}
+          </span>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <AlertTriangle size={14} className="text-red-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Total Offline L2TP (Ruijie)
+            </span>
+          </div>
+          <span className="text-lg font-bold text-slate-100">
+            {offlineL2tpRuijie}
+          </span>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
+          <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <AlertTriangle size={14} className="text-red-500" />{" "}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Total Offline PPPoE (Ruijie)
+            </span>
+          </div>
+          <span className="text-lg font-bold text-slate-100">
+            {offlinePppoeRuijie}
+          </span>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         <div className="lg:col-span-2 bg-slate-800 border border-slate-700/50 rounded-xl p-4 md:p-5 flex flex-col min-h-[300px] lg:min-h-0 relative overflow-hidden group">
-          <h3 className="flex-shrink-0 text-base font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center gap-2">
+          <h3 className="flex-shrink-0 text-sm font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center gap-2">
             Pratinjau Jaringan
             <div className="flex items-center gap-2 z-10">
-
               <button
-                onClick={() => setMapTheme((t) => (t === 'dark' ? 'colored' : 'dark'))}
+                onClick={() =>
+                  setMapTheme((t) => (t === "dark" ? "colored" : "dark"))
+                }
                 className="cursor-pointer text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded flex items-center gap-1 transition"
               >
-                {mapTheme === 'dark' ? (
+                {mapTheme === "dark" ? (
                   <>
                     <span className="fa fa-sun" /> Mode Terang
                   </>
@@ -404,7 +525,7 @@ export default function Dashboard() {
                 )}
               </button>
               <button
-                onClick={() => router.push('/topology')}
+                onClick={() => router.push("/topology")}
                 className="cursor-pointer text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded flex items-center gap-1 transition"
               >
                 <MapIcon size={12} /> Buka Peta Lengkap
@@ -439,20 +560,22 @@ export default function Dashboard() {
               background: rgba(148, 163, 184, 0.5);
             }
           `}</style>
-          <h3 className="flex-shrink-0 text-base font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center">
+          <h3 className="flex-shrink-0 text-sm font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center">
             <span>Log Aktivitas</span>
             <span className="flex items-center gap-1.5 text-[10px] font-semibold bg-slate-900/60 border border-slate-700/50 px-2 py-0.5 rounded-full select-none">
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
                   isConnected
-                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse'
-                    : 'bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]'
+                    ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse"
+                    : "bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"
                 }`}
               />
-              <span className="text-slate-400 uppercase tracking-wider">{isConnected ? 'Live' : 'Terputus'}</span>
+              <span className="text-slate-400 uppercase tracking-wider">
+                {isConnected ? "Live" : "Terputus"}
+              </span>
             </span>
           </h3>
-          
+
           <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2.5 custom-scrollbar">
             {dbLogs && dbLogs.length > 0 ? (
               dbLogs.map((a, i) => {
@@ -463,19 +586,32 @@ export default function Dashboard() {
                     className={`flex gap-3 p-3 rounded-lg border text-xs transition duration-200 hover:translate-x-0.5 ${style.bgColor}`}
                   >
                     <div className="flex-shrink-0 mt-0.5">
-                      {style.icon === 'check' && <CheckCircle2 size={14} className="text-emerald-400" />}
-                      {style.icon === 'alert' && <AlertCircle size={14} className="text-rose-400" />}
-                      {style.icon === 'settings' && <Settings size={14} className="text-amber-400" />}
-                      {style.icon === 'info' && <Info size={14} className="text-blue-400" />}
+                      {style.icon === "check" && (
+                        <CheckCircle2 size={14} className="text-emerald-400" />
+                      )}
+                      {style.icon === "alert" && (
+                        <AlertCircle size={14} className="text-rose-400" />
+                      )}
+                      {style.icon === "settings" && (
+                        <Settings size={14} className="text-amber-400" />
+                      )}
+                      {style.icon === "info" && (
+                        <Info size={14} className="text-blue-400" />
+                      )}
                     </div>
                     <div className="flex-1 flex flex-col gap-1 min-w-0">
-                      <span className="text-slate-200 leading-relaxed break-words">{a.message || a.msg}</span>
+                      <span className="text-slate-200 leading-relaxed break-words">
+                        {a.message || a.msg}
+                      </span>
                       <span className="text-[9px] text-slate-500 font-mono self-start uppercase">
-                        {new Date(a.time).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}{' '}
-                        {new Date(a.time).toLocaleTimeString('id-ID', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit'
+                        {new Date(a.time).toLocaleDateString("id-ID", {
+                          day: "2-digit",
+                          month: "short",
+                        })}{" "}
+                        {new Date(a.time).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
                         })}
                       </span>
                     </div>
@@ -485,7 +621,7 @@ export default function Dashboard() {
             ) : (
               <div className="flex flex-col items-center justify-center flex-1 py-12 text-slate-500 gap-2">
                 <Info size={24} className="text-slate-600 animate-pulse" />
-                <span className="text-sm">Belum ada aktivitas</span>
+                <span className="text-xs">Belum ada aktivitas</span>
               </div>
             )}
           </div>

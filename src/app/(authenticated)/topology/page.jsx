@@ -118,11 +118,11 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
       <div className="bg-slate-900 border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 w-full max-w-lg flex flex-col overflow-hidden animate-fade-in-up">
         {/* Header */}
         <div className="p-5 border-b border-slate-700/50 bg-amber-500/5 flex items-start gap-3">
-          <div className="mt-0.5 flex-shrink-0 w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg">
+          <div className="mt-0.5 flex-shrink-0 w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-base">
             ⚠️
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-amber-300 text-base">
+            <h3 className="font-bold text-amber-300 text-sm">
               Konflik Perubahan Terdeteksi
             </h3>
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
@@ -173,7 +173,7 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
                 htmlFor={`conflict-${c.id}`}
                 className="flex-1 min-w-0 cursor-pointer"
               >
-                <p className="text-sm font-semibold text-slate-100 truncate">
+                <p className="text-xs font-semibold text-slate-100 truncate">
                   {c.label}
                 </p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -205,14 +205,14 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
             <button
               onClick={() => onAcceptServer(selected)}
               disabled={selected.size === 0}
-              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <RefreshCw size={14} /> Pakai Versi Server
             </button>
             <button
               onClick={() => onForce(selected)}
               disabled={selected.size === 0}
-              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white transition shadow-lg shadow-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white transition shadow-lg shadow-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Save size={14} /> Pakai Versimu
             </button>
@@ -259,7 +259,7 @@ function TopologyContent() {
   const [forceSaveQueue, setForceSaveQueue] = useState([]); // nodes user pilih untuk force-save
 
   const syncEditPermission = () => {
-    setCanEdit(hasAccess(getStoredUser(), 'topology', 'update'));
+    setCanEdit(hasAccess(getStoredUser(), "topology", "update"));
   };
 
   // Manual Add Modal State
@@ -1200,9 +1200,9 @@ function TopologyContent() {
       <div className="flex-shrink-0 bg-slate-800 border-b border-slate-700/50 px-3 py-2 xl:px-6 xl:py-3 flex flex-col xl:flex-row justify-between items-start xl:items-center z-[1000] gap-3 xl:gap-4 overflow-visible relative">
         <div className="flex flex-col xl:flex-row items-start xl:items-center gap-2 xl:gap-3 w-full xl:w-auto">
           {/* Main Buttons */}
-          <div className="w-full xl:w-auto pb-1 xl:pb-0 flex-shrink-0">
+          <div className="w-full xl:w-auto flex-shrink-0">
             {readOnly ? (
-              <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5">
+              <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2 py-1">
                 <Eye size={14} className="text-amber-400" />
                 <span className="text-xs font-semibold text-amber-300">
                   Readonly (Visitor)
@@ -1215,7 +1215,7 @@ function TopologyContent() {
                     setInteractionMode("select");
                     setLinkStartNode(null);
                   }}
-                  className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "select" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "select" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
                 >
                   <MapPin size={14} /> Geser & Pilih
                 </button>
@@ -1224,7 +1224,7 @@ function TopologyContent() {
                     setInteractionMode("add_node");
                     setLinkStartNode(null);
                   }}
-                  className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
                 >
                   <Plus size={14} /> + Node
                 </button>
@@ -1234,7 +1234,7 @@ function TopologyContent() {
                     setManualIfaceSearch("");
                     setShowManualIfaceDropdown(false);
                   }}
-                  className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "node" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
                 >
                   <MapPin size={14} /> Titik Lokasi
                 </button>
@@ -1243,7 +1243,7 @@ function TopologyContent() {
                     setInteractionMode("add_edge");
                     setLinkStartNode(null);
                   }}
-                  className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_edge" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "add_edge" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
                 >
                   <GitCommit size={14} /> + Kabel FO
                 </button>
@@ -1252,7 +1252,7 @@ function TopologyContent() {
                     setInteractionMode("delete_edge");
                     setLinkStartNode(null);
                   }}
-                  className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "delete_edge" ? "bg-red-600 text-white" : "text-slate-400 hover:text-white hover:bg-red-500/10"}`}
+                  className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${interactionMode === "delete_edge" ? "bg-red-600 text-white" : "text-slate-400 hover:text-white hover:bg-red-500/10"}`}
                 >
                   <Trash2 size={14} /> Hapus Kabel
                 </button>
@@ -1266,7 +1266,7 @@ function TopologyContent() {
                   setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
                   setNetworkMode("pppoe");
                 }}
-                className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${networkMode === "pppoe" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${networkMode === "pppoe" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
               >
                 <Search size={14} /> Zoom OPD
               </button>
@@ -1275,13 +1275,13 @@ function TopologyContent() {
                   setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 });
                   setNetworkMode("l2tp");
                 }}
-                className={`cursor-pointer flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${networkMode === "l2tp" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${networkMode === "l2tp" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
               >
                 <MapPin size={14} /> Zoom All
               </button>
               <button
                 onClick={() => setShowMobileMode((prev) => !prev)}
-                className={`cursor-pointer xl:hidden flex-1 min-w-fit px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${showMobileMode ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                className={`cursor-pointer xl:hidden flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${showMobileMode ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
               >
                 <Settings size={14} /> Mode
               </button>
@@ -1299,7 +1299,7 @@ function TopologyContent() {
                   <button
                     key={t}
                     onClick={() => setNewNodeType(t)}
-                    className={`cursor-pointer px-3 py-1.5 rounded-md text-xs uppercase font-medium whitespace-nowrap transition ${newNodeType === t ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                    className={`cursor-pointer px-2 py-1 rounded-md text-xs uppercase font-medium whitespace-nowrap transition ${newNodeType === t ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
                   >
                     {t.toUpperCase()}
                   </button>
@@ -1313,22 +1313,22 @@ function TopologyContent() {
             </span>
           )}
           {!readOnly && interactionMode === "delete_edge" && (
-            <span className="text-xs text-red-400 font-medium bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 whitespace-nowrap flex-shrink-0">
+            <span className="text-xs text-red-400 font-medium bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 whitespace-nowrap flex-shrink-0">
               Klik kabel untuk menghapus
             </span>
           )}
         </div>
-        <div className="flex flex-wrap justify-center xl:justify-end items-center gap-2 xl:gap-3 w-full xl:w-auto border-t border-slate-700/50 xl:border-0 pt-2 xl:pt-0">
+        <div className="flex flex-wrap justify-center xl:justify-end items-center gap-2 xl:gap-3 w-full xl:w-auto border-t border-slate-700/50 xl:border-0 xl:pt-0">
           <button
             onClick={() => fetchTopology(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
           >
             <RefreshCw size={13} /> Refresh Peta
           </button>
           <button
             onClick={fetchCoreData}
             disabled={coreLoading}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
           >
             <RefreshCw
               size={13}
@@ -1340,7 +1340,7 @@ function TopologyContent() {
             <button
               onClick={() => saveLayout()}
               disabled={saving}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
+              className="flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"
             >
               {saving ? (
                 <>
@@ -1365,7 +1365,7 @@ function TopologyContent() {
           {toasts.map((t) => (
             <div
               key={t.id}
-              className={`px-4 py-3 max-w-md break-words rounded-xl shadow-2xl backdrop-blur-md font-medium text-sm animate-fade-in ${t.type === "error" ? "bg-red-500/90 text-white border border-red-400/50" : "bg-emerald-500/90 text-white border border-emerald-400/50"}`}
+              className={`px-4 py-3 max-w-md break-words rounded-xl shadow-2xl backdrop-blur-md font-medium text-xs animate-fade-in ${t.type === "error" ? "bg-red-500/90 text-white border border-red-400/50" : "bg-emerald-500/90 text-white border border-emerald-400/50"}`}
             >
               {t.msg}
             </div>
@@ -1408,7 +1408,7 @@ function TopologyContent() {
                       onKeyDown={(e) =>
                         e.key === "Enter" && extractCoordinates()
                       }
-                      className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 flex-1"
+                      className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 flex-1"
                     />
                     <button
                       onClick={extractCoordinates}
@@ -1481,7 +1481,7 @@ function TopologyContent() {
                     onBlur={() =>
                       setTimeout(() => setShowManualIfaceDropdown(false), 200)
                     }
-                    className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
+                    className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
                   />
                   {showManualIfaceDropdown &&
                     combinedInterfaceOptions.length > 0 && (
@@ -1576,7 +1576,7 @@ function TopologyContent() {
                         type: e.target.value,
                       })
                     }
-                    className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 w-full appearance-none"
+                    className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 w-full appearance-none"
                   >
                     <option value="client">Client (Rumah)</option>
                     <option value="odp">ODP (Kotak Distribusi)</option>
@@ -1599,7 +1599,7 @@ function TopologyContent() {
                         vendor: e.target.value,
                       })
                     }
-                    className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
+                    className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1618,7 +1618,7 @@ function TopologyContent() {
                           lat: e.target.value,
                         })
                       }
-                      className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
+                      className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -1636,7 +1636,7 @@ function TopologyContent() {
                           lng: e.target.value,
                         })
                       }
-                      className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
+                      className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 w-full"
                     />
                   </div>
                 </div>
@@ -1647,7 +1647,7 @@ function TopologyContent() {
                     setShowManualAddModal(false);
                     setManualIfaceSearch("");
                   }}
-                  className="cursor-pointer px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  className="cursor-pointer px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition"
                 >
                   Batal
                 </button>
@@ -1684,7 +1684,7 @@ function TopologyContent() {
                     setManualIfaceSearch("");
                     addToast("Titik berhasil ditambahkan!", "success");
                   }}
-                  className="cursor-pointer px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-500/20"
+                  className="cursor-pointer px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-500/20"
                 >
                   Tambah Titik
                 </button>
@@ -1705,7 +1705,7 @@ function TopologyContent() {
 
         <div className="flex-1 w-full relative z-0 flex flex-col">
           {/* Left Panel — MikroTik Core Live Status */}
-          <div className="hidden md:flex absolute top-3 left-3 z-[1000] w-72 flex-col gap-2 pointer-events-none">
+          <div className="hidden md:flex absolute top-3 left-3 z-[1000] w-56 flex-col gap-2 pointer-events-none">
             {/* Core Status Card */}
             {coreStatus && (
               <div
@@ -1739,16 +1739,9 @@ function TopologyContent() {
                         className="text-emerald-400 flex-shrink-0"
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-slate-500">
-                          Pelanggan Aktif
-                        </p>
+                        <p className="text-[10px] text-slate-500">Site Aktif</p>
                         <p className="text-xs font-bold text-emerald-400">
                           {l2tpOnlineGabungan + (coreStatus.pppoe_active || 0)}
-
-                          <span className="text-[10px] px-1 font-bold text-slate-400">
-                            ({l2tpOnlineGabungan} L2TP +{" "}
-                            {coreStatus.pppoe_active || 0} PPPoE)
-                          </span>
                         </p>
                       </div>
                     </div>
@@ -1837,7 +1830,7 @@ function TopologyContent() {
                       ) : (
                         Object.entries(ifaceGroups).map(([type, ifaces]) => (
                           <div key={type}>
-                            <div className="px-3 py-1.5 bg-slate-800/50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            <div className="px-2 py-1 bg-slate-800/50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                               {type}
                             </div>
                             {ifaces.map((iface, i) => (
@@ -1871,7 +1864,7 @@ function TopologyContent() {
 
           {/* Right Floating Panel — Legend & Theme Toggle */}
           <div
-            className={`${showMobileMode ? "flex" : "hidden"} md:flex absolute bottom-8 left-3 md:bottom-auto md:top-3 md:left-auto md:right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}
+            className={`${showMobileMode ? "flex" : "hidden"} w-42 md:flex absolute bottom-8 left-3 md:bottom-auto md:top-3 md:left-auto md:right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}
           >
             {/* Cable Color Legend */}
             <div className="hidden md:block rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3">
@@ -1906,7 +1899,7 @@ function TopologyContent() {
               </div>
             </div>
             {/* Mode Panel (Tema Peta jadi toggle di sini) */}
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3 min-w-[200px]">
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                 Mode
               </p>
@@ -1973,7 +1966,7 @@ function TopologyContent() {
                 ${nodeViewFilter === "infrastructure" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}
                 >
                   <Server size={12} />
-                  Hanya OLT/ODC/ODP
+                  Hanya Infrastruktur
                 </button>
               </div>
             </div>
@@ -2045,7 +2038,7 @@ function TopologyContent() {
             nodePresenceMap[currentSelectedNode.id].userId !==
               (sessionUser?.id?.toString() || sessionUser?.username) && (
               <div className="mx-3 mt-2 flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
-                <span className="text-amber-400 text-sm">🔒</span>
+                <span className="text-amber-400 text-xs">🔒</span>
                 <p className="text-xs text-amber-300 font-medium leading-snug">
                   Sedang diedit oleh&nbsp;
                   <span className="font-bold text-amber-200">
@@ -2188,7 +2181,7 @@ function TopologyContent() {
                       onBlur={() =>
                         setTimeout(() => setShowNodeIfaceDropdown(false), 200)
                       }
-                      className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                      className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
                     />
 
                     {!readOnly && showNodeIfaceDropdown && (
@@ -2294,7 +2287,7 @@ function TopologyContent() {
                         ),
                       )
                     }
-                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -2305,7 +2298,11 @@ function TopologyContent() {
                     type="text"
                     readOnly={readOnly}
                     placeholder="Contoh: 131175137140"
-                    value={currentSelectedNode.customer_id !== undefined ? currentSelectedNode.customer_id : (currentSelectedNode.site?.customer_id || "")}
+                    value={
+                      currentSelectedNode.customer_id !== undefined
+                        ? currentSelectedNode.customer_id
+                        : currentSelectedNode.site?.customer_id || ""
+                    }
                     onChange={(e) =>
                       setNodesFromUser((prev) =>
                         prev.map((n) =>
@@ -2315,7 +2312,7 @@ function TopologyContent() {
                         ),
                       )
                     }
-                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
                   />
                 </div>
                 {/* Metrics if linked to device */}
@@ -2371,7 +2368,7 @@ function TopologyContent() {
                         ),
                       )
                     }
-                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
                   />
                 </div>
 
@@ -2393,7 +2390,7 @@ function TopologyContent() {
                         ),
                       )
                     }
-                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -2417,7 +2414,7 @@ function TopologyContent() {
                         ),
                       );
                     }}
-                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
                     style={{ minWidth: 0 }}
                   />
                 </div>
@@ -2440,7 +2437,7 @@ function TopologyContent() {
                       );
                       setSelectedNode(null);
                     }}
-                    className="cursor-pointer mt-4 flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-2.5 rounded-lg text-sm font-semibold transition"
+                    className="cursor-pointer mt-4 flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-2.5 rounded-lg text-xs font-semibold transition"
                   >
                     <Trash2 size={16} /> Hapus Node
                   </button>
@@ -2483,7 +2480,7 @@ function TopologyContent() {
                         ),
                       )
                     }
-                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
+                    className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${readOnly ? "opacity-70 cursor-default" : ""}`}
                   />
                   <p className="text-[10px] text-slate-500">
                     Jika nama cocok dengan interface MikroTik, warna kabel akan
@@ -2572,7 +2569,7 @@ function TopologyContent() {
                       );
                       setSelectedEdge(null);
                     }}
-                    className="mt-auto flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-2.5 rounded-lg text-sm font-semibold transition"
+                    className="mt-auto flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-2.5 rounded-lg text-xs font-semibold transition"
                   >
                     <Trash2 size={16} /> Potong Kabel
                   </button>

@@ -1,12 +1,17 @@
-'use client';
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import Topbar from '@/components/Topbar';
-import { socket, AppStateContext, API_URL } from '@/App';
-import { applySessionUser, getStoredUser, getRoleLabel, hasAccess } from '@/lib/roles';
-import axios from 'axios';
-import { Network } from 'lucide-react';
+"use client";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import Topbar from "@/components/Topbar";
+import { socket, AppStateContext, API_URL } from "@/App";
+import {
+  applySessionUser,
+  getStoredUser,
+  getRoleLabel,
+  hasAccess,
+} from "@/lib/roles";
+import axios from "axios";
+import { Network } from "lucide-react";
 
 export default function AuthenticatedLayout({ children }) {
   const router = useRouter();
@@ -19,11 +24,11 @@ export default function AuthenticatedLayout({ children }) {
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [toast, setToast] = useState(null);
   const [sessionUser, setSessionUser] = useState(() =>
-    typeof window !== 'undefined' ? getStoredUser() : {}
+    typeof window !== "undefined" ? getStoredUser() : {},
   );
   const [lastSyncTime, setLastSyncTime] = useState(null);
 
-  const showToast = (message, type = 'success', duration = 4000) => {
+  const showToast = (message, type = "success", duration = 4000) => {
     setToast({ message, type });
     const timer = setTimeout(() => {
       setToast(null);
@@ -33,9 +38,9 @@ export default function AuthenticatedLayout({ children }) {
 
   useEffect(() => {
     // Auth check
-    const token = localStorage.getItem('nocr_token');
+    const token = localStorage.getItem("nocr_token");
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     setTokenChecked(true);
@@ -58,11 +63,14 @@ export default function AuthenticatedLayout({ children }) {
         const next = applySessionUser(res.data.user);
         setSessionUser(next);
         if (prev.role && next?.role && prev.role !== next.role) {
-          showToast(`Peran Anda diubah menjadi ${getRoleLabel(next.role)}`, 'warning');
+          showToast(
+            `Peran Anda diubah menjadi ${getRoleLabel(next.role)}`,
+            "warning",
+          );
         }
       }
     } catch (e) {
-      console.error('Gagal memuat sesi user', e);
+      console.error("Gagal memuat sesi user", e);
     }
   };
 
@@ -72,62 +80,66 @@ export default function AuthenticatedLayout({ children }) {
     const handleRoleEvent = (e) => {
       if (e.detail) setSessionUser(e.detail);
     };
-    window.addEventListener('nocr-role-updated', handleRoleEvent);
+    window.addEventListener("nocr-role-updated", handleRoleEvent);
 
     refreshSessionUser();
     const rolePoll = setInterval(refreshSessionUser, 60000);
     const onFocus = () => refreshSessionUser();
-    window.addEventListener('focus', onFocus);
+    window.addEventListener("focus", onFocus);
 
     return () => {
       clearInterval(rolePoll);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('nocr-role-updated', handleRoleEvent);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("nocr-role-updated", handleRoleEvent);
     };
   }, [tokenChecked]);
 
   // Central Route Guard
   useEffect(() => {
     if (!tokenChecked || !sessionUser?.role) return;
-    
+
     // Default to dashboard route if path is just /
-    const currentPath = pathname === '/' ? 'dashboard' : pathname.replace(/^\//, '');
-    
+    const currentPath =
+      pathname === "/" ? "dashboard" : pathname.replace(/^\//, "");
+
     const routeToMenuKeyMap = {
-      'topology': 'topology',
-      'sites': 'sites',
-      'laporan-harian': 'laporan-harian',
-      'live-chat': 'chat',
-      'monitor-l2tp': 'monitoring-l2tp',
-      'monitor-pppoe': 'monitoring-pppoe',
-      'ruijie': 'devices-ruijie',
-      'devices': 'devices-mikrotik',
-      'hsgq-olt': 'devices-hsgq',
+      topology: "topology",
+      sites: "sites",
+      "laporan-harian": "laporan-harian",
+      "live-chat": "chat",
+      "monitor-l2tp": "monitoring-l2tp",
+      "monitor-pppoe": "monitoring-pppoe",
+      ruijie: "devices-ruijie",
+      devices: "devices-mikrotik",
+      "hsgq-olt": "devices-hsgq",
     };
 
     let requiredMenuKey = routeToMenuKeyMap[currentPath];
-    
+
     // Handle settings sub-tabs separately
-    if (currentPath === 'settings') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const tab = urlParams.get('tab') || 'core';
-        const tabToMenuKeyMap = {
-            'core': 'settings-mikrotik',
-            'vpn': 'settings-vpn',
-            'health': 'settings-health',
-            'whatsapp': 'settings-wa',
-            'users': 'settings-users',
-            'roles': 'settings-roles',
-            'password': 'settings-password'
-        };
-        requiredMenuKey = tabToMenuKeyMap[tab];
+    if (currentPath === "settings") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get("tab") || "core";
+      const tabToMenuKeyMap = {
+        core: "settings-mikrotik",
+        vpn: "settings-vpn",
+        health: "settings-health",
+        whatsapp: "settings-wa",
+        users: "settings-users",
+        roles: "settings-roles",
+        password: "settings-password",
+      };
+      requiredMenuKey = tabToMenuKeyMap[tab];
     }
 
     if (requiredMenuKey) {
-        if (!hasAccess(sessionUser, requiredMenuKey, 'read')) {
-            showToast(`Akses Ditolak: Anda tidak memiliki izin untuk melihat ${requiredMenuKey}`, 'error');
-            router.push('/dashboard');
-        }
+      if (!hasAccess(sessionUser, requiredMenuKey, "read")) {
+        showToast(
+          `Akses Ditolak: Anda tidak memiliki izin untuk melihat ${requiredMenuKey}`,
+          "error",
+        );
+        router.push("/dashboard");
+      }
     }
   }, [tokenChecked, sessionUser, pathname, router]);
 
@@ -137,37 +149,53 @@ export default function AuthenticatedLayout({ children }) {
     if (socket) {
       const handleConnect = () => setIsConnected(true);
       const handleDisconnect = () => setIsConnected(false);
-      
+
       const handleStatus = (data) => {
-        const msg = data.message || data.msg || '';
+        const msg = data.message || data.msg || "";
         const lower = msg.toLowerCase();
-        if (lower.includes('berubah menjadi online') || lower.includes('berubah menjadi offline')) {
+        if (
+          lower.includes("berubah menjadi online") ||
+          lower.includes("berubah menjadi offline")
+        ) {
           return;
         }
-        setAlerts(prev => [{ time: data.time ? new Date(data.time) : new Date(), msg }, ...prev].slice(0, 10));
+        setAlerts((prev) =>
+          [
+            { time: data.time ? new Date(data.time) : new Date(), msg },
+            ...prev,
+          ].slice(0, 10),
+        );
       };
 
       const handleInitialLogs = (logs) => {
         if (Array.isArray(logs)) {
           const filtered = logs
-            .filter(log => {
-              const msg = log.message || '';
+            .filter((log) => {
+              const msg = log.message || "";
               const lower = msg.toLowerCase();
-              return !lower.includes('berubah menjadi online') && !lower.includes('berubah menjadi offline');
+              return (
+                !lower.includes("berubah menjadi online") &&
+                !lower.includes("berubah menjadi offline")
+              );
             })
-            .map(log => ({ time: new Date(log.time), msg: log.message }));
+            .map((log) => ({ time: new Date(log.time), msg: log.message }));
           setAlerts(filtered.slice(0, 10));
         }
       };
 
       const handleDeviceStatus = (data) => {
-        setDevices(prev => prev.map(d => d.id === data.id ? { ...d, status: data.status } : d));
+        setDevices((prev) =>
+          prev.map((d) =>
+            d.id === data.id ? { ...d, status: data.status } : d,
+          ),
+        );
       };
 
       const handleRoleUpdated = (payload) => {
         const me = getStoredUser();
         if (
-          payload?.userId && (payload.userId === me.id || payload.username === me.username)
+          payload?.userId &&
+          (payload.userId === me.id || payload.username === me.username)
         ) {
           refreshSessionUser();
         }
@@ -180,16 +208,16 @@ export default function AuthenticatedLayout({ children }) {
         }
       };
 
-      socket.on('connect', handleConnect);
-      socket.on('disconnect', handleDisconnect);
-      socket.on('status', handleStatus);
-      socket.on('activity_log_updated', handleStatus);
-      socket.on('initial_logs', handleInitialLogs);
-      socket.on('device-status', handleDeviceStatus);
-      socket.on('user_role_updated', handleRoleUpdated);
-      socket.on('role_name_changed', handleRoleNameChanged);
+      socket.on("connect", handleConnect);
+      socket.on("disconnect", handleDisconnect);
+      socket.on("status", handleStatus);
+      socket.on("activity_log_updated", handleStatus);
+      socket.on("initial_logs", handleInitialLogs);
+      socket.on("device-status", handleDeviceStatus);
+      socket.on("user_role_updated", handleRoleUpdated);
+      socket.on("role_name_changed", handleRoleNameChanged);
 
-      socket.emit('request_initial_logs');
+      socket.emit("request_initial_logs");
 
       if (socket.connected) {
         setIsConnected(true);
@@ -198,14 +226,14 @@ export default function AuthenticatedLayout({ children }) {
       fetchDevices();
 
       return () => {
-        socket.off('connect', handleConnect);
-        socket.off('disconnect', handleDisconnect);
-        socket.off('status', handleStatus);
-        socket.off('activity_log_updated', handleStatus);
-        socket.off('initial_logs', handleInitialLogs);
-        socket.off('device-status', handleDeviceStatus);
-        socket.off('user_role_updated', handleRoleUpdated);
-        socket.off('role_name_changed', handleRoleNameChanged);
+        socket.off("connect", handleConnect);
+        socket.off("disconnect", handleDisconnect);
+        socket.off("status", handleStatus);
+        socket.off("activity_log_updated", handleStatus);
+        socket.off("initial_logs", handleInitialLogs);
+        socket.off("device-status", handleDeviceStatus);
+        socket.off("user_role_updated", handleRoleUpdated);
+        socket.off("role_name_changed", handleRoleNameChanged);
       };
     }
   }, [tokenChecked]);
@@ -214,11 +242,18 @@ export default function AuthenticatedLayout({ children }) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-300">
         <div className="flex flex-col items-center gap-4 animate-pulse">
-          <img src="/logo.png" alt="NOCR Logo" className="w-24 h-24 border-2 border-slate-600 rounded-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-         <div className="text-2xl font-bold text-blue-500 flex items-center gap-2">
-            NOCR <span className='text-xs text-slate-400 font-normal mt-2'>by: npma</span>
+          <img
+            src="/logo.png"
+            alt="NOCR Logo"
+            className="w-24 h-24 border-2 border-slate-600 rounded-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+          />
+          <div className="text-xl font-bold text-blue-500 flex items-center gap-2">
+            NOCR{" "}
+            <span className="text-xs text-slate-400 font-normal mt-2">
+              by: npma
+            </span>
           </div>
-          <p className="text-sm font-semibold tracking-wider text-slate-400 uppercase mt-4">
+          <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase mt-4">
             Loading setup...
           </p>
         </div>
@@ -235,45 +270,58 @@ export default function AuthenticatedLayout({ children }) {
     refreshSessionUser,
     showToast,
     lastSyncTime,
-    setLastSyncTime
+    setLastSyncTime,
   };
 
   const toggleSidebar = () => {
     if (window.innerWidth >= 768) {
-      setIsDesktopSidebarOpen(prev => !prev);
+      setIsDesktopSidebarOpen((prev) => !prev);
     } else {
-      setIsMobileMenuOpen(prev => !prev);
+      setIsMobileMenuOpen((prev) => !prev);
     }
   };
 
   return (
     <AppStateContext.Provider value={contextValue}>
       <div className="fixed inset-0 flex bg-slate-900 text-slate-50 overflow-hidden">
-        
         {/* Mobile overlay */}
         {isMobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-[2500] bg-black/60 backdrop-blur-sm md:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
 
         {/* Sidebar with mobile slide-in */}
-        <div className={`fixed inset-y-0 left-0 z-[3000] flex transition-all duration-300 ease-in-out overflow-hidden ${
-          isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'
-        } md:relative ${
-          isDesktopSidebarOpen ? 'md:translate-x-0 md:w-64' : 'md:-translate-x-full md:w-0'
-        }`}>
-          <Suspense fallback={<div className="w-64 h-full bg-slate-800 border-r border-slate-700/50 flex-shrink-0"></div>}>
+        <div
+          className={`fixed inset-y-0 left-0 z-[3000] flex transition-all duration-300 ease-in-out overflow-hidden ${
+            isMobileMenuOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
+          } md:relative ${
+            isDesktopSidebarOpen
+              ? "md:translate-x-0 md:w-64"
+              : "md:-translate-x-full md:w-0"
+          }`}
+        >
+          <Suspense
+            fallback={
+              <div className="w-64 h-full bg-slate-800 border-r border-slate-700/50 flex-shrink-0"></div>
+            }
+          >
             <div className="w-64 h-full flex-shrink-0">
-              <Sidebar isConnected={isConnected} onNavigate={() => setIsMobileMenuOpen(false)} />
+              <Sidebar
+                isConnected={isConnected}
+                onNavigate={() => setIsMobileMenuOpen(false)}
+              />
             </div>
           </Suspense>
         </div>
-        
+
         <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-          <Topbar onMenuClick={toggleSidebar} isSidebarOpen={isDesktopSidebarOpen} />
-          
+          <Topbar
+            onMenuClick={toggleSidebar}
+            isSidebarOpen={isDesktopSidebarOpen}
+          />
+
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 md:p-6">
             {children}
           </div>
@@ -298,27 +346,29 @@ export default function AuthenticatedLayout({ children }) {
             }
           `}</style>
           <div className="fixed bottom-6 right-6 z-[9999] animate-slide-in-up">
-            <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300 min-w-[280px] max-w-sm ${
-              toast.type === 'error' 
-                ? 'bg-slate-900/90 border-red-500/30 text-red-200 shadow-red-950/20' 
-                : toast.type === 'warning'
-                ? 'bg-slate-900/90 border-amber-500/30 text-amber-200 shadow-amber-950/20'
-                : 'bg-slate-900/90 border-emerald-500/30 text-emerald-200 shadow-emerald-950/20'
-            }`}>
+            <div
+              className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300 min-w-[280px] max-w-sm ${
+                toast.type === "error"
+                  ? "bg-slate-900/90 border-red-500/30 text-red-200 shadow-red-950/20"
+                  : toast.type === "warning"
+                    ? "bg-slate-900/90 border-amber-500/30 text-amber-200 shadow-amber-950/20"
+                    : "bg-slate-900/90 border-emerald-500/30 text-emerald-200 shadow-emerald-950/20"
+              }`}
+            >
               <div className="flex-shrink-0">
-                {toast.type === 'error' ? (
+                {toast.type === "error" ? (
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
-                ) : toast.type === 'warning' ? (
+                ) : toast.type === "warning" ? (
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />
                 ) : (
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
                 )}
               </div>
-              <div className="flex-1 text-sm font-semibold tracking-wide pr-2 break-words">
+              <div className="flex-1 text-xs font-semibold tracking-wide pr-2 break-words">
                 {toast.message}
               </div>
-              <button 
-                onClick={() => setToast(null)} 
+              <button
+                onClick={() => setToast(null)}
                 className="flex-shrink-0 text-slate-500 hover:text-slate-300 text-xs font-bold w-5 h-5 rounded-full hover:bg-slate-800/50 flex items-center justify-center transition-colors focus:outline-none"
               >
                 ✕

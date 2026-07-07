@@ -10,9 +10,9 @@ import {
   Building2,
   Wifi,
   WifiOff,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
-import { getStoredUser, hasAccess } from '@/lib/roles';
+import { getStoredUser, hasAccess } from "@/lib/roles";
 
 function encodeMac(mac) {
   return encodeURIComponent(mac || "");
@@ -55,7 +55,7 @@ export default function SitesListPage() {
 
   useEffect(() => {
     const user = getStoredUser();
-    if (user && user.role && !hasAccess(user, 'sites', 'read')) {
+    if (user && user.role && !hasAccess(user, "sites", "read")) {
       setHasReadAccess(false);
     }
   }, []);
@@ -97,7 +97,10 @@ export default function SitesListPage() {
     return true;
   });
 
-  const typeItems = filterType === "all" ? items : items.filter((d) => d.connection_type === filterType);
+  const typeItems =
+    filterType === "all"
+      ? items
+      : items.filter((d) => d.connection_type === filterType);
   const withProfile = typeItems.filter((d) => d.has_site_profile).length;
 
   if (!hasReadAccess) {
@@ -113,11 +116,11 @@ export default function SitesListPage() {
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
             <MapPin size={24} className="text-orange-400" />
             Sites / Wilayah
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Data profil per site — prefix, vendor, PIC, dan alamat / lokasi
           </p>
         </div>
@@ -125,7 +128,7 @@ export default function SitesListPage() {
           type="button"
           onClick={fetchData}
           disabled={loading}
-          className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 disabled:opacity-50"
+          className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 disabled:opacity-50"
         >
           <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           Muat Ulang
@@ -135,35 +138,41 @@ export default function SitesListPage() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 flex-shrink-0">
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
-            <MapPin size={20} className="text-orange-400" />
+            <MapPin size={16} className="text-orange-400" />
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">
-              {filterType === "all" ? "Total Site" : filterType === "L2TP" ? "Total L2TP" : "Total PPPoE"}
+              {filterType === "all"
+                ? "Total Site"
+                : filterType === "L2TP"
+                  ? "Total L2TP"
+                  : "Total PPPoE"}
             </p>
-            <p className="text-2xl font-bold text-slate-100">{typeItems.length}</p>
+            <p className="text-xl font-bold text-slate-100">
+              {typeItems.length}
+            </p>
           </div>
         </div>
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-            <Building2 size={20} className="text-emerald-400" />
+            <Building2 size={16} className="text-emerald-400" />
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">
               Profil Terisi
             </p>
-            <p className="text-2xl font-bold text-slate-100">{withProfile}</p>
+            <p className="text-xl font-bold text-slate-100">{withProfile}</p>
           </div>
         </div>
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex items-center gap-3 col-span-2 lg:col-span-1">
           <div className="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center">
-            <Wifi size={20} className="text-slate-400" />
+            <Wifi size={16} className="text-slate-400" />
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">
               Belum Profil
             </p>
-            <p className="text-2xl font-bold text-slate-100">
+            <p className="text-xl font-bold text-slate-100">
               {typeItems.length - withProfile}
             </p>
           </div>
@@ -182,13 +191,13 @@ export default function SitesListPage() {
               placeholder="Cari prefix, vendor, alamat..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
             />
           </div>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Semua Tipe</option>
             <option value="L2TP">L2TP</option>
@@ -197,7 +206,7 @@ export default function SitesListPage() {
           <select
             value={filterProfile}
             onChange={(e) => setFilterProfile(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Semua</option>
             <option value="filled">Profil sudah diisi</option>
@@ -221,7 +230,7 @@ export default function SitesListPage() {
           ) : error && items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2 text-red-400">
               <WifiOff size={28} />
-              <p className="text-sm">{error}</p>
+              <p className="text-xs">{error}</p>
             </div>
           ) : filtered.length === 0 ? (
             <p className="text-center py-16 text-slate-500">Tidak ada data</p>
@@ -243,21 +252,24 @@ export default function SitesListPage() {
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="font-bold text-slate-100 text-base truncate">
+                            <span className="font-bold text-slate-100 text-sm truncate">
                               {d.prefix || "—"}
                             </span>
-                            <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold ${
-                              d.connection_type === 'PPPOE'
-                                ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                            }`}>
-                              {d.connection_type || 'L2TP'}
+                            <span
+                              className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold ${
+                                d.connection_type === "PPPOE"
+                                  ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                  : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                              }`}
+                            >
+                              {d.connection_type || "L2TP"}
                             </span>
                             {!d.has_site_profile && (
                               <span className="text-[10px] text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-max">
                                 Baru
                               </span>
-                            )}<button
+                            )}
+                            <button
                               type="button"
                               className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/20 transition"
                               onClick={(e) => {
@@ -276,7 +288,7 @@ export default function SitesListPage() {
                               <span className="text-[10px] font-medium bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded w-[60px] text-center mt-0.5 uppercase tracking-wider">
                                 Vendor
                               </span>
-                              <span className="text-sm text-slate-300">
+                              <span className="text-xs text-slate-300">
                                 {vendor ? (
                                   <span>
                                     {vendor}
@@ -304,7 +316,7 @@ export default function SitesListPage() {
                                   pics.map((p, idx) => (
                                     <div
                                       key={idx}
-                                      className="flex items-center gap-2 text-sm text-slate-300"
+                                      className="flex items-center gap-2 text-xs text-slate-300"
                                     >
                                       <span className="truncate">{p.name}</span>
                                       {p.phone && (
@@ -315,7 +327,7 @@ export default function SitesListPage() {
                                     </div>
                                   ))
                                 ) : (
-                                  <span className="text-slate-600 italic text-sm">
+                                  <span className="text-slate-600 italic text-xs">
                                     Belum diisi
                                   </span>
                                 )}
@@ -327,7 +339,7 @@ export default function SitesListPage() {
                               <span className="text-[10px] font-medium bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded w-[60px] text-center mt-0.5 uppercase tracking-wider">
                                 Lokasi
                               </span>
-                              <div className="flex-1 min-w-0 text-sm">
+                              <div className="flex-1 min-w-0 text-xs">
                                 {loc.label ? (
                                   <span
                                     className={
@@ -360,7 +372,7 @@ export default function SitesListPage() {
 
               {/* Desktop table view */}
               <div className="hidden lg:block min-h-0 overflow-x-auto">
-                <table className="w-full text-sm min-w-[900px]">
+                <table className="w-full text-xs min-w-[900px]">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
                       <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -398,12 +410,14 @@ export default function SitesListPage() {
                               >
                                 {d.prefix || "—"}
                               </span>
-                              <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold ${
-                                d.connection_type === 'PPPOE'
-                                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                  : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                              }`}>
-                                {d.connection_type || 'L2TP'}
+                              <span
+                                className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold ${
+                                  d.connection_type === "PPPOE"
+                                    ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                    : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                }`}
+                              >
+                                {d.connection_type || "L2TP"}
                               </span>
                             </div>
                           </td>
@@ -439,15 +453,15 @@ export default function SitesListPage() {
                                       .filter(Boolean)
                                       .join(" · ")}
                                   >
-                                    <span className="text-slate-200 truncate text-sm">
+                                    <span className="text-slate-200 truncate text-xs">
                                       {p.name}
                                     </span>
                                     {p.phone ? (
-                                      <span className="text-slate-500 font-mono text-sm truncate">
+                                      <span className="text-slate-500 font-mono text-xs truncate">
                                         {p.phone}
                                       </span>
                                     ) : (
-                                      <span className="text-slate-600 italic text-sm">
+                                      <span className="text-slate-600 italic text-xs">
                                         Tanpa nomor
                                       </span>
                                     )}

@@ -10,9 +10,9 @@ import {
   Clock,
   Users,
   Activity,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
-import { getStoredUser, hasAccess } from '@/lib/roles';
+import { getStoredUser, hasAccess } from "@/lib/roles";
 
 export default function Ruijie() {
   const [devices, setDevices] = useState([]);
@@ -27,7 +27,7 @@ export default function Ruijie() {
 
   useEffect(() => {
     const user = getStoredUser();
-    if (user && user.role && !hasAccess(user, 'devices-ruijie', 'read')) {
+    if (user && user.role && !hasAccess(user, "devices-ruijie", "read")) {
       setHasReadAccess(false);
     }
   }, []);
@@ -136,7 +136,10 @@ export default function Ruijie() {
     return (
       <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
         <AlertTriangle size={48} className="text-red-500/50" />
-        <p>Akses Ditolak: Anda tidak memiliki izin (Read) ke Perangkat Jaringan (Ruijie).</p>
+        <p>
+          Akses Ditolak: Anda tidak memiliki izin (Read) ke Perangkat Jaringan
+          (Ruijie).
+        </p>
       </div>
     );
   }
@@ -146,11 +149,11 @@ export default function Ruijie() {
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
             <Wifi size={24} className="text-blue-400" />
             Ruijie AP Monitoring
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Daftar perangkat Access Point Ruijie Reyee
           </p>
         </div>
@@ -158,7 +161,7 @@ export default function Ruijie() {
           <button
             onClick={fetchDevices}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />{" "}
             Sync Sekarang
@@ -177,7 +180,7 @@ export default function Ruijie() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Total AP
               </p>
-              <p className="text-2xl font-bold text-slate-100">{totalAp}</p>
+              <p className="text-xl font-bold text-slate-100">{totalAp}</p>
             </div>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
@@ -188,7 +191,7 @@ export default function Ruijie() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Total Online
               </p>
-              <p className="text-2xl font-bold text-slate-100">{totalOnline}</p>
+              <p className="text-xl font-bold text-slate-100">{totalOnline}</p>
             </div>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-4">
@@ -199,9 +202,7 @@ export default function Ruijie() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Total Offline
               </p>
-              <p className="text-2xl font-bold text-slate-100">
-                {totalOffline}
-              </p>
+              <p className="text-xl font-bold text-slate-100">{totalOffline}</p>
             </div>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-4">
@@ -212,9 +213,7 @@ export default function Ruijie() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Total Client
               </p>
-              <p className="text-2xl font-bold text-slate-100">
-                {totalClients}
-              </p>
+              <p className="text-xl font-bold text-slate-100">{totalClients}</p>
             </div>
           </div>
         </div>
@@ -222,7 +221,7 @@ export default function Ruijie() {
 
       <div className={dataPanelClass}>
         <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-          <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">
+          <h2 className="font-semibold text-slate-200 text-xs flex-shrink-0">
             Daftar AP
           </h2>
 
@@ -236,14 +235,14 @@ export default function Ruijie() {
               placeholder="Cari Alias, MAC, SN, atau IP..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
             />
           </div>
 
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Semua Tipe</option>
             <option value="L2TP">L2TP</option>
@@ -253,7 +252,7 @@ export default function Ruijie() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Semua Status</option>
             <option value="ON">Online</option>
@@ -280,14 +279,14 @@ export default function Ruijie() {
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-40 gap-3 text-red-400">
               <WifiOff size={24} />
-              <p className="text-sm">{error}</p>
+              <p className="text-xs">{error}</p>
             </div>
           ) : (
             <>
               {/* Mobile card view */}
               <div className="md:hidden divide-y divide-slate-700/30">
                 {filteredDevices.length === 0 ? (
-                  <p className="text-center py-12 text-slate-500 text-base">
+                  <p className="text-center py-12 text-slate-500 text-sm">
                     Tidak ada data AP
                   </p>
                 ) : (
@@ -297,13 +296,13 @@ export default function Ruijie() {
                       className="px-5 py-4 flex items-start justify-between gap-4 hover:bg-slate-700/20 transition"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-100 text-base flex items-center gap-2">
+                        <p className="font-bold text-slate-100 text-sm flex items-center gap-2">
                           <span className="truncate">{d.alias || "-"}</span>
                           <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400 border border-slate-600/50">
                             {d.connection_type || "Unknown"}
                           </span>
                         </p>
-                        <p className="text-sm text-slate-400 mt-1">
+                        <p className="text-xs text-slate-400 mt-1">
                           {d.ip_address || "-"} ·{" "}
                           <span className="font-mono text-xs">
                             {d.mac_address}
@@ -329,7 +328,7 @@ export default function Ruijie() {
 
               {/* Desktop table view */}
               <div className="hidden md:block min-h-0">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
                       <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">

@@ -12,10 +12,12 @@ import {
   Zap,
   Server,
   Eye,
-  EyeOff
+  EyeOff,
 } from "lucide-react";
 import { socket, useAppState } from "@/App";
 import { getStoredUser, hasAccess } from "@/lib/roles";
+import OntDetailModal from "@/components/OntDetailModal";
+import OntDetailView from "@/components/OntDetailView";
 
 export default function HsgqOltPage() {
   const [data, setData] = useState([]);
@@ -27,21 +29,45 @@ export default function HsgqOltPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [visiblePasswords, setVisiblePasswords] = useState({});
+  const [selectedOnt, setSelectedOnt] = useState(null);
+  const [detailSelectedPortId, setDetailSelectedPortId] = useState("");
+  const [detailSelectedOntId, setDetailSelectedOntId] = useState("");
 
   const { sessionUser } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
-  
+
   useEffect(() => {
     if (sessionUser?.username) setUserData(sessionUser);
   }, [sessionUser]);
 
-  const canManageOlt = hasAccess(userData, 'devices-hsgq', 'update');
-  const canRead = hasAccess(userData, 'devices-hsgq', 'read');
+  const tabSlugs = {
+    "Authenticate List": "authenticate",
+    "Version Information": "version",
+    "Bind Profile Info": "profile",
+    WLAN: "wlan",
+    "ONT Detail": "detail",
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam) {
+        const matched = Object.keys(tabSlugs).find(
+          (t) => tabSlugs[t].toLowerCase() === tabParam.toLowerCase(),
+        );
+        if (matched) setActiveTab(matched);
+      }
+    }
+  }, []);
+
+  const canManageOlt = hasAccess(userData, "devices-hsgq", "update");
+  const canRead = hasAccess(userData, "devices-hsgq", "read");
 
   // Real-time WebSocket listener for immediate sync across all users
   useEffect(() => {
     if (!socket) return;
-    
+
     const handleWifiUpdate = (payload) => {
       if (activeTab !== "WLAN") return;
       setData((prevData) =>
@@ -52,18 +78,18 @@ export default function HsgqOltPage() {
             if (currentWifi.instance === payload.instance) {
               return {
                 ...row,
-                wifi: [{ ...currentWifi, [payload.field]: payload.value }]
+                wifi: [{ ...currentWifi, [payload.field]: payload.value }],
               };
             }
           }
           return row;
-        })
+        }),
       );
     };
 
-    socket.on('hsgq_wifi_update', handleWifiUpdate);
+    socket.on("hsgq_wifi_update", handleWifiUpdate);
     return () => {
-      socket.off('hsgq_wifi_update', handleWifiUpdate);
+      socket.off("hsgq_wifi_update", handleWifiUpdate);
     };
   }, [activeTab, socket]);
 
@@ -107,7 +133,7 @@ export default function HsgqOltPage() {
       alert("Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi OLT");
       return;
     }
-    
+
     try {
       const wifi = row.wifi && row.wifi[0];
       if (!wifi) return;
@@ -238,16 +264,83 @@ export default function HsgqOltPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
+  // For ONT Detail tab dropdowns
+  let uniquePorts = [];
+  let ontsInPort = [];
+
+  if (activeTab === "ONT Detail") {
+    const portSet = new Set();
+    const portMap = {};
+
+    data.forEach((row, idx) => {
+      const isArray = Array.isArray(row);
+      const rawName = row.ont_name || row.name || (isArray ? row[1] : "");
+      let parsedPortId = 1;
+      let parsedOntId = 0;
+
+      let genId = "";
+      if (rawName && rawName.includes("/")) {
+        const parts = rawName.split("/");
+        parsedPortId = parseInt(
+          parts[0].replace("ONT", "").replace("PON", ""),
+          10,
+        );
+        parsedOntId = parseInt(parts[1], 10);
+      } else if (row.identifier !== undefined) {
+        parsedPortId = (row.identifier >> 8) & 255;
+        parsedOntId = row.identifier & 255;
+      } else {
+        const ontId = isArray
+          ? row[0]
+          : row.ont_id || row.id || `PON0${Math.floor(idx / 10)}/${idx % 10}`;
+        const idParts = String(ontId).match(/PON0?(\d+)\/(\d+)/i);
+        if (idParts) {
+          parsedPortId = parseInt(idParts[1], 10);
+          parsedOntId = parseInt(idParts[2], 10);
+        }
+      }
+
+      if (!isNaN(parsedPortId) && !isNaN(parsedOntId)) {
+        portSet.add(parsedPortId);
+        if (!portMap[parsedPortId]) portMap[parsedPortId] = [];
+        portMap[parsedPortId].push({
+          ontId: parsedOntId,
+          name: rawName || `ONT0${parsedPortId}/00${parsedOntId}`,
+        });
+      }
+    });
+
+    uniquePorts = Array.from(portSet).sort((a, b) => a - b);
+
+    // Default selects
+    let tempPortId = detailSelectedPortId;
+    if (!tempPortId && uniquePorts.length > 0) {
+      tempPortId = uniquePorts[0].toString();
+    }
+
+    if (tempPortId) {
+      ontsInPort = portMap[parseInt(tempPortId, 10)] || [];
+      ontsInPort.sort((a, b) => a.ontId - b.ontId);
+    }
+  }
+
+  const activeDetailPortId =
+    detailSelectedPortId ||
+    (uniquePorts.length > 0 ? uniquePorts[0].toString() : "");
+  const activeDetailOntId =
+    detailSelectedOntId ||
+    (ontsInPort.length > 0 ? ontsInPort[0].ontId.toString() : "");
+
   return (
     <div className="max-w-full h-full flex flex-col">
       {/* Header Tabs */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
             <Server size={24} className="text-purple-400" />
             HSGQ OLT
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Monitoring dan Konfigurasi perangkat OLT HSGQ
           </p>
         </div>
@@ -258,6 +351,7 @@ export default function HsgqOltPage() {
           "Version Information",
           "Bind Profile Info",
           "WLAN",
+          "ONT Detail",
         ].map((tab, idx) => (
           <button
             key={idx}
@@ -266,8 +360,14 @@ export default function HsgqOltPage() {
               setDisplayType("All");
               setDisplayValue("");
               setCurrentPage(1);
+
+              if (typeof window !== "undefined") {
+                const url = new URL(window.location);
+                url.search = `?tab=${encodeURIComponent(tabSlugs[tab])}`;
+                window.history.pushState({}, "", url);
+              }
             }}
-            className={`cursor-pointer px-4 py-3 whitespace-nowrap text-sm font-medium transition-colors ${
+            className={`cursor-pointer px-4 py-3 whitespace-nowrap text-xs font-medium transition-colors ${
               activeTab === tab
                 ? "text-blue-400 border-b-2 border-blue-400"
                 : "text-slate-400 hover:text-slate-200"
@@ -278,540 +378,693 @@ export default function HsgqOltPage() {
         ))}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-sm">Query Method:</span>
-          <select
-            className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-            value={displayType}
-            onChange={(e) => {
-              setDisplayType(e.target.value);
-              setDisplayValue("");
-            }}
-          >
-            <option value="All">All</option>
-            <option value="ONT ID">ONT ID</option>
-            <option value="Name">Name</option>
-            <option value="Serial Number">Serial Number</option>
-
-            {activeTab === "Version Information" ? (
-              <>
-                <option value="Vendor ID">Vendor ID</option>
-                <option value="ONT Version">ONT Version</option>
-              </>
-            ) : activeTab === "Bind Profile Info" ? (
-              <>
-                <option value="Equipment ID">Equipment ID</option>
-                <option value="Line Profile ID">Line Profile ID</option>
-              </>
-            ) : activeTab === "WLAN" ? (
-              <option value="SSID">SSID</option>
-            ) : (
-              <option value="Running state">Running state</option>
-            )}
-          </select>
-
-          {displayType === "Running state" ? (
-            <select
-              className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 w-32"
-              value={displayValue}
-              onChange={(e) => {
-                setDisplayValue(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="initial">initial</option>
-              <option value="online">online</option>
-              <option value="offline">offline</option>
-            </select>
-          ) : displayType !== "All" ? (
-            <input
-              type="text"
-              className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 w-48"
-              value={displayValue}
-              onChange={(e) => {
-                setDisplayValue(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder={`Search ${displayType}...`}
-            />
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {activeTab === "Authenticate List" && (
-            <>
-              <div
-                onClick={() => {
-                  setDisplayType("All");
-                  setDisplayValue("");
-                  setCurrentPage(1);
-                }}
-                className="flex bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-md text-sm border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors"
-              >
-                Registered: {stats.registered}
+      {activeTab === "ONT Detail" ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 text-xs">Port ID:</span>
+                <select
+                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-32 cursor-pointer"
+                  value={activeDetailPortId}
+                  onChange={(e) => {
+                    setDetailSelectedPortId(e.target.value);
+                    setDetailSelectedOntId(""); // Reset ONT selection when port changes
+                  }}
+                >
+                  {uniquePorts.map((p) => (
+                    <option key={p} value={p}>
+                      PON0{p}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div
-                onClick={() => {
-                  setDisplayType("Running state");
-                  setDisplayValue("initial");
-                  setCurrentPage(1);
-                }}
-                className="flex bg-red-500/10 text-red-400 px-3 py-1.5 rounded-md text-sm border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors"
-              >
-                Unregistered: {stats.unregistered}
-              </div>
-              <div
-                onClick={() => {
-                  setDisplayType("Running state");
-                  setDisplayValue("online");
-                  setCurrentPage(1);
-                }}
-                className="flex bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-md text-sm border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-colors"
-              >
-                Online: {stats.online}
-              </div>
-              <div
-                onClick={() => {
-                  setDisplayType("Running state");
-                  setDisplayValue("offline");
-                  setCurrentPage(1);
-                }}
-                className="flex bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-md text-sm border border-rose-500/20 cursor-pointer hover:bg-rose-500/20 transition-colors"
-              >
-                Offline: {stats.offline}
-              </div>
-            </>
-          )}
 
-          <div className="flex items-center gap-2 ml-4">
-            <button
-              onClick={fetchData}
-              className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm transition-colors"
-            >
-              <RefreshCw size={14} /> Refresh
-            </button>
-            <button
-              onClick={() => {
-                setDisplayType("All");
-                setDisplayValue("");
-              }}
-              className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm transition-colors"
-            >
-              Reset Query
-            </button>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 text-xs">Name:</span>
+                <select
+                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-48 cursor-pointer"
+                  value={activeDetailOntId}
+                  onChange={(e) => setDetailSelectedOntId(e.target.value)}
+                >
+                  {ontsInPort.map((o) => (
+                    <option key={o.ontId} value={o.ontId}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
+                onClick={() => {
+                  const tempP = detailSelectedPortId;
+                  const tempO = detailSelectedOntId;
+                  setDetailSelectedPortId("");
+                  setTimeout(() => {
+                    setDetailSelectedPortId(tempP || activeDetailPortId);
+                    setDetailSelectedOntId(tempO || activeDetailOntId);
+                  }, 10);
+                }}
+              >
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm">
-          {error}
-        </div>
-      )}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {activeDetailPortId && activeDetailOntId ? (
+              <OntDetailView
+                portId={parseInt(activeDetailPortId, 10)}
+                ontId={parseInt(activeDetailOntId, 10)}
+              />
+            ) : (
+              <div className="text-slate-400">Pilih Port dan Name ONT...</div>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-xs">Query Method:</span>
+              <select
+                className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                value={displayType}
+                onChange={(e) => {
+                  setDisplayType(e.target.value);
+                  setDisplayValue("");
+                }}
+              >
+                <option value="All">All</option>
+                <option value="ONT ID">ONT ID</option>
+                <option value="Name">Name</option>
+                <option value="Serial Number">Serial Number</option>
 
-      {/* Table */}
-      <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col flex-1 overflow-hidden min-h-[400px]">
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left text-sm text-slate-300 relative">
-            <thead className="bg-slate-800/90 text-slate-400 border-b border-slate-700/50 uppercase text-xs sticky top-0 z-10 backdrop-blur-sm">
-              <tr>
-                <th className="px-4 py-3">ONT ID</th>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Serial Number</th>
                 {activeTab === "Version Information" ? (
                   <>
-                    <th className="px-4 py-3">Device Type</th>
-                    <th className="px-4 py-3">Vendor ID</th>
-                    <th className="px-4 py-3">ONT Version</th>
-                    <th className="px-4 py-3">Equipment ID</th>
-                    <th className="px-4 py-3">Main Software Version</th>
-                    <th className="px-4 py-3">Standby Software Version</th>
+                    <option value="Vendor ID">Vendor ID</option>
+                    <option value="ONT Version">ONT Version</option>
                   </>
                 ) : activeTab === "Bind Profile Info" ? (
                   <>
-                    <th className="px-4 py-3">Device Type</th>
-                    <th className="px-4 py-3">Equipment ID</th>
-                    <th className="px-4 py-3">Line Profile ID</th>
-                    <th className="px-4 py-3">Line Profile Name</th>
-                    <th className="px-4 py-3">Srv Profile ID</th>
-                    <th className="px-4 py-3">Srv Profile Name</th>
+                    <option value="Equipment ID">Equipment ID</option>
+                    <option value="Line Profile ID">Line Profile ID</option>
                   </>
                 ) : activeTab === "WLAN" ? (
-                  <>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">SSID</th>
-                    <th className="px-4 py-3">Share key</th>
-                    <th className="px-4 py-3">Band Width</th>
-                    <th className="px-4 py-3">Isolation</th>
-                    <th className="px-4 py-3">Broadcast</th>
-                    <th className="px-4 py-3">Channel</th>
-                  </>
+                  <option value="SSID">SSID</option>
                 ) : (
-                  <>
-                    <th className="px-4 py-3">Running state</th>
-                    <th className="px-4 py-3">Receive Power</th>
-                    <th className="px-4 py-3">Last up time</th>
-                    <th className="px-4 py-3">Last down time</th>
-                    <th className="px-4 py-3">Last down cause</th>
-                  </>
+                  <option value="Running state">Running state</option>
                 )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/50">
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan="12"
-                    className="px-4 py-8 text-center text-slate-400"
-                  >
-                    Loading data...
-                  </td>
-                </tr>
-              ) : filteredData.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="11"
-                    className="px-4 py-8 text-center text-slate-400"
-                  >
-                    No data available.
-                  </td>
-                </tr>
-              ) : (
-                currentData.map((row, idx) => {
-                  // Jika API mengembalikan array object tapi key tidak diketahui, coba mapping manual
-                  // Default field mappings fallback to row[0], row[1] etc jika format array of arrays
-                  const isArray = Array.isArray(row);
-                  const rawName = row.ont_name || row.name || "";
-                  let genId = "";
-                  if (rawName && rawName.includes("/")) {
-                    const parts = rawName.split("/");
-                    genId = `${parts[0].replace("ONT", "PON")}/${parseInt(parts[1], 10)}`;
-                  } else if (row.identifier !== undefined) {
-                    genId = `PON0${(row.identifier >> 8) & 255}/${row.identifier & 255}`;
-                  } else {
-                    genId = `PON0${Math.floor(idx / 10)}/${idx % 10}`;
-                  }
+              </select>
 
-                  const ontId = isArray
-                    ? row[0]
-                    : row.ont_id || row.id || genId;
-                  const name = isArray
-                    ? row[1]
-                    : row.ont_name || row.name || `ONT01/00${idx}`;
-                  const sn = isArray
-                    ? row[2]
-                    : row.ont_sn || row.sn || row.serial_number || "-";
-
-                  if (activeTab === "Version Information") {
-                    const devType = isArray
-                      ? row[3]
-                      : row.dev_type || row.device_type || "-";
-                    const vendorId = isArray ? row[4] : row.vendorid || "-";
-                    const ontVersion = isArray
-                      ? row[5]
-                      : row.ont_version || "-";
-                    const equipId = isArray ? row[6] : row.equipmentid || "-";
-                    const mainVer = isArray ? row[7] : row.mainversion || "-";
-                    const stbVer = isArray ? row[8] : row.stbversion || "-";
-
-                    return (
-                      <tr
-                        key={idx}
-                        className="hover:bg-slate-700/20 transition-colors"
-                      >
-                        <td className="px-4 py-3">{ontId}</td>
-                        <td className="px-4 py-3">{name}</td>
-                        <td className="px-4 py-3">{sn}</td>
-                        <td className="px-4 py-3">{devType}</td>
-                        <td className="px-4 py-3">{vendorId}</td>
-                        <td className="px-4 py-3">{ontVersion}</td>
-                        <td className="px-4 py-3">{equipId}</td>
-                        <td className="px-4 py-3">{mainVer}</td>
-                        <td className="px-4 py-3">{stbVer}</td>
-                      </tr>
-                    );
-                  }
-
-                  if (activeTab === "Bind Profile Info") {
-                    const devType = isArray
-                      ? row[3]
-                      : row.dev_type || row.device_type || "-";
-                    const equipId = isArray ? row[4] : row.equipmentid || "-";
-                    const lprofId = isArray ? row[5] : (row.lprofid ?? "-");
-                    const lprofName = isArray ? row[6] : row.lprofname || "-";
-                    const sprofId = isArray ? row[7] : (row.sprofid ?? "-");
-                    const sprofName = isArray ? row[8] : row.sprofname || "-";
-
-                    return (
-                      <tr
-                        key={idx}
-                        className="hover:bg-slate-700/20 transition-colors"
-                      >
-                        <td className="px-4 py-3">{ontId}</td>
-                        <td className="px-4 py-3">{name}</td>
-                        <td className="px-4 py-3">{sn}</td>
-                        <td className="px-4 py-3">{devType}</td>
-                        <td className="px-4 py-3">{equipId}</td>
-                        <td className="px-4 py-3">{lprofId}</td>
-                        <td className="px-4 py-3">{lprofName}</td>
-                        <td className="px-4 py-3">{sprofId}</td>
-                        <td className="px-4 py-3">{sprofName}</td>
-                      </tr>
-                    );
-                  }
-
-                  if (activeTab === "WLAN") {
-                    const wifi = row.wifi && row.wifi[0] ? row.wifi[0] : {};
-                    const typeStr = wifi.instance === 2 ? "5G" : "2.4G";
-                    
-                    const status = wifi.enable === 1;
-                    const ssid = wifi.wifiname || "-";
-                    const sharekey = wifi.sharekey || "-";
-                    const bandwidth =
-                      wifi.bandwidth === 0
-                        ? "20mhz"
-                        : wifi.bandwidth === 1
-                          ? "40mhz"
-                          : "auto";
-                    const isolation = wifi.isolation === 1;
-                    const broadcast = wifi.broadcast === 1;
-                    const channel = wifi.channel === 0 ? "auto" : wifi.channel;
-
-                    return (
-                      <tr
-                        key={idx}
-                        className="hover:bg-slate-700/20 transition-colors"
-                      >
-                        <td className="px-4 py-3">{ontId}</td>
-                        <td className="px-4 py-3">{name}</td>
-                        <td className="px-4 py-3">{sn}</td>
-                        <td className="px-4 py-3">{typeStr}</td>
-                        <td className="px-4 py-3">
-                          <div
-                            className={`flex flex-col gap-1 ${canManageOlt ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}
-                            onClick={() =>
-                              canManageOlt && handleWifiToggle(row, "enable", wifi.enable)
-                            }
-                          >
-                            <span className={`text-xs transition-colors ${canManageOlt ? 'text-slate-300 group-hover:text-blue-400' : 'text-slate-400'}`}>
-                              {status ? "Enable" : "Disable"}
-                            </span>
-                            <div
-                              className={`w-8 h-4 rounded-full relative transition-colors ${status ? "bg-blue-500" : "bg-slate-600"}`}
-                            >
-                              <div
-                                className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${status ? "left-[18px]" : "left-0.5"}`}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">{ssid}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono bg-slate-900/50 px-2 py-1 rounded text-slate-300">
-                              {visiblePasswords[ontId] ? sharekey : "••••••••"}
-                            </span>
-                            {canManageOlt && (
-                              <button
-                                onClick={() =>
-                                  setVisiblePasswords((prev) => ({
-                                    ...prev,
-                                    [ontId]: !prev[ontId],
-                                  }))
-                                }
-                                className="cursor-pointer text-slate-400 hover:text-blue-400 transition-colors"
-                                title={visiblePasswords[ontId] ? "Sembunyikan Password" : "Lihat Password"}
-                              >
-                                {visiblePasswords[ontId] ? <EyeOff size={14} /> : <Eye size={14} />}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">{bandwidth}</td>
-                        <td className="px-4 py-3">
-                          <div
-                            className={`flex flex-col gap-1 ${canManageOlt ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}
-                            onClick={() =>
-                              canManageOlt && handleWifiToggle(row, "isolation", wifi.isolation)
-                            }
-                          >
-                            <span className={`text-xs transition-colors ${canManageOlt ? 'text-slate-300 group-hover:text-blue-400' : 'text-slate-400'}`}>
-                              {isolation ? "Enable" : "Disable"}
-                            </span>
-                            <div
-                              className={`w-8 h-4 rounded-full relative transition-colors ${isolation ? "bg-blue-500" : "bg-slate-600"}`}
-                            >
-                              <div
-                                className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${isolation ? "left-[18px]" : "left-0.5"}`}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div
-                            className={`flex flex-col gap-1 ${canManageOlt ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}
-                            onClick={() =>
-                              canManageOlt && handleWifiToggle(row, "broadcast", wifi.broadcast)
-                            }
-                          >
-                            <span className={`text-xs transition-colors ${canManageOlt ? 'text-slate-300 group-hover:text-blue-400' : 'text-slate-400'}`}>
-                              {broadcast ? "Enable" : "Disable"}
-                            </span>
-                            <div
-                              className={`w-8 h-4 rounded-full relative transition-colors ${broadcast ? "bg-blue-500" : "bg-slate-600"}`}
-                            >
-                              <div
-                                className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${broadcast ? "left-[18px]" : "left-0.5"}`}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">{channel}</td>
-                      </tr>
-                    );
-                  }
-
-                  // Parsing state fields
-                  const stateVal = isArray ? row[3] : row.state;
-                  const rstateVal = isArray ? row[4] : row.rstate;
-                  const cstateVal = isArray ? row[5] : row.cstate;
-
-                  const state =
-                    stateVal === 1
-                      ? "Active"
-                      : stateVal === 0
-                        ? "Inactive"
-                        : "Unknown";
-                  const runningState =
-                    rstateVal === 1
-                      ? "online"
-                      : rstateVal === 0
-                        ? "initial"
-                        : "offline";
-                  const configState =
-                    cstateVal === 1
-                      ? "normal"
-                      : cstateVal === 0
-                        ? "initial"
-                        : "unknown";
-
-                  const deviceType = isArray
-                    ? row[6]
-                    : row.dev_type || row.device_type || "HGU";
-                  const rxPower = isArray
-                    ? row[7]
-                    : row.receive_power || row.rx_power || "-";
-                  const lastUp = isArray
-                    ? row[8]
-                    : row.last_u_time || row.last_up_time || "-";
-                  const lastDown = isArray
-                    ? row[9]
-                    : row.last_d_time || row.last_down_time || "-";
-                  const lastDownCause = isArray
-                    ? row[10]
-                    : row.last_d_cause || row.last_down_cause || "-";
-
-                  return (
-                    <tr
-                      key={idx}
-                      className="hover:bg-slate-700/20 transition-colors"
-                    >
-                      <td className="px-4 py-3">{ontId}</td>
-                      <td className="px-4 py-3">{name}</td>
-                      <td className="px-4 py-3">{sn}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            runningState.toLowerCase() === "online"
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : "bg-red-500/10 text-red-400 border border-red-500/20"
-                          }`}
-                        >
-                          {runningState}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">{rxPower}</td>
-                      <td className="px-4 py-3 text-xs">{lastUp}</td>
-                      <td className="px-4 py-3 text-xs">{lastDown}</td>
-                      <td className="px-4 py-3 text-xs">{lastDownCause}</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Controls */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700/50 text-sm text-slate-400">
-          <div>Total {filteredData.length}</div>
-          <div className="flex items-center gap-4">
-            <select
-              className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-2 py-1 focus:outline-none"
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-            >
-              <option value={20}>20/page</option>
-              <option value={30}>30/page</option>
-              <option value={50}>50/page</option>
-            </select>
-            <div className="flex items-center gap-1">
-              <button
-                className="cursor-pointer p-1 hover:text-slate-200 disabled:opacity-50"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="px-2">
-                Page {currentPage} of {totalPages || 1}
-              </span>
-              <button
-                className="cursor-pointer p-1 hover:text-slate-200 disabled:opacity-50"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage >= totalPages || totalPages === 0}
-              >
-                <ChevronRight size={16} />
-              </button>
+              {displayType === "Running state" ? (
+                <select
+                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-32 cursor-pointer "
+                  value={displayValue}
+                  onChange={(e) => {
+                    setDisplayValue(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value="initial">initial</option>
+                  <option value="online">online</option>
+                  <option value="offline">offline</option>
+                </select>
+              ) : displayType !== "All" ? (
+                <input
+                  type="text"
+                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-48"
+                  value={displayValue}
+                  onChange={(e) => {
+                    setDisplayValue(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder={`Search ${displayType}...`}
+                />
+              ) : null}
             </div>
-            <div className="flex items-center gap-2">
-              <span>Go to</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={currentPage}
-                onChange={(e) => {
-                  const valStr = e.target.value.replace(/[^0-9]/g, "");
-                  if (valStr === "") {
-                    setCurrentPage("");
-                    return;
-                  }
-                  const val = Number(valStr);
-                  if (val >= 1 && val <= totalPages) {
-                    setCurrentPage(val);
-                  } else if (val > totalPages) {
-                    setCurrentPage(totalPages);
-                  }
-                }}
-                onBlur={() => {
-                  if (currentPage === "" || currentPage < 1) setCurrentPage(1);
-                  if (currentPage > totalPages) setCurrentPage(totalPages);
-                }}
-                className="w-12 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center"
-              />
+
+            <div className="flex flex-wrap items-center gap-2">
+              {activeTab === "Authenticate List" && (
+                <>
+                  <div
+                    onClick={() => {
+                      setDisplayType("All");
+                      setDisplayValue("");
+                      setCurrentPage(1);
+                    }}
+                    className="flex bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-md text-xs border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors"
+                  >
+                    Registered: {stats.registered}
+                  </div>
+                  <div
+                    onClick={() => {
+                      setDisplayType("Running state");
+                      setDisplayValue("initial");
+                      setCurrentPage(1);
+                    }}
+                    className="flex bg-red-500/10 text-red-400 px-3 py-1.5 rounded-md text-xs border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors"
+                  >
+                    Unregistered: {stats.unregistered}
+                  </div>
+                  <div
+                    onClick={() => {
+                      setDisplayType("Running state");
+                      setDisplayValue("online");
+                      setCurrentPage(1);
+                    }}
+                    className="flex bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-md text-xs border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+                  >
+                    Online: {stats.online}
+                  </div>
+                  <div
+                    onClick={() => {
+                      setDisplayType("Running state");
+                      setDisplayValue("offline");
+                      setCurrentPage(1);
+                    }}
+                    className="flex bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-md text-xs border border-rose-500/20 cursor-pointer hover:bg-rose-500/20 transition-colors"
+                  >
+                    Offline: {stats.offline}
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center gap-2 ml-4">
+                <button
+                  onClick={fetchData}
+                  className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
+                >
+                  <RefreshCw size={14} /> Refresh
+                </button>
+                <button
+                  onClick={() => {
+                    setDisplayType("All");
+                    setDisplayValue("");
+                  }}
+                  className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
+                >
+                  Reset Query
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-xs">
+              {error}
+            </div>
+          )}
+
+          {/* Table */}
+          <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col flex-1 overflow-hidden min-h-[400px]">
+            <div className="overflow-auto flex-1">
+              <table className="w-full text-left text-xs text-slate-300 relative">
+                <thead className="bg-slate-800/90 text-slate-400 border-b border-slate-700/50 uppercase text-xs sticky top-0 z-10 backdrop-blur-sm">
+                  <tr>
+                    <th className="px-4 py-3">ONT ID</th>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Serial Number</th>
+                    {activeTab === "Version Information" ? (
+                      <>
+                        <th className="px-4 py-3">Device Type</th>
+                        <th className="px-4 py-3">Vendor ID</th>
+                        <th className="px-4 py-3">ONT Version</th>
+                        <th className="px-4 py-3">Equipment ID</th>
+                        <th className="px-4 py-3">Main Software Version</th>
+                        <th className="px-4 py-3">Standby Software Version</th>
+                      </>
+                    ) : activeTab === "Bind Profile Info" ? (
+                      <>
+                        <th className="px-4 py-3">Device Type</th>
+                        <th className="px-4 py-3">Equipment ID</th>
+                        <th className="px-4 py-3">Line Profile ID</th>
+                        <th className="px-4 py-3">Line Profile Name</th>
+                        <th className="px-4 py-3">Srv Profile ID</th>
+                        <th className="px-4 py-3">Srv Profile Name</th>
+                      </>
+                    ) : activeTab === "WLAN" ? (
+                      <>
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">SSID</th>
+                        <th className="px-4 py-3">Share key</th>
+                        <th className="px-4 py-3">Band Width</th>
+                        <th className="px-4 py-3">Isolation</th>
+                        <th className="px-4 py-3">Broadcast</th>
+                        <th className="px-4 py-3">Channel</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-4 py-3">Running state</th>
+                        <th className="px-4 py-3">Receive Power</th>
+                        <th className="px-4 py-3">Last up time</th>
+                        <th className="px-4 py-3">Last down time</th>
+                        <th className="px-4 py-3">Last down cause</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {loading ? (
+                    <tr>
+                      <td
+                        colSpan="12"
+                        className="px-4 py-8 text-center text-slate-400"
+                      >
+                        Loading data...
+                      </td>
+                    </tr>
+                  ) : filteredData.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="11"
+                        className="px-4 py-8 text-center text-slate-400"
+                      >
+                        No data available.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentData.map((row, idx) => {
+                      // Jika API mengembalikan array object tapi key tidak diketahui, coba mapping manual
+                      // Default field mappings fallback to row[0], row[1] etc jika format array of arrays
+                      const isArray = Array.isArray(row);
+                      const rawName = row.ont_name || row.name || "";
+                      let genId = "";
+                      if (rawName && rawName.includes("/")) {
+                        const parts = rawName.split("/");
+                        genId = `${parts[0].replace("ONT", "PON")}/${parseInt(parts[1], 10)}`;
+                      } else if (row.identifier !== undefined) {
+                        genId = `PON0${(row.identifier >> 8) & 255}/${row.identifier & 255}`;
+                      } else {
+                        genId = `PON0${Math.floor(idx / 10)}/${idx % 10}`;
+                      }
+
+                      const ontId = isArray
+                        ? row[0]
+                        : row.ont_id || row.id || genId;
+                      const name = isArray
+                        ? row[1]
+                        : row.ont_name || row.name || `ONT01/00${idx}`;
+                      const sn = isArray
+                        ? row[2]
+                        : row.ont_sn || row.sn || row.serial_number || "-";
+
+                      let parsedPortId = 1;
+                      let parsedOntId = 0;
+                      if (row.identifier !== undefined) {
+                        parsedPortId = (row.identifier >> 8) & 255;
+                        parsedOntId = row.identifier & 255;
+                      } else {
+                        const idParts =
+                          String(ontId).match(/PON0?(\d+)\/(\d+)/i);
+                        if (idParts) {
+                          parsedPortId = parseInt(idParts[1], 10);
+                          parsedOntId = parseInt(idParts[2], 10);
+                        }
+                      }
+
+                      const handleOntClick = () => {
+                        setSelectedOnt({
+                          ontIdString: ontId,
+                          portId: parsedPortId,
+                          ontId: parsedOntId,
+                        });
+                      };
+
+                      const ontIdCell = (
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={handleOntClick}
+                            className="text-blue-400 hover:text-blue-300 hover:underline font-medium transition-colors cursor-pointer"
+                            title="Klik untuk melihat detail ONT"
+                          >
+                            {ontId}
+                          </button>
+                        </td>
+                      );
+
+                      if (activeTab === "Version Information") {
+                        const devType = isArray
+                          ? row[3]
+                          : row.dev_type || row.device_type || "-";
+                        const vendorId = isArray ? row[4] : row.vendorid || "-";
+                        const ontVersion = isArray
+                          ? row[5]
+                          : row.ont_version || "-";
+                        const equipId = isArray
+                          ? row[6]
+                          : row.equipmentid || "-";
+                        const mainVer = isArray
+                          ? row[7]
+                          : row.mainversion || "-";
+                        const stbVer = isArray ? row[8] : row.stbversion || "-";
+
+                        return (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-700/20 transition-colors"
+                          >
+                            {ontIdCell}
+                            <td className="px-4 py-3">{name}</td>
+                            <td className="px-4 py-3">{sn}</td>
+                            <td className="px-4 py-3">{devType}</td>
+                            <td className="px-4 py-3">{vendorId}</td>
+                            <td className="px-4 py-3">{ontVersion}</td>
+                            <td className="px-4 py-3">{equipId}</td>
+                            <td className="px-4 py-3">{mainVer}</td>
+                            <td className="px-4 py-3">{stbVer}</td>
+                          </tr>
+                        );
+                      }
+
+                      if (activeTab === "Bind Profile Info") {
+                        const devType = isArray
+                          ? row[3]
+                          : row.dev_type || row.device_type || "-";
+                        const equipId = isArray
+                          ? row[4]
+                          : row.equipmentid || "-";
+                        const lprofId = isArray ? row[5] : (row.lprofid ?? "-");
+                        const lprofName = isArray
+                          ? row[6]
+                          : row.lprofname || "-";
+                        const sprofId = isArray ? row[7] : (row.sprofid ?? "-");
+                        const sprofName = isArray
+                          ? row[8]
+                          : row.sprofname || "-";
+
+                        return (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-700/20 transition-colors"
+                          >
+                            {ontIdCell}
+                            <td className="px-4 py-3">{name}</td>
+                            <td className="px-4 py-3">{sn}</td>
+                            <td className="px-4 py-3">{devType}</td>
+                            <td className="px-4 py-3">{equipId}</td>
+                            <td className="px-4 py-3">{lprofId}</td>
+                            <td className="px-4 py-3">{lprofName}</td>
+                            <td className="px-4 py-3">{sprofId}</td>
+                            <td className="px-4 py-3">{sprofName}</td>
+                          </tr>
+                        );
+                      }
+
+                      if (activeTab === "WLAN") {
+                        const wifi = row.wifi && row.wifi[0] ? row.wifi[0] : {};
+                        const typeStr = wifi.instance === 2 ? "5G" : "2.4G";
+
+                        const status = wifi.enable === 1;
+                        const ssid = wifi.wifiname || "-";
+                        const sharekey = wifi.sharekey || "-";
+                        const bandwidth =
+                          wifi.bandwidth === 0
+                            ? "20mhz"
+                            : wifi.bandwidth === 1
+                              ? "40mhz"
+                              : "auto";
+                        const isolation = wifi.isolation === 1;
+                        const broadcast = wifi.broadcast === 1;
+                        const channel =
+                          wifi.channel === 0 ? "auto" : wifi.channel;
+
+                        return (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-700/20 transition-colors"
+                          >
+                            {ontIdCell}
+                            <td className="px-4 py-3">{name}</td>
+                            <td className="px-4 py-3">{sn}</td>
+                            <td className="px-4 py-3">{typeStr}</td>
+                            <td className="px-4 py-3">
+                              <div
+                                className={`flex flex-col gap-1 ${canManageOlt ? "cursor-pointer group" : "cursor-not-allowed opacity-60"}`}
+                                onClick={() =>
+                                  canManageOlt &&
+                                  handleWifiToggle(row, "enable", wifi.enable)
+                                }
+                              >
+                                <span
+                                  className={`text-xs transition-colors ${canManageOlt ? "text-slate-300 group-hover:text-blue-400" : "text-slate-400"}`}
+                                >
+                                  {status ? "Enable" : "Disable"}
+                                </span>
+                                <div
+                                  className={`w-8 h-4 rounded-full relative transition-colors ${status ? "bg-blue-500" : "bg-slate-600"}`}
+                                >
+                                  <div
+                                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${status ? "left-[18px]" : "left-0.5"}`}
+                                  ></div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">{ssid}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono bg-slate-900/50 px-2 py-1 rounded text-slate-300">
+                                  {visiblePasswords[ontId]
+                                    ? sharekey
+                                    : "••••••••"}
+                                </span>
+                                {canManageOlt && (
+                                  <button
+                                    onClick={() =>
+                                      setVisiblePasswords((prev) => ({
+                                        ...prev,
+                                        [ontId]: !prev[ontId],
+                                      }))
+                                    }
+                                    className="cursor-pointer text-slate-400 hover:text-blue-400 transition-colors"
+                                    title={
+                                      visiblePasswords[ontId]
+                                        ? "Sembunyikan Password"
+                                        : "Lihat Password"
+                                    }
+                                  >
+                                    {visiblePasswords[ontId] ? (
+                                      <EyeOff size={14} />
+                                    ) : (
+                                      <Eye size={14} />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">{bandwidth}</td>
+                            <td className="px-4 py-3">
+                              <div
+                                className={`flex flex-col gap-1 ${canManageOlt ? "cursor-pointer group" : "cursor-not-allowed opacity-60"}`}
+                                onClick={() =>
+                                  canManageOlt &&
+                                  handleWifiToggle(
+                                    row,
+                                    "isolation",
+                                    wifi.isolation,
+                                  )
+                                }
+                              >
+                                <span
+                                  className={`text-xs transition-colors ${canManageOlt ? "text-slate-300 group-hover:text-blue-400" : "text-slate-400"}`}
+                                >
+                                  {isolation ? "Enable" : "Disable"}
+                                </span>
+                                <div
+                                  className={`w-8 h-4 rounded-full relative transition-colors ${isolation ? "bg-blue-500" : "bg-slate-600"}`}
+                                >
+                                  <div
+                                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${isolation ? "left-[18px]" : "left-0.5"}`}
+                                  ></div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div
+                                className={`flex flex-col gap-1 ${canManageOlt ? "cursor-pointer group" : "cursor-not-allowed opacity-60"}`}
+                                onClick={() =>
+                                  canManageOlt &&
+                                  handleWifiToggle(
+                                    row,
+                                    "broadcast",
+                                    wifi.broadcast,
+                                  )
+                                }
+                              >
+                                <span
+                                  className={`text-xs transition-colors ${canManageOlt ? "text-slate-300 group-hover:text-blue-400" : "text-slate-400"}`}
+                                >
+                                  {broadcast ? "Enable" : "Disable"}
+                                </span>
+                                <div
+                                  className={`w-8 h-4 rounded-full relative transition-colors ${broadcast ? "bg-blue-500" : "bg-slate-600"}`}
+                                >
+                                  <div
+                                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${broadcast ? "left-[18px]" : "left-0.5"}`}
+                                  ></div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">{channel}</td>
+                          </tr>
+                        );
+                      }
+
+                      // Parsing state fields
+                      const stateVal = isArray ? row[3] : row.state;
+                      const rstateVal = isArray ? row[4] : row.rstate;
+                      const cstateVal = isArray ? row[5] : row.cstate;
+
+                      const state =
+                        stateVal === 1
+                          ? "Active"
+                          : stateVal === 0
+                            ? "Inactive"
+                            : "Unknown";
+                      const runningState =
+                        rstateVal === 1
+                          ? "online"
+                          : rstateVal === 0
+                            ? "initial"
+                            : "offline";
+                      const configState =
+                        cstateVal === 1
+                          ? "normal"
+                          : cstateVal === 0
+                            ? "initial"
+                            : "unknown";
+
+                      const deviceType = isArray
+                        ? row[6]
+                        : row.dev_type || row.device_type || "HGU";
+                      const rxPower = isArray
+                        ? row[7]
+                        : row.receive_power || row.rx_power || "-";
+                      const lastUp = isArray
+                        ? row[8]
+                        : row.last_u_time || row.last_up_time || "-";
+                      const lastDown = isArray
+                        ? row[9]
+                        : row.last_d_time || row.last_down_time || "-";
+                      const lastDownCause = isArray
+                        ? row[10]
+                        : row.last_d_cause || row.last_down_cause || "-";
+
+                      return (
+                        <tr
+                          key={idx}
+                          className="hover:bg-slate-700/20 transition-colors"
+                        >
+                          {ontIdCell}
+                          <td className="px-4 py-3">{name}</td>
+                          <td className="px-4 py-3">{sn}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                runningState.toLowerCase() === "online"
+                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                  : "bg-red-500/10 text-red-400 border border-red-500/20"
+                              }`}
+                            >
+                              {runningState}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">{rxPower}</td>
+                          <td className="px-4 py-3 text-xs">{lastUp}</td>
+                          <td className="px-4 py-3 text-xs">{lastDown}</td>
+                          <td className="px-4 py-3 text-xs">{lastDownCause}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700/50 text-xs text-slate-400">
+              <div>Total {filteredData.length}</div>
+              <div className="flex items-center gap-4">
+                <select
+                  className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-2 py-1 focus:outline-none"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={20}>20/page</option>
+                  <option value={30}>30/page</option>
+                  <option value={50}>50/page</option>
+                </select>
+                <div className="flex items-center gap-1">
+                  <button
+                    className="cursor-pointer p-1 hover:text-slate-200 disabled:opacity-50"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="px-2">
+                    Page {currentPage} of {totalPages || 1}
+                  </span>
+                  <button
+                    className="cursor-pointer p-1 hover:text-slate-200 disabled:opacity-50"
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage >= totalPages || totalPages === 0}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Go to</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={currentPage}
+                    onChange={(e) => {
+                      const valStr = e.target.value.replace(/[^0-9]/g, "");
+                      if (valStr === "") {
+                        setCurrentPage("");
+                        return;
+                      }
+                      const val = Number(valStr);
+                      if (val >= 1 && val <= totalPages) {
+                        setCurrentPage(val);
+                      } else if (val > totalPages) {
+                        setCurrentPage(totalPages);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (currentPage === "" || currentPage < 1)
+                        setCurrentPage(1);
+                      if (currentPage > totalPages) setCurrentPage(totalPages);
+                    }}
+                    className="w-12 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {selectedOnt && (
+        <OntDetailModal
+          ontIdString={selectedOnt.ontIdString}
+          portId={selectedOnt.portId}
+          ontId={selectedOnt.ontId}
+          onClose={() => setSelectedOnt(null)}
+        />
+      )}
     </div>
   );
 }

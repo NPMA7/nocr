@@ -41,7 +41,7 @@ function Toast({ toasts }) {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-medium backdrop-blur-sm pointer-events-auto transition-all duration-300
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium backdrop-blur-sm pointer-events-auto transition-all duration-300
           ${
             t.type === "success"
               ? "bg-emerald-900/90 border-emerald-500/40 text-emerald-200"
@@ -87,19 +87,19 @@ function ConfirmDialog({
           </div>
           <div>
             <h3 className="font-bold text-slate-100">{title}</h3>
-            <p className="text-sm text-slate-400 mt-1">{message}</p>
+            <p className="text-xs text-slate-400 mt-1">{message}</p>
           </div>
         </div>
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-xs font-semibold transition"
           >
             Batal
           </button>
           <button
             onClick={onConfirm}
-            className={`cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-semibold transition ${danger ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}`}
+            className={`cursor-pointer text-white px-4 py-2 rounded-lg text-xs font-semibold transition ${danger ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}`}
           >
             {danger ? "Ya, Hapus" : "Konfirmasi"}
           </button>
@@ -116,12 +116,16 @@ export default function Devices() {
 
   const syncRoleFlags = () => {
     const userData = getStoredUser();
-    setCanManage(hasAccess(userData, 'devices-mikrotik', 'update'));
-    if (userData && userData.role && !hasAccess(userData, 'devices-mikrotik', 'read')) {
-      window.location.href = '/dashboard';
+    setCanManage(hasAccess(userData, "devices-mikrotik", "update"));
+    if (
+      userData &&
+      userData.role &&
+      !hasAccess(userData, "devices-mikrotik", "read")
+    ) {
+      window.location.href = "/dashboard";
       return;
     }
-    setCanShowPassword(hasAccess(userData, 'devices-mikrotik', 'update'));
+    setCanShowPassword(hasAccess(userData, "devices-mikrotik", "update"));
   };
   const [tab, setTab] = useState("interfaces");
   const [coreStatus, setCoreStatus] = useState(null);
@@ -200,14 +204,25 @@ export default function Devices() {
     setError(null);
     try {
       const queryParams = forceRefresh ? "?force=true" : "";
-      
+
       // Fetch berurutan untuk mencegah bentrok koneksi (race condition) ke RouterOS
-      const statusRes = await axios.get(`${API_URL}/devices/core/status${queryParams}`).catch((e) => ({
-        data: { connected: false, error: e.response?.data?.error || e.message },
-      }));
-      const ifaceRes = await axios.get(`${API_URL}/devices/core/interfaces${queryParams}`).catch(() => ({ data: [] }));
-      const pppoeRes = await axios.get(`${API_URL}/devices/core/pppoe${queryParams}`).catch(() => ({ data: [] }));
-      const secretsRes = await axios.get(`${API_URL}/devices/core/pppoe-secrets${queryParams}`).catch(() => ({ data: [] }));
+      const statusRes = await axios
+        .get(`${API_URL}/devices/core/status${queryParams}`)
+        .catch((e) => ({
+          data: {
+            connected: false,
+            error: e.response?.data?.error || e.message,
+          },
+        }));
+      const ifaceRes = await axios
+        .get(`${API_URL}/devices/core/interfaces${queryParams}`)
+        .catch(() => ({ data: [] }));
+      const pppoeRes = await axios
+        .get(`${API_URL}/devices/core/pppoe${queryParams}`)
+        .catch(() => ({ data: [] }));
+      const secretsRes = await axios
+        .get(`${API_URL}/devices/core/pppoe-secrets${queryParams}`)
+        .catch(() => ({ data: [] }));
 
       setCoreStatus(statusRes.data);
       const ifaces = ifaceRes.data || [];
@@ -491,8 +506,8 @@ export default function Devices() {
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold flex items-center text-slate-100 gap-3">
-             <Server size={24} className="text-emerald-400" /> Mikrotik RO
+            <h1 className="text-xl font-bold flex items-center text-slate-100 gap-3">
+              <Server size={24} className="text-emerald-400" /> Mikrotik RO
             </h1>
             {syncStatus?.syncedAt && (
               <span
@@ -517,7 +532,7 @@ export default function Devices() {
             )}
           </div>
           <div className="flex items-center gap-3 mt-0.5">
-            <p className="text-sm text-slate-400">
+            <p className="text-xs text-slate-400">
               Pantau dan kelola resource MikroTik Pusat secara langsung
             </p>
 
@@ -532,7 +547,7 @@ export default function Devices() {
           <button
             onClick={() => fetchAll(true)}
             disabled={loading}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />{" "}
             Sync Sekarang
@@ -596,7 +611,7 @@ export default function Devices() {
           {notConfigured && (
             <a
               href="/settings"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex-shrink-0"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex-shrink-0"
             >
               <Settings size={15} /> Konfigurasi
             </a>
@@ -609,7 +624,7 @@ export default function Devices() {
         <button
           id="tab-interfaces"
           onClick={() => setTab("interfaces")}
-          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition border ${tab === "interfaces" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
+          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl text-xs font-semibold transition border ${tab === "interfaces" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
         >
           <Activity size={16} />
           <span>Interfaces</span>
@@ -622,7 +637,7 @@ export default function Devices() {
         <button
           id="tab-pppoe"
           onClick={() => setTab("pppoe")}
-          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition border ${tab === "pppoe" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
+          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl text-xs font-semibold transition border ${tab === "pppoe" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
         >
           <Users size={16} />
           <span>Sesi Aktif</span>
@@ -635,7 +650,7 @@ export default function Devices() {
         <button
           id="tab-secrets"
           onClick={() => setTab("secrets")}
-          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition border ${tab === "secrets" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
+          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl text-xs font-semibold transition border ${tab === "secrets" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
         >
           <Users size={16} />
           <span>Pelanggan</span>
@@ -650,7 +665,10 @@ export default function Devices() {
       {loading && interfaces.length === 0 ? (
         <div className="flex-1 flex flex-col gap-2 p-3 min-h-[300px]">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="w-full h-12 bg-slate-700/30 rounded-lg animate-pulse" />
+            <div
+              key={i}
+              className="w-full h-12 bg-slate-700/30 rounded-lg animate-pulse"
+            />
           ))}
         </div>
       ) : error ? (
@@ -658,13 +676,13 @@ export default function Devices() {
           <div className="flex flex-col items-center gap-3 text-center">
             <AlertTriangle size={36} className="text-red-400" />
             <p className="text-slate-200 font-semibold">Terjadi kesalahan</p>
-            <p className="text-slate-400 text-sm">{error}</p>
+            <p className="text-slate-400 text-xs">{error}</p>
           </div>
         </div>
       ) : tab === "interfaces" ? (
         <div className={dataPanelClass}>
           <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">
+            <h2 className="font-semibold text-slate-200 text-xs flex-shrink-0">
               Interface
             </h2>
             <input
@@ -672,12 +690,12 @@ export default function Devices() {
               placeholder="Cari nama, tipe, MAC..."
               value={interfaceSearch}
               onChange={(e) => setInterfaceSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Tipe</option>
               <option value="pppoe">PPPoE</option>
@@ -687,7 +705,7 @@ export default function Devices() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Status</option>
               <option value="running">Running</option>
@@ -712,7 +730,7 @@ export default function Devices() {
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-slate-700/30">
               {filteredInterfaces.length === 0 ? (
-                <p className="text-center py-12 text-slate-500 text-base">
+                <p className="text-center py-12 text-slate-500 text-sm">
                   Tidak ada data interface
                 </p>
               ) : (
@@ -722,10 +740,10 @@ export default function Devices() {
                     className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-700/20 active:bg-slate-700/40 transition"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-100 text-base truncate">
+                      <p className="font-bold text-slate-100 text-sm truncate">
                         {iface.name}
                       </p>
-                      <p className="text-sm text-slate-400 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         {iface.type} · MTU {iface.mtu || "-"}
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5 font-mono">
@@ -758,7 +776,7 @@ export default function Devices() {
             </div>
             {/* Desktop table view */}
             <div className="hidden md:block min-h-0">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -861,7 +879,7 @@ export default function Devices() {
       ) : tab === "pppoe" ? (
         <div className={dataPanelClass}>
           <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">
+            <h2 className="font-semibold text-slate-200 text-xs flex-shrink-0">
               Sesi Aktif
             </h2>
             <input
@@ -869,12 +887,12 @@ export default function Devices() {
               placeholder="Cari nama user atau IP..."
               value={pppoeSearch}
               onChange={(e) => setPppoeSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
             <select
               value={sessionFilterService}
               onChange={(e) => setSessionFilterService(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Service</option>
               <option value="pppoe">PPPoE</option>
@@ -888,7 +906,7 @@ export default function Devices() {
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-slate-700/30">
               {filteredSessions.length === 0 ? (
-                <p className="text-center py-12 text-slate-500 text-base">
+                <p className="text-center py-12 text-slate-500 text-sm">
                   Tidak ada sesi aktif
                 </p>
               ) : (
@@ -898,10 +916,10 @@ export default function Devices() {
                     className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-700/20 active:bg-slate-700/40 transition"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-100 text-base truncate">
+                      <p className="font-bold text-slate-100 text-sm truncate">
                         {p.name || "-"}
                       </p>
-                      <p className="text-sm text-slate-400 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         {p.address || "-"} ·{" "}
                         <span
                           className={
@@ -922,7 +940,7 @@ export default function Devices() {
                         onClick={() =>
                           setConfirmDelete({ type: "pppoe", item: p })
                         }
-                        className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold flex-shrink-0"
+                        className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold flex-shrink-0"
                       >
                         <WifiOff size={15} /> Putus
                       </button>
@@ -933,7 +951,7 @@ export default function Devices() {
             </div>
             {/* Desktop table view */}
             <div className="hidden md:block min-h-0">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -1019,7 +1037,7 @@ export default function Devices() {
       ) : (
         <div className={dataPanelClass}>
           <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-sm flex-shrink-0">
+            <h2 className="font-semibold text-slate-200 text-xs flex-shrink-0">
               Secrets
             </h2>
             <input
@@ -1027,7 +1045,7 @@ export default function Devices() {
               placeholder="Cari nama atau profile..."
               value={secretSearch}
               onChange={(e) => setSecretSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
             {canManage && (
               <button
@@ -1043,7 +1061,7 @@ export default function Devices() {
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-slate-700/30">
               {filteredSecrets.length === 0 ? (
-                <p className="text-center py-12 text-slate-500 text-base">
+                <p className="text-center py-12 text-slate-500 text-sm">
                   Tidak ada pelanggan terdaftar
                 </p>
               ) : (
@@ -1057,7 +1075,7 @@ export default function Devices() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="font-bold text-slate-100 text-base truncate">
+                          <p className="font-bold text-slate-100 text-sm truncate">
                             {s.name || "-"}
                           </p>
                           <span
@@ -1066,7 +1084,7 @@ export default function Devices() {
                             {isOnline ? "● Online" : "○ Offline"}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-xs text-slate-400">
                           {s.profile || "-"} · {s.service || "pppoe"}
                         </p>
                       </div>
@@ -1095,7 +1113,7 @@ export default function Devices() {
             </div>
             {/* Desktop table view */}
             <div className="hidden md:block min-h-0">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
                     <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -1241,7 +1259,6 @@ export default function Devices() {
                     })
                   )}
                 </tbody>
-           
               </table>
             </div>
           </div>
@@ -1282,7 +1299,7 @@ export default function Devices() {
                     setSecretForm({ ...secretForm, name: e.target.value })
                   }
                   placeholder="Contoh: pelanggan_budi"
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -1302,7 +1319,7 @@ export default function Devices() {
                         ? "Kosongkan jika tidak diubah"
                         : "Masukkan password pelanggan"
                     }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 pr-10 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 pr-10 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                   />
                   <button
                     type="button"
@@ -1325,7 +1342,7 @@ export default function Devices() {
                     setSecretForm({ ...secretForm, profile: e.target.value })
                   }
                   placeholder="Contoh: default atau 10Mbps"
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -1337,7 +1354,7 @@ export default function Devices() {
                   onChange={(e) =>
                     setSecretForm({ ...secretForm, service: e.target.value })
                   }
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                 >
                   <option value="pppoe">pppoe</option>
                   <option value="any">any</option>
@@ -1347,13 +1364,13 @@ export default function Devices() {
                 <button
                   type="button"
                   onClick={() => setShowAddSecret(false)}
-                  className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                  className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-xs font-semibold transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2"
+                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2"
                 >
                   <Check size={15} />{" "}
                   {editingSecret ? "Simpan Perubahan" : "Tambah Pelanggan"}
@@ -1398,7 +1415,7 @@ export default function Devices() {
                     setInterfaceForm({ ...interfaceForm, name: e.target.value })
                   }
                   placeholder="Contoh: vlan200 atau bridge-lan"
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                 />
               </div>
 
@@ -1415,7 +1432,7 @@ export default function Devices() {
                         type: e.target.value,
                       })
                     }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                   >
                     <option value="vlan">VLAN</option>
                     <option value="bridge">Bridge</option>
@@ -1442,7 +1459,7 @@ export default function Devices() {
                         })
                       }
                       placeholder="Contoh: 100"
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -1458,7 +1475,7 @@ export default function Devices() {
                         })
                       }
                       required
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                     >
                       <option value="">-- Pilih Interface --</option>
                       {interfaces
@@ -1492,7 +1509,7 @@ export default function Devices() {
                       mtu: parseInt(e.target.value) || 1500,
                     })
                   }
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                 />
               </div>
 
@@ -1509,7 +1526,7 @@ export default function Devices() {
                         disabled: e.target.value,
                       })
                     }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-blue-500 outline-none w-full"
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
                   >
                     <option value="false">Enabled (Aktif)</option>
                     <option value="true">Disabled (Non-aktif)</option>
@@ -1521,13 +1538,13 @@ export default function Devices() {
                 <button
                   type="button"
                   onClick={() => setShowAddInterface(false)}
-                  className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                  className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-xs font-semibold transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2"
+                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2"
                 >
                   <Check size={15} />{" "}
                   {editingInterface ? "Simpan Perubahan" : "Tambah Interface"}
