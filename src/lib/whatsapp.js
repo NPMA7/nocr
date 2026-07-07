@@ -253,6 +253,11 @@ async function getChatMessages(chatId, limit = 50) {
     if (status !== 'connected' || !client) return [];
     try {
         const chat = await client.getChatById(chatId);
+        try {
+            await chat.sendSeen();
+        } catch (seenErr) {
+            console.warn('Failed to sendSeen:', seenErr.message);
+        }
         const messages = await chat.fetchMessages({ limit });
         return messages.map(m => ({
             id: m.id._serialized,

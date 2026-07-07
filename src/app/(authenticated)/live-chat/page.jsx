@@ -264,7 +264,31 @@ export default function LiveChatPage() {
     return <Clock size={10} />; // 0 or undefined = pending
   };
 
+  const getCoreNumber = (num) => {
+    if (!num) return "";
+    let cleaned = num.replace(/\D/g, "");
+    if (cleaned.startsWith("628")) {
+      return cleaned.substring(2);
+    }
+    if (cleaned.startsWith("08")) {
+      return cleaned.substring(1);
+    }
+    if (cleaned.startsWith("0")) {
+      return cleaned.substring(1);
+    }
+    return cleaned;
+  };
+
   const filteredChats = chats.filter((chat) => {
+    // 1. Selalu tampilkan jika sedang terpilih/aktif dibuka
+    if (selectedChat && chat.id === selectedChat.id) return true;
+
+    // 2. Sembunyikan jika tidak ada pesan terakhir atau pesan terakhir kosong/dihapus
+    const hasValidLastMessage =
+      chat.lastMessage &&
+      (chat.lastMessage.body || chat.lastMessage.hasMedia);
+    if (!hasValidLastMessage) return false;
+
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
 
@@ -278,18 +302,13 @@ export default function LiveChatPage() {
     let phoneMatch = false;
     const qDigits = q.replace(/\D/g, "");
     if (qDigits.length > 0) {
-      let qDigits62 = qDigits;
-      if (qDigits.startsWith("0")) {
-        qDigits62 = "62" + qDigits.substring(1);
-      }
+      const coreQ = getCoreNumber(qDigits);
       const nameDigits = chat.name ? chat.name.replace(/\D/g, "") : "";
       const idDigits = chat.id ? chat.id.replace(/\D/g, "") : "";
 
       phoneMatch =
-        nameDigits.includes(qDigits) ||
-        idDigits.includes(qDigits) ||
-        nameDigits.includes(qDigits62) ||
-        idDigits.includes(qDigits62);
+        getCoreNumber(nameDigits).includes(coreQ) ||
+        getCoreNumber(idDigits).includes(coreQ);
     }
 
     return nameMatch || idMatch || messageMatch || phoneMatch;
@@ -308,8 +327,17 @@ export default function LiveChatPage() {
 
   const searchNumber = getSearchNumber();
   const searchNumberJid = searchNumber ? `${searchNumber}@c.us` : null;
-  const isSearchNumberInChats = searchNumberJid
-    ? chats.some((c) => c.id === searchNumberJid)
+  const isSearchNumberInChats = searchNumber
+    ? chats.some((c) => {
+        if (c.isGroup) return false;
+        const coreSearch = getCoreNumber(searchNumber);
+        const idNumber = c.id.split("@")[0];
+        if (getCoreNumber(idNumber) === coreSearch) return true;
+        if (c.name) {
+          if (getCoreNumber(c.name) === coreSearch) return true;
+        }
+        return false;
+      })
     : false;
 
   return (
@@ -408,23 +436,24 @@ export default function LiveChatPage() {
                     <div className="flex justify-between items-center gap-2">
                       <p className="text-xs text-slate-400 truncate flex-1 flex items-center">
                         {chat.lastMessage ? (
-                          <>
-                            {chat.lastMessage.fromMe && (
-                              <span className="text-blue-400 mr-1 flex-shrink-0">
-                                ✓
+                          chat.lastMessage.body || chat.lastMessage.hasMedia ? (
+                            <>
+                              {chat.lastMessage.fromMe && (
+                                <span className="text-blue-400 mr-1 flex-shrink-0">
+                                  ✓
+                                </span>
+                              )}
+                              {chat.lastMessage.hasMedia && (
+                                <ImageIcon
+                                  size={12}
+                                  className="inline mr-1 flex-shrink-0 text-slate-400"
+                                />
+                              )}
+                              <span className="truncate">
+                                {chat.lastMessage.body || "Media"}
                               </span>
-                            )}
-                            {chat.lastMessage.hasMedia && (
-                              <ImageIcon
-                                size={12}
-                                className="inline mr-1 flex-shrink-0 text-slate-400"
-                              />
-                            )}
-                            <span className="truncate">
-                              {chat.lastMessage.body ||
-                                (chat.lastMessage.hasMedia ? "Media" : "")}
-                            </span>
-                          </>
+                            </>
+                          ) : null
                         ) : (
                           "Pesan media/sistem"
                         )}
@@ -458,7 +487,7 @@ export default function LiveChatPage() {
                     {selectedChat.name}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    {selectedChat.id.replace("@c.us", "")}
+                    {selectedChat.id.split("@")[0]}
                   </p>
                 </div>
               </div>
@@ -477,7 +506,7 @@ export default function LiveChatPage() {
                     <Loader2 className="animate-spin" size={30} />
                   </div>
                 ) : (
-                  messages.map((msg) => {
+                  messages.filter((msg) => msg.body || msg.hasMedia).map((msg) => {
                     const isMe = msg.fromMe;
                     return (
                       <div
