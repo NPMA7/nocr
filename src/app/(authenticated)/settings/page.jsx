@@ -390,7 +390,7 @@ function UserManagement() {
   );
 }
 
-function PasswordChangeSettings() {
+function PasswordChangeSettings({ canUpdate = true }) {
   const { showToast } = useAppState();
   const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
@@ -398,6 +398,7 @@ function PasswordChangeSettings() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canUpdate) return;
     if (form.newPassword !== form.confirmPassword) {
       if (showToast) showToast("Konfirmasi password tidak cocok", "error");
       return;
@@ -442,8 +443,9 @@ function PasswordChangeSettings() {
               }
               placeholder="Masukkan password baru"
               required
+              disabled={!canUpdate}
               minLength={4}
-              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 disabled:opacity-50"
             />
             <button
               type="button"
@@ -467,8 +469,9 @@ function PasswordChangeSettings() {
               }
               placeholder="Konfirmasi password baru"
               required
+              disabled={!canUpdate}
               minLength={4}
-              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 disabled:opacity-50"
             />
             <button
               type="button"
@@ -481,22 +484,26 @@ function PasswordChangeSettings() {
         </div>
 
         <div className="mt-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-6 rounded-lg text-xs transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{" "}
-                Menyimpan...
-              </>
-            ) : (
-              <>
-                <Save size={16} /> Simpan Perubahan Password
-              </>
-            )}
-          </button>
+          {canUpdate ? (
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-6 rounded-lg text-xs transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{" "}
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save size={16} /> Simpan Perubahan Password
+                </>
+              )}
+            </button>
+          ) : (
+            <></>
+          )}
         </div>
       </form>
     </div>
@@ -1346,7 +1353,9 @@ function Settings() {
             <RoleSettings showToast={showToast} />
           )}
 
-          {activeTab === "password" && <PasswordChangeSettings />}
+          {activeTab === "password" && (
+            <PasswordChangeSettings canUpdate={perms.passwordUpdate} />
+          )}
 
           {activeTab === "health" && (
             <SystemHealth isAdmin={perms.healthUpdate} />

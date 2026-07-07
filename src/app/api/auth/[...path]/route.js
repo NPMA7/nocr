@@ -224,8 +224,14 @@ export async function PATCH(req, { params }) {
                 updateData.role = normalizedRole;
             }
 
-            // 2. Password Update (Admin or self)
+            // 2. Password Update (Admin or self with permission)
             if (body.password !== undefined) {
+                if (isSelf && !hasAccess(user, 'settings-password', 'update')) {
+                    return NextResponse.json(
+                        { error: 'Akses ditolak: Anda tidak memiliki izin untuk mengubah password.' },
+                        { status: 403 }
+                    );
+                }
                 const password = body.password;
                 if (typeof password !== 'string' || password.length < 4) {
                     return NextResponse.json(

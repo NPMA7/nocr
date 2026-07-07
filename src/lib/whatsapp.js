@@ -75,15 +75,6 @@ async function start() {
         }
     });
 
-    client.on('ready', () => {
-        status = 'connected';
-        qrCodeDataURL = null;
-        console.info('WhatsApp Client is ready!');
-        broadcastStatus();
-        if (global.addActivityLog) {
-            global.addActivityLog('WhatsApp Gateway terhubung dan siap digunakan.');
-        }
-    });
 
     client.on('authenticated', () => {
         console.info('WhatsApp Authenticated');
@@ -295,7 +286,7 @@ async function getMessageMedia(msgId) {
 async function sendMessage(chatId, body) {
     if (status !== 'connected' || !client) throw new Error('WhatsApp tidak terhubung');
     try {
-        const response = await client.sendMessage(chatId, body);
+        const response = await client.sendMessage(chatId, body, { sendSeen: false });
         return {
             id: response.id._serialized,
             from: response.from,

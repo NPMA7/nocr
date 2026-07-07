@@ -27,6 +27,28 @@ function hasServerAccess(permissions, menuKey, action, legacyPerm) {
     return false;
 }
 
+async function getUserInfo(userId) {
+    if (!userId) return { role: 'visitor', permissions: [] };
+    try {
+        const { data: userData } = await db.from('users').select('role').eq('id', userId).single();
+        if (userData && userData.role) {
+            const role = userData.role;
+            if (role === 'admin') {
+                return { role, permissions: { '*': ['read', 'create', 'update', 'delete'] } };
+            }
+            const { data: roleData } = await db.from('access_roles').select('permissions').eq('name', role).single();
+            if (roleData && roleData.permissions) {
+                const permissions = typeof roleData.permissions === 'string' ? JSON.parse(roleData.permissions) : roleData.permissions;
+                return { role, permissions };
+            }
+            return { role, permissions: [] };
+        }
+    } catch (e) {
+        console.error('Gagal mengambil user info dari DB:', e);
+    }
+    return { role: 'visitor', permissions: [] };
+}
+
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
@@ -900,8 +922,8 @@ app.prepare().then(() => {
         try {
             const token = authHeader.split(' ')[1];
             const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-            const perms = decoded.permissions;
-            const isAuthorized = decoded.role === 'admin' || hasServerAccess(perms, 'settings-wa', 'update', 'system.settings');
+            const userInfo = await getUserInfo(decoded.id);
+            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'settings-wa', 'update', 'system.settings');
             if (!isAuthorized) {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
             }
@@ -944,12 +966,16 @@ app.prepare().then(() => {
         try {
             const token = authHeader.split(' ')[1];
             const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-            const perms = decoded.permissions;
-            const isAuthorized = decoded.role === 'admin' || hasServerAccess(perms, 'chat', 'create', 'chat.live');
+            console.log("DEBUG SEND: decoded =", decoded);
+            const userInfo = await getUserInfo(decoded.id);
+            console.log("DEBUG SEND: userInfo =", userInfo);
+            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'create', 'chat.live');
+            console.log("DEBUG SEND: isAuthorized =", isAuthorized);
             if (!isAuthorized) {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
             }
         } catch (e) {
+            console.error("DEBUG SEND error:", e);
             return res.status(401).json({ error: 'Token tidak valid' });
         }
 

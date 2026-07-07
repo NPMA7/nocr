@@ -287,7 +287,7 @@ export default function LiveChatPage() {
     const hasValidLastMessage =
       chat.lastMessage &&
       (chat.lastMessage.body || chat.lastMessage.hasMedia);
-    if (!hasValidLastMessage) return false;
+    if (!hasValidLastMessage && !searchQuery) return false;
 
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -550,7 +550,7 @@ export default function LiveChatPage() {
                     <button
                       type="submit"
                       disabled={sending || !inputText.trim()}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl flex items-center justify-center transition disabled:opacity-50"
+                      className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl flex items-center justify-center transition disabled:opacity-50"
                     >
                       {sending ? (
                         <Loader2 size={20} className="animate-spin" />

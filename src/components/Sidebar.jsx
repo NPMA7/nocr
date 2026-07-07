@@ -280,7 +280,17 @@ export default function Sidebar({ isConnected, onNavigate }) {
         ].some((k) => hasAccess(currentUser, k, "read")) && (
           <div className="flex flex-col gap-0.5">
             <Link
-              href="/settings?tab=core"
+              href={`/settings?tab=${
+                [
+                  { key: "settings-mikrotik", tab: "core" },
+                  { key: "settings-vpn", tab: "vpn" },
+                  { key: "settings-health", tab: "health" },
+                  { key: "settings-wa", tab: "whatsapp" },
+                  { key: "settings-users", tab: "users" },
+                  { key: "settings-roles", tab: "roles" },
+                  { key: "settings-password", tab: "password" },
+                ].find((item) => hasAccess(currentUser, item.key, "read"))?.tab || "core"
+              }`}
               onClick={onNavigate}
               scroll={false}
               className={`${getLinkClass("/settings")} justify-between w-full`}
