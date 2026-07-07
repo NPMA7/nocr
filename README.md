@@ -32,7 +32,7 @@ Memantau seluruh aset secara *Real-Time* menggunakan teknologi **WebSockets**.
 - **Peta Topologi Cerdas:** Visualisasi jaringan menggunakan `vis-network` dan peta interaktif `Leaflet`.
 
 ### 2. 🤖 Otomatisasi & Peringatan Dini (*Early Warning System*)
-- **WhatsApp Gateway Terintegrasi:** Berjalan langsung di dalam server aplikasi (`whatsapp-web.js`), sistem secara cerdas akan mendeteksi node/perangkat yang *offline* atau latensi tinggi, lalu mengirim pesan WhatsApp secara instan ke grup teknisi.
+- **WhatsApp Gateway & Live Chat Omnichannel:** Berjalan langsung di dalam server aplikasi (`whatsapp-web.js`), menghubungkan satu nomor WhatsApp untuk digunakan sebagai pusat layanan pelanggan (Customer Services) yang dikelola bersama secara omnichannel.
 - **Auto-Generated PDF Reports:** Laporan harian operasi jaringan (*Daily Reports*) dapat di-generate menjadi format dokumen resmi secara otomatis dan dikirimkan ke meja pimpinan.
 
 ### 3. 🛡️ Keamanan & Hak Akses Berstandar Enterprise (Granular RBAC)

@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Download,
   Image as ImageIcon,
+  Plus,
 } from "lucide-react";
 import { hasAccess } from "@/lib/roles";
 
@@ -216,6 +217,8 @@ export default function LiveChatPage() {
     }
   };
 
+
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -292,6 +295,23 @@ export default function LiveChatPage() {
     return nameMatch || idMatch || messageMatch || phoneMatch;
   });
 
+  const getSearchNumber = () => {
+    let cleaned = searchQuery.replace(/\D/g, "");
+    if (cleaned.startsWith("0")) {
+      cleaned = "62" + cleaned.substring(1);
+    }
+    if (cleaned.length >= 9 && cleaned.length <= 15) {
+      return cleaned;
+    }
+    return null;
+  };
+
+  const searchNumber = getSearchNumber();
+  const searchNumberJid = searchNumber ? `${searchNumber}@c.us` : null;
+  const isSearchNumberInChats = searchNumberJid
+    ? chats.some((c) => c.id === searchNumberJid)
+    : false;
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-900 border border-slate-700/50 rounded-xl shadow-2xl">
       <div className="flex-none p-4 border-b border-slate-700/50 bg-slate-800 flex justify-between items-center">
@@ -323,16 +343,51 @@ export default function LiveChatPage() {
               <div className="p-5 text-center text-slate-500 flex flex-col items-center gap-2">
                 <Loader2 className="animate-spin" /> Memuat obrolan...
               </div>
-            ) : chats.length === 0 ? (
-              <div className="p-5 text-center text-slate-500 text-xs">
-                Tidak ada obrolan atau WhatsApp belum terhubung.
-              </div>
-            ) : filteredChats.length === 0 ? (
-              <div className="p-5 text-center text-slate-500 text-xs">
-                Tidak ada obrolan yang cocok dengan pencarian.
-              </div>
             ) : (
-              filteredChats.map((chat) => (
+              <>
+                {searchNumberJid && !isSearchNumberInChats && hasAccess(sessionUser, "chat", "create") && (
+                  <div
+                    onClick={() => {
+                      const newChatObj = {
+                        id: searchNumberJid,
+                        name: "+" + searchNumber,
+                        unreadCount: 0,
+                        timestamp: Math.floor(Date.now() / 1000),
+                        isGroup: false,
+                        lastMessage: null,
+                      };
+                      setChats((prev) => [newChatObj, ...prev]);
+                      loadChat(newChatObj);
+                      setSearchQuery("");
+                    }}
+                    className="flex items-center gap-3 p-3 border-b border-slate-700/50 cursor-pointer bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 transition"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center flex-shrink-0 text-emerald-400">
+                      <Plus size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xs font-bold truncate">
+                        Chat Nomor Baru
+                      </h3>
+                      <p className="text-[10px] text-emerald-500/80 truncate">
+                        +{searchNumber}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {chats.length === 0 ? (
+                  <div className="p-5 text-center text-slate-500 text-xs">
+                    Tidak ada obrolan atau WhatsApp belum terhubung.
+                  </div>
+                ) : filteredChats.length === 0 ? (
+                  <div className="p-5 text-center text-slate-500 text-xs">
+                    {searchNumberJid && !isSearchNumberInChats
+                      ? "Tidak ada riwayat obrolan untuk nomor ini. Klik di atas untuk memulai obrolan baru."
+                      : "Tidak ada obrolan yang cocok dengan pencarian."}
+                  </div>
+                ) : (
+                  filteredChats.map((chat) => (
                 <div
                   key={chat.id}
                   onClick={() => loadChat(chat)}
@@ -384,6 +439,8 @@ export default function LiveChatPage() {
                 </div>
               ))
             )}
+          </>
+        )}
           </div>
         </div>
 
@@ -496,6 +553,8 @@ export default function LiveChatPage() {
           )}
         </div>
       </div>
+
+
 
       <style
         dangerouslySetInnerHTML={{
