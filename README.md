@@ -27,18 +27,19 @@ NOCR mengeliminasi masalah-masalah di atas melalui ekosistem yang terotomatisasi
 ### 1. 🎯 *Single Pane of Glass* (Pemantauan Terpusat)
 Memantau seluruh aset secara *Real-Time* menggunakan teknologi **WebSockets**.
 - **MikroTik Core:** Pantau *Interface*, penggunaan CPU/Memory, serta manajemen *Tunnel* L2TP & PPPoE aktif.
-- **HSGQ OLT:** Pantau redaman optik dan kelola perangkat ONU/ONT dari jarak jauh.
+- **HSGQ OLT:** Pantau redaman optik dan status operasional perangkat ONU/ONT secara detail dari jarak jauh.
 - **Ruijie AP:** Lacak status seluruh perangkat pemancar WiFi secara terpusat di berbagai area (Menggunakan modul eksternal [ruijie-scrape](https://github.com/NPMA7/ruijie-scrape)).
-- **Peta Topologi Cerdas:** Visualisasi jaringan menggunakan `vis-network` dan peta interaktif `Leaflet`.
+- **Peta Topologi Cerdas:** Visualisasi hubungan antar-perangkat menggunakan `vis-network` dan peta interaktif `Leaflet`, dilengkapi fitur *Co-Editing Presence Lock* berbasis WebSockets untuk mencegah bentrokan edit antar-administrator.
 
 ### 2. 🤖 Otomatisasi & Peringatan Dini (*Early Warning System*)
-- **WhatsApp Gateway & Live Chat Omnichannel:** Berjalan langsung di dalam server aplikasi (`whatsapp-web.js`), menghubungkan satu nomor WhatsApp untuk digunakan sebagai pusat layanan pelanggan (Customer Services) yang dikelola bersama secara omnichannel.
-- **Auto-Generated PDF Reports:** Laporan harian operasi jaringan (*Daily Reports*) dapat di-generate menjadi format dokumen resmi secara otomatis dan dikirimkan ke meja pimpinan.
+- **WhatsApp Gateway & Live Chat Omnichannel:** Berjalan langsung di dalam server aplikasi (`whatsapp-web.js`), menghubungkan satu nomor WhatsApp untuk digunakan sebagai pusat layanan pelanggan (*Customer Service*) terpadu. Dilengkapi fitur *Auto-Reply* pesan di luar jam kerja, *Simple Bot Commands* (seperti `/ping` dan `/info`), serta pengunduh media chat.
+- **Downtime Auto-Tracking & PDF Reports:** Sistem melacak waktu henti perangkat (*downtime*) dan menyala kembali (*uptime*) secara otomatis. Admin dapat melengkapi laporan progres perbaikan (*Issue* & *Action*) lalu mengunduh Laporan Harian resmi berformat PDF secara *on-demand*.
+- **VPN Connection Control:** Memungkinkan administrator menyambung/memutus koneksi VPN host server (`rasdial` di Windows / `pon-poff` di Linux) langsung melalui dashboard.
 
 ### 3. 🛡️ Keamanan & Hak Akses Berstandar Enterprise (Granular RBAC)
 Tidak semua teknisi membutuhkan akses penuh. NOCR dilengkapi dengan manajemen *Role-Based Access Control* (RBAC) granular:
-- **Batasan per Modul (CRUD):** *Super-Admin* dapat mendefinisikan *role* (misalnya: *Helpdesk*, *Network Engineer*). *Helpdesk* mungkin hanya diberi akses **Read** untuk melihat status tanpa bisa memutuskan koneksi, sementara *Engineer* bisa memiliki akses **Update** dan **Delete**.
-- **Keamanan Data Mutakhir:** Memanfaatkan enkripsi *bcrypt* dan JSON Web Tokens (JWT) dengan *backend* PostgreSQL (Supabase/Prisma ORM) untuk integritas data tingkat tinggi.
+- **Batasan per Modul (CRUD):** *Super-Admin* dapat mendefinisikan *role* (misalnya: *Helpdesk*, *Network Engineer*). *Helpdesk* mungkin hanya diberi akses **Read** untuk melihat status tanpa bisa memutuskan koneksi, sementara *Engineer* bisa memiliki akses **Update** dan **Delete** untuk memodifikasi pengaturan.
+- **Keamanan Data Mutakhir:** Memanfaatkan enkripsi *bcrypt* dan JSON Web Tokens (JWT) dengan *backend* PostgreSQL (Supabase/Prisma ORM) untuk integritas data tingkat tinggi, dilengkapi fitur *Auto-Trim Log* untuk membatasi ukuran database.
 
 ---
 
