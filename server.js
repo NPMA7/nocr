@@ -69,6 +69,7 @@ app.prepare().then(() => {
     const clients = new Set();
     let isWorkerRunning = false;
     const previousMappingsStatus = {};
+    const recentLogsCache = new Map(); // message -> timestamp (ms)
     
     // Inisialisasi status awal dari database agar tidak hilang log saat server di-restart
     db.from('device_mappings').select('ruijie_mac, final_status').then(
@@ -202,7 +203,44 @@ app.prepare().then(() => {
 
     // Fungsi utama penampung log - MURNI DB DAN EMIT SOCKET REALTIME
     async function addActivityLog(message) {
-        const log = { time: new Date().toISOString(), message };
+        if (!message) return;
+
+        const now = Date.now();
+        // Bersihkan cache yang berumur lebih dari 10 detik
+        for (const [msg, ts] of recentLogsCache.entries()) {
+            if (now - ts > 10000) {
+                recentLogsCache.delete(msg);
+            }
+        }
+        
+        // Cek in-memory cache terlebih dahulu
+        if (recentLogsCache.has(message)) {
+            console.log(`[Activity Log] Mengabaikan log duplikat (in-memory): "${message}"`);
+            return;
+        }
+        
+        // Tambahkan ke in-memory cache SEGERA (SEBELUM await) untuk mencegah race condition konkuren
+        recentLogsCache.set(message, now);
+        
+        // Cek database untuk menangani multi-instance/restart
+        try {
+            const tenSecondsAgo = new Date(now - 10000).toISOString();
+            const { data: recentLogs, error: checkErr } = await db
+                .from('activity_logs')
+                .select('id')
+                .eq('message', message)
+                .gte('time', tenSecondsAgo)
+                .limit(1);
+
+            if (checkErr) {
+                console.error("Gagal memeriksa duplikat log:", checkErr.message);
+            } else if (recentLogs && recentLogs.length > 0) {
+                console.log(`[Activity Log] Mengabaikan log duplikat (database): "${message}"`);
+                return;
+            }
+        } catch (err) {
+            console.error("Gagal memeriksa duplikat log:", err.message);
+        }
 
         try {
             // Langsung masukkan ke tabel database
@@ -212,14 +250,15 @@ app.prepare().then(() => {
             
             if (error) {
                 console.error("Gagal menyimpan log ke database:", error.message);
+                // Jika gagal simpan, hapus dari cache agar bisa dicoba lagi nanti
+                recentLogsCache.delete(message);
             } else {
                 await trimActivityLogsInDb();
             }
         } catch (err) {
             console.error("Gagal koneksi simpan log database:", err.message);
+            recentLogsCache.delete(message);
         }
-
-        // Socket emission dipindahkan ke event postgres_changes agar API Next.js juga ikut terpancar
     }
 
     global.addActivityLog = addActivityLog;
@@ -736,8 +775,15 @@ app.prepare().then(() => {
 
 
 
+    let isSyncingMappings = false;
+
     // Jalankan Sinkronisasi Mappings setiap pergantian menit lewat 5 detik (supaya data mentah Ruijie/Mikrotik masuk dulu)
     async function syncDeviceMappings() {
+        if (isSyncingMappings) {
+            console.log('[Sync Mappings] Sinkronisasi sedang berjalan, mengabaikan pemanggilan ganda.');
+            return;
+        }
+        isSyncingMappings = true;
         try {
             const device = await getCoreDevice();
             if (!device) return;
@@ -896,6 +942,8 @@ app.prepare().then(() => {
             }
         } catch (err) {
             console.error('Sync Mappings Error:', err.message);
+        } finally {
+            isSyncingMappings = false;
         }
     }
 

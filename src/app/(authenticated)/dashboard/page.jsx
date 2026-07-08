@@ -244,7 +244,7 @@ export default function Dashboard() {
       socket.on("pppoe_updated", handlePppoeUpdate);
       socket.on("device-status", handleDeviceStatus);
       socket.on("mikrotik_full_update", handleMikrotikFull);
-      socket.on("activity_log", handleNewActivityLog);
+      socket.on("activity_log_updated", handleNewActivityLog);
       socket.on("mappings_updated", handleMappingsUpdated);
     }
 
@@ -259,7 +259,7 @@ export default function Dashboard() {
         socket.off("pppoe_updated", handlePppoeUpdate);
         socket.off("device-status", handleDeviceStatus);
         socket.off("mikrotik_full_update", handleMikrotikFull);
-        socket.off("activity_log", handleNewActivityLog);
+        socket.off("activity_log_updated", handleNewActivityLog);
         socket.off("mappings_updated", handleMappingsUpdated);
       }
     };
