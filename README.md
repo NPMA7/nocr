@@ -1,7 +1,7 @@
 # 🌐 NOCR: Network Operations Center & Reporting
 **Sistem Pemantauan Terpadu & Manajemen Infrastruktur Jaringan**
 
-![Status](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge) ![Version](https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge) ![Tech](https://img.shields.io/badge/Platform-Next.js_15_|_Node.js_|_PostgreSQL-black?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge) ![Version](https://img.shields.io/badge/Version-2.0.0-blue?style=for-the-badge) ![Tech](https://img.shields.io/badge/Platform-Next.js_15_|_Node.js_|_PostgreSQL-black?style=for-the-badge)
 
 ---
 
