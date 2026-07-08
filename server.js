@@ -243,16 +243,21 @@ app.prepare().then(() => {
         }
 
         try {
-            // Langsung masukkan ke tabel database
-            const { error } = await db
+            // Langsung masukkan ke tabel database dan select hasilnya
+            const { data, error } = await db
                 .from('activity_logs')
-                .insert([{ message }]);
+                .insert([{ message }])
+                .select();
             
             if (error) {
                 console.error("Gagal menyimpan log ke database:", error.message);
                 // Jika gagal simpan, hapus dari cache agar bisa dicoba lagi nanti
                 recentLogsCache.delete(message);
             } else {
+                // Emit secara instan lewat socket
+                if (data && data.length > 0) {
+                    io.emit('activity_log_updated', data[0]);
+                }
                 await trimActivityLogsInDb();
             }
         } catch (err) {
