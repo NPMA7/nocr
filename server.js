@@ -215,7 +215,6 @@ app.prepare().then(() => {
         
         // Cek in-memory cache terlebih dahulu
         if (recentLogsCache.has(message)) {
-            console.log(`[Activity Log] Mengabaikan log duplikat (in-memory): "${message}"`);
             return;
         }
         
@@ -235,7 +234,6 @@ app.prepare().then(() => {
             if (checkErr) {
                 console.error("Gagal memeriksa duplikat log:", checkErr.message);
             } else if (recentLogs && recentLogs.length > 0) {
-                console.log(`[Activity Log] Mengabaikan log duplikat (database): "${message}"`);
                 return;
             }
         } catch (err) {
@@ -392,17 +390,34 @@ app.prepare().then(() => {
         return data;
     }
 
+    let syncMappingsTimeout = null;
+    function triggerSyncDeviceMappingsDebounced() {
+        if (syncMappingsTimeout) clearTimeout(syncMappingsTimeout);
+        syncMappingsTimeout = setTimeout(() => {
+            // Reset semua cache terkait agar syncDeviceMappings terpaksa membaca data terbaru dari PostgreSQL
+            deviceMappingsCache.data = null;
+            ruijieDevicesCache.data = null;
+            activePppoeCache.data = null;
+            pppoeSecretsCache.data = null;
+            networkInterfacesCache.data = null;
+            syncDeviceMappings();
+        }, 1000); // Debounce 1 detik untuk meminimalkan beban database
+    }
+
     // Database Realtime fallback/sync
     const channel = db.channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
             if (payload.table === 'network_interfaces') { networkInterfacesCache.data = null; io.emit('interface_update', payload); }
             if (payload.table === 'devices') devicesCache.data = null;
-            if (payload.table === 'ruijie_devices') ruijieDevicesCache.data = null;
+            if (payload.table === 'ruijie_devices') {
+                ruijieDevicesCache.data = null;
+                triggerSyncDeviceMappingsDebounced();
+            }
             if (payload.table === 'device_mappings') deviceMappingsCache.data = null;
             if (payload.table === 'pppoe_active') {
                 activePppoeCache.data = null;
                 io.emit('pppoe_active_update', payload);
-                // broadcastDashboardCoreStatus() dihapus untuk mencegah pemanggilan API Mikrotik massal saat bulk insert
+                triggerSyncDeviceMappingsDebounced();
             }
             if (payload.table === 'pppoe_secrets') { pppoeSecretsCache.data = null; io.emit('pppoe_secret_update', payload); }
             if (payload.table === 'topology_nodes' || payload.table === 'topology_edges') {
@@ -785,7 +800,6 @@ app.prepare().then(() => {
     // Jalankan Sinkronisasi Mappings setiap pergantian menit lewat 5 detik (supaya data mentah Ruijie/Mikrotik masuk dulu)
     async function syncDeviceMappings() {
         if (isSyncingMappings) {
-            console.log('[Sync Mappings] Sinkronisasi sedang berjalan, mengabaikan pemanggilan ganda.');
             return;
         }
         isSyncingMappings = true;
@@ -1060,6 +1074,11 @@ app.prepare().then(() => {
     });
 
     whatsapp.start(); // Mulai otomatis saat server booting.
+
+    server.post('/api/mappings/sync-notify', (req, res) => {
+        triggerSyncDeviceMappingsDebounced();
+        res.json({ success: true, message: 'Sync triggered' });
+    });
 
     // Default Next.js Handler
     server.all('*', (req, res) => {
