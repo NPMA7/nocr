@@ -1209,12 +1209,8 @@ function TopologyContent() {
           {/* Main Buttons */}
           <div className="w-full xl:w-auto flex-shrink-0">
             {readOnly ? (
-              <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2 py-1">
-                <Eye size={14} className="text-amber-400" />
-                <span className="text-xs font-semibold text-amber-300">
-                  Readonly
-                </span>
-              </div>
+              <>
+              </>
             ) : canEdit ? (
               <div className="flex flex-wrap bg-slate-900 rounded-lg p-1 border border-slate-700">
                 {canUpdate && (
@@ -2040,7 +2036,7 @@ function TopologyContent() {
               )}
             </div>
             <button
-              className="text-slate-400 hover:text-white"
+              className="cursor-pointer text-slate-400 hover:text-white"
               onClick={() => setSelectedNode(null)}
             >
               <X size={20} />

@@ -513,10 +513,10 @@ app.prepare().then(() => {
                     const latency = res.alive ? Math.round(res.time) : 0;
                     const timestamp = new Date().toISOString();
 
-                    // Deteksi perubahan status untuk log aktivitas (kecuali L2TP yang sudah dikelola oleh mappings)
+                    // Deteksi perubahan status untuk log aktivitas (kecuali L2TP & PPPoE client yang sudah dikelola oleh mappings)
                     const previousStatus = targetStatuses[target.id];
                     if (previousStatus && previousStatus !== status) {
-                        if (target.type !== 'client') { // L2TP / client logs via mappings now
+                        if (target.type !== 'client' && target.type !== 'pppoe-client') { // L2TP / PPPoE client logs via mappings now
                             addActivityLog(`Status ${target.type === 'client' || target.type === 'pppoe-client' ? 'pelanggan' : 'perangkat'} ${target.name} berubah menjadi ${status === 'online' ? 'Online' : 'Offline'}`);
                         }
                     }

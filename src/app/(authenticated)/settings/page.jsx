@@ -304,7 +304,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                               [u.id]: e.target.value,
                             }))
                           }
-                          className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize disabled:opacity-50"
+                          className="cursor-pointer bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize disabled:opacity-50"
                         >
                           {(() => {
                             // Build options from availableRoles, or fallback to unique roles from users list
@@ -337,7 +337,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                           title="Simpan role"
                           disabled={savingRoleId === u.id}
                           onClick={() => handleUpdateRole(u.id)}
-                          className="text-blue-400 hover:text-blue-300 p-1.5 transition disabled:opacity-50"
+                          className="cursor-pointer text-blue-400 hover:text-blue-300 p-1.5 transition disabled:opacity-50"
                         >
                           <Save size={14} />
                         </button>
@@ -1093,7 +1093,7 @@ function Settings() {
                       </label>
                       <div className="relative">
                         <input
-                          type={showCorePassword ? "text" : "password"}
+                          type={showCorePassword && perms.mikrotikUpdate ? "text" : "password"}
                           readOnly={!perms.mikrotikUpdate}
                           value={coreDevice.password}
                           onChange={(e) =>
@@ -1111,10 +1111,12 @@ function Settings() {
                         />
                         <button
                           type="button"
-                          onClick={() => setShowCorePassword(!showCorePassword)}
-                          className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                          disabled={!perms.mikrotikUpdate}
+                          onClick={() => perms.mikrotikUpdate && setShowCorePassword(!showCorePassword)}
+                          className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms.mikrotikUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
+                          title={perms.mikrotikUpdate ? "" : "Anda hanya memiliki akses baca"}
                         >
-                          {showCorePassword ? (
+                          {showCorePassword && perms.mikrotikUpdate ? (
                             <EyeOff size={16} />
                           ) : (
                             <Eye size={16} />
@@ -1274,7 +1276,7 @@ function Settings() {
                             </label>
                             <div className="relative">
                               <input
-                                type={showVpnPassword ? "text" : "password"}
+                                type={showVpnPassword && perms.vpnUpdate ? "text" : "password"}
                                 value={vpnConfig.windows_password}
                                 onChange={(e) =>
                                   setVpnConfig({
@@ -1286,14 +1288,12 @@ function Settings() {
                               />
                               <button
                                 type="button"
-                                disabled={!canShowPassword}
-                                onClick={() =>
-                                  canShowPassword &&
-                                  setShowVpnPassword(!showVpnPassword)
-                                }
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${canShowPassword ? "text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed"}`}
+                                disabled={!perms.vpnUpdate}
+                                onClick={() => perms.vpnUpdate && setShowVpnPassword(!showVpnPassword)}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms.vpnUpdate ? "text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
+                                title={perms.vpnUpdate ? "" : "Anda hanya memiliki akses baca"}
                               >
-                                {showVpnPassword ? (
+                                {showVpnPassword && perms.vpnUpdate ? (
                                   <EyeOff size={16} />
                                 ) : (
                                   <Eye size={16} />
