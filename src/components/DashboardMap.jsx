@@ -2,7 +2,6 @@
 import React, { useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 
 const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels, isFront) => {
     let colorClass = 'bg-blue-500 border-blue-200';

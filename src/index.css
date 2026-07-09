@@ -51,6 +51,11 @@
   filter: brightness(160%) contrast(95%) !important;
 }
 
+/* Prevent markers from sliding/shifting on load, resize, or coordinate updates */
+.leaflet-marker-icon {
+  transition: none !important;
+}
+
 /* Ensure hovered map markers come to the front and show labels */
 .leaflet-marker-icon:hover {
   z-index: 9999 !important;

@@ -401,6 +401,7 @@ function TopologyContent() {
   const localTouchedNodeIdsRef = useRef(new Set());
   const localTouchedEdgeIdsRef = useRef(new Set());
   const revisionRef = useRef(null);
+  const isFirstRender = useRef(true);
 
   const syncBaseline = (loadedNodes, loadedEdges) => {
     baselineNodesRef.current = buildBaselineMap(loadedNodes);
@@ -1184,6 +1185,10 @@ function TopologyContent() {
   }, [nodeViewFilter, mapNodeIds, selectedNode, selectedEdge]);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (networkMode === "pppoe") {
       setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
     } else {

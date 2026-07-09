@@ -68,7 +68,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
               by: npma
             </span>
             <span className="text-[10px] text-slate-400 font-normal">
-              v2.0.0
+              v1.0.0
             </span>
           </div>
         </div>
