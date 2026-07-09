@@ -84,6 +84,7 @@ export default function MonitorPppoe() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [timeMode, setTimeMode] = useState("duration");
   const { setLastSyncTime } = useAppState();
 
   // Status Modal
@@ -288,7 +289,7 @@ export default function MonitorPppoe() {
             Online
           </span>
           {device.last_log_history && (
-            <UptimeTimer dateString={device.last_log_history} />
+            <UptimeTimer dateString={device.last_log_history} mode={timeMode} />
           )}
         </div>
       );
@@ -300,7 +301,7 @@ export default function MonitorPppoe() {
             Offline
           </span>
           {device.offline_since && (
-            <UptimeTimer dateString={device.offline_since} />
+            <UptimeTimer dateString={device.offline_since} mode={timeMode} />
           )}
         </div>
       );
@@ -428,6 +429,15 @@ export default function MonitorPppoe() {
             <option value="ONLINE">Hanya Online</option>
             <option value="OFFLINE">Hanya Offline</option>
             <option value="ISSUE">Hanya Issue</option>
+          </select>
+
+          <select
+            value={timeMode}
+            onChange={(e) => setTimeMode(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-purple-500 cursor-pointer"
+          >
+            <option value="duration">Uptime</option>
+            <option value="timestamp">Timestamp</option>
           </select>
 
           <div className="flex items-center gap-3 ml-auto flex-shrink-0">

@@ -6,23 +6,12 @@ export default function OntDetailModal({
   ontIdString,
   portId,
   ontId,
+  canManageOlt,
+  onRebootSuccess,
+  onEditNameDesc,
   onClose,
 }) {
   if (!portId) return null;
-
-  const b = data?.base || {};
-  const v = data?.version || {};
-  const c = data?.capability || {};
-
-  // Helper for rows
-  const DetailRow = ({ label, value }) => (
-    <div className="flex justify-between items-center py-2 border-b border-slate-700/50 last:border-0 hover:bg-slate-800/30 transition-colors px-2 rounded-md">
-      <span className="text-slate-400 text-xs">{label}</span>
-      <span className="text-slate-200 text-xs font-medium text-right break-all ml-4">
-        {value !== "" && value !== undefined && value !== null ? value : "-"}
-      </span>
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -52,7 +41,14 @@ export default function OntDetailModal({
 
         {/* Content */}
         <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
-          <OntDetailView portId={portId} ontId={ontId} />
+          <OntDetailView
+            portId={portId}
+            ontId={ontId}
+            canManageOlt={canManageOlt}
+            showStandaloneReboot={true}
+            onRebootSuccess={onRebootSuccess}
+            onEditNameDesc={onEditNameDesc}
+          />
         </div>
       </div>
     </div>

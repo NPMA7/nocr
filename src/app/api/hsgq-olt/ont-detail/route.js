@@ -59,16 +59,18 @@ export async function GET(request) {
 
     const doRequests = async (token) => {
       const headers = { 'x-token': token };
-      const [baseRes, capRes, verRes] = await Promise.all([
+      const [baseRes, capRes, verRes, optRes] = await Promise.all([
         axios.get(`${url}/gponont_mgmt?form=base&port_id=${port_id}&ont_id=${ont_id}`, { headers, timeout: 10000 }),
         axios.get(`${url}/gponont_mgmt?form=capability&port_id=${port_id}&ont_id=${ont_id}`, { headers, timeout: 10000 }),
-        axios.get(`${url}/gponont_mgmt?form=ont_version&port_id=${port_id}&ont_id=${ont_id}`, { headers, timeout: 10000 })
+        axios.get(`${url}/gponont_mgmt?form=ont_version&port_id=${port_id}&ont_id=${ont_id}`, { headers, timeout: 10000 }),
+        axios.get(`${url}/gponont_mgmt?form=ont_optical&port_id=${port_id}&ont_id=${ont_id}`, { headers, timeout: 10000 })
       ]);
       
       return {
         base: baseRes.data,
         capability: capRes.data,
-        version: verRes.data
+        version: verRes.data,
+        optical: optRes.data
       };
     };
 
@@ -79,6 +81,17 @@ export async function GET(request) {
     if (data.base && data.base.code === 0 && data.base.message === 'Token Check Failed') {
        token = await getHsgqToken(true);
        data = await doRequests(token);
+    }
+    
+    // Apply global pending overrides for Names and Descriptions
+    const identifier = (Number(port_id) << 8) | Number(ont_id);
+    const key = `${identifier}`;
+    global.pendingNameUpdates = global.pendingNameUpdates || {};
+    if (global.pendingNameUpdates[key] && data.base && data.base.data && data.base.data[0]) {
+      const row = data.base.data[0];
+      row.name = global.pendingNameUpdates[key].ont_name;
+      row.ont_name = global.pendingNameUpdates[key].ont_name;
+      row.ont_description = global.pendingNameUpdates[key].ont_description;
     }
     
     return NextResponse.json(data);
