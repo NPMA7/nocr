@@ -37,7 +37,10 @@ export default function LaporanHarianPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newReportForm, setNewReportForm] = useState({
-    prefix_name: "",
+    kecamatan: "",
+    desa: "",
+    dinas: "",
+    lokasi: "",
     status_progress: "Progress",
     offline_since: "",
     online_since: "",
@@ -144,27 +147,44 @@ export default function LaporanHarianPage() {
   };
 
   const handleAddReport = async () => {
-    if (!newReportForm.prefix_name) {
-      showToast("Nama harus diisi", "error");
+    const part1 = type === "PPPOE" ? newReportForm.dinas.trim() : newReportForm.kecamatan.trim();
+    const part2 = type === "PPPOE" ? newReportForm.lokasi.trim() : newReportForm.desa.trim();
+
+    if (!part1 || !part2) {
+      showToast(
+        type === "PPPOE"
+          ? "Nama Dinas dan Lokasi harus diisi"
+          : "Nama Kecamatan dan Desa harus diisi",
+        "error",
+      );
       return;
     }
+
+    const prefix_name = `${part1}-${part2}`.toUpperCase();
+
     try {
       const payload = {
         date,
         type,
-        ...newReportForm,
+        prefix_name,
+        status_progress: newReportForm.status_progress,
         offline_since: newReportForm.offline_since
           ? new Date(newReportForm.offline_since).toISOString()
           : null,
         online_since: newReportForm.online_since
           ? new Date(newReportForm.online_since).toISOString()
           : null,
+        issue: newReportForm.issue,
+        tindakan: newReportForm.tindakan,
       };
       await axios.post("/api/laporan", payload);
       showToast("Laporan berhasil ditambahkan", "success");
       setShowAddModal(false);
       setNewReportForm({
-        prefix_name: "",
+        kecamatan: "",
+        desa: "",
+        dinas: "",
+        lokasi: "",
         status_progress: "Progress",
         offline_since: "",
         online_since: "",
@@ -184,6 +204,14 @@ export default function LaporanHarianPage() {
     if (!isNaN(d.getTime())) {
       updateReport(id, field, d.toISOString());
     }
+  };
+
+  const toLocalDateTimeString = (isoString) => {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "";
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 19);
   };
 
   const formatTimeWIB = (isoString) => {
@@ -726,14 +754,11 @@ export default function LaporanHarianPage() {
                       editingDate?.field === "offline_since" ? (
                         <input
                           type="datetime-local"
+                          step="1"
                           className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded px-1 py-1 text-xs text-slate-300 outline-none transition"
                           autoFocus
                           disabled={!canUpdate}
-                          defaultValue={
-                            r.offline_since
-                              ? r.offline_since.substring(0, 16)
-                              : ""
-                          }
+                          defaultValue={toLocalDateTimeString(r.offline_since)}
                           onBlur={(e) =>
                             handleDateUpdate(
                               r.id,
@@ -770,14 +795,11 @@ export default function LaporanHarianPage() {
                       editingDate?.field === "online_since" ? (
                         <input
                           type="datetime-local"
+                          step="1"
                           className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded px-1 py-1 text-xs text-slate-300 outline-none transition"
                           autoFocus
                           disabled={!canUpdate}
-                          defaultValue={
-                            r.online_since
-                              ? r.online_since.substring(0, 16)
-                              : ""
-                          }
+                          defaultValue={toLocalDateTimeString(r.online_since)}
                           onBlur={(e) =>
                             handleDateUpdate(
                               r.id,
@@ -910,27 +932,81 @@ export default function LaporanHarianPage() {
               </h3>
             </div>
             <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  Nama {type === "PPPOE" ? "Dinas/Lokasi" : "Kecamatan-Desa"}
-                </label>
-                <input
-                  type="text"
-                  value={newReportForm.prefix_name}
-                  onChange={(e) =>
-                    setNewReportForm((p) => ({
-                      ...p,
-                      prefix_name: e.target.value,
-                    }))
-                  }
-                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
-                  placeholder={
-                    type === "PPPOE"
-                      ? "Contoh: DISKOMINFO-SERVER"
-                      : "Contoh: BALEENDAH-JELEKONG"
-                  }
-                />
-              </div>
+              {type === "PPPOE" ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                      Nama Dinas
+                    </label>
+                    <input
+                      type="text"
+                      value={newReportForm.dinas}
+                      onChange={(e) =>
+                        setNewReportForm((p) => ({
+                          ...p,
+                          dinas: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      placeholder="DISKOMINFO"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                      Lokasi
+                    </label>
+                    <input
+                      type="text"
+                      value={newReportForm.lokasi}
+                      onChange={(e) =>
+                        setNewReportForm((p) => ({
+                          ...p,
+                          lokasi: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      placeholder="SERVER"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                      Nama Kecamatan
+                    </label>
+                    <input
+                      type="text"
+                      value={newReportForm.kecamatan}
+                      onChange={(e) =>
+                        setNewReportForm((p) => ({
+                          ...p,
+                          kecamatan: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      placeholder="BALEENDAH"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                      Nama Desa
+                    </label>
+                    <input
+                      type="text"
+                      value={newReportForm.desa}
+                      onChange={(e) =>
+                        setNewReportForm((p) => ({
+                          ...p,
+                          desa: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      placeholder="JELEKONG"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1">
@@ -938,6 +1014,7 @@ export default function LaporanHarianPage() {
                   </label>
                   <input
                     type="datetime-local"
+                    step="1"
                     value={newReportForm.offline_since}
                     onChange={(e) =>
                       setNewReportForm((p) => ({
@@ -954,6 +1031,7 @@ export default function LaporanHarianPage() {
                   </label>
                   <input
                     type="datetime-local"
+                    step="1"
                     value={newReportForm.online_since}
                     onChange={(e) =>
                       setNewReportForm((p) => ({
