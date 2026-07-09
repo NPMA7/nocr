@@ -110,7 +110,12 @@ function FlyToHandler({ flyToTarget, onFlyToComplete }) {
       } else {
         map.flyTo([flyToTarget.lat, flyToTarget.lng], flyToTarget.zoom || 17, { duration: 1.5 });
       }
-      if (onFlyToComplete) onFlyToComplete();
+      
+      const timer = setTimeout(() => {
+        if (onFlyToComplete) onFlyToComplete();
+      }, 1600);
+
+      return () => clearTimeout(timer);
     }
   }, [flyToTarget, map, onFlyToComplete]);
   return null;

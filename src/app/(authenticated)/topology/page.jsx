@@ -1184,22 +1184,12 @@ function TopologyContent() {
   }, [nodeViewFilter, mapNodeIds, selectedNode, selectedEdge]);
 
   useEffect(() => {
-    if (mapNodes.length > 0) {
-      const lats = mapNodes
-        .map((n) => parseFloat(n.latitude))
-        .filter((n) => !isNaN(n));
-      const lngs = mapNodes
-        .map((n) => parseFloat(n.longitude))
-        .filter((n) => !isNaN(n));
-      if (lats.length > 0) {
-        const bounds = [
-          [Math.min(...lats), Math.min(...lngs)],
-          [Math.max(...lats), Math.max(...lngs)],
-        ];
-        setFlyToTarget({ bounds });
-      }
+    if (networkMode === "pppoe") {
+      setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
+    } else {
+      setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 });
     }
-  }, [networkMode, nodeViewFilter]);
+  }, [networkMode]);
 
   return (
     <div className="flex flex-col h-full min-h-0 -m-4 md:-m-6 relative overflow-hidden bg-slate-950">
@@ -1394,7 +1384,7 @@ function TopologyContent() {
                 </h3>
                 <button
                   onClick={() => setShowManualAddModal(false)}
-                  className="text-slate-400 hover:text-white"
+                  className="cursor-pointer text-slate-400 hover:text-white"
                 >
                   <X size={20} />
                 </button>

@@ -85,9 +85,9 @@ async function start() {
         status = 'connected';
         qrCodeDataURL = null;
         broadcastStatus();
-        if (global.addActivityLog) {
-            global.addActivityLog('WhatsApp Gateway terhubung.');
-        }
+        // if (global.addActivityLog) {
+        //     global.addActivityLog('WhatsApp Gateway terhubung.');
+        // }
     });
 
     client.on('auth_failure', (msg) => {
@@ -101,9 +101,9 @@ async function start() {
         status = 'disconnected';
         client = null;
         broadcastStatus();
-        if (global.addActivityLog) {
-            global.addActivityLog('WhatsApp Gateway terputus.');
-        }
+        // if (global.addActivityLog) {
+        //     global.addActivityLog('WhatsApp Gateway terputus.');
+        // }
     });
 
     client.on('message', async (msg) => {
