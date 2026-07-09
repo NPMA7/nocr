@@ -14,7 +14,7 @@ export default function OntDetailModal({
   if (!portId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b border-slate-700 bg-slate-800/50">
@@ -33,7 +33,7 @@ export default function OntDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors"
+            className="cursor-pointer p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
