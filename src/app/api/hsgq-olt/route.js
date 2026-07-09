@@ -92,7 +92,12 @@ export async function GET(request) {
         if (!row.wifi || !row.wifi[0]) return row;
         const wifi = row.wifi[0];
         
-        ['enable', 'isolation', 'broadcast'].forEach(field => {
+        const fields = [
+          'enable', 'isolation', 'broadcast', 'wifiname', 'sharekey',
+          'securitymode', 'wpaencrypt', 'channel', 'bandwidth', 'beacon',
+          'dtim', 'shortgi'
+        ];
+        fields.forEach(field => {
           const key = `${row.identifier}_${wifi.instance}_${field}`;
           if (global.pendingWifiUpdates[key]) {
             wifi[field] = global.pendingWifiUpdates[key].value;
@@ -178,8 +183,13 @@ export async function POST(request) {
         // Record pending update
         const id = body.param.identifier;
         const inst = body.param.instance;
+        const fields = [
+          'enable', 'isolation', 'broadcast', 'wifiname', 'sharekey',
+          'securitymode', 'wpaencrypt', 'channel', 'bandwidth', 'beacon',
+          'dtim', 'shortgi'
+        ];
         if (id && inst) {
-          ['enable', 'isolation', 'broadcast'].forEach(field => {
+          fields.forEach(field => {
             if (body.param[field] !== undefined) {
               const key = `${id}_${inst}_${field}`;
               global.pendingWifiUpdates[key] = {

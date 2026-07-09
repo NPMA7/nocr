@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { ShieldAlert, Activity, Info, ShieldCheck, RefreshCw, Power, Zap, Settings } from "lucide-react";
+import { useToast } from "@/hooks/useToast";
 
 export default function OntDetailView({ portId, ontId, canManageOlt = false, showStandaloneReboot = false, rebootTimestamp = 0, editTimestamp = 0, onRebootSuccess, onEditNameDesc }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRebooting, setIsRebooting] = useState(false);
+  const { showToast, ToastComponent } = useToast();
 
   const fetchDetails = async (silent = false) => {
     try {
@@ -36,10 +38,7 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
   };
 
   const handleReboot = async () => {
-    if (!canManageOlt) {
-      alert("Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi OLT");
-      return;
-    }
+    if (!canManageOlt) return;
     const confirmReboot = window.confirm("Apakah Anda yakin ingin me-reboot ONT ini?");
     if (!confirmReboot) return;
 
@@ -79,11 +78,11 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
           }
         }, 3000);
       } else {
-        alert("Gagal me-reboot ONT: " + (response.data?.message || "Error tidak diketahui"));
+        showToast("Gagal reboot ONT: " + (response.data?.message || "Error tidak diketahui"));
       }
     } catch (err) {
       console.error(err);
-      alert("Gagal me-reboot ONT: " + (err.response?.data?.error || err.message));
+      showToast("Gagal reboot ONT: " + (err.response?.data?.error || err.message));
     } finally {
       setIsRebooting(false);
     }
@@ -172,6 +171,7 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
 
   return (
     <div className="flex flex-col gap-4 w-full animate-in fade-in duration-200">
+      {ToastComponent}
       {canManageOlt && showStandaloneReboot && (
         <div className="flex justify-end gap-2">
           <button
@@ -208,11 +208,9 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
           ONT Basic Information
         </h3>
         <div className="space-y-0.5">
-          <DetailRow
-            label="ONT Speed"
-            value={b.onuspeed === 0 ? "1.25G/2.5G" : b.onuspeed}
-          />
+          <DetailRow label="Serial Number" value={b.ont_sn} />          
           <DetailRow label="Name" value={b.ont_name} />
+          <DetailRow label="ONT description" value={b.ont_description} />
           <DetailRow
             label="State"
             value={b.state === 1 ? "Active" : "Inactive"}
@@ -231,9 +229,22 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
               b.mstate === 0 ? "initial" : b.mstate === 1 ? "match" : "mismatch"
             }
           />
+          <DetailRow label="Uptime" value={b.uptime} />
+          <DetailRow label="Last down cause" value={b.last_d_cause} />
+          <DetailRow label="Last down time" value={b.last_d_time} />
+          <DetailRow label="Last up time" value={b.last_u_time} />
+          <DetailRow label="Last dying timestamp" value={b.last_dg_time} />
+          <DetailRow label="ONT Type" value={b.onu_type} />
+          
+          <DetailRow label="ONT Password" value={b.ont_passwd} />
+          <DetailRow label="LOID" value={b.loid} />
+          <DetailRow label="LOID Password" value={b.loid_password} />
+          <DetailRow label="Us SD Ber" value={b.us_ber} />
+          <DetailRow label="Ds SD Ber" value={b.ds_ber} />
+          <DetailRow label="Distance(m)" value={b.distance} />
           <DetailRow
             label="Auth Mode"
-            value={
+            value={ 
               b.auth_mode === 0
                 ? "SN AUTH"
                 : b.auth_mode === 1
@@ -241,20 +252,10 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
                   : "LOID+PASS"
             }
           />
-          <DetailRow label="Serial Number" value={b.ont_sn} />
-          <DetailRow label="ONT Password" value={b.ont_passwd} />
-          <DetailRow label="LOID" value={b.loid} />
-          <DetailRow label="LOID Password" value={b.loid_password} />
-          <DetailRow label="Us SD Ber" value={b.us_ber} />
-          <DetailRow label="Ds SD Ber" value={b.ds_ber} />
-          <DetailRow label="Distance(m)" value={b.distance} />
-          <DetailRow label="ONT Type" value={b.onu_type} />
-          <DetailRow label="ONT description" value={b.ont_description} />
-          <DetailRow label="Last down cause" value={b.last_d_cause} />
-          <DetailRow label="Last down time" value={b.last_d_time} />
-          <DetailRow label="Last up time" value={b.last_u_time} />
-          <DetailRow label="Last dying timestamp" value={b.last_dg_time} />
-          <DetailRow label="Uptime" value={b.uptime} />
+          <DetailRow
+            label="ONT Speed"
+            value={b.onuspeed === 0 ? "1.25G/2.5G" : b.onuspeed}
+          />
           <DetailRow label="LineProfile ID" value={b.lineprof_id} />
           <DetailRow label="LineProfile Name" value={b.lineprof_name} />
           <DetailRow label="SrvProfile ID" value={b.srvprof_id} />

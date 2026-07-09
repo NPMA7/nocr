@@ -21,6 +21,7 @@ import { socket, useAppState } from "@/App";
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import OntDetailModal from "@/components/OntDetailModal";
 import OntDetailView from "@/components/OntDetailView";
+import { useToast } from "@/hooks/useToast";
 
 export default function HsgqOltPage() {
   const [data, setData] = useState([]);
@@ -42,6 +43,23 @@ export default function HsgqOltPage() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [rebootTimestamp, setRebootTimestamp] = useState(0);
   const [editTimestamp, setEditTimestamp] = useState(0);
+
+  const [editingWifi, setEditingWifi] = useState(null);
+  const [wifiSsid, setWifiSsid] = useState("");
+  const [wifiEnable, setWifiEnable] = useState(1);
+  const [wifiSecurityMode, setWifiSecurityMode] = useState(4);
+  const [wifiWepAuth, setWifiWepAuth] = useState(0);
+  const [wifiWpaEncrypt, setWifiWpaEncrypt] = useState(2);
+  const [wifiShareKey, setWifiShareKey] = useState("");
+  const [wifiChannel, setWifiChannel] = useState(0);
+  const [wifiBandwidth, setWifiBandwidth] = useState(1);
+  const [wifiBeacon, setWifiBeacon] = useState(100);
+  const [wifiDtim, setWifiDtim] = useState(1);
+  const [wifiShortgi, setWifiShortgi] = useState(1);
+  const [wifiIsolation, setWifiIsolation] = useState(0);
+  const [wifiBroadcast, setWifiBroadcast] = useState(1);
+  const [isSavingWifi, setIsSavingWifi] = useState(false);
+  const { showToast, ToastComponent } = useToast();
 
   const { sessionUser, setLastSyncTime } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
@@ -142,19 +160,24 @@ export default function HsgqOltPage() {
   };
 
   const handleWifiToggle = async (row, field, currentValue) => {
-    if (!canManageOlt) {
-      alert("Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi OLT");
-      return;
-    }
+    if (!canManageOlt) return;
 
     try {
       const wifi = row.wifi && row.wifi[0];
       if (!wifi) return;
 
       const newValue = currentValue === 1 ? 0 : 1;
+      // OLT bitmask flags (captured from OLT native UI):
+      // 1024 = isolation, 2048 = broadcast/enable
+      const flagsMap = {
+        enable: 2048,
+        isolation: 1024,
+        broadcast: 2048,
+      };
+      const flags = flagsMap[field] ?? 2048;
       const param = {
         identifier: row.identifier,
-        flags: 4096,
+        flags: flags,
         ...wifi,
         [field]: newValue,
       };
@@ -176,19 +199,145 @@ export default function HsgqOltPage() {
 
       await axios.post("/api/hsgq-olt?action=set_wifi", payload);
     } catch (err) {
-      alert(
-        "Failed to update wifi config: " +
-          (err.response?.data?.error || err.message),
-      );
+      showToast("Gagal update WiFi: " + (err.response?.data?.error || err.message));
       fetchData(); // Revert on failure
     }
   };
 
-  const handleOpenEditModal = (row, portId, ontId, currentName) => {
-    if (!canManageOlt) {
-      alert("Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi OLT");
-      return;
+  const handleOpenWifiModal = (row) => {
+    if (!canManageOlt) return;
+    const wifi = row.wifi && row.wifi[0] ? row.wifi[0] : {};
+    setEditingWifi({
+      row,
+      identifier: row.identifier,
+      instance: wifi.instance || 1,
+      enable: wifi.enable !== undefined ? wifi.enable : 1,
+    });
+    setWifiSsid(wifi.wifiname || "");
+    setWifiEnable(wifi.enable !== undefined ? wifi.enable : 1);
+    setWifiSecurityMode(wifi.securitymode !== undefined ? wifi.securitymode : 4);
+    setWifiWepAuth(wifi.wepauth !== undefined ? wifi.wepauth : 0);
+    setWifiWpaEncrypt(wifi.wpaencrypt !== undefined ? wifi.wpaencrypt : 2);
+    setWifiShareKey(wifi.sharekey || "");
+    setWifiChannel(wifi.channel !== undefined ? wifi.channel : 0);
+    setWifiBandwidth(wifi.bandwidth !== undefined ? wifi.bandwidth : 1);
+    setWifiBeacon(wifi.beacon !== undefined ? wifi.beacon : 100);
+    setWifiDtim(wifi.dtim !== undefined ? wifi.dtim : 1);
+    setWifiShortgi(wifi.shortgi !== undefined ? wifi.shortgi : 1);
+    setWifiIsolation(wifi.isolation !== undefined ? wifi.isolation : 0);
+    setWifiBroadcast(wifi.broadcast !== undefined ? wifi.broadcast : 1);
+  };
+
+  const handleSaveWifi = async () => {
+    if (!editingWifi) return;
+    if (Number(wifiEnable) === 1) {
+      // Full validation only when WLAN is being enabled
+      if (!wifiSsid.trim()) return;
+      // Only require 8 character password for WPA modes (3: wpapsk, 4: wpa2psk, 5: wpa2mixed)
+      if ([3, 4, 5].includes(Number(wifiSecurityMode)) && wifiShareKey.length < 8) {
+        showToast("Share key (Password) harus minimal 8 karakter!", 'warning');
+        return;
+      }
     }
+    setIsSavingWifi(true);
+    try {
+      const originalWifi = (editingWifi.row && editingWifi.row.wifi && editingWifi.row.wifi[0]) ? editingWifi.row.wifi[0] : {};
+      let calculatedFlags = 0;
+      if (wifiSsid.trim() !== (originalWifi.wifiname || "")) calculatedFlags |= 1;
+      if (wifiShareKey !== (originalWifi.sharekey || "")) calculatedFlags |= 2;
+      if (Number(wifiSecurityMode) !== (originalWifi.securitymode !== undefined ? originalWifi.securitymode : 4)) calculatedFlags |= 4;
+      if (Number(wifiWpaEncrypt) !== (originalWifi.wpaencrypt !== undefined ? originalWifi.wpaencrypt : 2)) calculatedFlags |= 16;
+      if (Number(wifiWepAuth) !== (originalWifi.wepauth !== undefined ? originalWifi.wepauth : 0)) calculatedFlags |= 4;
+      if (Number(wifiChannel) !== (originalWifi.channel !== undefined ? originalWifi.channel : 0)) calculatedFlags |= 16;
+      if (Number(wifiBandwidth) !== (originalWifi.bandwidth !== undefined ? originalWifi.bandwidth : 1)) calculatedFlags |= 32;
+      if (Number(wifiBeacon) !== (originalWifi.beacon !== undefined ? originalWifi.beacon : 100)) calculatedFlags |= 128;
+      if (Number(wifiDtim) !== (originalWifi.dtim !== undefined ? originalWifi.dtim : 1)) calculatedFlags |= 256;
+      if (Number(wifiShortgi) !== (originalWifi.shortgi !== undefined ? originalWifi.shortgi : 1)) calculatedFlags |= 512;
+      if (Number(wifiIsolation) !== (originalWifi.isolation !== undefined ? originalWifi.isolation : 0)) calculatedFlags |= 1024;
+      if (Number(wifiBroadcast) !== (originalWifi.broadcast !== undefined ? originalWifi.broadcast : 1)) calculatedFlags |= 2048;
+      if (Number(wifiEnable) !== (originalWifi.enable !== undefined ? originalWifi.enable : 1)) calculatedFlags |= 2048;
+
+      if (calculatedFlags === 0) {
+        calculatedFlags = 4095; // Default fallback to update all
+      }
+
+      const payload = {
+        method: "set",
+        param: {
+          identifier: editingWifi.identifier,
+          flags: calculatedFlags,
+          instance: editingWifi.instance,
+          enable: Number(wifiEnable),
+          wifiname: wifiSsid.trim(),
+          securitymode: Number(wifiSecurityMode),
+          wpaencrypt: Number(wifiWpaEncrypt),
+          sharekey: wifiShareKey,
+          wepauth: Number(wifiWepAuth),
+          keyindex: 0,
+          key1: "",
+          key2: "",
+          key3: "",
+          key4: "",
+          channel: Number(wifiChannel),
+          bandwidth: Number(wifiBandwidth),
+          beacon: Number(wifiBeacon),
+          dtim: Number(wifiDtim),
+          shortgi: Number(wifiShortgi),
+          isolation: Number(wifiIsolation),
+          broadcast: Number(wifiBroadcast),
+        },
+      };
+
+      const response = await axios.post("/api/hsgq-olt?action=set_wifi", payload);
+      if (response.data && response.data.code === 1) {
+        setData((prevData) =>
+          prevData.map((r) => {
+            if (r.identifier === editingWifi.identifier) {
+              const currentWifi = r.wifi && r.wifi[0] ? r.wifi[0] : {};
+              if (currentWifi.instance === editingWifi.instance) {
+                return {
+                  ...r,
+                  wifi: [
+                    {
+                      ...currentWifi,
+                      wifiname: wifiSsid.trim(),
+                      enable: Number(wifiEnable),
+                      securitymode: Number(wifiSecurityMode),
+                      wpaencrypt: Number(wifiWpaEncrypt),
+                      sharekey: wifiShareKey,
+                      wepauth: Number(wifiWepAuth),
+                      channel: Number(wifiChannel),
+                      bandwidth: Number(wifiBandwidth),
+                      beacon: Number(wifiBeacon),
+                      dtim: Number(wifiDtim),
+                      shortgi: Number(wifiShortgi),
+                      isolation: Number(wifiIsolation),
+                      broadcast: Number(wifiBroadcast),
+                    },
+                  ],
+                };
+              }
+            }
+            return r;
+          }),
+        );
+        setEditingWifi(null);
+        setTimeout(() => {
+          fetchData(true);
+        }, 2000);
+      } else {
+        showToast("Gagal ubah konfigurasi WiFi: " + (response.data?.message || "Error tidak diketahui"));
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Gagal ubah konfigurasi WiFi: " + (err.response?.data?.error || err.message));
+    } finally {
+      setIsSavingWifi(false);
+    }
+  };
+
+  const handleOpenEditModal = (row, portId, ontId, currentName) => {
+    if (!canManageOlt) return;
     const isArray = Array.isArray(row);
     const initialDesc = !isArray ? (row.ont_description || row.ont_desc || row.description || "No-description") : "No-description";
     
@@ -258,11 +407,11 @@ export default function HsgqOltPage() {
           fetchData(true); // silent refresh
         }, 2000);
       } else {
-        alert("Gagal mengubah konfigurasi ONT: " + (response.data?.message || "Error tidak diketahui"));
+        showToast("Gagal ubah nama ONT: " + (response.data?.message || "Error tidak diketahui"));
       }
     } catch (err) {
       console.error(err);
-      alert("Gagal mengubah konfigurasi ONT: " + (err.response?.data?.error || err.message));
+      showToast("Gagal ubah nama ONT: " + (err.response?.data?.error || err.message));
     } finally {
       setIsSavingEdit(false);
     }
@@ -488,6 +637,7 @@ export default function HsgqOltPage() {
 
   return (
     <div className="max-w-full h-full flex flex-col">
+      {ToastComponent}
       {/* Header Tabs */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -625,17 +775,17 @@ export default function HsgqOltPage() {
                         };
                         const response = await axios.post("/api/hsgq-olt?action=set_info", payload);
                         if (response.data && response.data.code === 1) {
-                          alert("Reboot command sent successfully!");
+                          showToast("Reboot command berhasil dikirim!", 'success');
                           setRebootTimestamp(Date.now());
                           setTimeout(() => {
                             fetchData(true);
                           }, 3000);
                         } else {
-                          alert("Gagal me-reboot ONT: " + (response.data?.message || "Error tidak diketahui"));
+                          showToast("Gagal reboot ONT: " + (response.data?.message || "Error tidak diketahui"));
                         }
                       } catch (err) {
                         console.error(err);
-                        alert("Gagal me-reboot ONT: " + (err.response?.data?.error || err.message));
+                        showToast("Gagal reboot ONT: " + (err.response?.data?.error || err.message));
                       }
                     }}
                     className="cursor-pointer flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
@@ -996,7 +1146,14 @@ export default function HsgqOltPage() {
                       const settingCell = (
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-3">
-                           
+                            {activeTab === "WLAN" && canManageOlt && (
+                              <button
+                                onClick={() => handleOpenWifiModal(row)}
+                                className="cursor-pointer text-blue-400 hover:text-blue-300 hover:underline transition-colors font-medium text-xs"
+                              >
+                                Setting WiFi
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 // Trigger client-side view detail
@@ -1171,9 +1328,13 @@ export default function HsgqOltPage() {
                             <td className="px-4 py-3">{bandwidth}</td>
                             <td className="px-4 py-3">
                               <div
-                                className={`flex flex-col gap-1 ${canManageOlt ? "cursor-pointer group" : "cursor-not-allowed opacity-60"}`}
+                                className={`flex flex-col gap-1 ${
+                                  canManageOlt && wifi.enable === 1
+                                    ? "cursor-pointer group"
+                                    : "cursor-not-allowed opacity-40"
+                                }`}
                                 onClick={() =>
-                                  canManageOlt &&
+                                  canManageOlt && wifi.enable === 1 &&
                                   handleWifiToggle(
                                     row,
                                     "isolation",
@@ -1197,9 +1358,13 @@ export default function HsgqOltPage() {
                             </td>
                             <td className="px-4 py-3">
                               <div
-                                className={`flex flex-col gap-1 ${canManageOlt ? "cursor-pointer group" : "cursor-not-allowed opacity-60"}`}
+                                className={`flex flex-col gap-1 ${
+                                  canManageOlt && wifi.enable === 1
+                                    ? "cursor-pointer group"
+                                    : "cursor-not-allowed opacity-40"
+                                }`}
                                 onClick={() =>
-                                  canManageOlt &&
+                                  canManageOlt && wifi.enable === 1 &&
                                   handleWifiToggle(
                                     row,
                                     "broadcast",
@@ -1370,7 +1535,7 @@ export default function HsgqOltPage() {
       )}
 
       {editingOnt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80">
               <h3 className="font-bold text-slate-100 flex items-center gap-2">
@@ -1445,6 +1610,247 @@ export default function HsgqOltPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingWifi && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80">
+              <h3 className="font-bold text-slate-100 flex items-center gap-2">
+                <Settings size={16} className="text-blue-400" />
+                Setting WiFi (WLAN)
+              </h3>
+              <button
+                onClick={() => setEditingWifi(null)}
+                className="text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto max-h-[70vh] flex flex-col gap-4 text-xs custom-scrollbar">
+              {/* Warning banner when WLAN is disabled */}
+              {editingWifi.enable === 0 && Number(wifiEnable) === 0 && (
+                <div className="flex items-start gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <span className="text-yellow-400 mt-0.5">⚠️</span>
+                  <p className="text-yellow-300 text-[11px] leading-relaxed">
+                    WLAN sedang <strong>Disable</strong>. Hanya status yang dapat diubah. Ubah Status WiFi ke <strong>Enable</strong> untuk mengakses semua pengaturan.
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Instance (always shown) */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Instance</span>
+                  <input
+                    type="text"
+                    value={editingWifi.instance ?? '-'}
+                    readOnly
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-slate-400 outline-none cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Status WiFi (always shown) */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Status WiFi</span>
+                  <select
+                    value={wifiEnable}
+                    onChange={(e) => setWifiEnable(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                  >
+                    <option value={1}>Enable</option>
+                    <option value={0}>Disable</option>
+                  </select>
+                </div>
+
+                {/* Full fields — only shown when WLAN is being enabled */}
+                {Number(wifiEnable) === 1 && (
+                  <>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">SSID (Nama WiFi)</span>
+                      <input
+                        type="text"
+                        value={wifiSsid}
+                        onChange={(e) => setWifiSsid(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
+                        placeholder="Masukkan SSID"
+                        maxLength={32}
+                      />
+                    </div>
+                    
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Share Key (Password)</span>
+                      <input
+                        type="text"
+                        value={wifiShareKey}
+                        onChange={(e) => setWifiShareKey(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none font-mono"
+                        placeholder="Minimal 8 karakter"
+                        maxLength={64}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Security Mode</span>
+                      <select
+                        value={wifiSecurityMode}
+                        disabled
+                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-slate-400 outline-none cursor-not-allowed"
+                      >
+                        <option value={0}>open</option>
+                        <option value={3}>wpapsk</option>
+                        <option value={4}>wpa2psk</option>
+                        <option value={5}>wpa2mixed</option>
+                        <option value={1}>wep64bits</option>
+                        <option value={2}>wep128bits</option>
+                      </select>
+                    </div>
+
+                    {[3, 4, 5].includes(Number(wifiSecurityMode)) && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">WPA Encryption</span>
+                        <select
+                          value={wifiWpaEncrypt}
+                          onChange={(e) => setWifiWpaEncrypt(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                        >
+                          <option value={0}>TKIP</option>
+                          <option value={1}>AES</option>
+                          <option value={2}>TKIP/AES</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {[1, 2].includes(Number(wifiSecurityMode)) && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">WEP Auth Type</span>
+                        <select
+                          value={wifiWepAuth}
+                          onChange={(e) => setWifiWepAuth(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                        >
+                          <option value={0}>open</option>
+                          <option value={1}>share</option>
+                          <option value={2}>share and open auto</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Channel</span>
+                      <select
+                        value={wifiChannel}
+                        onChange={(e) => setWifiChannel(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                      >
+                        <option value={0}>Auto</option>
+                        {Array.from({ length: 13 }, (_, i) => i + 1).map(ch => (
+                          <option key={ch} value={ch}>Channel {ch}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Bandwidth</span>
+                      <select
+                        value={wifiBandwidth}
+                        onChange={(e) => setWifiBandwidth(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                      >
+                        <option value={0}>20 MHz</option>
+                        <option value={1}>40 MHz</option>
+                        <option value={2}>Auto</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Short Guard Interval (GI)</span>
+                      <select
+                        value={wifiShortgi}
+                        onChange={(e) => setWifiShortgi(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                      >
+                        <option value={1}>Enable</option>
+                        <option value={0}>Disable</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">WiFi Isolation</span>
+                      <select
+                        value={wifiIsolation}
+                        onChange={(e) => setWifiIsolation(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                      >
+                        <option value={1}>Enable</option>
+                        <option value={0}>Disable</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Broadcast SSID</span>
+                      <select
+                        value={wifiBroadcast}
+                        onChange={(e) => setWifiBroadcast(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                      >
+                        <option value={1}>Enable</option>
+                        <option value={0}>Disable</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Beacon Interval</span>
+                      <input
+                        type="number"
+                        value={wifiBeacon}
+                        onChange={(e) => setWifiBeacon(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
+                        placeholder="Default 100"
+                        min={20}
+                        max={1000}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">DTIM Period</span>
+                      <input
+                        type="number"
+                        value={wifiDtim}
+                        onChange={(e) => setWifiDtim(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
+                        placeholder="Default 1"
+                        min={1}
+                        max={255}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-700 bg-slate-800/80 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setEditingWifi(null)}
+                className="cursor-pointer px-4 py-2 text-xs font-medium text-slate-300 hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveWifi}
+                disabled={isSavingWifi || (Number(wifiEnable) === 1 && !wifiSsid.trim())}
+                className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingWifi ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <span>Apply</span>
+                )}
+              </button>
             </div>
           </div>
         </div>

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import UptimeTimer from "@/components/UptimeTimer";
+import { useToast } from "@/hooks/useToast";
 
 /** Alias Mikrotik + tautan manual (admin) muncul saat hover di sel yang sama */
 function MikrotikAliasCell({
@@ -100,6 +101,7 @@ export default function MonitorPppoe() {
 
   // Role: admin = tautan manual; admin/editor = edit prefix
   const [canUpdate, setCanUpdate] = useState(false);
+  const { showToast, ToastComponent } = useToast();
 
   const fetchData = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -226,10 +228,7 @@ export default function MonitorPppoe() {
       setIsModalOpen(false);
       fetchData(true);
     } catch (e) {
-      alert(
-        "Gagal menyimpan tautan manual: " +
-          (e.response?.data?.error || e.message),
-      );
+      showToast("Gagal menyimpan tautan manual: " + (e.response?.data?.error || e.message));
     } finally {
       setIsSaving(false);
     }
@@ -242,16 +241,13 @@ export default function MonitorPppoe() {
       if (socket) socket.emit("force_sync_mappings");
       fetchData(true);
     } catch (e) {
-      alert(
-        "Gagal menghapus tautan manual: " +
-          (e.response?.data?.error || e.message),
-      );
+      showToast("Gagal menghapus tautan manual: " + (e.response?.data?.error || e.message));
     }
   };
 
   const handleSavePrefix = async (device) => {
     if (!editPrefixValue.trim()) {
-      alert("Prefix tidak boleh kosong");
+      showToast("Prefix tidak boleh kosong", "warning");
       return;
     }
     setIsSavingPrefix(true);
@@ -271,9 +267,7 @@ export default function MonitorPppoe() {
       if (socket) socket.emit("force_sync_mappings");
       setEditingPrefixMac(null);
     } catch (e) {
-      alert(
-        "Gagal menyimpan prefix: " + (e.response?.data?.error || e.message),
-      );
+      showToast("Gagal menyimpan prefix: " + (e.response?.data?.error || e.message));
     } finally {
       setIsSavingPrefix(false);
     }
@@ -323,6 +317,7 @@ export default function MonitorPppoe() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden relative">
+      {ToastComponent}
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
