@@ -44,7 +44,7 @@ export async function GET(req) {
         try {
             const { stdout } = await execAsync('pm2 jlist');
             const pm2List = JSON.parse(stdout);
-            const targetApps = ['nocr-app', 'ruijie-l2tp', 'ruijie-pppoe'];
+            const targetApps = ['nocr-app', 'ruijie-api', 'ruijie-scraper'];
             
             pm2Stats = pm2List
                 .filter(app => targetApps.includes(app.name))
@@ -83,7 +83,7 @@ export async function POST(req) {
         const body = await req.json();
         
         if (body.action === 'restart' && body.app_name) {
-            const targetApps = ['nocr-app', 'ruijie-l2tp', 'ruijie-pppoe'];
+            const targetApps = ['nocr-app', 'ruijie-api', 'ruijie-scraper'];
             if (!targetApps.includes(body.app_name)) {
                 return NextResponse.json({ error: 'Aplikasi PM2 tidak valid' }, { status: 400 });
             }
