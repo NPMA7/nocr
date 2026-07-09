@@ -80,6 +80,16 @@ async function start() {
         console.info('WhatsApp Authenticated');
     });
 
+    client.on('ready', () => {
+        console.info('WhatsApp Client is ready');
+        status = 'connected';
+        qrCodeDataURL = null;
+        broadcastStatus();
+        if (global.addActivityLog) {
+            global.addActivityLog('WhatsApp Gateway terhubung.');
+        }
+    });
+
     client.on('auth_failure', (msg) => {
         console.error('WhatsApp Authentication failure', msg);
         status = 'disconnected';
