@@ -705,7 +705,7 @@ export default function MonitorPppoe() {
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white transition"
+                className="cursor-pointer text-slate-400 hover:text-white transition"
               >
                 <X size={18} />
               </button>

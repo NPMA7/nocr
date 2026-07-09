@@ -132,7 +132,7 @@ function ConflictModal({ conflicts, onForce, onAcceptServer, onDismiss }) {
           </div>
           <button
             onClick={onDismiss}
-            className="text-slate-500 hover:text-white transition flex-shrink-0"
+            className="cursor-pointer text-slate-500 hover:text-white transition flex-shrink-0"
           >
             <X size={18} />
           </button>
