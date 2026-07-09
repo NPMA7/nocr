@@ -1,7 +1,6 @@
 'use client';
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
 
 const DEFAULT_CENTER = [-7.065, 107.55];;
@@ -176,10 +175,13 @@ const DraggableMarker = React.memo(function DraggableMarker({ node, isSelected, 
 
   useEffect(() => {
     nodeRef.current = node;
+  }, [node]);
+
+  useEffect(() => {
     if (!isDragging.current) {
       setPosition([parseFloat(node.latitude), parseFloat(node.longitude)]);
     }
-  }, [node]);
+  }, [node.latitude, node.longitude]);
 
   const icon = useMemo(() => {
     return getStaticMarkerIcon(node, isSelected, isDown, isDisabled, isUp, currentZoom, showLabels);

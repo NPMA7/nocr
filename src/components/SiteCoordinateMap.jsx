@@ -1,7 +1,6 @@
 'use client';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 
 const defaultCenter = [-6.2, 106.8];
 
