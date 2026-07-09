@@ -9,6 +9,9 @@ export const revalidate = 0;
 if (!global.pendingWifiUpdates) {
   global.pendingWifiUpdates = {};
 }
+if (!global.pendingNameUpdates) {
+  global.pendingNameUpdates = {};
+}
 if (!global.hsgqTokenCache) {
   global.hsgqTokenCache = null;
 }
@@ -100,6 +103,28 @@ export async function GET(request) {
       });
     }
 
+    // Apply global pending overrides for Names and Descriptions
+    if (endpoint === '/ontinfo_table' && data && data.data) {
+      const now = Date.now();
+      global.pendingNameUpdates = global.pendingNameUpdates || {};
+      // Clean up expired ones (65 seconds)
+      for (const key in global.pendingNameUpdates) {
+        if (now - global.pendingNameUpdates[key].timestamp > 65000) {
+          delete global.pendingNameUpdates[key];
+        }
+      }
+      
+      data.data = data.data.map(row => {
+        const key = `${row.identifier}`;
+        if (global.pendingNameUpdates[key]) {
+          row.name = global.pendingNameUpdates[key].ont_name;
+          row.ont_name = global.pendingNameUpdates[key].ont_name;
+          row.ont_description = global.pendingNameUpdates[key].ont_description;
+        }
+        return row;
+      });
+    }
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching HSGQ OLT data:", error.message);
@@ -172,6 +197,40 @@ export async function POST(request) {
               }
             }
           });
+        }
+      }
+      
+      return NextResponse.json(response.data);
+    }
+
+    if (action === 'set_info') {
+      const body = await request.json();
+      
+      const doPost = async (token) => {
+         return await axios.post(`${url}/gponont_mgmt?form=info`, body, {
+            headers: { 'x-token': token, 'Content-Type': 'application/json;charset=UTF-8' },
+            timeout: 10000
+         });
+      };
+      
+      let token = await getHsgqToken();
+      let response = await doPost(token);
+      
+      if (response.data && response.data.code === 0 && response.data.message === 'Token Check Failed') {
+          token = await getHsgqToken(true);
+          response = await doPost(token);
+      }
+      
+      if (response.data && response.data.code === 1) {
+        const id = body.param?.identifier;
+        if (id !== undefined) {
+          const key = `${id}`;
+          global.pendingNameUpdates = global.pendingNameUpdates || {};
+          global.pendingNameUpdates[key] = {
+            ont_name: body.param.ont_name,
+            ont_description: body.param.ont_description,
+            timestamp: Date.now()
+          };
         }
       }
       

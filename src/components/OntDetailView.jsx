@@ -1,36 +1,131 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { ShieldAlert, Activity, Info, ShieldCheck } from "lucide-react";
+import { ShieldAlert, Activity, Info, ShieldCheck, RefreshCw, Power, Zap, Settings } from "lucide-react";
 
-export default function OntDetailView({ portId, ontId }) {
+export default function OntDetailView({ portId, ontId, canManageOlt = false, showStandaloneReboot = false, rebootTimestamp = 0, editTimestamp = 0, onRebootSuccess, onEditNameDesc }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isRebooting, setIsRebooting] = useState(false);
+
+  const fetchDetails = async (silent = false) => {
+    try {
+      if (!silent) {
+        setLoading(true);
+      }
+      setError(null);
+      const res = await axios.get(
+        `/api/hsgq-olt/ont-detail?port_id=${portId}&ont_id=${ontId}`,
+      );
+      setData({
+        base: res.data.base?.data || {},
+        version: res.data.version?.data || {},
+        capability: res.data.capability?.data || {},
+        optical: res.data.optical?.data || {},
+      });
+    } catch (err) {
+      console.error("Failed to fetch ONT details", err);
+      if (!silent) {
+        setError("Gagal memuat detail ONT. Pastikan perangkat terhubung.");
+      }
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleReboot = async () => {
+    if (!canManageOlt) {
+      alert("Akses Ditolak: Anda tidak memiliki izin untuk mengonfigurasi OLT");
+      return;
+    }
+    const confirmReboot = window.confirm("Apakah Anda yakin ingin me-reboot ONT ini?");
+    if (!confirmReboot) return;
+
+    setIsRebooting(true);
+    try {
+      const identifier = (Number(portId) << 8) | Number(ontId);
+      const payload = {
+        method: "set",
+        param: {
+          identifier: identifier,
+          flags: 4,
+          ont_name: "",
+          ont_description: "",
+        },
+      };
+
+      const response = await axios.post("/api/hsgq-olt?action=set_info", payload);
+      if (response.data && response.data.code === 1) {
+        // Instantly transition local state to offline/initial for real-time visualization
+        setData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            base: {
+              ...prev.base,
+              rstate: 0, // offline
+              cstate: 0, // failed / initial
+              mstate: 0, // initial
+            }
+          };
+        });
+        // Background re-fetch after 3 seconds so the OLT registers the actual status change
+        setTimeout(() => {
+          fetchDetails(true);
+          if (onRebootSuccess) {
+            onRebootSuccess();
+          }
+        }, 3000);
+      } else {
+        alert("Gagal me-reboot ONT: " + (response.data?.message || "Error tidak diketahui"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal me-reboot ONT: " + (err.response?.data?.error || err.message));
+    } finally {
+      setIsRebooting(false);
+    }
+  };
 
   useEffect(() => {
     if (portId == null || ontId == null) return;
+    fetchDetails(false);
 
-    const fetchDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await axios.get(
-          `/api/hsgq-olt/ont-detail?port_id=${portId}&ont_id=${ontId}`,
-        );
-        setData({
-          base: res.data.base?.data || {},
-          version: res.data.version?.data || {},
-          capability: res.data.capability?.data || {},
-        });
-      } catch (err) {
-        console.error("Failed to fetch ONT details", err);
-        setError("Gagal memuat detail ONT. Pastikan perangkat terhubung.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDetails();
-  }, [portId, ontId]);
+    // Periodic lazy auto-refresh every 1 minute
+    const interval = setInterval(() => {
+      fetchDetails(true);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [portId, ontId, editTimestamp]);
+
+  useEffect(() => {
+    if (rebootTimestamp > 0) {
+      // Instantly transition local state to offline/initial for real-time visualization
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          base: {
+            ...prev.base,
+            rstate: 0, // offline
+            cstate: 0, // failed / initial
+            mstate: 0, // initial
+          }
+        };
+      });
+      // Background re-fetch after 3 seconds so the OLT registers the actual status change
+      const timer = setTimeout(() => {
+        fetchDetails(true);
+        if (onRebootSuccess) {
+          onRebootSuccess();
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [rebootTimestamp]);
 
   if (portId == null || ontId == null) {
     return (
@@ -43,6 +138,7 @@ export default function OntDetailView({ portId, ontId }) {
   const b = data?.base || {};
   const v = data?.version || {};
   const c = data?.capability || {};
+  const o = data?.optical || {};
 
   // Helper for rows
   const DetailRow = ({ label, value }) => (
@@ -75,7 +171,36 @@ export default function OntDetailView({ portId, ontId }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+    <div className="flex flex-col gap-4 w-full animate-in fade-in duration-200">
+      {canManageOlt && showStandaloneReboot && (
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              if (onEditNameDesc) {
+                onEditNameDesc(b.ont_name || "", b.ont_description || "");
+              }
+            }}
+            className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition flex items-center gap-2 shadow-lg shadow-blue-950/20"
+          >
+            <Settings size={14} />
+            Setting Description
+          </button>
+          <button
+            onClick={handleReboot}
+            disabled={isRebooting}
+            className="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition flex items-center gap-2 shadow-lg shadow-red-950/20"
+          >
+            {isRebooting ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <Power size={14} />
+            )}
+            Reboot ONT
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
       {/* Left Column: Basic Info */}
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
@@ -137,8 +262,24 @@ export default function OntDetailView({ portId, ontId }) {
         </div>
       </div>
 
-      {/* Right Column: Version & Capability */}
+      {/* Right Column: Version & Capability & Optical */}
       <div className="space-y-6">
+        {/* Optical Information Card */}
+        <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
+          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <Zap size={18} className="text-amber-400" />
+            ONT Optical Information
+          </h3>
+          <div className="space-y-0.5">
+            <DetailRow label="Work Temperature" value={o.work_temperature} />
+            <DetailRow label="Work Voltage" value={o.work_voltage} />
+            <DetailRow label="Transmit Bias" value={o.transmit_bias} />
+            <DetailRow label="Transmit Power" value={o.transmit_power} />
+            <DetailRow label="Receive Power" value={o.receive_power} />
+            <DetailRow label="OLT Rx ONT Power" value={o.olt_rxpower} />
+          </div>
+        </div>
+
         {/* Version Information */}
         <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
@@ -195,6 +336,7 @@ export default function OntDetailView({ portId, ontId }) {
             />
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
