@@ -497,7 +497,7 @@ export default function SiteDetailPage() {
               <button
                 type="button"
                 onClick={() => setVendorModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="cursor-pointer text-slate-400 hover:text-white"
               >
                 <X size={18} />
               </button>
