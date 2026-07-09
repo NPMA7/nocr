@@ -25,6 +25,8 @@ import {
   RefreshCw,
   Play,
   Square,
+  X,
+  Power,
 } from "lucide-react";
 import { hasAccess, getStoredUser, getRoleLabel } from "@/lib/roles";
 import RoleSettings from "@/components/RoleSettings";
@@ -72,6 +74,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
   const [showPassword, setShowPassword] = useState(false);
   const [roleEdits, setRoleEdits] = useState({});
   const [savingRoleId, setSavingRoleId] = useState(null);
+  const [deleteConfirmUserId, setDeleteConfirmUserId] = useState(null);
 
   // State untuk admin mengubah password user lain
   const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
@@ -150,15 +153,20 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Yakin ingin menghapus pengguna ini?")) {
-      try {
-        await axios.delete(`${API_URL}/auth/users/${id}`);
-        fetchUsersAndRoles();
-        if (showToast) showToast("Pengguna berhasil dihapus", "success");
-      } catch (err) {
-        if (showToast)
-          showToast(err.response?.data?.error || err.message, "error");
-      }
+    setDeleteConfirmUserId(id);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirmUserId;
+    if (!id) return;
+    setDeleteConfirmUserId(null);
+    try {
+      await axios.delete(`${API_URL}/auth/users/${id}`);
+      fetchUsersAndRoles();
+      if (showToast) showToast("Pengguna berhasil dihapus", "success");
+    } catch (err) {
+      if (showToast)
+        showToast(err.response?.data?.error || err.message, "error");
     }
   };
 
@@ -189,6 +197,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
     return <div className="text-slate-400 p-5">Memuat pengguna...</div>;
 
   return (
+    <>
     <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg p-5">
       <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 mb-4">
         <User size={20} className="text-blue-500" /> Manajemen Pengguna
@@ -430,6 +439,49 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
         </div>
       )}
     </div>
+    
+      {/* Delete User Confirmation Modal */}
+      {deleteConfirmUserId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-slate-700/50 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
+                <Trash2 size={16} className="text-red-400" />
+                Hapus Pengguna
+              </h3>
+              <button onClick={() => setDeleteConfirmUserId(null)} className="cursor-pointer text-slate-400 hover:text-slate-200 transition">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg">
+                ⚠️ Data pengguna akan dihapus secara permanen.
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-700/30">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmUserId(null)}
+                  className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 border border-red-500 text-xs text-white font-semibold transition cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                  Ya, Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -558,6 +610,7 @@ function SystemHealth({ isAdmin }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmRestartApp, setConfirmRestartApp] = useState(null); // nama app pm2 yg mau direstart
 
   const fetchHealth = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -580,8 +633,14 @@ function SystemHealth({ isAdmin }) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleRestart = async (appName) => {
-    if (!window.confirm(`Yakin ingin merestart ${appName}?`)) return;
+  const handleRestart = (appName) => {
+    setConfirmRestartApp(appName);
+  };
+
+  const confirmRestart = async () => {
+    const appName = confirmRestartApp;
+    if (!appName) return;
+    setConfirmRestartApp(null);
     try {
       const res = await axios.post(`${API_URL}/system-health`, {
         action: "restart",
@@ -624,6 +683,7 @@ function SystemHealth({ isAdmin }) {
     );
 
   return (
+    <>
     <div className="flex flex-col gap-6">
       {/* OS Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -807,6 +867,48 @@ function SystemHealth({ isAdmin }) {
         </div>
       </div>
     </div>
+      {confirmRestartApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-slate-700/50 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
+                <RefreshCw size={16} className="text-blue-400" />
+                Konfirmasi Restart
+              </h3>
+              <button onClick={() => setConfirmRestartApp(null)} className="cursor-pointer text-slate-400 hover:text-slate-200 transition">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Yakin ingin merestart{" "}
+                <span className="font-bold text-white">{confirmRestartApp}</span>?
+              </p>
+              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs p-3 rounded-lg">
+                ⚠️ Layanan akan offline sementara selama proses restart.
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-700/30">
+                <button
+                  type="button"
+                  onClick={() => setConfirmRestartApp(null)}
+                  className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmRestart}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 border border-blue-500 text-xs text-white font-semibold transition cursor-pointer"
+                >
+                  <RefreshCw size={13} />
+                  Ya, Restart
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
