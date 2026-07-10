@@ -45,22 +45,11 @@ export async function GET(request) {
         return false;
       }
 
-      const reportDateOnly = r.report_date ? new Date(r.report_date).toISOString().split('T')[0] : '';
+      const reportDateOnly = r.report_date ? new Date(r.report_date).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' }) : '';
       const isDateStr = reportDateOnly === dateStr;
       const isPastProgress = new Date(reportDateOnly) < new Date(dateStr) && r.status_progress === 'Progress';
       
-      let pass = isDateStr || isPastProgress;
-      
-      // Jika punya online_since, harus di tanggal dateStr juga
-      if (r.online_since) {
-        const onlineDateStr = new Date(r.online_since).toISOString().split('T')[0];
-        if (onlineDateStr !== dateStr) {
-          // jika online_since bukan dateStr (misal kemarin), jangan tampil di report hari ini
-          // kecuali statusnya masih progress yang mana agak aneh kalau online tapi progress, tp jaga-jaga
-          if (!isPastProgress) pass = false;
-        }
-      }
-      return pass;
+      return isDateStr || isPastProgress;
     });
 
     filteredReports.sort((a, b) => (a.prefix_name || '').localeCompare(b.prefix_name || ''));
