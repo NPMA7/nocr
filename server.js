@@ -268,13 +268,13 @@ app.prepare().then(() => {
 
     async function updateDailyReportRealtime(ruijieMac, prefixName, finalStatus) {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' });
             const now = new Date().toISOString();
             const isOffline = finalStatus === 'Offline';
 
             // 1. Cek existing report
             const { data: allReports } = await db.from('daily_reports').select('*').eq('ruijie_mac', ruijieMac);
-            let existing = (allReports || []).find(r => new Date(r.report_date).toISOString().split('T')[0] === today);
+            let existing = (allReports || []).find(r => new Date(r.report_date).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' }) === today);
             if (!existing) {
                 existing = (allReports || []).find(r => r.status_progress === 'Progress');
             }
@@ -284,7 +284,7 @@ app.prepare().then(() => {
                 let needsUpdate = false;
 
                 if (isOffline) {
-                    if (existing.status_progress === 'Done' && new Date(existing.report_date).toISOString().split('T')[0] === today) {
+                    if (existing.status_progress === 'Done' && new Date(existing.report_date).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' }) === today) {
                         updateData.offline_since = now;
                         updateData.online_since = null;
                         updateData.status_progress = 'Progress';
@@ -299,7 +299,8 @@ app.prepare().then(() => {
                 }
 
                 if (needsUpdate) {
-                    await db.from('daily_reports').update(updateData).eq('id', existing.id);
+                    const { error } = await db.from('daily_reports').update(updateData).eq('id', existing.id);
+                    if (error) throw error;
                 }
             } else {
                 if (isOffline) {
@@ -311,7 +312,7 @@ app.prepare().then(() => {
                         else if (s.latitude && s.longitude) loc = `${s.latitude}, ${s.longitude}`;
                     }
 
-                    await db.from('daily_reports').insert([{
+                    const { error } = await db.from('daily_reports').insert([{
                         report_date: today,
                         ruijie_mac: ruijieMac,
                         prefix_name: prefixName,
@@ -322,6 +323,7 @@ app.prepare().then(() => {
                         issue: '',
                         tindakan: ''
                     }]);
+                    if (error) throw error;
                 } else {
                     const { data: sites } = await db.from('sites').select('full_address, latitude, longitude').eq('ruijie_mac', ruijieMac);
                     let loc = '';
@@ -331,7 +333,7 @@ app.prepare().then(() => {
                         else if (s.latitude && s.longitude) loc = `${s.latitude}, ${s.longitude}`;
                     }
 
-                    await db.from('daily_reports').insert([{
+                    const { error } = await db.from('daily_reports').insert([{
                         report_date: today,
                         ruijie_mac: ruijieMac,
                         prefix_name: prefixName,
@@ -342,10 +344,11 @@ app.prepare().then(() => {
                         issue: '',
                         tindakan: ''
                     }]);
+                    if (error) throw error;
                 }
             }
         } catch (err) {
-            console.error("Realtime Laporan Error:", err.message);
+            console.error("Realtime Laporan Error:", err.message || err);
         }
     }
 
