@@ -91,6 +91,7 @@ export async function GET() {
         offline_since: offlineSince,
         remote_address: remoteAddress,
         connection_type: 'PPPOE',
+        last_online: ap.last_online || null,
       };
     }).sort((a, b) => (a.prefix || '').localeCompare(b.prefix || ''));
 

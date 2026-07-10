@@ -45,7 +45,7 @@ export async function GET(req) {
         if (sec && sec.last_logged_out) offlineTime = sec.last_logged_out;
       }
       
-      return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType, last_log_history: lastLogHistory };
+      return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType, last_log_history: lastLogHistory, last_online: ap?.last_online || null };
     });
 
     cachedData = enrichedData;
