@@ -217,16 +217,27 @@ export default function LaporanHarianPage() {
   const formatTimeWIB = (isoString) => {
     if (!isoString) return "-";
     const d = new Date(isoString);
-    return isNaN(d.getTime())
-      ? "-"
-      : d.toLocaleString("id-ID", {
-          year: "numeric",
-          month: "numeric",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
+    if (isNaN(d.getTime())) return "-";
+    try {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      });
+      const parts = formatter.formatToParts(d);
+      const partObj = {};
+      parts.forEach(p => {
+        partObj[p.type] = p.value;
+      });
+      return `${partObj.year}-${partObj.month}-${partObj.day} ${partObj.hour}:${partObj.minute}:${partObj.second}`;
+    } catch (e) {
+      return "-";
+    }
   };
 
   const handleCopyTable = () => {

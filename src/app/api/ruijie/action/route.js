@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { verifyAuth, resolveAuth, hasAccess } from '@/lib/auth';
 import axios from 'axios';
 
-// Backend ruijie-scraper port is 5000
-const SCRAPER_API_URL = 'http://localhost:5000/api';
+// Backend ruijie-scraper API URL from environment variables
+const SCRAPER_API_URL = process.env.SCRAPER_API_URL;
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
