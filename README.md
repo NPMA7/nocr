@@ -33,7 +33,7 @@ Memantau seluruh aset secara *Real-Time* menggunakan teknologi **WebSockets**.
 
 ### 2. 🤖 Otomatisasi & Peringatan Dini (*Early Warning System*)
 - **WhatsApp Gateway & Live Chat Omnichannel:** Berjalan langsung di dalam server aplikasi (`whatsapp-web.js`), menghubungkan satu nomor WhatsApp untuk digunakan sebagai pusat layanan pelanggan (*Customer Service*) terpadu. Dilengkapi fitur *Auto-Reply* pesan di luar jam kerja, *Simple Bot Commands* (seperti `/ping` dan `/info`), serta pengunduh media chat.
-- **Downtime Auto-Tracking & PDF Reports:** Sistem melacak waktu henti perangkat (*downtime*) dan menyala kembali (*uptime*) secara otomatis. Admin dapat melengkapi laporan progres perbaikan (*Issue* & *Action*) lalu mengunduh Laporan Harian resmi berformat PDF secara *on-demand*.
+- **Downtime Auto-Tracking, Bulk Import & PDF Reports:** Sistem melacak waktu henti perangkat (*downtime*) secara otomatis. Admin dapat melengkapi laporan progres perbaikan (*Issue* & *Action*), mengunduh laporan PDF resmi secara *on-demand*, serta melakukan **impor massal (Bulk Upsert)** salin-tempel langsung dari Google Sheets/Excel dengan sistem penanganan duplikasi otomatis berbasis *live progress matching*.
 - **VPN Connection Control:** Memungkinkan administrator menyambung/memutus koneksi VPN host server (`rasdial` di Windows / `pon-poff` di Linux) langsung melalui dashboard.
 
 ### 3. 🛡️ Keamanan & Hak Akses Berstandar Enterprise (Granular RBAC)

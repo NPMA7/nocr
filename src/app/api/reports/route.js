@@ -117,6 +117,109 @@ export async function POST(request) {
     if (!hasAccess(user, 'laporan-harian', 'create')) return NextResponse.json({ error: 'Akses Ditolak: Tambah Laporan Harian' }, { status: 403 });
 
     const body = await request.json();
+
+    if (Array.isArray(body)) {
+      if (body.length === 0) {
+        return NextResponse.json({ error: 'Array is empty' }, { status: 400 });
+      }
+
+      const reportsToProcess = body.map((r, idx) => {
+        const type = r.type || 'L2TP';
+        const reportDate = r.date || new Date().toISOString().split('T')[0];
+        return {
+          report_date: reportDate,
+          ruijie_mac: r.ruijie_mac || `MANUAL_${type}_${Date.now()}_${idx}`,
+          prefix_name: r.prefix_name || 'MANUAL ENTRY',
+          location: r.location || '',
+          offline_since: r.offline_since || null,
+          online_since: r.online_since || null,
+          status_progress: r.status_progress || 'Progress',
+          issue: r.issue || '',
+          tindakan: r.tindakan || ''
+        };
+      });
+
+      // Fetch existing reports: either on the target dates OR currently in Progress
+      const targetDates = Array.from(new Set(reportsToProcess.map(r => r.report_date)));
+      const { data: existingReports, error: fetchErr } = await db
+        .from('daily_reports')
+        .select('id, prefix_name, location, report_date, status_progress');
+      if (fetchErr) throw fetchErr;
+
+      const exactMap = {};
+      const pendingMap = {};
+
+      (existingReports || []).forEach(r => {
+        const dateStr = r.report_date ? new Date(r.report_date).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' }) : '';
+        const key = `${(r.prefix_name || '').toLowerCase()}_${(r.location || '').toLowerCase()}_${dateStr}`;
+        exactMap[key] = r;
+
+        if (r.status_progress === 'Progress') {
+          const deviceKey = `${(r.prefix_name || '').toLowerCase()}_${(r.location || '').toLowerCase()}`;
+          pendingMap[deviceKey] = r;
+        }
+      });
+
+      const toInsert = [];
+      const toUpdate = [];
+
+      reportsToProcess.forEach(r => {
+        const key = `${(r.prefix_name || '').toLowerCase()}_${(r.location || '').toLowerCase()}_${r.report_date}`;
+        const deviceKey = `${(r.prefix_name || '').toLowerCase()}_${(r.location || '').toLowerCase()}`;
+
+        // Match exact or pending
+        let match = exactMap[key] || pendingMap[deviceKey];
+
+        if (match) {
+          toUpdate.push({
+            id: match.id,
+            report_date: r.report_date, // Move the record to the active target date
+            online_since: r.online_since,
+            status_progress: r.status_progress,
+            issue: r.issue,
+            tindakan: r.tindakan
+          });
+        } else {
+          toInsert.push(r);
+        }
+      });
+
+      let insertedCount = 0;
+      let updatedCount = 0;
+
+      if (toInsert.length > 0) {
+        const { error: insErr } = await db.from('daily_reports').insert(toInsert);
+        if (insErr) throw insErr;
+        insertedCount = toInsert.length;
+      }
+
+      if (toUpdate.length > 0) {
+        for (const u of toUpdate) {
+          const { error: updErr } = await db
+            .from('daily_reports')
+            .update({
+              report_date: u.report_date,
+              online_since: u.online_since,
+              status_progress: u.status_progress,
+              issue: u.issue,
+              tindakan: u.tindakan,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', u.id);
+          if (updErr) throw updErr;
+        }
+        updatedCount = toUpdate.length;
+      }
+
+      return NextResponse.json({
+        success: true,
+        count: insertedCount + updatedCount,
+        inserted: insertedCount,
+        updated: updatedCount,
+        message: `Berhasil memproses ${insertedCount} data baru dan memperbarui ${updatedCount} data lama.`
+      });
+    }
+
     const { date, type, prefix_name, offline_since, online_since, status_progress, issue, tindakan } = body;
     
     if (!date) return NextResponse.json({ error: 'Missing date' }, { status: 400 });

@@ -36,6 +36,10 @@ export default function DailyReportPage() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importType, setImportType] = useState("L2TP");
+  const [importing, setImporting] = useState(false);
   const [newReportForm, setNewReportForm] = useState({
     kecamatan: "",
     desa: "",
@@ -71,7 +75,7 @@ export default function DailyReportPage() {
     setError(null);
     try {
       const res = await axios.get(
-        `/api/laporan?date=${selectedDate}&type=${selectedType}`,
+        `/api/reports?date=${selectedDate}&type=${selectedType}`,
       );
       setReports(res.data || []);
     } catch (err) {
@@ -123,7 +127,7 @@ export default function DailyReportPage() {
     try {
       const report = reports.find((r) => r.id === id);
       const payload = { id, ...report, [field]: value };
-      await axios.put("/api/laporan", payload);
+      await axios.put("/api/reports", payload);
     } catch (err) {
       showToast("Gagal menyimpan perubahan", "error");
       // Kembalikan jika gagal (versi sederhana: ambil ulang)
@@ -136,7 +140,7 @@ export default function DailyReportPage() {
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
     try {
-      await axios.delete(`/api/laporan?id=${deleteConfirmId}`);
+      await axios.delete(`/api/reports?id=${deleteConfirmId}`);
       setReports((prev) => prev.filter((r) => r.id !== deleteConfirmId));
       showToast("Laporan berhasil dihapus", "success");
     } catch (err) {
@@ -177,7 +181,7 @@ export default function DailyReportPage() {
         issue: newReportForm.issue,
         tindakan: newReportForm.tindakan,
       };
-      await axios.post("/api/laporan", payload);
+      await axios.post("/api/reports", payload);
       showToast("Laporan berhasil ditambahkan", "success");
       setShowAddModal(false);
       setNewReportForm({
@@ -237,6 +241,117 @@ export default function DailyReportPage() {
       return `${partObj.year}-${partObj.month}-${partObj.day} ${partObj.hour}:${partObj.minute}:${partObj.second}`;
     } catch (e) {
       return "-";
+    }
+  };
+
+  const formatFriendlyDate = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Jakarta"
+    }).format(d);
+  };
+
+  const handleImport = async () => {
+    if (!importText.trim()) {
+      showToast("Silakan tempel data dari Google Sheets terlebih dahulu", "error");
+      return;
+    }
+    setImporting(true);
+    try {
+      const lines = importText.split("\n");
+      const reportsList = [];
+      
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const columns = line.split("\t").map(col => col.trim());
+        
+        // Skip header row if it matches known column names exactly
+        const col0 = columns[0].toLowerCase().trim();
+        if (
+          col0 === "nama dinas" ||
+          col0 === "nama kecamatan" ||
+          col0 === "no" ||
+          col0 === "no." ||
+          col0 === "tanggal"
+        ) {
+          continue;
+        }
+
+        // We need at least Nama Dinas/Kecamatan & Jam Offline
+        if (columns.length < 3) continue;
+
+        const nameCol = columns[0] || "";
+        const locCol = columns[1] || "";
+        const offlineCol = columns[2] || "";
+        const onlineCol = columns[3] || "";
+        const statusCol = columns[4] || "";
+        const issueCol = columns[5] || "";
+        const tindakanCol = columns[6] || "";
+
+        // Parse date from offline_since or fallback to today
+        let offlineDate = null;
+        let onlineDate = null;
+        let reportDate = date; // Default to currently selected date on calendar
+
+        if (offlineCol && offlineCol !== "-") {
+          const parsedOffline = new Date(offlineCol);
+          if (!isNaN(parsedOffline.getTime())) {
+            offlineDate = parsedOffline.toISOString();
+          }
+        }
+
+        if (onlineCol && onlineCol !== "-") {
+          const parsedOnline = new Date(onlineCol);
+          if (!isNaN(parsedOnline.getTime())) {
+            onlineDate = parsedOnline.toISOString();
+          }
+        }
+
+        let status = "Progress";
+        if (statusCol.toLowerCase().includes("done") || statusCol.toLowerCase().includes("selesai")) {
+          status = "Done";
+        } else if (onlineDate) {
+          status = "Done";
+        }
+
+        reportsList.push({
+          date: reportDate,
+          type: importType,
+          prefix_name: `${nameCol}-${locCol}`.toUpperCase(),
+          location: locCol.toUpperCase(),
+          offline_since: offlineDate,
+          online_since: onlineDate,
+          status_progress: status,
+          issue: issueCol,
+          tindakan: tindakanCol
+        });
+      }
+
+      if (reportsList.length === 0) {
+        showToast("Tidak ada data valid yang berhasil dibaca", "error");
+        setImporting(false);
+        return;
+      }
+
+      const res = await axios.post("/api/reports", reportsList);
+      if (res.data.count === 0) {
+        showToast(res.data.message || "Semua data sudah ada di database", "info");
+      } else {
+        showToast(`Berhasil mengimpor ${res.data.count} data laporan baru`, "success");
+      }
+      setShowImportModal(false);
+      setImportText("");
+      fetchReports(date, type);
+    } catch (err) {
+      showToast(err.response?.data?.error || err.message || "Gagal mengimpor data", "error");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -484,14 +599,27 @@ export default function DailyReportPage() {
               />
             </div>
             {canCreate && (
-              <button
-                type="button"
-                onClick={() => setShowAddModal(true)}
-                className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 transition whitespace-nowrap"
-              >
-                <Plus size={16} />
-                Tambah Data
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(true)}
+                  className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 transition whitespace-nowrap"
+                >
+                  <Plus size={16} />
+                  Tambah Data
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportType(type);
+                    setShowImportModal(true);
+                  }}
+                  className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium bg-purple-600 hover:bg-purple-700 border border-purple-500 text-white shadow-lg shadow-purple-500/20 transition whitespace-nowrap"
+                >
+                  <ClipboardList size={16} />
+                  Impor dari Sheet
+                </button>
+              </>
             )}
             <button
               type="button"
@@ -927,6 +1055,89 @@ export default function DailyReportPage() {
                 className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 rounded-lg transition cursor-pointer"
               >
                 Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-700/50 flex justify-between items-center">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <ClipboardList size={20} className="text-purple-400" />
+                Impor Laporan dari Google Sheets / Excel
+              </h3>
+              <button 
+                onClick={() => setShowImportModal(false)}
+                className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-purple-950/20 border border-purple-900/55 rounded-lg p-3 text-xs text-purple-300 space-y-1">
+                <p className="font-semibold">Langkah-langkah:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Buka lembar Google Sheets Anda.</li>
+                  <li>Salin (Ctrl+C) kolom berurutan: <strong>Nama Dinas/Kecamatan, Lokasi/Desa, Jam Offline, Jam Online, Status, Issue, Tindakan</strong>.</li>
+                  <li>Tempelkan (Ctrl+V) ke kolom teks di bawah ini.</li>
+                </ol>
+                <div className="mt-2.5 pt-2 border-t border-purple-900/40 text-[11px] text-amber-300 flex items-center gap-1.5 font-semibold">
+                  <span>⚠️</span>
+                  <span>PENTING: Pastikan data yang Anda salin adalah untuk tanggal: <span className="underline decoration-wavy decoration-amber-500 font-extrabold text-white text-xs">{formatFriendlyDate(date)}</span></span>
+                </div>
+              </div>
+
+              {/* Import Type selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                  Tipe Laporan Tujuan
+                </label>
+                <select
+                  value={importType}
+                  onChange={(e) => setImportType(e.target.value)}
+                   disabled
+                  className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg p-2 text-xs outline-none focus:border-purple-500 transition cursor-pointer"
+                >
+                  <option value="L2TP">Desa (L2TP)</option>
+                  <option value="PPPOE">OPD (PPPoE)</option>
+                </select>
+              </div>
+
+              {/* Paste Textarea */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                  Tempel Data di Sini (Format Kolom Tab / TSV)
+                </label>
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder="Contoh:&#10;ARJASARI&#9;MEKARJAYA&#9;2025-06-25 08:25:09&#9;2025-06-25 12:11:13&#9;Done&#9;kabel putus&#9;perbaikan kabel"
+                  rows={8}
+                  className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg p-2.5 text-xs outline-none focus:border-purple-500 font-mono transition resize-none"
+                />
+              </div>
+            </div>
+            
+            {/* Action buttons */}
+            <div className="p-5 bg-slate-900/40 border-t border-slate-700/50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={importing}
+                onClick={handleImport}
+                className="px-5 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:opacity-50 shadow-lg shadow-purple-600/20 rounded-lg transition cursor-pointer flex items-center gap-2"
+              >
+                {importing && <RefreshCw size={12} className="animate-spin" />}
+                {importing ? "Mengimpor..." : "Mulai Impor"}
               </button>
             </div>
           </div>

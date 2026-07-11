@@ -18,6 +18,7 @@ import {
   MessageCircle,
   ChevronDown,
   User,
+  Activity,
 } from "lucide-react";
 
 import { useAppState } from "@/App";
@@ -248,14 +249,55 @@ export default function Sidebar({ isConnected, onNavigate }) {
         )}
 
         {hasAccess(currentUser, "laporan-harian", "read") && (
-          <Link
-            href="/daily-report"
-            onClick={onNavigate}
-            scroll={false}
-            className={getLinkClass("/daily-report")}
-          >
-            <ClipboardList size={18} /> Laporan Harian
-          </Link>
+          <div className="flex flex-col gap-0.5">
+            <Link
+              href="/daily-reports"
+              onClick={onNavigate}
+              scroll={false}
+              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm ${
+                pathname.startsWith("/daily-reports")
+                  ? "bg-slate-800/50 text-white"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <ClipboardList size={18} /> Laporan Harian
+              </div>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${pathname.startsWith("/daily-reports") ? "rotate-180" : ""}`}
+              />
+            </Link>
+
+            {pathname.startsWith("/daily-reports") && (
+              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+                <Link
+                  href="/daily-reports/dashboard"
+                  onClick={onNavigate}
+                  scroll={false}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                    pathname === "/daily-reports/dashboard"
+                      ? "text-blue-400 bg-blue-500/10"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  }`}
+                >
+                  <Activity size={14} /> Dashboard Laporan
+                </Link>
+                <Link
+                  href="/daily-reports"
+                  onClick={onNavigate}
+                  scroll={false}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                    pathname === "/daily-reports"
+                      ? "text-emerald-400 bg-emerald-500/10"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  }`}
+                >
+                  <ClipboardList size={14} /> Kelola Laporan
+                </Link>
+              </div>
+            )}
+          </div>
         )}
 
         {hasAccess(currentUser, "chat", "read") && (
