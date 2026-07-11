@@ -45,6 +45,14 @@ export async function GET(request) {
         return false;
       }
 
+      // Abaikan jika durasi offline kurang dari 10 menit (hanya untuk log otomatis, bukan input manual)
+      if (r.offline_since && r.online_since && (!r.ruijie_mac || !r.ruijie_mac.startsWith('MANUAL_'))) {
+        const durationMs = new Date(r.online_since).getTime() - new Date(r.offline_since).getTime();
+        if (durationMs < 10 * 60 * 1000) {
+          return false;
+        }
+      }
+
       const reportDateOnly = r.report_date ? new Date(r.report_date).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' }) : '';
       const isDateStr = reportDateOnly === dateStr;
       const isPastProgress = new Date(reportDateOnly) < new Date(dateStr) && r.status_progress === 'Progress';
