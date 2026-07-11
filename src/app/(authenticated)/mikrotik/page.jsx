@@ -109,7 +109,7 @@ function ConfirmDialog({
   );
 }
 
-export default function Devices() {
+export default function Mikrotik() {
   const { sessionUser } = useAppState();
   const [canCreate, setCanCreate] = useState(false);
   const [canUpdate, setCanUpdate] = useState(false);

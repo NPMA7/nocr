@@ -169,7 +169,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
               onClick={onNavigate}
               scroll={false}
               className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm ${
-                pathname.startsWith("/devices") ||
+                pathname.startsWith("/mikrotik") ||
                 pathname.startsWith("/ruijie") ||
                 pathname.startsWith("/hsgq-olt")
                   ? "bg-slate-800/50 text-white"
@@ -181,11 +181,11 @@ export default function Sidebar({ isConnected, onNavigate }) {
               </div>
               <ChevronDown
                 size={16}
-                className={`transition-transform ${pathname.startsWith("/devices") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt") ? "rotate-180" : ""}`}
+                className={`transition-transform ${pathname.startsWith("/mikrotik") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt") ? "rotate-180" : ""}`}
               />
             </Link>
 
-            {(pathname.startsWith("/devices") ||
+            {(pathname.startsWith("/mikrotik") ||
               pathname.startsWith("/ruijie") ||
               pathname.startsWith("/hsgq-olt")) && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
@@ -205,11 +205,11 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "devices-mikrotik", "read") && (
                   <Link
-                    href="/devices"
+                    href="/mikrotik"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/devices")
+                      pathname.startsWith("/mikrotik")
                         ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
@@ -249,10 +249,10 @@ export default function Sidebar({ isConnected, onNavigate }) {
 
         {hasAccess(currentUser, "laporan-harian", "read") && (
           <Link
-            href="/laporan-harian"
+            href="/daily-report"
             onClick={onNavigate}
             scroll={false}
-            className={getLinkClass("/laporan-harian")}
+            className={getLinkClass("/daily-report")}
           >
             <ClipboardList size={18} /> Laporan Harian
           </Link>
