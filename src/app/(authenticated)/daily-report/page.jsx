@@ -19,7 +19,7 @@ import { hasAccess, getStoredUser } from "@/lib/roles";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FileText } from "lucide-react";
-export default function LaporanHarianPage() {
+export default function DailyReportPage() {
   const [reports, setReports] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
