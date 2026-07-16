@@ -162,7 +162,7 @@ export default function DailyReportDashboard() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
-    <div className="h-full overflow-y-auto flex flex-col gap-6 p-1 pb-10">
+    <div className="h-full overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-1 pb-10">
       {/* Header & Main Controls */}
       <div className="flex flex-col gap-4 bg-slate-900/40 p-5 border border-slate-800/80 rounded-2xl">
         {/* Top Row: Title & Actions */}
@@ -400,7 +400,7 @@ export default function DailyReportDashboard() {
           });
 
           return (
-            <div className="relative overflow-x-auto">
+            <div className="relative overflow-x-hidden">
               <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-auto min-h-[180px]" preserveAspectRatio="xMidYMid meet">
                 {/* Y-axis grid lines */}
                 {yGridLines.map((line, i) => (
