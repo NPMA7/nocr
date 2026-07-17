@@ -215,7 +215,7 @@ export default function DailyReportDashboard() {
                 type === "L2TP" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              L2TP (Desa)
+              Desa
             </button>
             <button
               onClick={() => setType("PPPOE")}
@@ -223,7 +223,7 @@ export default function DailyReportDashboard() {
                 type === "PPPOE" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              PPPoE (OPD)
+              OPD
             </button>
           </div>
 
