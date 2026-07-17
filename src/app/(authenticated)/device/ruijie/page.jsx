@@ -422,8 +422,8 @@ export default function Ruijie() {
             className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Semua Tipe</option>
-            <option value="L2TP">L2TP</option>
-            <option value="PPPOE">PPPoE</option>
+            <option value="L2TP">Desa</option>
+            <option value="PPPOE">OPD</option>
           </select>
 
           <select
@@ -485,7 +485,7 @@ export default function Ruijie() {
                             </button>
                           )}
                           <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400 border border-slate-600/50">
-                            {d.connection_type || "Unknown"}
+                            {d.connection_type === "L2TP" ? "Desa" : d.connection_type === "PPPOE" ? "OPD" : (d.connection_type || "Unknown")}
                           </span>
                         </p>
                         <p className="text-xs text-slate-400 mt-1">
@@ -601,7 +601,7 @@ export default function Ruijie() {
                                 </button>
                               )}
                               <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400 border border-slate-600/50">
-                                {d.connection_type || "Unknown"}
+                                {d.connection_type === "L2TP" ? "Desa" : d.connection_type === "PPPOE" ? "OPD" : (d.connection_type || "Unknown")}
                               </span>
                             </div>
                           </td>

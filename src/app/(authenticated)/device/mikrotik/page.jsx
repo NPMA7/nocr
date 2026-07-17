@@ -702,8 +702,8 @@ export default function Mikrotik() {
               className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Tipe</option>
-              <option value="pppoe">PPPoE</option>
-              <option value="l2tp">L2TP</option>
+              <option value="pppoe">OPD</option>
+              <option value="l2tp">Desa</option>
               <option value="sistem">Sistem</option>
             </select>
             <select
@@ -901,8 +901,8 @@ export default function Mikrotik() {
               className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Service</option>
-              <option value="pppoe">PPPoE</option>
-              <option value="l2tp">L2TP</option>
+              <option value="pppoe">OPD</option>
+              <option value="l2tp">Desa</option>
             </select>
             <span className="text-xs text-slate-500 ml-auto flex-shrink-0">
               {filteredSessions.length} sesi aktif
@@ -934,7 +934,7 @@ export default function Mikrotik() {
                               : "text-blue-400"
                           }
                         >
-                          {p.service || "pppoe"}
+                          {p.service?.toLowerCase().includes("l2tp") ? "Desa" : p.service?.toLowerCase().includes("pppoe") ? "OPD" : (p.service || "pppoe")}
                         </span>
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">
@@ -1008,7 +1008,7 @@ export default function Mikrotik() {
                           <span
                             className={`text-xs px-2 py-0.5 rounded font-mono ${p.service?.toLowerCase().includes("l2tp") ? "bg-orange-500/20 text-orange-400" : "bg-blue-500/20 text-blue-400"}`}
                           >
-                            {p.service || "pppoe"}
+                            {p.service?.toLowerCase().includes("l2tp") ? "Desa" : p.service?.toLowerCase().includes("pppoe") ? "OPD" : (p.service || "pppoe")}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-400">

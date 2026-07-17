@@ -3,9 +3,31 @@ const next = require('next');
 const http = require('http');
 const { Server } = require('socket.io');
 const ping = require('ping');
+const fs = require('fs');
+const path = require('path');
 const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');
 const whatsapp = require('./src/lib/whatsapp');
+
+function getSystemSettings() {
+    try {
+        const filePath = path.join(__dirname, 'data', 'server-settings.json');
+        if (fs.existsSync(filePath)) {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            return JSON.parse(content);
+        }
+    } catch (e) {
+        console.error('Gagal membaca server-settings.json:', e.message);
+    }
+    return {
+        ping_interval_seconds: 5,
+        ping_timeout_seconds: 15,
+        core_broadcast_interval_seconds: 10,
+        sync_ruijie_interval_seconds: 60,
+        sync_mikrotik_interval_seconds: 60,
+        sync_mappings_interval_seconds: 60
+    };
+}
 
 function hasServerAccess(permissions, menuKey, action, legacyPerm) {
     if (!permissions) return false;
@@ -442,8 +464,7 @@ app.prepare().then(() => {
         db
             .from('activity_logs')
             .select('time, message')
-            .not('message', 'ilike', '%berubah menjadi Online%')
-            .not('message', 'ilike', '%berubah menjadi Offline%')
+            .ilike('message', '%berubah menjadi%')
             .order('time', { ascending: false })
             .limit(20)
             .then(({ data }) => {
@@ -455,8 +476,7 @@ app.prepare().then(() => {
             const { data } = await db
                 .from('activity_logs')
                 .select('time, message')
-                .not('message', 'ilike', '%berubah menjadi Online%')
-                .not('message', 'ilike', '%berubah menjadi Offline%')
+                .ilike('message', '%berubah menjadi%')
                 .order('time', { ascending: false })
                 .limit(20);
             if (data) socket.emit('initial_logs', data);
@@ -531,6 +551,8 @@ app.prepare().then(() => {
         isWorkerRunning = true;
 
         try {
+            const settings = getSystemSettings();
+            const timeoutSecs = settings.ping_timeout_seconds || 15;
             const devices = await getCachedDevices();
             const nodes = await getCachedNodes();
             const activePppoe = await getCachedActivePppoe();
@@ -558,7 +580,7 @@ app.prepare().then(() => {
                 if (!target.ip) continue;
                 
                 try {
-                    const res = await ping.promise.probe(target.ip, { timeout: 2 });
+                    const res = await ping.promise.probe(target.ip, { timeout: timeoutSecs });
                     let status = res.alive ? 'online' : 'offline';
                     
                     if (status === 'offline') {
@@ -623,28 +645,58 @@ app.prepare().then(() => {
         }
     };
 
-    // Jalankan ping worker setiap 5 detik
-    setInterval(pingWorker, 5000);
+    // Jalankan ping worker secara dinamis sesuai setting ping_interval_seconds
+    const runPingWorkerLoop = async () => {
+        await pingWorker();
+        const settings = getSystemSettings();
+        const intervalMs = (settings.ping_interval_seconds || 5) * 1000;
+        setTimeout(runPingWorkerLoop, intervalMs);
+    };
+    runPingWorkerLoop();
 
-    // Jalankan broadcast core metrics MikroTik setiap 10 detik
-    broadcastDashboardCoreStatus();
-    setInterval(broadcastDashboardCoreStatus, 10000);
+    // Jalankan broadcast core metrics MikroTik secara dinamis sesuai setting core_broadcast_interval_seconds
+    const runCoreStatusLoop = async () => {
+        await broadcastDashboardCoreStatus();
+        const settings = getSystemSettings();
+        const intervalMs = (settings.core_broadcast_interval_seconds || 10) * 1000;
+        setTimeout(runCoreStatusLoop, intervalMs);
+    };
+    runCoreStatusLoop();
 
-    // Fungsi penjadwalan agar task berjalan tepat di awal pergantian menit
-    function scheduleAtMinuteBoundary(callback, offsetSeconds = 0) {
-        const now = new Date();
-        const currentSeconds = now.getSeconds();
-        const currentMs = now.getMilliseconds();
-        let msToNextTarget = ((60 - currentSeconds + offsetSeconds) * 1000 - currentMs) % 60000;
-        if (msToNextTarget <= 0) msToNextTarget += 60000;
-        
-        setTimeout(() => {
-            callback();
-            setInterval(callback, 60000);
-        }, msToNextTarget);
+    // Fungsi penjadwalan agar task berjalan tepat di awal pergantian interval secara dinamis
+    function scheduleAtIntervalBoundary(callback, intervalKey, offsetSeconds = 0) {
+        const runLoop = async () => {
+            await callback();
+            const settings = getSystemSettings();
+            let intervalSeconds = 60;
+            if (intervalKey === 'ruijie') intervalSeconds = settings.sync_ruijie_interval_seconds || 60;
+            else if (intervalKey === 'mikrotik') intervalSeconds = settings.sync_mikrotik_interval_seconds || 60;
+            else if (intervalKey === 'mappings') intervalSeconds = settings.sync_mappings_interval_seconds || 60;
+            
+            setTimeout(runLoop, intervalSeconds * 1000);
+        };
+
+        const checkAndSchedule = () => {
+            const now = new Date();
+            const currentSeconds = now.getSeconds();
+            const currentMs = now.getMilliseconds();
+            
+            const settings = getSystemSettings();
+            let intervalSeconds = 60;
+            if (intervalKey === 'ruijie') intervalSeconds = settings.sync_ruijie_interval_seconds || 60;
+            else if (intervalKey === 'mikrotik') intervalSeconds = settings.sync_mikrotik_interval_seconds || 60;
+            else if (intervalKey === 'mappings') intervalSeconds = settings.sync_mappings_interval_seconds || 60;
+
+            let msToNextTarget = ((intervalSeconds - (currentSeconds % intervalSeconds) + offsetSeconds) * 1000 - currentMs) % (intervalSeconds * 1000);
+            if (msToNextTarget <= 0) msToNextTarget += intervalSeconds * 1000;
+            
+            setTimeout(runLoop, msToNextTarget);
+        };
+
+        checkAndSchedule();
     }
 
-    // Jalankan broadcast Ruijie secara otomatis setiap 1 menit (60 detik)
+    // Jalankan broadcast Ruijie secara otomatis
     async function broadcastRuijieDevices() {
         try {
             if (ruijieDevicesCache.data && (Date.now() - ruijieDevicesCache.timestamp < 30000)) {
@@ -665,9 +717,8 @@ app.prepare().then(() => {
         }
     }
 
-
     broadcastRuijieDevices();
-    scheduleAtMinuteBoundary(broadcastRuijieDevices, 0); // Tepat pergantian menit (:00)
+    scheduleAtIntervalBoundary(broadcastRuijieDevices, 'ruijie', 0);
 
     // Jalankan broadcast data MikroTik (Interfaces, PPPoE, Secrets) secara otomatis setiap 1 menit (60 detik)
     async function broadcastMikrotikData() {
@@ -970,13 +1021,13 @@ app.prepare().then(() => {
     }
 
     broadcastMikrotikData();
-    scheduleAtMinuteBoundary(broadcastMikrotikData, 0); // Tepat pergantian menit (:00)
+    scheduleAtIntervalBoundary(broadcastMikrotikData, 'mikrotik', 0);
 
-    // Tunda eksekusi pertama 5 detik agar data awal terkumpul, setelah itu ikut pergantian menit lewat 5 detik
+    // Tunda eksekusi pertama 5 detik agar data awal terkumpul, setelah itu ikut pergantian interval lewat 5 detik
     setTimeout(() => {
         syncDeviceMappings();
     }, 5000);
-    scheduleAtMinuteBoundary(syncDeviceMappings, 5); // Tepat di detik ke-05 setiap menit
+    scheduleAtIntervalBoundary(syncDeviceMappings, 'mappings', 5);
 
     // Rute Express WhatsApp Gateway
     server.use('/api/whatsapp', express.json());

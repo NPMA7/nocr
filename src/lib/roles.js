@@ -24,7 +24,8 @@ export const MENUS = {
   'settings-wa': 'Pengaturan - WhatsApp Gateway',
   'settings-users': 'Pengaturan - Manajemen Pengguna',
   'settings-roles': 'Pengaturan - Manajemen Role',
-  'settings-password': 'Pengaturan - Ubah Password'
+  'settings-password': 'Pengaturan - Ubah Password',
+  'settings-system': 'Pengaturan - Konfigurasi Server',
 };
 
 export const ACTIONS = ['create', 'read', 'update', 'delete'];

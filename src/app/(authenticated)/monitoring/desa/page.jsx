@@ -35,7 +35,7 @@ function MikrotikAliasCell({
     <div className={`flex flex-col group/mikrotik min-w-0 ${className}`}>
       <div className="flex items-center gap-2">
         <span
-          className={`font-mono truncate  ${device.is_manual ? "text-purple-400" : "text-slate-200"}`}
+          className={`font-mono truncate  ${device.is_manual ? "text-blue-400" : "text-slate-200"}`}
           title={device.mikrotik_alias}
         >
           {device.mikrotik_alias}
@@ -44,7 +44,7 @@ function MikrotikAliasCell({
         {device.is_manual && (
           <span
             title="Tautan manual aktif"
-            className="flex-shrink-0 bg-purple-500/20 text-purple-400 p-1 rounded group-hover/mikrotik:opacity-0 transition-opacity"
+            className="flex-shrink-0 bg-blue-500/20 text-blue-400 p-1 rounded group-hover/mikrotik:opacity-0 transition-opacity"
           >
             <LinkIcon size={10} />
           </span>
@@ -63,8 +63,8 @@ function MikrotikAliasCell({
             <button
               type="button"
               onClick={() => onLink(device)}
-              className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 transition"
-              title="Tautkan manual ke akun Mikrotik PPPoE"
+              className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+              title="Tautkan manual ke akun Mikrotik"
             >
               <LinkIcon size={10} />
             </button>
@@ -77,7 +77,7 @@ function MikrotikAliasCell({
   );
 }
 
-export default function MonitorPppoe() {
+export default function MonitorDevice() {
   const [mappings, setMappings] = useState([]);
   const [mikrotikSecrets, setMikrotikSecrets] = useState([]);
 
@@ -112,13 +112,14 @@ export default function MonitorPppoe() {
         axios.get("/api/monitor/mikrotik"),
       ]);
       const allMappings = resMappings.data || [];
-      setMappings(allMappings.filter((m) => m.connection_type === "PPPOE"));
+      setMappings(allMappings.filter((m) => m.connection_type === "L2TP"));
       if (resMikrotik.data) {
         setMikrotikSecrets(resMikrotik.data.secrets || []);
       }
       setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
     } catch (e) {
-      if (!isBackground) setError(e.message || "Gagal mengambil data PPPoE");
+      if (!isBackground)
+        setError(e.message || "Gagal mengambil data sinkronisasi");
     } finally {
       if (!isBackground) setLoading(false);
     }
@@ -129,8 +130,8 @@ export default function MonitorPppoe() {
 
     const syncRoles = () => {
       const user = getStoredUser();
-      setCanUpdate(hasAccess(user, "monitoring-pppoe", "update"));
-      if (user && user.role && !hasAccess(user, "monitoring-pppoe", "read")) {
+      setCanUpdate(hasAccess(user, "monitoring-l2tp", "update"));
+      if (user && user.role && !hasAccess(user, "monitoring-l2tp", "read")) {
         window.location.href = "/dashboard";
       }
     };
@@ -140,7 +141,7 @@ export default function MonitorPppoe() {
 
     if (socket) {
       const handleUpdate = () => {
-        fetchData(true);
+        fetchData(true); // Refresh lambat untuk sinkronisasi otomatis
       };
 
       socket.on("mappings_updated", handleUpdate);
@@ -191,6 +192,9 @@ export default function MonitorPppoe() {
   const totalTidakSinkron = mergedDevices.filter(
     (d) => d.status_mikrotik === "Online" && d.status_ruijie === "Offline",
   ).length;
+  const totalMikrotikOffline = mergedDevices.filter(
+    (d) => d.status_mikrotik === "Offline",
+  ).length;
   const totalIssues = mergedDevices.filter((d) => d.issue).length;
 
   const handleOpenModal = (device) => {
@@ -207,18 +211,18 @@ export default function MonitorPppoe() {
     if (!selectedAp || !selectedMikrotikName) return;
     setIsSaving(true);
     try {
-      // Untuk PPPoE, simpan mapping ke endpoint khusus atau gunakan ulang /api/mappings
       const res = await axios.post("/api/mappings", {
         ruijie_mac: selectedAp.mac_address,
         mikrotik_name: selectedMikrotikName,
       });
+      // Perbarui status lokal
       const existing = mappings.find(
         (m) => m.ruijie_mac === res.data.ruijie_mac,
       );
       if (existing) {
         setMappings(
           mappings.map((m) =>
-            m.ruijie_mac === res.data.ruijie_mac ? { ...m, ...res.data } : m,
+            m.ruijie_mac === res.data.ruijie_mac ? res.data : m,
           ),
         );
       } else {
@@ -226,7 +230,6 @@ export default function MonitorPppoe() {
       }
       if (socket) socket.emit("force_sync_mappings");
       setIsModalOpen(false);
-      fetchData(true);
     } catch (e) {
       showToast("Gagal menyimpan tautan manual: " + (e.response?.data?.error || e.message));
     } finally {
@@ -238,8 +241,8 @@ export default function MonitorPppoe() {
     if (!confirm("Hapus tautan manual dan kembali ke sistem otomatis?")) return;
     try {
       await axios.delete(`/api/mappings?ruijie_mac=${mac_address}`);
+      setMappings(mappings.filter((m) => m.ruijie_mac !== mac_address));
       if (socket) socket.emit("force_sync_mappings");
-      fetchData(true);
     } catch (e) {
       showToast("Gagal menghapus tautan manual: " + (e.response?.data?.error || e.message));
     }
@@ -257,6 +260,7 @@ export default function MonitorPppoe() {
         new_prefix: editPrefixValue.trim(),
         old_prefix: device.prefix,
       });
+      // Perbarui status lokal
       setMappings(
         mappings.map((m) =>
           m.ruijie_mac === device.ruijie_mac
@@ -277,8 +281,8 @@ export default function MonitorPppoe() {
     const isOnline = device.final_status === "Online";
     if (isOnline) {
       return (
-        <div className="flex flex-col gap-1 items-end lg:items-start">
-          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 w-max flex items-center gap-1.5">
+        <div className="text-xs flex flex-col gap-1 items-end lg:items-start">
+          <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 w-max flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>{" "}
             Online
           </span>
@@ -289,8 +293,8 @@ export default function MonitorPppoe() {
       );
     } else {
       return (
-        <div className="flex flex-col gap-1 items-end lg:items-start">
-          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
+        <div className="text-xs flex flex-col gap-1 items-end lg:items-start">
+          <span className=" px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
             Offline
           </span>
@@ -322,18 +326,21 @@ export default function MonitorPppoe() {
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <Monitor size={24} className="text-purple-400" />
-            Monitor Perangkat PPPoE
+            <Monitor size={24} className="text-blue-400" />
+            Monitor Perangkat Desa
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Status Access Point (Ruijie) & Mikrotik (PPPoE)
+            Status Access Point (Ruijie) & Mikrotik (Desa)
           </p>
         </div>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => fetchData()}
+            onClick={() => {
+              if (socket) socket.emit("force_sync_mappings");
+              fetchData();
+            }}
             disabled={loading}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg bg-purple-600 hover:bg-purple-700 border border-purple-500 text-white shadow-purple-500/20"
+            className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20`}
           >
             {" "}
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
@@ -347,29 +354,29 @@ export default function MonitorPppoe() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 flex-shrink-0">
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <Wifi size={20} className="text-emerald-400" />
+              <Wifi size={16} className="text-emerald-400" />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Total Online
               </p>
-              <p className="text-xl font-bold text-slate-100">{totalOnline}</p>
+              <p className="text-lg font-bold text-slate-100">{totalOnline}</p>
             </div>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center flex-shrink-0">
-              <WifiOff size={20} className="text-slate-400" />
+              <WifiOff size={16} className="text-slate-400" />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Total Offline
               </p>
-              <p className="text-xl font-bold text-slate-100">{totalOffline}</p>
+              <p className="text-lg font-bold text-slate-100">{totalOffline}</p>
             </div>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle size={20} className="text-red-400/80" />
+              <AlertTriangle size={16} className="text-red-400/80" />
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -382,13 +389,13 @@ export default function MonitorPppoe() {
           </div>
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex-1 min-w-[150px] flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle size={20} className="text-orange-400" />
+              <AlertTriangle size={16} className="text-orange-400" />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Issue
               </p>
-              <p className="text-xl font-bold text-orange-400">{totalIssues}</p>
+              <p className="text-lg font-bold text-orange-400">{totalIssues}</p>
             </div>
           </div>
         </div>
@@ -411,14 +418,14 @@ export default function MonitorPppoe() {
               placeholder="Cari Alias AP atau Mikrotik..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:border-purple-500 outline-none w-full"
+              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
             />
           </div>
 
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-purple-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Semua Data</option>
             <option value="ONLINE">Hanya Online</option>
@@ -429,7 +436,7 @@ export default function MonitorPppoe() {
           <select
             value={timeMode}
             onChange={(e) => setTimeMode(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-purple-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="duration">Uptime</option>
             <option value="timestamp">Timestamp</option>
@@ -477,8 +484,8 @@ export default function MonitorPppoe() {
                             <span className="font-bold text-slate-100 text-sm truncate">
                               {d.prefix || "-"}
                             </span>
-                            <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/20">
-                              PPPoE
+                            <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">
+                              Prefix
                             </span>
                           </div>
                           <div className="flex flex-col gap-1.5">
@@ -525,7 +532,7 @@ export default function MonitorPppoe() {
                         </div>
 
                         <Link
-                          href={`/sites/${encodeURIComponent(d.ruijie_mac)}`}
+                          href={`/sites/desa/${encodeURIComponent(d.ruijie_mac)}`}
                           className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 rounded border border-orange-500/20 flex-shrink-0"
                         >
                           <MapPin size={12} /> Detail
@@ -551,7 +558,7 @@ export default function MonitorPppoe() {
                         Alias (Ruijie)
                       </th>
                       <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Alias (Mikrotik PPPoE)
+                        Alias (Mikrotik)
                         {canUpdate && (
                           <span className="block text-[9px] font-normal text-slate-600 normal-case mt-0.5">
                             Hover untuk tautan manual
@@ -600,14 +607,14 @@ export default function MonitorPppoe() {
                                   onChange={(e) =>
                                     setEditPrefixValue(e.target.value)
                                   }
-                                  className="cursor-pointer bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-purple-500 w-full min-w-[150px]"
+                                  className="cursor-pointer bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500 w-full min-w-[150px]"
                                   autoFocus
                                   disabled={isSavingPrefix}
                                 />
                                 <button
                                   onClick={() => handleSavePrefix(d)}
                                   disabled={isSavingPrefix}
-                                  className="cursor-pointer p-1.5 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 rounded flex-shrink-0"
+                                  className="cursor-pointer p-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded flex-shrink-0"
                                 >
                                   <Save size={14} />
                                 </button>
@@ -632,7 +639,7 @@ export default function MonitorPppoe() {
                                       setEditingPrefixMac(d.ruijie_mac);
                                       setEditPrefixValue(d.prefix || "");
                                     }}
-                                    className="cursor-pointer opacity-0 group-hover/prefix:opacity-100 p-1 text-slate-400 hover:text-purple-400 transition"
+                                    className="cursor-pointer opacity-0 group-hover/prefix:opacity-100 p-1 text-slate-400 hover:text-blue-400 transition"
                                     title="Edit Prefix"
                                   >
                                     <Edit2 size={12} />
@@ -676,9 +683,9 @@ export default function MonitorPppoe() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <Link
-                              href={`/sites/${encodeURIComponent(d.ruijie_mac)}`}
+                              href={`/sites/desa/${encodeURIComponent(d.ruijie_mac)}`}
                               className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded border border-orange-500/20 transition"
-                              title="Detail wilayah PPPoE"
+                              title="Detail wilayah Desa"
                             >
                               <MapPin size={12} /> Detail
                             </Link>
@@ -700,8 +707,8 @@ export default function MonitorPppoe() {
           <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80">
               <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                <LinkIcon size={16} className="text-purple-400" />
-                Tautkan Manual AP ke Mikrotik PPPoE
+                <LinkIcon size={16} className="text-blue-400" />
+                Tautkan Manual AP ke Mikrotik
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -713,7 +720,7 @@ export default function MonitorPppoe() {
             <div className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">
-                  Ruijie Access Point (PPPoE)
+                  Ruijie Access Point
                 </label>
                 <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
                   <p className="font-medium text-slate-200">
@@ -727,18 +734,18 @@ export default function MonitorPppoe() {
 
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">
-                  Pilih Akun Mikrotik (PPPoE)
+                  Pilih Akun Mikrotik (Desa)
                 </label>
                 <select
                   value={selectedMikrotikName}
                   onChange={(e) => setSelectedMikrotikName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-100 focus:border-purple-500 outline-none"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
                 >
                   <option value="" disabled>
                     -- Pilih Akun --
                   </option>
                   {mikrotikSecrets
-                    .filter((s) => s.service === "pppoe")
+                    .filter((s) => s.service !== "pppoe")
                     .map((s, i) => {
                       const isUsed =
                         mappings.some((m) => m.mikrotik_name === s.name) &&
@@ -752,8 +759,8 @@ export default function MonitorPppoe() {
                     })}
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-                  Pilih nama secret PPPoE yang benar dari Mikrotik. Pilihan ini
-                  akan menimpa pencocokan nama otomatis.
+                  Pilih nama rahasia (secret) yang benar dari Mikrotik. Pilihan
+                  ini akan menimpa pencocokan nama otomatis.
                 </p>
               </div>
             </div>
@@ -767,7 +774,7 @@ export default function MonitorPppoe() {
               <button
                 onClick={handleSaveMapping}
                 disabled={isSaving || !selectedMikrotikName}
-                className="cursor-pointer px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <RefreshCw size={16} className="animate-spin" />
