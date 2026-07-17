@@ -44,7 +44,8 @@ export async function GET(request) {
         sync_ruijie_interval_seconds: 60,
         sync_mikrotik_interval_seconds: 60,
         sync_mappings_interval_seconds: 60,
-        alarm_delay_ms: 1500
+        alarm_delay_ms: 1500,
+        alarm_sound: "beep"
       };
     }
 
