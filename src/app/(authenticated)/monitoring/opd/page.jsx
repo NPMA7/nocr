@@ -16,7 +16,7 @@ import {
   Save,
   Edit2,
   Clock,
-  MapPin,
+  BarChart2,
 } from "lucide-react";
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import UptimeTimer from "@/components/UptimeTimer";
@@ -524,10 +524,10 @@ export default function MonitorPppoe() {
                         </div>
 
                         <Link
-                          href={`/sites/opd/${encodeURIComponent(d.ruijie_mac)}`}
-                          className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 rounded border border-orange-500/20 flex-shrink-0"
+                          href={`/monitoring/opd/traffic/${encodeURIComponent(d.ruijie_mac)}`}
+                          className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 rounded border border-blue-500/20 flex-shrink-0"
                         >
-                          <MapPin size={12} /> Detail
+                          <BarChart2 size={12} /> Traffic
                         </Link>
                       </div>
                     </div>
@@ -567,7 +567,7 @@ export default function MonitorPppoe() {
                         Keterangan Issue
                       </th>
                       <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Detail Wilayah
+                        Detail Traffic
                       </th>
                     </tr>
                   </thead>
@@ -675,11 +675,11 @@ export default function MonitorPppoe() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <Link
-                              href={`/sites/opd/${encodeURIComponent(d.ruijie_mac)}`}
-                              className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded border border-orange-500/20 transition"
-                              title="Detail wilayah OPD"
+                              href={`/monitoring/opd/traffic/${encodeURIComponent(d.ruijie_mac)}`}
+                              className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/20 transition"
+                              title="Detail Traffic OPD"
                             >
-                              <MapPin size={12} /> Detail
+                              <BarChart2 size={12} /> Traffic
                             </Link>
                           </td>
                         </tr>

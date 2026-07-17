@@ -14,7 +14,8 @@ function decodeMac(raw) {
 
 export async function GET(_req, { params }) {
   try {
-    const ruijie_mac = decodeMac(params.ruijie_mac);
+    const resolvedParams = await params;
+    const ruijie_mac = decodeMac(resolvedParams.ruijie_mac);
     if (!ruijie_mac) {
       return NextResponse.json({ error: 'ruijie_mac wajib' }, { status: 400 });
     }
@@ -31,7 +32,7 @@ export async function GET(_req, { params }) {
     const mapping = mappings[0];
     const { data: ruijieData } = await db
       .from('ruijie_devices')
-      .select('mac_address, last_online')
+      .select('mac_address, last_online, sn, group_id')
       .eq('mac_address', ruijie_mac)
       .maybeSingle();
     const { data: pppoeData } = await db
@@ -54,7 +55,13 @@ export async function GET(_req, { params }) {
       return NextResponse.json({ error: 'Site tidak ditemukan' }, { status: 404 });
     }
 
-    return NextResponse.json({ ...item, offline_since, remote_address });
+    return NextResponse.json({
+      ...item,
+      offline_since,
+      remote_address,
+      device_sn: ruijieData?.sn || null,
+      group_id: ruijieData?.group_id || null
+    });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -67,7 +74,8 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
-    const ruijie_mac = decodeMac(params.ruijie_mac);
+    const resolvedParams = await params;
+    const ruijie_mac = decodeMac(resolvedParams.ruijie_mac);
     if (!ruijie_mac) {
       return NextResponse.json({ error: 'ruijie_mac wajib' }, { status: 400 });
     }
