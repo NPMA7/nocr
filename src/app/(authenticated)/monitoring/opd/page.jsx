@@ -564,7 +564,7 @@ export default function MonitorPppoe() {
                         Status Mikrotik
                       </th>
                       <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Keterangan Issue
+                        Keterangan
                       </th>
                       <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Detail Traffic

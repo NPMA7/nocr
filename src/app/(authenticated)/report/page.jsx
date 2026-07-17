@@ -631,6 +631,14 @@ export default function DailyReportPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
+      <style>{`
+        .custom-date-picker::-webkit-calendar-picker-indicator {
+          filter: invert(0.85);
+          cursor: pointer;
+          transform: scale(1.2);
+          padding: 1px;
+        }
+      `}</style>
       <div className="flex-shrink-0 flex flex-col gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
@@ -691,7 +699,7 @@ export default function DailyReportPage() {
                   value={startDate}
                   max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer"
+                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker"
                 />
                 <span className="text-slate-500 text-xs">-</span>
                 <input
@@ -700,7 +708,7 @@ export default function DailyReportPage() {
                   min={startDate}
                   max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer"
+                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker"
                 />
               </div>
             ) : null}
