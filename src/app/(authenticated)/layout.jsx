@@ -273,6 +273,18 @@ export default function AuthenticatedLayout({ children }) {
       })
       .catch(() => {});
 
+    const handleLocalSettingsUpdate = (e) => {
+      const data = e.detail;
+      if (data?.alarm_delay_ms !== undefined) {
+        alarmDelayRef.current = Number(data.alarm_delay_ms) || 300;
+      }
+      if (data?.alarm_sound) {
+        alarmSoundRef.current = data.alarm_sound;
+      }
+    };
+
+    window.addEventListener("server-settings-updated", handleLocalSettingsUpdate);
+
     if (socket) {
       const handleConnect = () => setIsConnected(true);
       const handleDisconnect = () => setIsConnected(false);
@@ -359,6 +371,7 @@ export default function AuthenticatedLayout({ children }) {
       fetchDevices();
 
       return () => {
+        window.removeEventListener("server-settings-updated", handleLocalSettingsUpdate);
         socket.off("connect", handleConnect);
         socket.off("disconnect", handleDisconnect);
         socket.off("status", handleStatus);
@@ -367,6 +380,10 @@ export default function AuthenticatedLayout({ children }) {
         socket.off("device-status", handleDeviceStatus);
         socket.off("user_role_updated", handleRoleUpdated);
         socket.off("role_name_changed", handleRoleNameChanged);
+      };
+    } else {
+      return () => {
+        window.removeEventListener("server-settings-updated", handleLocalSettingsUpdate);
       };
     }
   }, [tokenChecked]);
