@@ -212,6 +212,19 @@ export async function GET(request) {
       })
       .sort((a, b) => new Date(b.offline_since) - new Date(a.offline_since));
 
+    // 5. Top Kendala/Issue Terbanyak
+    const issueCounts = {};
+    filteredReports.forEach(r => {
+      if (!r.issue || !r.issue.trim()) return;
+      const key = r.issue.trim();
+      issueCounts[key] = (issueCounts[key] || 0) + 1;
+    });
+
+    const topIssues = Object.entries(issueCounts)
+      .map(([issue, count]) => ({ issue, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
     return NextResponse.json({
       stats: {
         totalReports,
@@ -221,6 +234,7 @@ export async function GET(request) {
       trend,
       weeklyAverage,
       topDevices,
+      topIssues,
       activeOfflineList
     });
 

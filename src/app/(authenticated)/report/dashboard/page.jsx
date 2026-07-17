@@ -94,17 +94,19 @@ export default function DailyReportDashboard() {
     );
   }
 
-  const { stats, trend, weeklyAverage, topDevices } = data || {
+  const { stats, trend, weeklyAverage, topDevices, topIssues } = data || {
     stats: { totalReports: 0, averagePerDay: 0 },
     trend: [],
     weeklyAverage: [],
-    topDevices: []
+    topDevices: [],
+    topIssues: []
   };
 
   // Max value for scaling SVG/HTML bar charts
   const maxTrendReports = Math.max(...trend.map(t => t.count), 5);
   const maxWeeklyAverage = Math.max(...weeklyAverage.map(w => w.average), 1);
   const maxDeviceCount = Math.max(...topDevices.map(d => d.count), 1);
+  const maxIssueCount = Math.max(...(topIssues || []).map(i => i.count), 1);
 
   const formatLocalDate = (isoString) => {
     if (!isoString) return "-";
@@ -546,6 +548,62 @@ export default function DailyReportDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Chart 3: Top 10 Kendala/Issue - Horizontal Bar Chart */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-amber-400" />
+          Top 10 Kendala Terbanyak
+          <span className="ml-auto text-[10px] text-slate-500 font-normal">Berdasarkan field Issue pada laporan</span>
+        </h2>
+
+        {!topIssues || topIssues.length === 0 ? (
+          <div className="py-12 text-center text-slate-500 text-xs">
+            Tidak ada data kendala / issue
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {topIssues.map((item, idx) => {
+              const pct = Math.round((item.count / maxIssueCount) * 100);
+              const colors = [
+                "from-amber-600 to-amber-400",
+                "from-orange-600 to-orange-400",
+                "from-red-700 to-red-500",
+                "from-rose-700 to-rose-500",
+                "from-yellow-700 to-yellow-500",
+                "from-amber-700 to-amber-500",
+                "from-orange-700 to-orange-500",
+                "from-red-600 to-red-400",
+                "from-rose-600 to-rose-400",
+                "from-yellow-600 to-yellow-400",
+              ];
+              const color = colors[idx % colors.length];
+              return (
+                <div key={idx} className="flex items-center gap-3 group">
+                  {/* Rank */}
+                  <span className="text-[10px] font-bold text-slate-500 w-4 text-right flex-shrink-0">{idx + 1}</span>
+                  {/* Label */}
+                  <span
+                    className="text-[11px] text-slate-300 truncate flex-shrink-0 w-52"
+                    title={item.issue}
+                  >
+                    {item.issue}
+                  </span>
+                  {/* Bar */}
+                  <div className="flex-1 relative bg-slate-800/60 rounded-full h-4 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-700`}
+                      style={{ width: `${Math.max(pct, 2)}%` }}
+                    />
+                  </div>
+                  {/* Count */}
+                  <span className="text-[11px] font-bold text-amber-300 w-8 text-right flex-shrink-0">{item.count}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
