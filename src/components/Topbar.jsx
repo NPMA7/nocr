@@ -17,7 +17,7 @@ import { API_URL, useAppState } from "@/App";
 import { normalizeRole, getRoleLabel, getStoredUser } from "@/lib/roles";
 
 export default function Topbar({ onMenuClick, isSidebarOpen }) {
-  const { sessionUser, lastSyncTime, alerts, alarmEnabled, setAlarmEnabled, markAlertsRead } = useAppState();
+  const { sessionUser, lastSyncTime, alerts, alarmEnabled, setAlarmEnabled, markAlertsRead, testAlarm } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
 
   useEffect(() => {
@@ -44,6 +44,7 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
 
   // Notification panel state
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
 
   // Unread count = alerts with isRead: false
   const unreadCount = (alerts || []).filter((a) => !a.isRead).length;
@@ -181,19 +182,40 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
             </div>
           )}
 
-          {/* Alarm Toggle Button */}
+          {/* Alarm Toggle + Test Buttons */}
           {setAlarmEnabled && (
-            <button
-              onClick={() => setAlarmEnabled((v) => !v)}
-              title={alarmEnabled ? "Alarm suara aktif – klik untuk matikan" : "Alarm suara mati – klik untuk aktifkan"}
-              className={`cursor-pointer p-2 rounded-lg transition-colors ${
-                alarmEnabled
-                  ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                  : "text-slate-500 hover:text-slate-300 hover:bg-slate-700"
-              }`}
-            >
-              {alarmEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
+            <>
+              <button
+                onClick={() => setAlarmEnabled((v) => !v)}
+                title={alarmEnabled ? "Alarm suara aktif – klik untuk matikan" : "Alarm suara mati – klik untuk aktifkan"}
+                className={`cursor-pointer p-2 rounded-lg transition-colors ${
+                  alarmEnabled
+                    ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    : "text-slate-500 hover:text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                {alarmEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              </button>
+
+              {/* Alarm Test Button
+              <button
+                onClick={() => {
+                  if (!testAlarm || isTesting) return;
+                  setIsTesting(true);
+                  testAlarm();
+                  setTimeout(() => setIsTesting(false), 1200);
+                }}
+                title="Test suara alarm offline"
+                disabled={isTesting}
+                className={`cursor-pointer text-[10px] font-bold px-2 py-1 rounded-md border transition ${
+                  isTesting
+                    ? "bg-amber-500/20 border-amber-500/40 text-amber-300 animate-pulse"
+                    : "bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500 hover:bg-slate-700"
+                }`}
+              >
+                {isTesting ? "▶ ···" : "▶ Test"}
+              </button> */}
+            </>
           )}
 
           <div
