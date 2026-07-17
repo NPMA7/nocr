@@ -163,7 +163,7 @@ function SitesListPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">
-              Belum Profil
+              Belum Ada Profil
             </p>
             <p className="text-xl font-bold text-slate-100">
               {typeItems.length - withProfile}
