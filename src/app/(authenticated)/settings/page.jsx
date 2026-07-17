@@ -944,6 +944,9 @@ function SystemConfigSettings({ canUpdate = true }) {
     try {
       await axios.post("/api/settings/server", settings);
       showToast("Pengaturan server berhasil disimpan!", "success");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("server-settings-updated", { detail: settings }));
+      }
     } catch (err) {
       console.error(err);
       showToast("Gagal menyimpan pengaturan server", "error");

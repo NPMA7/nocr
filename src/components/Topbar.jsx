@@ -212,8 +212,8 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
                 {alarmEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </button>
 
-              {/* Alarm Test Button
-              <button
+              {/* Alarm Test Button */}
+              {/* <button
                 onClick={() => {
                   if (!testAlarm || isTesting) return;
                   setIsTesting(true);
