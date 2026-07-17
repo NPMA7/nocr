@@ -801,8 +801,22 @@ export default function TrafficDetailPage() {
   const backHref = isOPD ? "/monitoring/opd" : "/monitoring/desa";
   const isDaily = range === "7days" || range === "30days";
 
+  const totalIn = trafficData?.inTrafficBytes || 0;
+  const totalOut = trafficData?.outTrafficBytes || 0;
+  const totalTraffic = trafficData?.totalTrafficBytes || 0;
+
+  const groupDisplayName = deviceInfo?.group_name || trafficData?.siteName?.split(" - ")[0] || "";
+
   return (
     <div className="h-full overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-1 pb-10">
+      <style>{`
+        .custom-date-picker::-webkit-calendar-picker-indicator {
+          filter: invert(0.85);
+          cursor: pointer;
+          transform: scale(1.2);
+          padding: 1px;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex flex-col gap-4 bg-slate-800/40 p-5 border border-slate-800/80 rounded-2xl">
         {/* Breadcrumb */}
@@ -848,40 +862,44 @@ export default function TrafficDetailPage() {
           {/* Controls */}
           <div className="md:ml-auto flex items-center gap-2 flex-wrap">
             {/* Range selector */}
-            <div className="flex p-1 rounded-l gap-2 items-center">
-              <select
-                value={range}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setRange(val);
-                  const today = new Date();
-                  if (val === "today") {
-                    const start = new Date();
-                    start.setDate(today.getDate() - 1);
-                    setStartDate(start.toISOString().split("T")[0]);
-                    setEndDate(today.toISOString().split("T")[0]);
-                  } else if (val === "7days") {
-                    const start = new Date();
-                    start.setDate(today.getDate() - 7);
-                    setStartDate(start.toISOString().split("T")[0]);
-                    setEndDate(today.toISOString().split("T")[0]);
-                  } else if (val === "30days") {
-                    const start = new Date();
-                    start.setDate(today.getDate() - 30);
-                    setStartDate(start.toISOString().split("T")[0]);
-                    setEndDate(today.toISOString().split("T")[0]);
-                  }
-                }}
-                className="bg-slate-800 text-slate-200 border border-slate-700 rounded-md px-2.5 py-1 outline-none cursor-pointer text-xs font-semibold"
-              >
-                <option value="today">24 Jam</option>
-                <option value="7days">7 Hari</option>
-                <option value="30days">30 Hari</option>
-                <option value="custom">Custom</option>
-              </select>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
+                <Calendar size={13} className="text-slate-400" />
+                <select
+                  value={range}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRange(val);
+                    const today = new Date();
+                    if (val === "today") {
+                      const start = new Date();
+                      start.setDate(today.getDate() - 1);
+                      setStartDate(start.toISOString().split("T")[0]);
+                      setEndDate(today.toISOString().split("T")[0]);
+                    } else if (val === "7days") {
+                      const start = new Date();
+                      start.setDate(today.getDate() - 7);
+                      setStartDate(start.toISOString().split("T")[0]);
+                      setEndDate(today.toISOString().split("T")[0]);
+                    } else if (val === "30days") {
+                      const start = new Date();
+                      start.setDate(today.getDate() - 30);
+                      setStartDate(start.toISOString().split("T")[0]);
+                      setEndDate(today.toISOString().split("T")[0]);
+                    }
+                  }}
+                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer font-semibold ml-1.5"
+                >
+                  <option value="today" className="bg-slate-800 text-slate-200">24 Jam</option>
+                  <option value="7days" className="bg-slate-800 text-slate-200">7 Hari</option>
+                  <option value="30days" className="bg-slate-800 text-slate-200">30 Hari</option>
+                  <option value="custom" className="bg-slate-800 text-slate-200">Custom</option>
+                </select>
+              </div>
 
               {range === "custom" && (
-                <div className="flex items-center gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
+                  <Calendar size={13} className="text-slate-400 mr-0.5" />
                   <input
                     type="date"
                     value={startDate}
@@ -893,9 +911,9 @@ export default function TrafficDetailPage() {
                         setEndDate(val);
                       }
                     }}
-                    className="bg-slate-900 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer"
+                    className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker w-24"
                   />
-                  <span className="text-slate-500">to</span>
+                  <span className="text-slate-500">-</span>
                   <input
                     type="date"
                     value={endDate}
@@ -908,7 +926,7 @@ export default function TrafficDetailPage() {
                         setStartDate(val);
                       }
                     }}
-                    className="bg-slate-900 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer"
+                    className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker w-24"
                   />
                 </div>
               )}
@@ -957,40 +975,40 @@ export default function TrafficDetailPage() {
           {/* Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              {
-                label: "Total Traffic",
-                value: formatBytes(trafficData.totalTrafficBytes),
-                icon: Activity,
-                color: "text-slate-100",
-                iconColor: "text-blue-400",
-                bg: "bg-blue-500/10",
-              },
-              {
-                label: "Downlink (In)",
-                value: formatBytes(trafficData.inTrafficBytes),
-                icon: ArrowDown,
-                color: "text-blue-400",
-                iconColor: "text-blue-400",
-                bg: "bg-blue-500/10",
-              },
-              {
-                label: "Uplink (Out)",
-                value: formatBytes(trafficData.outTrafficBytes),
-                icon: ArrowUp,
-                color: "text-emerald-400",
-                iconColor: "text-emerald-400",
-                bg: "bg-emerald-500/10",
-              },
-              {
-                label: "Client Aktif",
-                value: trafficData.clients ?? trafficData.userTrandClients ?? 0,
-                sub: `(Peak: ${trafficData.userTrandTotal24h ?? "-"} Klien)`,
-                icon: Wifi,
-                color: "text-purple-400",
-                iconColor: "text-purple-400",
-                bg: "bg-purple-500/10",
-              },
-            ].map((card, i) => (
+                {
+                  label: "Total Traffic",
+                  value: formatBytes(totalTraffic),
+                  icon: Activity,
+                  color: "text-slate-100",
+                  iconColor: "text-blue-400",
+                  bg: "bg-blue-500/10",
+                },
+                {
+                  label: "Downlink (In)",
+                  value: formatBytes(totalIn),
+                  icon: ArrowDown,
+                  color: "text-blue-400",
+                  iconColor: "text-blue-400",
+                  bg: "bg-blue-500/10",
+                },
+                {
+                  label: "Uplink (Out)",
+                  value: formatBytes(totalOut),
+                  icon: ArrowUp,
+                  color: "text-emerald-400",
+                  iconColor: "text-emerald-400",
+                  bg: "bg-emerald-500/10",
+                },
+                {
+                  label: "Client Aktif",
+                  value: trafficData.clients ?? trafficData.userTrandClients ?? 0,
+                  sub: `(Peak: ${trafficData.userTrandTotal24h ?? "-"} Klien)`,
+                  icon: Wifi,
+                  color: "text-purple-400",
+                  iconColor: "text-purple-400",
+                  bg: "bg-purple-500/10",
+                },
+              ].map((card, i) => (
               <div
                 key={i}
                 className="bg-slate-800/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition group"
@@ -1058,7 +1076,7 @@ export default function TrafficDetailPage() {
                       size={15}
                       className="text-blue-500 animate-pulse"
                     />
-                    Wi-Fi Traffic Summary
+                    Wi-Fi Traffic Summary {groupDisplayName}
                   </h2>
                   <span className="text-[10px] text-slate-500">
                     Data uplink & downlink
@@ -1079,7 +1097,7 @@ export default function TrafficDetailPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <Wifi size={14} className="text-purple-400" />
                   <h2 className="text-sm font-semibold text-slate-200">
-                    Wi-Fi Client Summary
+                    Wi-Fi Client Summary {groupDisplayName}
                   </h2>
                 </div>
                 <CombinedClientChart
