@@ -14,7 +14,6 @@ import {
   Trash2,
   Info,
   X,
-  Plus,
 } from "lucide-react";
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import { useAppState } from "@/App";
@@ -113,7 +112,7 @@ export default function SiteDetailPage() {
         activation_date: activationDate || null,
         full_address: fullAddress,
         pics,
-        connection_type: "l2tp",
+        connection_type: "l2tp", // L2TP for Desa
       });
       setData(res.data);
       applyForm(res.data);
@@ -153,7 +152,7 @@ export default function SiteDetailPage() {
       <div className="flex flex-col items-center justify-center h-full gap-4 text-red-400">
         <p>{error}</p>
         <Link
-          href="/sites"
+          href="/sites/desa"
           className="text-blue-400 hover:underline text-xs flex items-center gap-1"
         >
           <ArrowLeft size={16} /> Kembali ke daftar
@@ -169,16 +168,16 @@ export default function SiteDetailPage() {
       <div className="flex-shrink-0 flex items-start justify-between gap-3 flex-wrap">
         <div>
           <Link
-            href="/sites"
+            href="/sites/desa"
             className="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 mb-2 transition"
           >
-            <ArrowLeft size={14} /> Sites / Wilayah
+            <ArrowLeft size={14} /> Wilayah Desa
           </Link>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3 flex-wrap">
             <MapPin size={24} className="text-orange-400" />
             {data?.prefix || "Detail Wilayah"}
-            <span className="text-xs font-normal px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">
-              L2TP
+            <span className="text-xs font-normal px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+              Desa
             </span>
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-mono">
@@ -237,7 +236,7 @@ export default function SiteDetailPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">
-              Mikrotik (L2TP)
+              Mikrotik (Desa)
             </p>
             <p className="text-xs text-slate-200 font-mono">
               {data?.mikrotik_alias || "—"}

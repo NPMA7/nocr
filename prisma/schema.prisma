@@ -122,18 +122,36 @@ model pppoe_secrets {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model ruijie_devices {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sn               String    @unique
-  mac_address      String?
-  alias            String?
-  ip_address       String?
-  status           String?
-  clients          Int?      @default(0)
-  last_online      String?
-  last_offline     String?
-  last_log_history String?
-  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
-  connection_type  String?
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sn                         String    @unique
+  mac_address                String?
+  alias                      String?
+  ip_address                 String?
+  status                     String?
+  connection_type            String?
+  clients                    Int?      @default(0)
+  last_online                String?
+  last_log_history           String?
+  radio1_power               Int?
+  radio2_power               Int?
+  offline_reason             String?
+  group_id                   BigInt?
+  radio1_channel_util        Int?
+  radio2_channel_util        Int?
+  remark                     String?
+  hardware_version           String?
+  product_type               String?
+  common_type                String?
+  product_class              String?
+  radio1_channel             Int?
+  radio2_channel             Int?
+  group_name                 String?
+  dev_mode                   String?
+  sta_nums                   Int?
+  cpe_ip                     String?
+  recommend_software_version String?
+  software_version           String?
+  updated_at                 DateTime? @default(now()) @db.Timestamptz(6)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -251,4 +269,3 @@ model daily_reports {
   @@unique([report_date, ruijie_mac])
   @@index([report_date], map: "idx_daily_reports_date")
 }
-

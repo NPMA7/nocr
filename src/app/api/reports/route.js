@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import { resolveAuth } from '@/lib/auth';
 import { hasAccess } from '@/lib/roles';
+import fs from 'fs';
+import path from 'path';
 
 export async function GET(request) {
   try {
@@ -17,8 +19,10 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const dateStr = searchParams.get('date');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
     const type = searchParams.get('type') || 'PPPOE';
-    if (!dateStr) {
+    if (!dateStr && (!startDate || !endDate)) {
       return NextResponse.json({ error: 'Missing date parameter' }, { status: 400 });
     }
 
@@ -45,19 +49,38 @@ export async function GET(request) {
         return false;
       }
 
-      // Abaikan jika durasi offline kurang dari 10 menit (hanya untuk log otomatis, bukan input manual)
+      // Abaikan jika durasi offline kurang dari batas kustom di settings (hanya untuk log otomatis, bukan input manual)
+      let minOfflineDurationMs = 10 * 60 * 1000;
+      try {
+        const settingsPath = path.join(process.cwd(), 'data', 'server-settings.json');
+        if (fs.existsSync(settingsPath)) {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+          if (settings.min_offline_duration_minutes !== undefined) {
+            minOfflineDurationMs = settings.min_offline_duration_minutes * 60 * 1000;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse server settings in reports route:', e);
+      }
+
       if (r.offline_since && r.online_since && (!r.ruijie_mac || !r.ruijie_mac.startsWith('MANUAL_'))) {
         const durationMs = new Date(r.online_since).getTime() - new Date(r.offline_since).getTime();
-        if (durationMs < 10 * 60 * 1000) {
+        if (durationMs < minOfflineDurationMs) {
           return false;
         }
       }
 
       const reportDateOnly = r.report_date ? new Date(r.report_date).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' }) : '';
-      const isDateStr = reportDateOnly === dateStr;
-      const isPastProgress = new Date(reportDateOnly) < new Date(dateStr) && r.status_progress === 'Progress';
       
-      return isDateStr || isPastProgress;
+      if (startDate && endDate) {
+        const isWithinRange = reportDateOnly >= startDate && reportDateOnly <= endDate;
+        const isPastProgress = reportDateOnly < startDate && r.status_progress === 'Progress';
+        return isWithinRange || isPastProgress;
+      } else {
+        const isDateStr = reportDateOnly === dateStr;
+        const isPastProgress = new Date(reportDateOnly) < new Date(dateStr) && r.status_progress === 'Progress';
+        return isDateStr || isPastProgress;
+      }
     });
 
     filteredReports.sort((a, b) => (a.prefix_name || '').localeCompare(b.prefix_name || ''));

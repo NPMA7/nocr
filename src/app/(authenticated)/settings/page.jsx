@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, Suspense, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 import { API_URL, useAppState } from "@/App";
 import {
@@ -912,7 +912,373 @@ function SystemHealth({ isAdmin }) {
   );
 }
 
+function SystemConfigSettings({ canUpdate = true }) {
+  const { showToast } = useAppState();
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [newIssue, setNewIssue] = useState("");
+  const [activeSubTab, setActiveSubTab] = useState("report");
+
+  const fetchSettings = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get("/api/settings/server");
+      setSettings(res.data);
+    } catch (err) {
+      console.error(err);
+      showToast("Gagal memuat pengaturan server", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!canUpdate) return;
+    setSaving(true);
+    try {
+      await axios.post("/api/settings/server", settings);
+      showToast("Pengaturan server berhasil disimpan!", "success");
+    } catch (err) {
+      console.error(err);
+      showToast("Gagal menyimpan pengaturan server", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddIssue = () => {
+    if (!newIssue.trim()) return;
+    if (settings.standard_issues.includes(newIssue.trim())) {
+      showToast("Issue sudah ada di daftar", "warning");
+      return;
+    }
+    setSettings({
+      ...settings,
+      standard_issues: [...settings.standard_issues, newIssue.trim()],
+    });
+    setNewIssue("");
+  };
+
+  const handleRemoveIssue = (issue) => {
+    setSettings({
+      ...settings,
+      standard_issues: settings.standard_issues.filter((i) => i !== issue),
+    });
+  };
+
+  if (loading) {
+    return <div className="p-5 text-slate-400">Memuat konfigurasi...</div>;
+  }
+
+  if (!settings) {
+    return <div className="p-5 text-red-400">Gagal memuat konfigurasi.</div>;
+  }
+
+  return (
+    <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
+      <div className="p-5 border-b border-slate-700/50">
+        <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+          <SettingsIcon size={20} className="text-red-400" /> Konfigurasi Server / Project
+        </h2>
+        <p className="text-xs text-slate-400 mt-1">
+          Atur parameter operasional sistem NOCR tanpa perlu mengubah kode sumber.
+        </p>
+      </div>
+
+      {/* Sub Tabs Navigation */}
+      <div className="flex border-b border-slate-700/50 bg-slate-800/40 px-5 gap-6">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("report")}
+          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none ${
+            activeSubTab === "report"
+              ? "border-blue-500 text-blue-400"
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          1. PARAMETER LAPORAN HARIAN
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("sync")}
+          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none ${
+            activeSubTab === "sync"
+              ? "border-emerald-500 text-emerald-400"
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          2. PARAMETER SINKRONISASI & MONITORING
+        </button>
+      </div>
+
+      <div className="p-5">
+        <form onSubmit={handleSave} className="flex flex-col gap-5">
+          {activeSubTab === "report" && (
+            <div className="flex flex-col gap-4">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                1. Parameter Laporan Harian
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Minimal Durasi Offline (Menit)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    readOnly={!canUpdate}
+                    value={settings.min_offline_duration_minutes}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        min_offline_duration_minutes: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                  <span className="text-[10px] text-slate-500">
+                    Perangkat offline yang kurang dari waktu ini tidak akan dimasukkan otomatis ke laporan harian.
+                  </span>
+                </div>
+              </div>
+
+              {/* Standard Issues Management */}
+              <div className="flex flex-col gap-2 mt-2">
+                <label className="text-xs font-semibold text-slate-400">
+                  Daftar Pilihan Issue Standar (Dropdown)
+                </label>
+                
+                {canUpdate && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newIssue}
+                      onChange={(e) => setNewIssue(e.target.value)}
+                      placeholder="Contoh: Kabel Digigit Tikus..."
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddIssue}
+                      className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
+                    >
+                      Tambah
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 mt-2 p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg max-h-48 overflow-y-auto">
+                  {settings.standard_issues.map((issue) => (
+                    <div
+                      key={issue}
+                      className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-full"
+                    >
+                      <span>{issue}</span>
+                      {canUpdate && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveIssue(issue)}
+                          className="text-slate-400 hover:text-red-400 transition"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSubTab === "sync" && (
+            <div className="flex flex-col gap-4">
+              <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                2. Parameter Sinkronisasi & Monitoring
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Interval Ping Perangkat (Detik)
+                  </label>
+                  <input
+                    type="number"
+                    min="2"
+                    readOnly={!canUpdate}
+                    value={settings.ping_interval_seconds}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        ping_interval_seconds: parseInt(e.target.value) || 5,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Timeout Ping Perangkat (Detik)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    readOnly={!canUpdate}
+                    value={settings.ping_timeout_seconds}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        ping_timeout_seconds: parseInt(e.target.value) || 15,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Interval Broadcast Core (Detik)
+                  </label>
+                  <input
+                    type="number"
+                    min="2"
+                    readOnly={!canUpdate}
+                    value={settings.core_broadcast_interval_seconds || 10}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        core_broadcast_interval_seconds: parseInt(e.target.value) || 10,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Interval Sinkronisasi Ruijie (Detik)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    readOnly={!canUpdate}
+                    value={settings.sync_ruijie_interval_seconds || 60}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        sync_ruijie_interval_seconds: parseInt(e.target.value) || 60,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Interval Sinkronisasi MikroTik (Detik)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    readOnly={!canUpdate}
+                    value={settings.sync_mikrotik_interval_seconds || 60}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        sync_mikrotik_interval_seconds: parseInt(e.target.value) || 60,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Interval Sinkronisasi Mappings (Detik)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    readOnly={!canUpdate}
+                    value={settings.sync_mappings_interval_seconds || 60}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        sync_mappings_interval_seconds: parseInt(e.target.value) || 60,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Delay Alarm Offline (ms)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    readOnly={!canUpdate}
+                    value={settings.alarm_delay_ms ?? 1500}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        alarm_delay_ms: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                  <span className="text-[10px] text-slate-500">
+                    Delay sebelum alarm berbunyi setelah notif offline diterima. Berguna untuk menghindari false alarm akibat fluktuasi singkat.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {canUpdate && (
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-700/50">
+              <button
+                type="submit"
+                disabled={saving}
+                className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-2 px-6 rounded-lg text-xs transition"
+              >
+                {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                Simpan Konfigurasi
+              </button>
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsWrapper(props) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (pathname === "/settings") {
+      router.replace("/settings/core");
+    }
+  }, [pathname, router]);
+
   return (
     <ErrorBoundary>
       <Suspense fallback={<div className="p-10 text-slate-400">Memuat...</div>}>
@@ -922,7 +1288,7 @@ export default function SettingsWrapper(props) {
   );
 }
 
-function Settings() {
+function Settings({ activeTab: activeTabProp }) {
   const { devices, refreshDevices, showToast, sessionUser } = useAppState();
   const [perms, setPerms] = useState({});
 
@@ -945,10 +1311,12 @@ function Settings() {
       rolesUpdate: hasAccess(userData, "settings-roles", "update"),
       rolesDelete: hasAccess(userData, "settings-roles", "delete"),
       passwordUpdate: hasAccess(userData, "settings-password", "update"),
+      systemRead: hasAccess(userData, "settings-system", "read"),
+      systemUpdate: hasAccess(userData, "settings-system", "update"),
     });
   };
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") || "core";
+  const activeTab = activeTabProp || searchParams.get("tab") || "core";
 
   const [coreDevice, setCoreDevice] = useState({
     name: "MikroTik Gateway",
@@ -1531,6 +1899,12 @@ function Settings() {
               canCreate={perms.waCreate}
               canUpdate={perms.waUpdate}
               canDelete={perms.waDelete}
+            />
+          )}
+
+          {activeTab === "system" && perms.systemRead && (
+            <SystemConfigSettings
+              canUpdate={perms.systemUpdate}
             />
           )}
         </div>

@@ -7,6 +7,8 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -15,7 +17,7 @@ import { API_URL, useAppState } from "@/App";
 import { normalizeRole, getRoleLabel, getStoredUser } from "@/lib/roles";
 
 export default function Topbar({ onMenuClick, isSidebarOpen }) {
-  const { sessionUser, lastSyncTime, alerts } = useAppState();
+  const { sessionUser, lastSyncTime, alerts, alarmEnabled, setAlarmEnabled, markAlertsRead } = useAppState();
   const [userData, setUserData] = useState(() => getStoredUser());
 
   useEffect(() => {
@@ -40,22 +42,17 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Status Notifikasi
+  // Notification panel state
   const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    // Hanya tingkatkan jumlah belum terbaca jika dropdown ditutup
-    if (!showNotifications && alerts && alerts.length > 0) {
-      setUnreadCount(alerts.length);
-    }
-  }, [alerts]);
+  // Unread count = alerts with isRead: false
+  const unreadCount = (alerts || []).filter((a) => !a.isRead).length;
 
   const handleToggleNotifications = () => {
     const newState = !showNotifications;
     setShowNotifications(newState);
-    if (newState) {
-      setUnreadCount(0);
+    if (newState && markAlertsRead) {
+      markAlertsRead();
     }
   };
 
@@ -184,6 +181,21 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
             </div>
           )}
 
+          {/* Alarm Toggle Button */}
+          {setAlarmEnabled && (
+            <button
+              onClick={() => setAlarmEnabled((v) => !v)}
+              title={alarmEnabled ? "Alarm suara aktif – klik untuk matikan" : "Alarm suara mati – klik untuk aktifkan"}
+              className={`cursor-pointer p-2 rounded-lg transition-colors ${
+                alarmEnabled
+                  ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  : "text-slate-500 hover:text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              {alarmEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+          )}
+
           <div
             className="relative cursor-pointer text-slate-200 hover:text-white transition"
             onClick={handleToggleNotifications}
@@ -201,9 +213,17 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-3 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
-                  <span className="text-xs font-bold text-slate-200">
-                    Notifikasi Sistem
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs font-bold text-slate-200">
+                      Notifikasi Offline
+                    </span>
+                    {alerts && alerts.length > 0 && (
+                      <span className="text-[10px] text-slate-500">
+                        ({alerts.length})
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => setShowNotifications(false)}
                     className="cursor-pointer text-slate-400 hover:text-white"
@@ -214,26 +234,34 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
                 <div className="max-h-80 overflow-y-auto">
                   {!alerts || alerts.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-500">
-                      Tidak ada notifikasi baru
+                      Tidak ada notifikasi offline
                     </div>
                   ) : (
                     alerts.map((alert, idx) => (
                       <div
                         key={idx}
-                        className="p-3 border-b border-slate-700/50 hover:bg-slate-700/30 transition flex flex-col gap-1"
+                        className={`p-3 border-b border-slate-700/50 hover:bg-slate-700/30 transition flex items-start gap-2.5 ${
+                          !alert.isRead ? "bg-red-500/5" : ""
+                        }`}
                       >
-                        <span className="text-xs text-slate-300 leading-relaxed">
-                          {alert.msg}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {alert.time
-                            ? new Date(alert.time).toLocaleTimeString("id-ID", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                second: "2-digit",
-                              })
-                            : ""}
-                        </span>
+                        <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5" />
+                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                          <span className="text-xs text-slate-200 leading-relaxed break-words">
+                            {alert.msg}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {alert.time
+                              ? new Date(alert.time).toLocaleTimeString("id-ID", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })
+                              : ""}
+                          </span>
+                        </div>
+                        {!alert.isRead && (
+                          <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 ring-2 ring-red-500/30" />
+                        )}
                       </div>
                     ))
                   )}

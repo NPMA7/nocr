@@ -446,7 +446,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 text-slate-400 mb-1">
             <AlertTriangle size={14} className="text-red-500" />{" "}
             <span className="text-[10px] font-bold uppercase tracking-wider">
-              Total Offline (Mikrotik)
+              Mikrotik Offline
             </span>
           </div>
           <span className="text-lg font-bold text-slate-100">
@@ -458,7 +458,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 text-slate-400 mb-1">
             <Router size={14} className="text-cyan-500" />{" "}
             <span className="text-[10px] font-bold uppercase tracking-wider">
-              Total Interface (Ruijie)
+              Total Wilayah
             </span>
           </div>
           <span className="text-lg font-bold text-slate-100">
@@ -470,7 +470,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 text-slate-400 mb-1">
             <ArrowUpRight size={14} className="text-orange-500" />{" "}
             <span className="text-[10px] font-bold uppercase tracking-wider">
-              Client Aktif (Ruijie)
+              Client Aktif
             </span>
           </div>
           <span className="text-lg font-bold text-slate-100">
@@ -482,7 +482,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 text-slate-400 mb-1">
             <AlertTriangle size={14} className="text-red-500" />{" "}
             <span className="text-[10px] font-bold uppercase tracking-wider">
-              Total Offline L2TP (Ruijie)
+              Desa Offline 
             </span>
           </div>
           <span className="text-lg font-bold text-slate-100">
@@ -494,7 +494,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 text-slate-400 mb-1">
             <AlertTriangle size={14} className="text-red-500" />{" "}
             <span className="text-[10px] font-bold uppercase tracking-wider">
-              Total Offline PPPoE (Ruijie)
+              OPD Offline 
             </span>
           </div>
           <span className="text-lg font-bold text-slate-100">

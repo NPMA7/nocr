@@ -342,6 +342,7 @@ function TopologyContent() {
   const [coreInterfaces, setCoreInterfaces] = useState([]);
   const [coreLoading, setCoreLoading] = useState(false);
   const [showIfacePanel, setShowIfacePanel] = useState(false);
+  const [liveLogs, setLiveLogs] = useState([]);
   const [showMobileMode, setShowMobileMode] = useState(false);
 
   const combinedInterfaceOptions = useMemo(() => {
@@ -678,21 +679,53 @@ function TopologyContent() {
         .catch(console.error);
     };
 
+    const handleActivityLog = (data) => {
+      const msg = data?.message || data?.msg || "";
+      if (msg.toLowerCase().includes("berubah menjadi")) {
+        setLiveLogs((prev) =>
+          [
+            { time: data.time ? new Date(data.time) : new Date(), msg },
+            ...prev,
+          ].slice(0, 30),
+        );
+      }
+    };
+
     if (socket) {
       socket.on("device-status", handleMetricsUpdate);
       socket.on("topology_updated", handleTopologyUpdated);
       socket.on("mikrotik_full_update", handleMikrotikUpdate);
       socket.on("mappings_updated", handleMappingsUpdate);
+      socket.on("activity_log_updated", handleActivityLog);
+      socket.on("status", handleActivityLog);
       socket.on("node_presence", (presenceMap) => {
         setNodePresenceMap(presenceMap || {});
       });
     }
+    // Load initial logs
+    axios
+      .get(`${API_URL}/activity-logs`)
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          const filtered = res.data
+            .filter((l) =>
+              (l.message || "").toLowerCase().includes("berubah menjadi"),
+            )
+            .slice(0, 30)
+            .map((l) => ({ time: new Date(l.time), msg: l.message }));
+          setLiveLogs(filtered);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       if (socket) {
         socket.off("device-status", handleMetricsUpdate);
         socket.off("topology_updated", handleTopologyUpdated);
         socket.off("mikrotik_full_update", handleMikrotikUpdate);
         socket.off("mappings_updated", handleMappingsUpdate);
+        socket.off("activity_log_updated", handleActivityLog);
+        socket.off("status", handleActivityLog);
         socket.off("node_presence");
       }
     };
@@ -1001,6 +1034,22 @@ function TopologyContent() {
     };
   }, [coreInterfaces, mappings]);
 
+  const { totalWilayah, desaOffline, opdOffline, siteAktif } = useMemo(() => {
+    const total = mappings.length;
+    const dOffline = mappings.filter(
+      (m) => m.connection_type !== "PPPOE" && m.final_status !== "Online",
+    ).length;
+    const oOffline = mappings.filter(
+      (m) => m.connection_type === "PPPOE" && m.final_status !== "Online",
+    ).length;
+    return {
+      totalWilayah: total,
+      desaOffline: dOffline,
+      opdOffline: oOffline,
+      siteAktif: Math.max(0, total - dOffline - oOffline),
+    };
+  }, [mappings]);
+
   const mapNodes = useMemo(() => {
     let filtered = nodes;
 
@@ -1204,8 +1253,7 @@ function TopologyContent() {
           {/* Main Buttons */}
           <div className="w-full xl:w-auto flex-shrink-0">
             {readOnly ? (
-              <>
-              </>
+              <></>
             ) : canEdit ? (
               <div className="flex flex-wrap bg-slate-900 rounded-lg p-1 border border-slate-700">
                 {canUpdate && (
@@ -1747,7 +1795,7 @@ function TopologyContent() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] text-slate-500">Site Aktif</p>
                         <p className="text-xs font-bold text-emerald-400">
-                          {l2tpOnlineGabungan + (coreStatus.pppoe_active || 0)}
+                          {siteAktif}
                         </p>
                       </div>
                     </div>
@@ -1784,88 +1832,76 @@ function TopologyContent() {
               </div>
             )}
 
-            {/* Interface Summary Card */}
-            {coreInterfaces.length > 0 && (
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto">
-                <button
-                  onClick={() => setShowIfacePanel((v) => !v)}
-                  className="w-full p-3 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <Network size={13} className="text-blue-400" />
-                    <span className="text-xs font-bold text-slate-200">
-                      Interfaces ({downCount + runningCount})
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
-                      {runningCount} UP
-                    </span>
-                    {downCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">
-                        {downCount} DOWN
-                      </span>
+            {/* Live Online/Offline Log Card */}
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto">
+              <button
+                onClick={() => setShowIfacePanel((v) => !v)}
+                className="w-full p-3 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <Network size={13} className="text-blue-400" />
+                  <span className="text-xs font-bold text-slate-200">
+                    Status 
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                    LIVE
+                  </span>
+                </div>
+                {showIfacePanel ? (
+                  <ChevronUp
+                    size={14}
+                    className="cursor-pointer text-slate-400"
+                  />
+                ) : (
+                  <ChevronDown
+                    size={14}
+                    className="cursor-pointer text-slate-400"
+                  />
+                )}
+              </button>
+              {showIfacePanel && (
+                <div className="border-t border-slate-700/50 max-h-72 flex flex-col">
+                  <div className="overflow-auto flex-1">
+                    {liveLogs.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-slate-500">
+                        Belum ada perubahan status...
+                      </div>
+                    ) : (
+                      liveLogs.map((log, i) => {
+                        const isOnline = log.msg
+                          .toLowerCase()
+                          .includes("menjadi online");
+                        return (
+                          <div
+                            key={i}
+                            className={`px-3 py-2 flex items-start gap-2 border-b border-slate-800/60 hover:bg-slate-800/30 transition text-xs ${
+                              i === 0 ? "bg-slate-800/20" : ""
+                            }`}
+                          >
+                            <div
+                              className={`flex-shrink-0 w-1.5 h-1.5 rounded-full mt-1 ${
+                                isOnline ? "bg-emerald-400" : "bg-red-400"
+                              }`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-slate-200 leading-snug break-words">
+                                {log.msg}
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                {log.time instanceof Date
+                                  ? log.time.toLocaleTimeString("id-ID")
+                                  : ""}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
-                  {showIfacePanel ? (
-                    <ChevronUp
-                      size={14}
-                      className="cursor-pointer text-slate-400"
-                    />
-                  ) : (
-                    <ChevronDown
-                      size={14}
-                      className="cursor-pointer text-slate-400"
-                    />
-                  )}
-                </button>
-                {showIfacePanel && (
-                  <div className="border-t border-slate-700/50 max-h-64 flex flex-col">
-                    <div className="p-2 border-b border-slate-700/50">
-                      <input
-                        type="text"
-                        placeholder="Cari interface..."
-                        value={ifacePanelSearch}
-                        onChange={(e) => setIfacePanelSearch(e.target.value)}
-                        className="bg-slate-800 border border-slate-700 rounded-md p-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full"
-                      />
-                    </div>
-                    <div className="overflow-auto flex-1">
-                      {Object.entries(ifaceGroups).length === 0 ? (
-                        <div className="p-4 text-center text-xs text-slate-500">
-                          Tidak ada interface
-                        </div>
-                      ) : (
-                        Object.entries(ifaceGroups).map(([type, ifaces]) => (
-                          <div key={type}>
-                            <div className="px-2 py-1 bg-slate-800/50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                              {type}
-                            </div>
-                            {ifaces.map((iface, i) => (
-                              <div
-                                key={i}
-                                className="px-3 py-2 flex items-center justify-between border-b border-slate-800/80 hover:bg-slate-800/40 transition"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={`w-1.5 h-1.5 rounded-full ${iface.running === "true" && iface.disabled !== "true" ? "bg-emerald-400" : iface.disabled === "true" ? "bg-slate-500" : "bg-red-400"}`}
-                                  />
-                                  <span className="text-xs text-slate-200 font-medium">
-                                    {iface.name}
-                                  </span>
-                                </div>
-                                <IfaceBadge
-                                  running={iface.running}
-                                  disabled={iface.disabled}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Floating Panel — Legend & Theme Toggle */}

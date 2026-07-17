@@ -1,0 +1,21 @@
+{
+  "standard_issues": [
+    "Mati Listrik / Pemadaman",
+    "Kabel Power / Adaptor Terlepas / Rusak",
+    "Stop Kontak / Terminal Longgar",
+    "ONT Loss / FO Cut / Gangguan Kabel",
+    "Kabel UTP / LAN Bermasalah / Loop",
+    "Perangkat Hang / Telat Sinkronisasi",
+    "Sedang Renovasi / Perbaikan Bangunan",
+    "Relokasi Perangkat / ONT / AP",
+    "Gangguan Massal / ISP Down"
+  ],
+  "min_offline_duration_minutes": 10,
+  "ping_interval_seconds": 5,
+  "ping_timeout_seconds": 15,
+  "core_broadcast_interval_seconds": 10,
+  "sync_ruijie_interval_seconds": 60,
+  "sync_mikrotik_interval_seconds": 60,
+  "sync_mappings_interval_seconds": 60,
+  "alarm_delay_ms": 300
+}

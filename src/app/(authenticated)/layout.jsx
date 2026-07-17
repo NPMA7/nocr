@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+// Trigger route manifest reload comment
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
@@ -28,6 +29,29 @@ export default function AuthenticatedLayout({ children }) {
   );
   const [lastSyncTime, setLastSyncTime] = useState(null);
 
+  // Per-user alarm preference stored in localStorage
+  const getAlarmKey = (user) => `nocr_alarm_enabled_${user?.username || "default"}`;
+  const [alarmEnabled, setAlarmEnabledRaw] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const user = getStoredUser();
+    const stored = localStorage.getItem(getAlarmKey(user));
+    return stored === null ? true : stored === "true";
+  });
+  const setAlarmEnabled = (valueOrFn) => {
+    setAlarmEnabledRaw((prev) => {
+      const next = typeof valueOrFn === "function" ? valueOrFn(prev) : valueOrFn;
+      if (typeof window !== "undefined") {
+        const user = getStoredUser();
+        localStorage.setItem(getAlarmKey(user), String(next));
+      }
+      return next;
+    });
+  };
+
+  const [activeAlarm, setActiveAlarm] = useState(null); // { msg, time }
+  const alarmDelayRef = useRef(1500);
+  const alarmTimerRef = useRef(null);
+
   const showToast = (message, type = "success", duration = 4000) => {
     setToast({ message, type });
     const timer = setTimeout(() => {
@@ -46,10 +70,43 @@ export default function AuthenticatedLayout({ children }) {
     setTokenChecked(true);
   }, [router]);
 
+  // Sync alarm preference when user session changes (login / role refresh)
+  useEffect(() => {
+    if (!sessionUser?.username) return;
+    const stored = localStorage.getItem(getAlarmKey(sessionUser));
+    setAlarmEnabledRaw(stored === null ? true : stored === "true");
+  }, [sessionUser?.username]);
+
+  // Helper: play offline alarm using Web Audio API
+  const playAlarmSound = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const playTone = (freq, startTime, duration) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.35, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+      playTone(880, ctx.currentTime, 0.18);
+      playTone(660, ctx.currentTime + 0.22, 0.18);
+      playTone(880, ctx.currentTime + 0.44, 0.18);
+      playTone(660, ctx.currentTime + 0.66, 0.28);
+    } catch (e) {
+      // Web Audio not supported
+    }
+  };
+
   const fetchDevices = async () => {
     try {
       const res = await axios.get(`${API_URL}/devices`);
       setDevices(res.data);
+      setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
     } catch (e) {
       console.error("Gagal mengambil perangkat", e);
     }
@@ -94,7 +151,7 @@ export default function AuthenticatedLayout({ children }) {
     };
   }, [tokenChecked]);
 
-  // Central Route Guard
+    // Central Route Guard
   useEffect(() => {
     if (!tokenChecked || !sessionUser?.role) return;
 
@@ -102,22 +159,34 @@ export default function AuthenticatedLayout({ children }) {
     const currentPath =
       pathname === "/" ? "dashboard" : pathname.replace(/^\//, "");
 
+    const firstSegment = currentPath.split("/")[0];
+    let lookupKey = firstSegment;
+    if (firstSegment === "monitoring" || firstSegment === "device" || firstSegment === "sites") {
+      const parts = currentPath.split("/");
+      if (parts.length > 1) {
+        lookupKey = `${parts[0]}/${parts[1]}`;
+      }
+    }
+
     const routeToMenuKeyMap = {
       topology: "topology",
+      "sites/desa": "sites",
+      "sites/opd": "sites",
       sites: "sites",
       "laporan-harian": "laporan-harian",
+      report: "laporan-harian",
       "live-chat": "chat",
-      "monitor-l2tp": "monitoring-l2tp",
-      "monitor-pppoe": "monitoring-pppoe",
-      ruijie: "devices-ruijie",
-      devices: "devices-mikrotik",
-      "hsgq-olt": "devices-hsgq",
+      "monitoring/desa": "monitoring-l2tp",
+      "monitoring/opd": "monitoring-pppoe",
+      "device/ruijie": "devices-ruijie",
+      "device/mikrotik": "devices-mikrotik",
+      "device/hsgq-olt": "devices-hsgq",
     };
 
-    let requiredMenuKey = routeToMenuKeyMap[currentPath];
+    let requiredMenuKey = routeToMenuKeyMap[lookupKey];
 
     // Handle settings sub-tabs separately
-    if (currentPath === "settings") {
+    if (firstSegment === "settings") {
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get("tab") || "core";
       const tabToMenuKeyMap = {
@@ -128,6 +197,7 @@ export default function AuthenticatedLayout({ children }) {
         users: "settings-users",
         roles: "settings-roles",
         password: "settings-password",
+        system: "settings-system",
       };
       requiredMenuKey = tabToMenuKeyMap[tab];
     }
@@ -146,6 +216,15 @@ export default function AuthenticatedLayout({ children }) {
   useEffect(() => {
     if (!tokenChecked) return;
 
+    // Load alarm delay setting
+    axios.get("/api/settings/server")
+      .then((res) => {
+        if (res.data?.alarm_delay_ms !== undefined) {
+          alarmDelayRef.current = Number(res.data.alarm_delay_ms) || 1500;
+        }
+      })
+      .catch(() => {});
+
     if (socket) {
       const handleConnect = () => setIsConnected(true);
       const handleDisconnect = () => setIsConnected(false);
@@ -153,18 +232,26 @@ export default function AuthenticatedLayout({ children }) {
       const handleStatus = (data) => {
         const msg = data.message || data.msg || "";
         const lower = msg.toLowerCase();
-        if (
-          lower.includes("berubah menjadi online") ||
-          lower.includes("berubah menjadi offline")
-        ) {
+        if (!lower.includes("berubah menjadi")) {
           return;
         }
-        setAlerts((prev) =>
-          [
-            { time: data.time ? new Date(data.time) : new Date(), msg },
-            ...prev,
-          ].slice(0, 10),
-        );
+        // Only show OFFLINE events in notification bell
+        if (lower.includes("offline")) {
+          setAlerts((prev) =>
+            [
+              { time: data.time ? new Date(data.time) : new Date(), msg, isRead: false },
+              ...prev,
+            ].slice(0, 20),
+          );
+          // Trigger alarm
+          if (alarmEnabled) {
+            clearTimeout(alarmTimerRef.current);
+            alarmTimerRef.current = setTimeout(() => {
+              playAlarmSound();
+              setActiveAlarm({ msg, time: new Date() });
+            }, alarmDelayRef.current);
+          }
+        }
       };
 
       const handleInitialLogs = (logs) => {
@@ -173,13 +260,11 @@ export default function AuthenticatedLayout({ children }) {
             .filter((log) => {
               const msg = log.message || "";
               const lower = msg.toLowerCase();
-              return (
-                !lower.includes("berubah menjadi online") &&
-                !lower.includes("berubah menjadi offline")
-              );
+              return lower.includes("berubah menjadi") && lower.includes("offline");
             })
-            .map((log) => ({ time: new Date(log.time), msg: log.message }));
-          setAlerts(filtered.slice(0, 10));
+            .map((log) => ({ time: new Date(log.time), msg: log.message, isRead: true }))
+            .slice(0, 20);
+          setAlerts(filtered);
         }
       };
 
@@ -271,6 +356,9 @@ export default function AuthenticatedLayout({ children }) {
     showToast,
     lastSyncTime,
     setLastSyncTime,
+    alarmEnabled,
+    setAlarmEnabled,
+    markAlertsRead: () => setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true }))),
   };
 
   const toggleSidebar = () => {
@@ -373,6 +461,51 @@ export default function AuthenticatedLayout({ children }) {
               >
                 ✕
               </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Offline Alarm Banner */}
+      {activeAlarm && (
+        <>
+          <style>{`
+            @keyframes alarmPulse {
+              0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+              50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+            }
+            .alarm-pulse { animation: alarmPulse 1.2s ease-in-out infinite; }
+            @keyframes alarmSlideIn {
+              from { transform: translateY(100%) scale(0.96); opacity: 0; }
+              to { transform: translateY(0) scale(1); opacity: 1; }
+            }
+            .alarm-slide-in { animation: alarmSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+          `}</style>
+          <div className="fixed bottom-6 left-6 z-[9998] alarm-slide-in max-w-xs w-full">
+            <div className="flex flex-col gap-2 bg-slate-900/95 border border-red-500/50 rounded-xl shadow-2xl shadow-red-950/30 backdrop-blur-md p-3.5 alarm-pulse">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)] animate-pulse flex-shrink-0" />
+                  <span className="text-xs font-bold text-red-300 uppercase tracking-wider">⚠ Alarm Offline</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setAlarmEnabled((v) => !v)}
+                    title={alarmEnabled ? "Matikan alarm" : "Nyalakan alarm"}
+                    className={`cursor-pointer text-[10px] px-2 py-0.5 rounded font-bold border transition ${alarmEnabled ? "bg-red-900/40 border-red-700/50 text-red-300 hover:bg-red-800/50" : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"}`}
+                  >
+                    {alarmEnabled ? "🔔 ON" : "🔕 OFF"}
+                  </button>
+                  <button
+                    onClick={() => { setActiveAlarm(null); clearTimeout(alarmTimerRef.current); }}
+                    className="cursor-pointer text-slate-500 hover:text-slate-200 transition w-5 h-5 rounded-full hover:bg-slate-800/50 flex items-center justify-center text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-slate-200 break-words leading-snug">{activeAlarm.msg}</p>
+              <p className="text-[10px] text-slate-500">{activeAlarm.time.toLocaleTimeString("id-ID")}</p>
             </div>
           </div>
         </>

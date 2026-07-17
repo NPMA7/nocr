@@ -27,11 +27,38 @@ import { hasAccess, isLegacyAdmin, getStoredUser } from "@/lib/roles";
 export default function Sidebar({ isConnected, onNavigate }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentTab = searchParams.get("tab") || "core";
+  const currentTab = pathname.startsWith("/settings")
+    ? pathname.split("/")[2] || "core"
+    : null;
   const { sessionUser } = useAppState();
   const [currentUser, setCurrentUser] = useState(null);
 
+  const [expandedMenus, setExpandedMenus] = useState({
+    monitoring: false,
+    device: false,
+    sites: false,
+    report: false,
+    settings: false,
+  });
+
   const syncUser = () => setCurrentUser(getStoredUser());
+
+  useEffect(() => {
+    setExpandedMenus({
+      monitoring: pathname.startsWith("/monitoring"),
+      device: pathname.startsWith("/device"),
+      sites: pathname.startsWith("/sites"),
+      report: pathname.startsWith("/report"),
+      settings: pathname.startsWith("/settings"),
+    });
+  }, [pathname]);
+
+  const toggleMenu = (menu) => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [menu]: !prev[menu],
+    }));
+  };
 
   useEffect(() => {
     syncUser();
@@ -105,13 +132,10 @@ export default function Sidebar({ isConnected, onNavigate }) {
           hasAccess(currentUser, k, "read"),
         ) && (
           <div className="flex flex-col gap-0.5">
-            <Link
-              href="/monitor-l2tp"
-              onClick={onNavigate}
-              scroll={false}
-              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm ${
-                pathname.startsWith("/monitor-l2tp") ||
-                pathname.startsWith("/monitor-pppoe")
+            <button
+              onClick={() => toggleMenu("monitoring")}
+              className={`cursor-pointer flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none ${
+                pathname.startsWith("/monitoring")
                   ? "bg-slate-800/50 text-white"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
@@ -121,39 +145,38 @@ export default function Sidebar({ isConnected, onNavigate }) {
               </div>
               <ChevronDown
                 size={16}
-                className={`transition-transform ${pathname.startsWith("/monitor-l2tp") || pathname.startsWith("/monitor-pppoe") ? "rotate-180" : ""}`}
+                className={`transition-transform ${expandedMenus.monitoring ? "rotate-180" : ""}`}
               />
-            </Link>
+            </button>
 
-            {(pathname.startsWith("/monitor-l2tp") ||
-              pathname.startsWith("/monitor-pppoe")) && (
+            {expandedMenus.monitoring && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2 ">
                 {hasAccess(currentUser, "monitoring-l2tp", "read") && (
                   <Link
-                    href="/monitor-l2tp"
+                    href="/monitoring/desa"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/monitor-l2tp")
+                      pathname.startsWith("/monitoring/desa")
                         ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
-                    <Monitor size={14} /> Monitor L2TP
+                    <Monitor size={14} /> Monitor Desa
                   </Link>
                 )}
                 {hasAccess(currentUser, "monitoring-pppoe", "read") && (
                   <Link
-                    href="/monitor-pppoe"
+                    href="/monitoring/opd"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/monitor-pppoe")
+                      pathname.startsWith("/monitoring/opd")
                         ? "text-emerald-400 bg-emerald-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
-                    <Monitor size={14} /> Monitor PPPOE
+                    <Monitor size={14} /> Monitor OPD
                   </Link>
                 )}
               </div>
@@ -165,14 +188,10 @@ export default function Sidebar({ isConnected, onNavigate }) {
           hasAccess(currentUser, k, "read"),
         ) && (
           <div className="flex flex-col gap-0.5">
-            <Link
-              href="/ruijie"
-              onClick={onNavigate}
-              scroll={false}
-              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm ${
-                pathname.startsWith("/mikrotik") ||
-                pathname.startsWith("/ruijie") ||
-                pathname.startsWith("/hsgq-olt")
+            <button
+              onClick={() => toggleMenu("device")}
+              className={`cursor-pointer flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none ${
+                pathname.startsWith("/device")
                   ? "bg-slate-800/50 text-white"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
@@ -182,21 +201,19 @@ export default function Sidebar({ isConnected, onNavigate }) {
               </div>
               <ChevronDown
                 size={16}
-                className={`transition-transform ${pathname.startsWith("/mikrotik") || pathname.startsWith("/ruijie") || pathname.startsWith("/hsgq-olt") ? "rotate-180" : ""}`}
+                className={`transition-transform ${expandedMenus.device ? "rotate-180" : ""}`}
               />
-            </Link>
+            </button>
 
-            {(pathname.startsWith("/mikrotik") ||
-              pathname.startsWith("/ruijie") ||
-              pathname.startsWith("/hsgq-olt")) && (
+            {expandedMenus.device && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
                 {hasAccess(currentUser, "devices-ruijie", "read") && (
                   <Link
-                    href="/ruijie"
+                    href="/device/ruijie"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/ruijie")
+                      pathname.startsWith("/device/ruijie")
                         ? "text-emerald-400 bg-emerald-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
@@ -206,11 +223,11 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "devices-mikrotik", "read") && (
                   <Link
-                    href="/mikrotik"
+                    href="/device/mikrotik"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/mikrotik")
+                      pathname.startsWith("/device/mikrotik")
                         ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
@@ -220,11 +237,11 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "devices-hsgq", "read") && (
                   <Link
-                    href="/hsgq-olt"
+                    href="/device/hsgq-olt"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/hsgq-olt")
+                      pathname.startsWith("/device/hsgq-olt")
                         ? "text-purple-400 bg-purple-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
@@ -238,24 +255,61 @@ export default function Sidebar({ isConnected, onNavigate }) {
         )}
 
         {hasAccess(currentUser, "sites", "read") && (
-          <Link
-            href="/sites"
-            onClick={onNavigate}
-            scroll={false}
-            className={getLinkClass("/sites")}
-          >
-            <MapPin size={18} /> Data Wilayah
-          </Link>
+          <div className="flex flex-col gap-0.5">
+            <button
+              onClick={() => toggleMenu("sites")}
+              className={`cursor-pointer flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none ${
+                pathname.startsWith("/sites")
+                  ? "bg-slate-800/50 text-white"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <MapPin size={18} /> Data Wilayah
+              </div>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${expandedMenus.sites ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {expandedMenus.sites && (
+              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+                <Link
+                  href="/sites/desa"
+                  onClick={onNavigate}
+                  scroll={false}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                    pathname.startsWith("/sites/desa")
+                      ? "text-blue-400 bg-blue-500/10"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  }`}
+                >
+                  <MapPin size={14} /> Wilayah Desa
+                </Link>
+                <Link
+                  href="/sites/opd"
+                  onClick={onNavigate}
+                  scroll={false}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                    pathname.startsWith("/sites/opd")
+                      ? "text-purple-400 bg-purple-500/10"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  }`}
+                >
+                  <MapPin size={14} /> Wilayah OPD
+                </Link>
+              </div>
+            )}
+          </div>
         )}
 
         {hasAccess(currentUser, "laporan-harian", "read") && (
           <div className="flex flex-col gap-0.5">
-            <Link
-              href="/daily-reports"
-              onClick={onNavigate}
-              scroll={false}
-              className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm ${
-                pathname.startsWith("/daily-reports")
+            <button
+              onClick={() => toggleMenu("report")}
+              className={`cursor-pointer flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none ${
+                pathname.startsWith("/report")
                   ? "bg-slate-800/50 text-white"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
@@ -265,18 +319,18 @@ export default function Sidebar({ isConnected, onNavigate }) {
               </div>
               <ChevronDown
                 size={16}
-                className={`transition-transform ${pathname.startsWith("/daily-reports") ? "rotate-180" : ""}`}
+                className={`transition-transform ${expandedMenus.report ? "rotate-180" : ""}`}
               />
-            </Link>
+            </button>
 
-            {pathname.startsWith("/daily-reports") && (
+            {expandedMenus.report && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
                 <Link
-                  href="/daily-reports/dashboard"
+                  href="/report/dashboard"
                   onClick={onNavigate}
                   scroll={false}
                   className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                    pathname === "/daily-reports/dashboard"
+                    pathname === "/report/dashboard"
                       ? "text-blue-400 bg-blue-500/10"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
@@ -284,11 +338,11 @@ export default function Sidebar({ isConnected, onNavigate }) {
                   <Activity size={14} /> Dashboard Laporan
                 </Link>
                 <Link
-                  href="/daily-reports"
+                  href="/report"
                   onClick={onNavigate}
                   scroll={false}
                   className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                    pathname === "/daily-reports"
+                    pathname === "/report"
                       ? "text-emerald-400 bg-emerald-500/10"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
@@ -319,38 +373,31 @@ export default function Sidebar({ isConnected, onNavigate }) {
           "settings-users",
           "settings-roles",
           "settings-password",
+          "settings-system",
         ].some((k) => hasAccess(currentUser, k, "read")) && (
           <div className="flex flex-col gap-0.5">
-            <Link
-              href={`/settings?tab=${
-                [
-                  { key: "settings-mikrotik", tab: "core" },
-                  { key: "settings-vpn", tab: "vpn" },
-                  { key: "settings-health", tab: "health" },
-                  { key: "settings-wa", tab: "whatsapp" },
-                  { key: "settings-users", tab: "users" },
-                  { key: "settings-roles", tab: "roles" },
-                  { key: "settings-password", tab: "password" },
-                ].find((item) => hasAccess(currentUser, item.key, "read"))?.tab || "core"
+            <button
+              onClick={() => toggleMenu("settings")}
+              className={`cursor-pointer flex items-center justify-between w-full px-4 py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none ${
+                pathname.startsWith("/settings")
+                  ? "bg-slate-800/50 text-white"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
-              onClick={onNavigate}
-              scroll={false}
-              className={`${getLinkClass("/settings")} justify-between w-full`}
             >
               <div className="flex items-center gap-3">
                 <Settings size={18} /> Pengaturan
               </div>
               <ChevronDown
                 size={16}
-                className={`transition-transform ${pathname.startsWith("/settings") ? "rotate-180" : ""}`}
+                className={`transition-transform ${expandedMenus.settings ? "rotate-180" : ""}`}
               />
-            </Link>
+            </button>
 
-            {pathname.startsWith("/settings") && (
+            {expandedMenus.settings && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
                 {hasAccess(currentUser, "settings-mikrotik", "read") && (
                   <Link
-                    href="/settings?tab=core"
+                    href="/settings/core"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
@@ -364,7 +411,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "settings-vpn", "read") && (
                   <Link
-                    href="/settings?tab=vpn"
+                    href="/settings/vpn"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
@@ -379,7 +426,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
 
                 {hasAccess(currentUser, "settings-health", "read") && (
                   <Link
-                    href="/settings?tab=health"
+                    href="/settings/health"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
@@ -393,7 +440,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "settings-wa", "read") && (
                   <Link
-                    href="/settings?tab=whatsapp"
+                    href="/settings/whatsapp"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
@@ -407,7 +454,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "settings-users", "read") && (
                   <Link
-                    href="/settings?tab=users"
+                    href="/settings/users"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
@@ -421,7 +468,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "settings-roles", "read") && (
                   <Link
-                    href="/settings?tab=roles"
+                    href="/settings/roles"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
@@ -435,7 +482,7 @@ export default function Sidebar({ isConnected, onNavigate }) {
                 )}
                 {hasAccess(currentUser, "settings-password", "read") && (
                   <Link
-                    href="/settings?tab=password"
+                    href="/settings/password"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
@@ -445,6 +492,20 @@ export default function Sidebar({ isConnected, onNavigate }) {
                     }`}
                   >
                     <Key size={14} /> Ubah Password
+                  </Link>
+                )}
+                {hasAccess(currentUser, "settings-system", "read") && (
+                  <Link
+                    href="/settings/system"
+                    onClick={onNavigate}
+                    scroll={false}
+                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                      currentTab === "system"
+                        ? "text-red-400 bg-red-500/10"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <Settings size={14} /> Konfigurasi Server
                   </Link>
                 )}
               </div>
