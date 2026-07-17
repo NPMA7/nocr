@@ -44,6 +44,10 @@ export default function AuthenticatedLayout({ children }) {
         const user = getStoredUser();
         localStorage.setItem(getAlarmKey(user), String(next));
       }
+      // Play confirmation sound when turning ON from OFF
+      if (next === true && prev === false) {
+        setTimeout(() => playAlarmSound(), 50);
+      }
       return next;
     });
   };
@@ -359,6 +363,7 @@ export default function AuthenticatedLayout({ children }) {
     alarmEnabled,
     setAlarmEnabled,
     markAlertsRead: () => setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true }))),
+    testAlarm: playAlarmSound,
   };
 
   const toggleSidebar = () => {
