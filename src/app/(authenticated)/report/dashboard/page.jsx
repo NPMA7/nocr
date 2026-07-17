@@ -10,7 +10,7 @@ import {
   ClipboardList,
   BarChart3,
   Calendar,
-  Layers
+  Layers,
 } from "lucide-react";
 import { useAppState } from "@/App";
 import { getStoredUser } from "@/lib/roles";
@@ -40,13 +40,15 @@ export default function DailyReportDashboard() {
           startMonth: range === "custom" ? startMonth : undefined,
           startYear: range === "custom" ? startYear : undefined,
           endMonth: range === "custom" ? endMonth : undefined,
-          endYear: range === "custom" ? endYear : undefined
-        }
+          endYear: range === "custom" ? endYear : undefined,
+        },
       });
       setData(res.data);
       setError(null);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || "Gagal memuat ringkasan");
+      setError(
+        err.response?.data?.error || err.message || "Gagal memuat ringkasan",
+      );
     } finally {
       if (!isPolling) setLoading(false);
     }
@@ -99,14 +101,14 @@ export default function DailyReportDashboard() {
     trend: [],
     weeklyAverage: [],
     topDevices: [],
-    topIssues: []
+    topIssues: [],
   };
 
   // Max value for scaling SVG/HTML bar charts
-  const maxTrendReports = Math.max(...trend.map(t => t.count), 5);
-  const maxWeeklyAverage = Math.max(...weeklyAverage.map(w => w.average), 1);
-  const maxDeviceCount = Math.max(...topDevices.map(d => d.count), 1);
-  const maxIssueCount = Math.max(...(topIssues || []).map(i => i.count), 1);
+  const maxTrendReports = Math.max(...trend.map((t) => t.count), 5);
+  const maxWeeklyAverage = Math.max(...weeklyAverage.map((w) => w.average), 1);
+  const maxDeviceCount = Math.max(...topDevices.map((d) => d.count), 1);
+  const maxIssueCount = Math.max(...(topIssues || []).map((i) => i.count), 1);
 
   const formatLocalDate = (isoString) => {
     if (!isoString) return "-";
@@ -125,7 +127,7 @@ export default function DailyReportDashboard() {
       });
       const parts = formatter.formatToParts(d);
       const partObj = {};
-      parts.forEach(p => {
+      parts.forEach((p) => {
         partObj[p.type] = p.value;
       });
       return `${partObj.year}-${partObj.month}-${partObj.day} ${partObj.hour}:${partObj.minute}:${partObj.second}`;
@@ -156,7 +158,7 @@ export default function DailyReportDashboard() {
     { value: 9, label: "September" },
     { value: 10, label: "Oktober" },
     { value: 11, label: "November" },
-    { value: 12, label: "Desember" }
+    { value: 12, label: "Desember" },
   ];
 
   // Year list for dropdown
@@ -206,7 +208,9 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setType("ALL")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                type === "ALL" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                type === "ALL"
+                  ? "bg-blue-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               Semua
@@ -214,7 +218,9 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setType("L2TP")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                type === "L2TP" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                type === "L2TP"
+                  ? "bg-blue-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               Desa
@@ -222,7 +228,9 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setType("PPPOE")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                type === "PPPOE" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                type === "PPPOE"
+                  ? "bg-blue-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               OPD
@@ -234,7 +242,9 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setRange("7d")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "7d" ? "bg-emerald-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                range === "7d"
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               7 Hari
@@ -242,7 +252,9 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setRange("1m")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "1m" ? "bg-emerald-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                range === "1m"
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               1 Bulan
@@ -250,7 +262,9 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setRange("1y")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "1y" ? "bg-emerald-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                range === "1y"
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               1 Tahun
@@ -258,7 +272,9 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setRange("all")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "all" ? "bg-emerald-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                range === "all"
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               Semua Waktu
@@ -266,10 +282,12 @@ export default function DailyReportDashboard() {
             <button
               onClick={() => setRange("custom")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "custom" ? "bg-emerald-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                range === "custom"
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Kustom
+              Custom
             </button>
           </div>
 
@@ -333,13 +351,17 @@ export default function DailyReportDashboard() {
         {/* Card 1: Total Reports */}
         <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between hover:border-slate-600 transition group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Total Laporan</span>
+            <span className="text-xs font-semibold text-slate-400">
+              Total Laporan
+            </span>
             <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg group-hover:scale-105 transition">
               <ClipboardList size={18} />
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold text-blue-400">{stats.totalReports}</span>
+            <span className="text-3xl font-bold text-blue-400">
+              {stats.totalReports}
+            </span>
             <div className="text-[10px] text-slate-500 mt-1">
               Jumlah kasus gangguan dalam periode terpilih
             </div>
@@ -349,13 +371,17 @@ export default function DailyReportDashboard() {
         {/* Card 2: Average Per Day */}
         <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between hover:border-slate-600 transition group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Rata-rata Laporan (Harian)</span>
+            <span className="text-xs font-semibold text-slate-400">
+              Rata-rata Laporan (Harian)
+            </span>
             <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:scale-105 transition">
               <BarChart3 size={18} />
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold text-emerald-400">{Math.ceil(Number(stats.averagePerDay || 0))}</span>
+            <span className="text-3xl font-bold text-emerald-400">
+              {Math.ceil(Number(stats.averagePerDay || 0))}
+            </span>
             <div className="text-[10px] text-slate-500 mt-1">
               Kasus laporan gangguan per hari
             </div>
@@ -371,7 +397,7 @@ export default function DailyReportDashboard() {
             Tren Total Laporan Gangguan
           </h2>
         </div>
-        
+
         {/* SVG Line Chart */}
         {(() => {
           const chartW = 800;
@@ -382,7 +408,7 @@ export default function DailyReportDashboard() {
           const padB = 40;
           const innerW = chartW - padL - padR;
           const innerH = chartH - padT - padB;
-          const maxVal = Math.max(...trend.map(t => t.count), 1);
+          const maxVal = Math.max(...trend.map((t) => t.count), 1);
           const stepCount = trend.length > 1 ? trend.length - 1 : 1;
 
           const points = trend.map((item, i) => {
@@ -391,8 +417,12 @@ export default function DailyReportDashboard() {
             return { x, y, ...item };
           });
 
-          const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-          const areaPath = linePath + ` L${points[points.length - 1]?.x || padL},${padT + innerH} L${padL},${padT + innerH} Z`;
+          const linePath = points
+            .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+            .join(" ");
+          const areaPath =
+            linePath +
+            ` L${points[points.length - 1]?.x || padL},${padT + innerH} L${padL},${padT + innerH} Z`;
 
           // Y-axis grid lines (5 lines)
           const yGridLines = Array.from({ length: 5 }, (_, i) => {
@@ -403,51 +433,128 @@ export default function DailyReportDashboard() {
 
           return (
             <div className="relative overflow-x-hidden">
-              <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-auto min-h-[180px]" preserveAspectRatio="xMidYMid meet">
+              <svg
+                viewBox={`0 0 ${chartW} ${chartH}`}
+                className="w-full h-auto min-h-[180px]"
+                preserveAspectRatio="xMidYMid meet"
+              >
                 {/* Y-axis grid lines */}
                 {yGridLines.map((line, i) => (
                   <g key={i}>
-                    <line x1={padL} y1={line.y} x2={chartW - padR} y2={line.y} stroke="#1e293b" strokeWidth="1" />
-                    <text x={padL - 6} y={line.y + 3} textAnchor="end" fill="#64748b" fontSize="9">{line.val}</text>
+                    <line
+                      x1={padL}
+                      y1={line.y}
+                      x2={chartW - padR}
+                      y2={line.y}
+                      stroke="#1e293b"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={padL - 6}
+                      y={line.y + 3}
+                      textAnchor="end"
+                      fill="#64748b"
+                      fontSize="9"
+                    >
+                      {line.val}
+                    </text>
                   </g>
                 ))}
 
                 {/* Gradient fill under line */}
                 <defs>
-                  <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id="trendGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+                    <stop
+                      offset="100%"
+                      stopColor="#3b82f6"
+                      stopOpacity="0.02"
+                    />
                   </linearGradient>
                 </defs>
-                {points.length > 1 && <path d={areaPath} fill="url(#trendGradient)" />}
+                {points.length > 1 && (
+                  <path d={areaPath} fill="url(#trendGradient)" />
+                )}
 
                 {/* Line */}
                 {points.length > 1 && (
-                  <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 )}
 
                 {/* Data points */}
                 {points.map((p, i) => (
                   <g key={i}>
-                    <circle cx={p.x} cy={p.y} r="4" fill="#1e293b" stroke="#3b82f6" strokeWidth="2" className="hover:r-6 cursor-pointer" />
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r="4"
+                      fill="#1e293b"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      className="hover:r-6 cursor-pointer"
+                    />
                     {/* Tooltip on hover - using SVG title */}
                     <title>{`${p.label}: ${p.count} Laporan`}</title>
                     {/* Count label on top of dot */}
-                    {(trend.length <= 14 || i % Math.ceil(trend.length / 14) === 0) && (
-                      <text x={p.x} y={p.y - 10} textAnchor="middle" fill="#93c5fd" fontSize="8" fontWeight="600">{p.count}</text>
+                    {(trend.length <= 14 ||
+                      i % Math.ceil(trend.length / 14) === 0) && (
+                      <text
+                        x={p.x}
+                        y={p.y - 10}
+                        textAnchor="middle"
+                        fill="#93c5fd"
+                        fontSize="8"
+                        fontWeight="600"
+                      >
+                        {p.count}
+                      </text>
                     )}
                   </g>
                 ))}
 
                 {/* X-axis labels */}
                 {points.map((p, i) => {
-                  const isMonthly = range === '1y' || range === 'all';
-                  const label = isMonthly ? p.label : (getDayName(p.label) || p.label.slice(8));
-                  const subLabel = !isMonthly ? p.label.slice(5) : '';
+                  const isMonthly = range === "1y" || range === "all";
+                  const label = isMonthly
+                    ? p.label
+                    : getDayName(p.label) || p.label.slice(8);
+                  const subLabel = !isMonthly ? p.label.slice(5) : "";
                   return (
                     <g key={`label-${i}`}>
-                      <text x={p.x} y={padT + innerH + 16} textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="500">{label}</text>
-                      {subLabel && <text x={p.x} y={padT + innerH + 26} textAnchor="middle" fill="#475569" fontSize="7">{subLabel}</text>}
+                      <text
+                        x={p.x}
+                        y={padT + innerH + 16}
+                        textAnchor="middle"
+                        fill="#64748b"
+                        fontSize="8"
+                        fontWeight="500"
+                      >
+                        {label}
+                      </text>
+                      {subLabel && (
+                        <text
+                          x={p.x}
+                          y={padT + innerH + 26}
+                          textAnchor="middle"
+                          fill="#475569"
+                          fontSize="7"
+                        >
+                          {subLabel}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
@@ -459,7 +566,6 @@ export default function DailyReportDashboard() {
 
       {/* Main Grid Content: Weekly Averages & Top Devices */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
         {/* Chart 1: Rata-rata Mingguan */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
           <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
@@ -469,18 +575,28 @@ export default function DailyReportDashboard() {
           <div className="flex items-end justify-between h-44 px-8 border-b border-slate-800/85 pt-4">
             {weeklyAverage.map((week, idx) => {
               const roundedAverage = Math.ceil(week.average);
-              const percentHeight = Math.round((week.average / maxWeeklyAverage) * 100);
+              const percentHeight = Math.round(
+                (week.average / maxWeeklyAverage) * 100,
+              );
               return (
-                <div key={idx} className="relative h-full flex flex-col items-center justify-end flex-1 group">
+                <div
+                  key={idx}
+                  className="relative h-full flex flex-col items-center justify-end flex-1 group"
+                >
                   {/* Count Label */}
-                  <span className="text-[9px] font-bold text-emerald-300 mb-1">{roundedAverage}</span>
+                  <span className="text-[9px] font-bold text-emerald-300 mb-1">
+                    {roundedAverage}
+                  </span>
                   {/* Tooltip */}
                   <div className="absolute bottom-full mb-6 bg-slate-950/90 border border-slate-800 text-[10px] text-slate-300 rounded px-2.5 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 whitespace-nowrap">
                     Rata-rata: {roundedAverage} Laporan
                   </div>
-                  
+
                   {/* Bar Container */}
-                  <div className="w-10 bg-slate-800/60 rounded-t-sm relative overflow-hidden cursor-pointer" style={{ height: `${Math.max(percentHeight, 4)}%` }}>
+                  <div
+                    className="w-10 bg-slate-800/60 rounded-t-sm relative overflow-hidden cursor-pointer"
+                    style={{ height: `${Math.max(percentHeight, 4)}%` }}
+                  >
                     <div className="absolute inset-0 bg-emerald-500/80 hover:bg-emerald-400 transition"></div>
                   </div>
                 </div>
@@ -511,11 +627,18 @@ export default function DailyReportDashboard() {
               {/* Column Chart */}
               <div className="flex items-end justify-between h-44 px-2 border-b border-slate-800/80 gap-2 pt-4">
                 {topDevices.map((device, idx) => {
-                  const percentHeight = Math.round((device.count / maxDeviceCount) * 100);
+                  const percentHeight = Math.round(
+                    (device.count / maxDeviceCount) * 100,
+                  );
                   return (
-                    <div key={idx} className="relative h-full flex flex-col items-center justify-end flex-1 group">
+                    <div
+                      key={idx}
+                      className="relative h-full flex flex-col items-center justify-end flex-1 group"
+                    >
                       {/* Count Label */}
-                      <span className="text-[9px] font-bold text-purple-300 mb-1">{device.count}</span>
+                      <span className="text-[9px] font-bold text-purple-300 mb-1">
+                        {device.count}
+                      </span>
                       {/* Bar */}
                       <div
                         className="w-full max-w-[32px] bg-slate-800 rounded-t-sm relative overflow-hidden cursor-pointer transition-all duration-500"
@@ -525,7 +648,11 @@ export default function DailyReportDashboard() {
                       </div>
                       {/* Tooltip */}
                       <div className="absolute bottom-full mb-6 bg-slate-950/95 border border-slate-700 text-[10px] text-slate-200 rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 whitespace-nowrap shadow-xl">
-                        {device.name}: <span className="font-bold text-purple-300">{device.count}</span> Laporan
+                        {device.name}:{" "}
+                        <span className="font-bold text-purple-300">
+                          {device.count}
+                        </span>{" "}
+                        Laporan
                       </div>
                     </div>
                   );
@@ -534,10 +661,16 @@ export default function DailyReportDashboard() {
               {/* Labels - Rotated */}
               <div className="flex justify-between px-2 gap-2 h-16">
                 {topDevices.map((device, idx) => (
-                  <div key={idx} className="flex-1 flex justify-center min-w-0 relative">
+                  <div
+                    key={idx}
+                    className="flex-1 flex justify-center min-w-0 relative"
+                  >
                     <span
                       className="text-[9px] text-slate-400 font-medium absolute top-1 whitespace-nowrap origin-top-left"
-                      style={{ transform: 'rotate(-40deg)', transformOrigin: 'top center' }}
+                      style={{
+                        transform: "rotate(-40deg)",
+                        transformOrigin: "top center",
+                      }}
                       title={device.name}
                     >
                       {device.name}
@@ -555,7 +688,9 @@ export default function DailyReportDashboard() {
         <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
           <AlertTriangle size={16} className="text-amber-400" />
           Top 10 Kendala Terbanyak
-          <span className="ml-auto text-[10px] text-slate-500 font-normal">Berdasarkan field Issue pada laporan</span>
+          <span className="ml-auto text-[10px] text-slate-500 font-normal">
+            Berdasarkan field Issue pada laporan
+          </span>
         </h2>
 
         {!topIssues || topIssues.length === 0 ? (
@@ -582,7 +717,9 @@ export default function DailyReportDashboard() {
               return (
                 <div key={idx} className="flex items-center gap-3 group">
                   {/* Rank */}
-                  <span className="text-[10px] font-bold text-slate-500 w-4 text-right flex-shrink-0">{idx + 1}</span>
+                  <span className="text-[10px] font-bold text-slate-500 w-4 text-right flex-shrink-0">
+                    {idx + 1}
+                  </span>
                   {/* Label */}
                   <span
                     className="text-[11px] text-slate-300 truncate flex-shrink-0 w-52"
@@ -598,7 +735,9 @@ export default function DailyReportDashboard() {
                     />
                   </div>
                   {/* Count */}
-                  <span className="text-[11px] font-bold text-amber-300 w-8 text-right flex-shrink-0">{item.count}</span>
+                  <span className="text-[11px] font-bold text-amber-300 w-8 text-right flex-shrink-0">
+                    {item.count}
+                  </span>
                 </div>
               );
             })}

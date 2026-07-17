@@ -49,7 +49,7 @@ export async function GET(request) {
         return false;
       }
 
-      // Abaikan jika durasi offline kurang dari batas kustom di settings (hanya untuk log otomatis, bukan input manual)
+      // Abaikan jika durasi offline kurang dari batas Custom di settings (hanya untuk log otomatis, bukan input manual)
       let minOfflineDurationMs = 10 * 60 * 1000;
       try {
         const settingsPath = path.join(process.cwd(), 'data', 'server-settings.json');

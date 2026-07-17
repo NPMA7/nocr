@@ -30,8 +30,12 @@ export default function DailyReportPage() {
     () => new Date().toISOString().split("T")[0],
   );
   const [dateMode, setDateMode] = useState("today"); // today, 7d, 30d, custom
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [startDate, setStartDate] = useState(
+    () => new Date().toISOString().split("T")[0],
+  );
+  const [endDate, setEndDate] = useState(
+    () => new Date().toISOString().split("T")[0],
+  );
   const [type, setType] = useState("L2TP");
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -66,13 +70,14 @@ export default function DailyReportPage() {
   }, []);
 
   useEffect(() => {
-    axios.get("/api/settings/server")
-      .then(res => {
+    axios
+      .get("/api/settings/server")
+      .then((res) => {
         if (res.data && Array.isArray(res.data.standard_issues)) {
           setStandardIssues(res.data.standard_issues);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Gagal memuat issue standar dari server:", err);
       });
   }, []);
@@ -189,8 +194,14 @@ export default function DailyReportPage() {
   };
 
   const handleAddReport = async () => {
-    const part1 = type === "PPPOE" ? newReportForm.dinas.trim() : newReportForm.kecamatan.trim();
-    const part2 = type === "PPPOE" ? newReportForm.lokasi.trim() : newReportForm.desa.trim();
+    const part1 =
+      type === "PPPOE"
+        ? newReportForm.dinas.trim()
+        : newReportForm.kecamatan.trim();
+    const part2 =
+      type === "PPPOE"
+        ? newReportForm.lokasi.trim()
+        : newReportForm.desa.trim();
 
     if (!part1 || !part2) {
       showToast(
@@ -273,7 +284,7 @@ export default function DailyReportPage() {
       });
       const parts = formatter.formatToParts(d);
       const partObj = {};
-      parts.forEach(p => {
+      parts.forEach((p) => {
         partObj[p.type] = p.value;
       });
       return `${partObj.year}-${partObj.month}-${partObj.day} ${partObj.hour}:${partObj.minute}:${partObj.second}`;
@@ -291,24 +302,27 @@ export default function DailyReportPage() {
       day: "numeric",
       month: "long",
       year: "numeric",
-      timeZone: "Asia/Jakarta"
+      timeZone: "Asia/Jakarta",
     }).format(d);
   };
 
   const handleImport = async () => {
     if (!importText.trim()) {
-      showToast("Silakan tempel data dari Google Sheets terlebih dahulu", "error");
+      showToast(
+        "Silakan tempel data dari Google Sheets terlebih dahulu",
+        "error",
+      );
       return;
     }
     setImporting(true);
     try {
       const lines = importText.split("\n");
       const reportsList = [];
-      
+
       for (const line of lines) {
         if (!line.trim()) continue;
-        const columns = line.split("\t").map(col => col.trim());
-        
+        const columns = line.split("\t").map((col) => col.trim());
+
         // Skip header row if it matches known column names exactly
         const col0 = columns[0].toLowerCase().trim();
         if (
@@ -352,7 +366,10 @@ export default function DailyReportPage() {
         }
 
         let status = "Progress";
-        if (statusCol.toLowerCase().includes("done") || statusCol.toLowerCase().includes("selesai")) {
+        if (
+          statusCol.toLowerCase().includes("done") ||
+          statusCol.toLowerCase().includes("selesai")
+        ) {
           status = "Done";
         } else if (onlineDate) {
           status = "Done";
@@ -367,7 +384,7 @@ export default function DailyReportPage() {
           online_since: onlineDate,
           status_progress: status,
           issue: issueCol,
-          tindakan: tindakanCol
+          tindakan: tindakanCol,
         });
       }
 
@@ -379,15 +396,24 @@ export default function DailyReportPage() {
 
       const res = await axios.post("/api/reports", reportsList);
       if (res.data.count === 0) {
-        showToast(res.data.message || "Semua data sudah ada di database", "info");
+        showToast(
+          res.data.message || "Semua data sudah ada di database",
+          "info",
+        );
       } else {
-        showToast(`Berhasil mengimpor ${res.data.count} data laporan baru`, "success");
+        showToast(
+          `Berhasil mengimpor ${res.data.count} data laporan baru`,
+          "success",
+        );
       }
       setShowImportModal(false);
       setImportText("");
       fetchReports(startDate, endDate, type);
     } catch (err) {
-      showToast(err.response?.data?.error || err.message || "Gagal mengimpor data", "error");
+      showToast(
+        err.response?.data?.error || err.message || "Gagal mengimpor data",
+        "error",
+      );
     } finally {
       setImporting(false);
     }
@@ -450,7 +476,11 @@ export default function DailyReportPage() {
     doc.setFontSize(16);
     doc.text(`Laporan Harian ${type === "PPPOE" ? "OPD" : "Desa"}`, 14, 15);
     doc.setFontSize(11);
-    doc.text(`Tanggal: ${startDate === endDate ? formatFriendlyDate(startDate) : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}`, 14, 22);
+    doc.text(
+      `Tanggal: ${startDate === endDate ? formatFriendlyDate(startDate) : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}`,
+      14,
+      22,
+    );
 
     const tableColumn = [
       "No",
@@ -491,7 +521,9 @@ export default function DailyReportPage() {
       headStyles: { fillColor: [41, 128, 185] },
     });
 
-    doc.save(`Laporan_${type === "PPPOE" ? "OPD" : "Desa"}_${startDate === endDate ? startDate : `${startDate}_to_${endDate}`}.pdf`);
+    doc.save(
+      `Laporan_${type === "PPPOE" ? "OPD" : "Desa"}_${startDate === endDate ? startDate : `${startDate}_to_${endDate}`}.pdf`,
+    );
   };
 
   const formatLocalDate = (dateString) => {
@@ -600,16 +632,16 @@ export default function DailyReportPage() {
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
       <div className="flex-shrink-0 flex flex-col gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-              <ClipboardList size={24} className="text-blue-400" />
-              Laporan Harian {type === "PPPOE" ? "OPD" : "Desa"}
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Kelola dan pantau laporan harian perangkat{" "}
-              {type === "PPPOE" ? "OPD" : "Desa"}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
+            <ClipboardList size={24} className="text-blue-400" />
+            Laporan Harian {type === "PPPOE" ? "OPD" : "Desa"}
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Kelola dan pantau laporan harian perangkat{" "}
+            {type === "PPPOE" ? "OPD" : "Desa"}
+          </p>
+        </div>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2 lg:gap-3">
             <div className="flex items-center bg-slate-800/80 p-1 rounded-lg border border-slate-700">
@@ -635,10 +667,18 @@ export default function DailyReportPage() {
                 onChange={(e) => setDateMode(e.target.value)}
                 className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer font-medium"
               >
-                <option value="today" className="bg-slate-800 text-slate-200">Hari Ini</option>
-                <option value="7d" className="bg-slate-800 text-slate-200">7 Hari</option>
-                <option value="30d" className="bg-slate-800 text-slate-200">30 Hari</option>
-                <option value="custom" className="bg-slate-800 text-slate-200">Kustom</option>
+                <option value="today" className="bg-slate-800 text-slate-200">
+                  Hari Ini
+                </option>
+                <option value="7d" className="bg-slate-800 text-slate-200">
+                  7 Hari
+                </option>
+                <option value="30d" className="bg-slate-800 text-slate-200">
+                  30 Hari
+                </option>
+                <option value="custom" className="bg-slate-800 text-slate-200">
+                  Custom
+                </option>
               </select>
             </div>
 
@@ -740,7 +780,9 @@ export default function DailyReportPage() {
               Tanggal
             </span>
             <span className="text-xs text-slate-200 font-bold">
-              {startDate === endDate ? formatFriendlyDate(startDate) : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
+              {startDate === endDate
+                ? formatFriendlyDate(startDate)
+                : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
             </span>
           </div>
           <div className="flex flex-col gap-1">
@@ -1078,9 +1120,9 @@ export default function DailyReportPage() {
                               {opt}
                             </option>
                           ))}
-                          <option value="Lain-lain">Lain-lain (Kustom)</option>
+                          <option value="Lain-lain">Lain-lain (Custom)</option>
                         </select>
-                        {(!standardIssues.includes(r.issue) && r.issue) ? (
+                        {!standardIssues.includes(r.issue) && r.issue ? (
                           <input
                             type="text"
                             value={r.issue === "Ketik manual..." ? "" : r.issue}
@@ -1089,7 +1131,7 @@ export default function DailyReportPage() {
                             }
                             disabled={!canUpdate}
                             className="w-full bg-slate-900 border border-slate-700/50 focus:border-blue-500 rounded px-2 py-1 text-xs text-slate-300 outline-none"
-                            placeholder="Tulis issue kustom..."
+                            placeholder="Tulis issue Custom..."
                           />
                         ) : null}
                       </div>
@@ -1166,7 +1208,7 @@ export default function DailyReportPage() {
                 <ClipboardList size={20} className="text-purple-400" />
                 Impor Laporan dari Google Sheets / Excel
               </h3>
-              <button 
+              <button
                 onClick={() => setShowImportModal(false)}
                 className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer"
               >
@@ -1178,12 +1220,26 @@ export default function DailyReportPage() {
                 <p className="font-semibold">Langkah-langkah:</p>
                 <ol className="list-decimal list-inside space-y-1">
                   <li>Buka lembar Google Sheets Anda.</li>
-                  <li>Salin (Ctrl+C) kolom berurutan: <strong>Nama Dinas/Kecamatan, Lokasi/Desa, Jam Offline, Jam Online, Status, Issue, Tindakan</strong>.</li>
+                  <li>
+                    Salin (Ctrl+C) kolom berurutan:{" "}
+                    <strong>
+                      Nama Dinas/Kecamatan, Lokasi/Desa, Jam Offline, Jam
+                      Online, Status, Issue, Tindakan
+                    </strong>
+                    .
+                  </li>
                   <li>Tempelkan (Ctrl+V) ke kolom teks di bawah ini.</li>
                 </ol>
                 <div className="mt-2.5 pt-2 border-t border-purple-900/40 text-[11px] text-amber-300 flex items-center gap-1.5 font-semibold">
                   <span>⚠️</span>
-                  <span>PENTING: Pastikan data yang Anda salin adalah untuk tanggal: <span className="underline decoration-wavy decoration-amber-500 font-extrabold text-white text-xs">{startDate === endDate ? formatFriendlyDate(startDate) : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}</span></span>
+                  <span>
+                    PENTING: Pastikan data yang Anda salin adalah untuk tanggal:{" "}
+                    <span className="underline decoration-wavy decoration-amber-500 font-extrabold text-white text-xs">
+                      {startDate === endDate
+                        ? formatFriendlyDate(startDate)
+                        : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
+                    </span>
+                  </span>
                 </div>
               </div>
 
@@ -1192,15 +1248,15 @@ export default function DailyReportPage() {
                 <label className="block text-xs font-semibold text-slate-400 mb-1">
                   Tipe Laporan Tujuan
                 </label>
-                <select
-                  value={importType}
-                  onChange={(e) => setImportType(e.target.value)}
-                   disabled
-                  className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg p-2 text-xs outline-none focus:border-purple-500 transition cursor-pointer"
-                >
-                  <option value="L2TP">Desa (L2TP)</option>
-                  <option value="PPPOE">OPD (PPPoE)</option>
-                </select>
+
+                <span className="inline-flex items-center rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-sm font-medium text-purple-300">
+                  {importType === "L2TP" ? "Desa (L2TP)" : "OPD (PPPoE)"}
+                </span>
+                <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-sm font-medium text-amber-300">
+                  {startDate === endDate
+                    ? formatFriendlyDate(startDate)
+                    : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
+                </span>
               </div>
 
               {/* Paste Textarea */}
@@ -1217,7 +1273,7 @@ export default function DailyReportPage() {
                 />
               </div>
             </div>
-            
+
             {/* Action buttons */}
             <div className="p-5 bg-slate-900/40 border-t border-slate-700/50 flex justify-end gap-3">
               <button
@@ -1395,7 +1451,10 @@ export default function DailyReportPage() {
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === "Lain-lain") {
-                      setNewReportForm((p) => ({ ...p, issue: "Ketik manual..." }));
+                      setNewReportForm((p) => ({
+                        ...p,
+                        issue: "Ketik manual...",
+                      }));
                     } else {
                       setNewReportForm((p) => ({ ...p, issue: val }));
                     }
@@ -1408,17 +1467,22 @@ export default function DailyReportPage() {
                       {opt}
                     </option>
                   ))}
-                  <option value="Lain-lain">Lain-lain (Kustom)</option>
+                  <option value="Lain-lain">Lain-lain (Custom)</option>
                 </select>
-                {(!standardIssues.includes(newReportForm.issue) && newReportForm.issue) ? (
+                {!standardIssues.includes(newReportForm.issue) &&
+                newReportForm.issue ? (
                   <input
                     type="text"
-                    value={newReportForm.issue === "Ketik manual..." ? "" : newReportForm.issue}
+                    value={
+                      newReportForm.issue === "Ketik manual..."
+                        ? ""
+                        : newReportForm.issue
+                    }
                     onChange={(e) =>
                       setNewReportForm((p) => ({ ...p, issue: e.target.value }))
                     }
                     className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
-                    placeholder="Ketik issue kustom..."
+                    placeholder="Ketik issue Custom..."
                   />
                 ) : null}
               </div>
