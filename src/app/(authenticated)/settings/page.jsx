@@ -1247,6 +1247,29 @@ function SystemConfigSettings({ canUpdate = true }) {
                     Delay sebelum alarm berbunyi setelah notif offline diterima. Berguna untuk menghindari false alarm akibat fluktuasi singkat.
                   </span>
                 </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Jenis Suara Alarm
+                  </label>
+                  <select
+                    disabled={!canUpdate}
+                    value={settings.alarm_sound || "beep"}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        alarm_sound: e.target.value,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  >
+                    <option value="beep">Beep (Default - Nada Kotak 4x)</option>
+                    <option value="siren">Siren (Nada Naik-Turun Sawtooth)</option>
+                    <option value="alert">Alert (3 Nada Cepat)</option>
+                    <option value="ping">Ping (Nada Sine Lembut)</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}

@@ -55,6 +55,7 @@ export default function AuthenticatedLayout({ children }) {
   const [activeAlarm, setActiveAlarm] = useState(null); // { msg, time }
   const alarmDelayRef = useRef(1500);
   const alarmTimerRef = useRef(null);
+  const alarmSoundRef = useRef("beep");
 
   const showToast = (message, type = "success", duration = 4000) => {
     setToast({ message, type });
@@ -85,22 +86,62 @@ export default function AuthenticatedLayout({ children }) {
   const playAlarmSound = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const playTone = (freq, startTime, duration) => {
+      const makeTone = (type, freq, startTime, dur, vol = 0.35) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = "square";
+        osc.type = type;
         osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.35, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        gain.gain.setValueAtTime(vol, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(startTime);
-        osc.stop(startTime + duration);
+        osc.stop(startTime + dur);
       };
-      playTone(880, ctx.currentTime, 0.18);
-      playTone(660, ctx.currentTime + 0.22, 0.18);
-      playTone(880, ctx.currentTime + 0.44, 0.18);
-      playTone(660, ctx.currentTime + 0.66, 0.28);
+
+      const t = ctx.currentTime;
+      const sound = alarmSoundRef.current || "beep";
+
+      if (sound === "beep") {
+        // Nada kotak pendek, 4×
+        makeTone("square", 880, t, 0.18);
+        makeTone("square", 660, t + 0.22, 0.18);
+        makeTone("square", 880, t + 0.44, 0.18);
+        makeTone("square", 660, t + 0.66, 0.28);
+      } else if (sound === "siren") {
+        // Nada naik-turun seperti sirine
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(440, t);
+        osc.frequency.linearRampToValueAtTime(880, t + 0.5);
+        osc.frequency.linearRampToValueAtTime(440, t + 1.0);
+        osc.frequency.linearRampToValueAtTime(880, t + 1.5);
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 1.6);
+      } else if (sound === "alert") {
+        // Tiga bunyi pendek cepat
+        makeTone("square", 1046, t, 0.1, 0.4);
+        makeTone("square", 1046, t + 0.15, 0.1, 0.4);
+        makeTone("square", 1046, t + 0.30, 0.15, 0.4);
+      } else if (sound === "ping") {
+        // Satu bunyi lembut
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, t);
+        osc.frequency.exponentialRampToValueAtTime(440, t + 0.6);
+        gain.gain.setValueAtTime(0.4, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.7);
+      }
     } catch (e) {
       // Web Audio not supported
     }
@@ -220,11 +261,14 @@ export default function AuthenticatedLayout({ children }) {
   useEffect(() => {
     if (!tokenChecked) return;
 
-    // Load alarm delay setting
+    // Load alarm settings
     axios.get("/api/settings/server")
       .then((res) => {
         if (res.data?.alarm_delay_ms !== undefined) {
-          alarmDelayRef.current = Number(res.data.alarm_delay_ms) || 1500;
+          alarmDelayRef.current = Number(res.data.alarm_delay_ms) || 300;
+        }
+        if (res.data?.alarm_sound) {
+          alarmSoundRef.current = res.data.alarm_sound;
         }
       })
       .catch(() => {});

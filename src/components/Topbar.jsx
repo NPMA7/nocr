@@ -10,7 +10,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { API_URL, useAppState } from "@/App";
@@ -45,6 +45,7 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
   // Notification panel state
   const [showNotifications, setShowNotifications] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const notificationRef = useRef(null);
 
   // Unread count = alerts with isRead: false
   const unreadCount = (alerts || []).filter((a) => !a.isRead).length;
@@ -56,6 +57,20 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
       markAlertsRead();
     }
   };
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotifications]);
 
   useEffect(() => {
     if (query.length >= 5) {
@@ -219,6 +234,7 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
           )}
 
           <div
+            ref={notificationRef}
             className="relative cursor-pointer text-slate-200 hover:text-white transition"
             onClick={handleToggleNotifications}
           >
