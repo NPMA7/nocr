@@ -948,6 +948,7 @@ export default function TrafficDetailPage() {
                 </div>
               )}
             </div>
+          </div>
         </div>
       </div>
 

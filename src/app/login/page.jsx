@@ -94,7 +94,7 @@ export default function Login() {
 
         <div className="text-center mb-8">
           <h1 className="text-xl font-bold text-white">
-            <p className="text-xs text-slate-400">npma</p>
+            {/* <p className="text-xs text-slate-400">npma</p> */}
             {isSetup ? "Setup Administrator" : "NOCR"}
           </h1>
 
