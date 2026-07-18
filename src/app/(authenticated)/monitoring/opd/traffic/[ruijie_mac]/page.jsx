@@ -196,8 +196,10 @@ function CombinedTrafficChart({ points, isDaily = false }) {
 
   const W = isMobile ? 500 : 900,
     H = 200,
-    PL = isMobile ? 80 : 76;
-  ((PR = 16), (PT = 24), (PB = 36));
+    PL = isMobile ? 80 : 76
+    PR = 16,
+    PT = 24,
+    PB = 36;
   const iW = W - PL - PR;
   const iH = H - PT - PB;
 
@@ -422,10 +424,7 @@ function CombinedTrafficChart({ points, isDaily = false }) {
             style={{
               left: `${mousePos.x + 16}px`,
               top: `${mousePos.y - 48}px`,
-              transform:
-                mousePos.x > (mousePos.width || 450) / 2
-                  ? "translateX(-110%)"
-                  : "none",
+              transform: mousePos.x > (mousePos.width || 450) / 2 ? "translateX(-110%)" : "none",
             }}
           >
             <div className="font-bold border-b border-slate-800 pb-1 mb-1.5 text-slate-400">
@@ -587,7 +586,7 @@ function CombinedClientChart({ points, isDaily = false }) {
             </linearGradient>
           </defs>
 
-          {yLines.map((l, i) => (
+           {yLines.map((l, i) => (
             <g key={i}>
               <line
                 x1={PL}
@@ -702,10 +701,7 @@ function CombinedClientChart({ points, isDaily = false }) {
             style={{
               left: `${mousePos.x + 16}px`,
               top: `${mousePos.y - 48}px`,
-              transform:
-                mousePos.x > (mousePos.width || 450) / 2
-                  ? "translateX(-110%)"
-                  : "none",
+              transform: mousePos.x > (mousePos.width || 450) / 2 ? "translateX(-110%)" : "none",
             }}
           >
             <div className="font-bold border-b border-slate-800 pb-1 mb-1.5 text-slate-400">
@@ -825,12 +821,11 @@ export default function TrafficDetailPage() {
   const sumIn = trendPoints.reduce((sum, p) => sum + (p.in || 0), 0);
   const sumOut = trendPoints.reduce((sum, p) => sum + (p.out || 0), 0);
 
-  const totalIn = sumIn > 0 ? sumIn : trafficData?.inTrafficBytes || 0;
-  const totalOut = sumOut > 0 ? sumOut : trafficData?.outTrafficBytes || 0;
+  const totalIn = sumIn > 0 ? sumIn : (trafficData?.inTrafficBytes || 0);
+  const totalOut = sumOut > 0 ? sumOut : (trafficData?.outTrafficBytes || 0);
   const totalTraffic = totalIn + totalOut;
 
-  const groupDisplayName =
-    deviceInfo?.group_name || trafficData?.siteName?.split(" - ")[0] || "";
+  const groupDisplayName = deviceInfo?.group_name || trafficData?.siteName?.split(" - ")[0] || "";
 
   return (
     <div className="h-full overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-1 pb-10">
@@ -917,24 +912,10 @@ export default function TrafficDetailPage() {
                   }}
                   className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer font-semibold ml-1.5"
                 >
-                  <option value="today" className="bg-slate-800 text-slate-200">
-                    24 Jam
-                  </option>
-                  <option value="7days" className="bg-slate-800 text-slate-200">
-                    7 Hari
-                  </option>
-                  <option
-                    value="30days"
-                    className="bg-slate-800 text-slate-200"
-                  >
-                    30 Hari
-                  </option>
-                  <option
-                    value="custom"
-                    className="bg-slate-800 text-slate-200"
-                  >
-                    Custom
-                  </option>
+                  <option value="today" className="bg-slate-800 text-slate-200">24 Jam</option>
+                  <option value="7days" className="bg-slate-800 text-slate-200">7 Hari</option>
+                  <option value="30days" className="bg-slate-800 text-slate-200">30 Hari</option>
+                  <option value="custom" className="bg-slate-800 text-slate-200">Custom</option>
                 </select>
               </div>
 
@@ -1007,40 +988,40 @@ export default function TrafficDetailPage() {
           {/* Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              {
-                label: "Total Traffic",
-                value: formatBytes(totalTraffic),
-                icon: Activity,
-                color: "text-slate-100",
-                iconColor: "text-blue-400",
-                bg: "bg-blue-500/10",
-              },
-              {
-                label: "Downlink (In)",
-                value: formatBytes(totalIn),
-                icon: ArrowDown,
-                color: "text-blue-400",
-                iconColor: "text-blue-400",
-                bg: "bg-blue-500/10",
-              },
-              {
-                label: "Uplink (Out)",
-                value: formatBytes(totalOut),
-                icon: ArrowUp,
-                color: "text-emerald-400",
-                iconColor: "text-emerald-400",
-                bg: "bg-emerald-500/10",
-              },
-              {
-                label: "Client Aktif",
-                value: trafficData.clients ?? trafficData.userTrandClients ?? 0,
-                sub: `(Peak: ${trafficData.userTrandTotal24h ?? "-"} Klien)`,
-                icon: Wifi,
-                color: "text-purple-400",
-                iconColor: "text-purple-400",
-                bg: "bg-purple-500/10",
-              },
-            ].map((card, i) => (
+                {
+                  label: "Total Traffic",
+                  value: formatBytes(totalTraffic),
+                  icon: Activity,
+                  color: "text-slate-100",
+                  iconColor: "text-blue-400",
+                  bg: "bg-blue-500/10",
+                },
+                {
+                  label: "Downlink (In)",
+                  value: formatBytes(totalIn),
+                  icon: ArrowDown,
+                  color: "text-blue-400",
+                  iconColor: "text-blue-400",
+                  bg: "bg-blue-500/10",
+                },
+                {
+                  label: "Uplink (Out)",
+                  value: formatBytes(totalOut),
+                  icon: ArrowUp,
+                  color: "text-emerald-400",
+                  iconColor: "text-emerald-400",
+                  bg: "bg-emerald-500/10",
+                },
+                {
+                  label: "Client Aktif",
+                  value: trafficData.clients ?? trafficData.userTrandClients ?? 0,
+                  sub: `(Peak: ${trafficData.userTrandTotal24h ?? "-"} Klien)`,
+                  icon: Wifi,
+                  color: "text-purple-400",
+                  iconColor: "text-purple-400",
+                  bg: "bg-purple-500/10",
+                },
+              ].map((card, i) => (
               <div
                 key={i}
                 className="bg-slate-800/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition group"
