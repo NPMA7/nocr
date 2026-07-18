@@ -817,9 +817,13 @@ export default function TrafficDetailPage() {
   const backHref = isOPD ? "/monitoring/opd" : "/monitoring/desa";
   const isDaily = range === "7days" || range === "30days";
 
-  const totalIn = trafficData?.inTrafficBytes || 0;
-  const totalOut = trafficData?.outTrafficBytes || 0;
-  const totalTraffic = trafficData?.totalTrafficBytes || 0;
+  const trendPoints = trafficData?.trendPoints || [];
+  const sumIn = trendPoints.reduce((sum, p) => sum + (p.in || 0), 0);
+  const sumOut = trendPoints.reduce((sum, p) => sum + (p.out || 0), 0);
+
+  const totalIn = sumIn > 0 ? sumIn : (trafficData?.inTrafficBytes || 0);
+  const totalOut = sumOut > 0 ? sumOut : (trafficData?.outTrafficBytes || 0);
+  const totalTraffic = totalIn + totalOut;
 
   const groupDisplayName = deviceInfo?.group_name || trafficData?.siteName?.split(" - ")[0] || "";
 
