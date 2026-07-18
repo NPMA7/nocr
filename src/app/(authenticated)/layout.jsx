@@ -399,9 +399,9 @@ export default function AuthenticatedLayout({ children }) {
           />
           <div className="text-xl font-bold text-blue-500 flex items-center gap-2">
             NOCR{" "}
-            <span className="text-xs text-slate-400 font-normal mt-2">
+            {/* <span className="text-xs text-slate-400 font-normal mt-2">
               by: npma
-            </span>
+            </span> */}
           </div>
           <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase mt-4">
             Loading setup...
@@ -448,23 +448,25 @@ export default function AuthenticatedLayout({ children }) {
 
         {/* Sidebar with mobile slide-in */}
         <div
-          className={`fixed inset-y-0 left-0 z-[3000] flex transition-all duration-300 ease-in-out overflow-hidden ${
-            isMobileMenuOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
-          } md:relative ${
+          className={`fixed inset-y-0 left-0 z-[3000] flex transition-all duration-300 ease-in-out ${
+            isMobileMenuOpen ? "translate-x-0 w-64 overflow-hidden" : "-translate-x-full w-64 overflow-hidden"
+          } md:relative md:overflow-visible ${
             isDesktopSidebarOpen
               ? "md:translate-x-0 md:w-64"
-              : "md:-translate-x-full md:w-0"
+              : "md:translate-x-0 md:w-16"
           }`}
         >
           <Suspense
             fallback={
-              <div className="w-64 h-full bg-slate-800 border-r border-slate-700/50 flex-shrink-0"></div>
+              <div className="w-16 md:w-64 h-full bg-slate-800 border-r border-slate-700/50 flex-shrink-0"></div>
             }
           >
-            <div className="w-64 h-full flex-shrink-0">
+            <div className={`h-full flex-shrink-0 transition-all duration-300 ${isDesktopSidebarOpen ? "w-64" : "w-16"} md:overflow-visible`}>
               <Sidebar
                 isConnected={isConnected}
                 onNavigate={() => setIsMobileMenuOpen(false)}
+                isCollapsed={!isDesktopSidebarOpen}
+                onExpand={() => setIsDesktopSidebarOpen(true)}
               />
             </div>
           </Suspense>
@@ -476,7 +478,7 @@ export default function AuthenticatedLayout({ children }) {
             isSidebarOpen={isDesktopSidebarOpen}
           />
 
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 md:p-6">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden p-4 md:p-6">
             {children}
           </div>
         </main>

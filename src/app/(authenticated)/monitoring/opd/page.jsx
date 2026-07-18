@@ -227,7 +227,10 @@ export default function MonitorPppoe() {
       setIsModalOpen(false);
       fetchData(true);
     } catch (e) {
-      showToast("Gagal menyimpan tautan manual: " + (e.response?.data?.error || e.message));
+      showToast(
+        "Gagal menyimpan tautan manual: " +
+          (e.response?.data?.error || e.message),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -240,7 +243,10 @@ export default function MonitorPppoe() {
       if (socket) socket.emit("force_sync_mappings");
       fetchData(true);
     } catch (e) {
-      showToast("Gagal menghapus tautan manual: " + (e.response?.data?.error || e.message));
+      showToast(
+        "Gagal menghapus tautan manual: " +
+          (e.response?.data?.error || e.message),
+      );
     }
   };
 
@@ -266,7 +272,9 @@ export default function MonitorPppoe() {
       if (socket) socket.emit("force_sync_mappings");
       setEditingPrefixMac(null);
     } catch (e) {
-      showToast("Gagal menyimpan prefix: " + (e.response?.data?.error || e.message));
+      showToast(
+        "Gagal menyimpan prefix: " + (e.response?.data?.error || e.message),
+      );
     } finally {
       setIsSavingPrefix(false);
     }
@@ -310,12 +318,12 @@ export default function MonitorPppoe() {
   };
 
   const dataPanelClass =
-    "flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden";
+    "flex-1 min-w-0 w-full min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden";
   const dataScrollClass =
-    "flex-1 min-h-0 overflow-y-auto overscroll-contain relative";
+    "flex-1 min-w-0 w-full min-h-0 overflow-y-auto overscroll-contain relative";
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden relative">
+    <div className="h-full w-full min-w-0 min-h-0 flex flex-col gap-4 overflow-hidden relative">
       {ToastComponent}
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
