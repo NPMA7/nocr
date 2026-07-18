@@ -196,7 +196,7 @@ function CombinedTrafficChart({ points, isDaily = false }) {
 
   const W = isMobile ? 500 : 900,
     H = 200,
-    PL = isMobile ? 68 : 56,
+    PL = isMobile ? 90 : 85,
     PR = 16,
     PT = 24,
     PB = 36;
