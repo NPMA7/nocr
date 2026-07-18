@@ -133,7 +133,7 @@ function LineChart({
               y={l.y + 3}
               textAnchor="end"
               fill="#475569"
-              fontSize="9"
+              fontSize="11"
             >
               {formatFn(l.val)}
             </text>
@@ -166,10 +166,10 @@ function LineChart({
             {i % labelEvery === 0 && (
               <text
                 x={p.x}
-                y={PT + iH + 14}
+                y={PT + iH + 16}
                 textAnchor="middle"
                 fill="#475569"
-                fontSize="8"
+                fontSize="10"
               >
                 {p.time}
               </text>
@@ -185,6 +185,23 @@ function LineChart({
 function CombinedTrafficChart({ points, isDaily = false }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const W = isMobile ? 500 : 900,
+    H = 200,
+    PL = isMobile ? 68 : 56,
+    PR = 16,
+    PT = 24,
+    PB = 36;
+  const iW = W - PL - PR;
+  const iH = H - PT - PB;
 
   if (!points || points.length === 0) {
     return (
@@ -193,15 +210,6 @@ function CombinedTrafficChart({ points, isDaily = false }) {
       </div>
     );
   }
-
-  const W = 900,
-    H = 200,
-    PL = 56,
-    PR = 16,
-    PT = 24,
-    PB = 36;
-  const iW = W - PL - PR;
-  const iH = H - PT - PB;
 
   const inValues = points.map((p) => p.in || 0);
   const outValues = points.map((p) => p.out || 0);
@@ -246,7 +254,7 @@ function CombinedTrafficChart({ points, isDaily = false }) {
     val: maxV * f,
     y: PT + iH - f * iH,
   }));
-  const labelEvery = Math.max(1, Math.ceil(pts.length / 10));
+  const labelEvery = Math.max(1, Math.ceil(pts.length / (isMobile ? 5 : 10)));
 
   const handleMouseMove = (e) => {
     const svg = e.currentTarget;
@@ -266,7 +274,7 @@ function CombinedTrafficChart({ points, isDaily = false }) {
     });
 
     setHoverIndex(nearestIdx);
-    setMousePos({ x: clientX, y: clientY });
+    setMousePos({ x: clientX, y: clientY, width: rect.width });
   };
 
   const handleMouseLeave = () => {
@@ -322,7 +330,7 @@ function CombinedTrafficChart({ points, isDaily = false }) {
                 y={l.y + 3}
                 textAnchor="end"
                 fill="#64748b"
-                fontSize="9"
+                fontSize={isMobile ? "13" : "11"}
               >
                 {formatBytes(l.val)}
               </text>
@@ -362,10 +370,10 @@ function CombinedTrafficChart({ points, isDaily = false }) {
               {i % labelEvery === 0 && (
                 <text
                   x={p.x}
-                  y={PT + iH + 16}
+                  y={PT + iH + 18}
                   textAnchor="middle"
                   fill="#475569"
-                  fontSize="9"
+                  fontSize={isMobile ? "12" : "10"}
                 >
                   {p.time}
                 </text>
@@ -416,7 +424,7 @@ function CombinedTrafficChart({ points, isDaily = false }) {
             style={{
               left: `${mousePos.x + 16}px`,
               top: `${mousePos.y - 48}px`,
-              transform: mousePos.x > 350 ? "translateX(-110%)" : "none",
+              transform: mousePos.x > (mousePos.width || 450) / 2 ? "translateX(-110%)" : "none",
             }}
           >
             <div className="font-bold border-b border-slate-800 pb-1 mb-1.5 text-slate-400">
@@ -452,6 +460,23 @@ function CombinedTrafficChart({ points, isDaily = false }) {
 function CombinedClientChart({ points, isDaily = false }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const W = isMobile ? 500 : 900,
+    H = 200,
+    PL = isMobile ? 36 : 44,
+    PR = 16,
+    PT = 24,
+    PB = 36;
+  const iW = W - PL - PR;
+  const iH = H - PT - PB;
 
   if (!points || points.length === 0) {
     return (
@@ -460,15 +485,6 @@ function CombinedClientChart({ points, isDaily = false }) {
       </div>
     );
   }
-
-  const W = 900,
-    H = 200,
-    PL = 56,
-    PR = 16,
-    PT = 24,
-    PB = 36;
-  const iW = W - PL - PR;
-  const iH = H - PT - PB;
 
   const activeValues = points.map((p) => p.activeTotal || 0);
   const totalValues = points.map((p) => p.total || 0);
@@ -512,7 +528,7 @@ function CombinedClientChart({ points, isDaily = false }) {
     val: maxV * f,
     y: PT + iH - f * iH,
   }));
-  const labelEvery = Math.max(1, Math.ceil(pts.length / 10));
+  const labelEvery = Math.max(1, Math.ceil(pts.length / (isMobile ? 5 : 10)));
 
   const handleMouseMove = (e) => {
     const svg = e.currentTarget;
@@ -532,7 +548,7 @@ function CombinedClientChart({ points, isDaily = false }) {
     });
 
     setHoverIndex(nearestIdx);
-    setMousePos({ x: clientX, y: clientY });
+    setMousePos({ x: clientX, y: clientY, width: rect.width });
   };
 
   const handleMouseLeave = () => {
@@ -570,7 +586,7 @@ function CombinedClientChart({ points, isDaily = false }) {
             </linearGradient>
           </defs>
 
-          {yLines.map((l, i) => (
+           {yLines.map((l, i) => (
             <g key={i}>
               <line
                 x1={PL}
@@ -585,7 +601,7 @@ function CombinedClientChart({ points, isDaily = false }) {
                 y={l.y + 3}
                 textAnchor="end"
                 fill="#64748b"
-                fontSize="9"
+                fontSize={isMobile ? "13" : "11"}
               >
                 {Math.round(l.val)}
               </text>
@@ -628,10 +644,10 @@ function CombinedClientChart({ points, isDaily = false }) {
               {i % labelEvery === 0 && (
                 <text
                   x={p.x}
-                  y={PT + iH + 16}
+                  y={PT + iH + 18}
                   textAnchor="middle"
                   fill="#475569"
-                  fontSize="9"
+                  fontSize={isMobile ? "12" : "10"}
                 >
                   {p.time}
                 </text>
@@ -685,7 +701,7 @@ function CombinedClientChart({ points, isDaily = false }) {
             style={{
               left: `${mousePos.x + 16}px`,
               top: `${mousePos.y - 48}px`,
-              transform: mousePos.x > 350 ? "translateX(-110%)" : "none",
+              transform: mousePos.x > (mousePos.width || 450) / 2 ? "translateX(-110%)" : "none",
             }}
           >
             <div className="font-bold border-b border-slate-800 pb-1 mb-1.5 text-slate-400">
@@ -835,20 +851,22 @@ export default function TrafficDetailPage() {
         </div>
 
         {/* Title row */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-              <Activity className="text-blue-500" size={22} />
+        <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-4 justify-between">
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
+            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
+              <Activity className="text-blue-500 flex-shrink-0" size={22} />
               {deviceLoading ? (
                 <span className="inline-block w-48 h-5 bg-slate-800 animate-pulse rounded" />
               ) : (
                 deviceInfo?.prefix || mac
               )}
-              <span className="text-[11px] text-slate-500 font-mono rounded-full border border-slate-700 px-2 py-0.5">
+            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-slate-400 font-mono rounded-full border border-slate-700 px-2 py-0.5 bg-slate-800/30 whitespace-nowrap">
                 {mac}
               </span>
               <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
                   isOPD
                     ? "bg-purple-500/10 border-purple-500/20 text-purple-400"
                     : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
@@ -856,13 +874,13 @@ export default function TrafficDetailPage() {
               >
                 {isOPD ? "OPD · PPPoE" : "Desa · L2TP"}
               </span>
-            </h1>
+            </div>
           </div>
 
           {/* Controls */}
           <div className="md:ml-auto flex items-center gap-2 flex-wrap">
             {/* Range selector */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
                 <Calendar size={13} className="text-slate-400" />
                 <select
@@ -899,7 +917,6 @@ export default function TrafficDetailPage() {
 
               {range === "custom" && (
                 <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
-                  <Calendar size={13} className="text-slate-400 mr-0.5" />
                   <input
                     type="date"
                     value={startDate}
@@ -931,15 +948,6 @@ export default function TrafficDetailPage() {
                 </div>
               )}
             </div>
-            <button
-              onClick={fetchTraffic}
-              disabled={loading}
-              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs rounded-lg transition"
-            >
-              <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-              Refresh
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1078,9 +1086,6 @@ export default function TrafficDetailPage() {
                     />
                     Wi-Fi Traffic Summary {groupDisplayName}
                   </h2>
-                  <span className="text-[10px] text-slate-500">
-                    Data uplink & downlink
-                  </span>
                 </div>
                 <CombinedTrafficChart
                   points={trafficData.trendPoints || []}
