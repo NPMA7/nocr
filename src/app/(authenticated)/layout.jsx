@@ -75,6 +75,16 @@ export default function AuthenticatedLayout({ children }) {
     setTokenChecked(true);
   }, [router]);
 
+  // Load sidebar collapsed state on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("nocr_desktop_sidebar_open");
+      if (stored !== null) {
+        setIsDesktopSidebarOpen(stored === "true");
+      }
+    }
+  }, []);
+
   // Sync alarm preference when user session changes (login / role refresh)
   useEffect(() => {
     if (!sessionUser?.username) return;
@@ -429,7 +439,11 @@ export default function AuthenticatedLayout({ children }) {
 
   const toggleSidebar = () => {
     if (window.innerWidth >= 768) {
-      setIsDesktopSidebarOpen((prev) => !prev);
+      setIsDesktopSidebarOpen((prev) => {
+        const next = !prev;
+        localStorage.setItem("nocr_desktop_sidebar_open", String(next));
+        return next;
+      });
     } else {
       setIsMobileMenuOpen((prev) => !prev);
     }
@@ -466,7 +480,10 @@ export default function AuthenticatedLayout({ children }) {
                 isConnected={isConnected}
                 onNavigate={() => setIsMobileMenuOpen(false)}
                 isCollapsed={!isDesktopSidebarOpen}
-                onExpand={() => setIsDesktopSidebarOpen(true)}
+                onExpand={() => {
+                  setIsDesktopSidebarOpen(true);
+                  localStorage.setItem("nocr_desktop_sidebar_open", "true");
+                }}
               />
             </div>
           </Suspense>
