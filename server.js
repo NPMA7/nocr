@@ -663,6 +663,80 @@ app.prepare().then(() => {
     };
     runCoreStatusLoop();
 
+    // Keep OLT Session Alive and fresh
+    async function keepHsgqOltSessionAlive() {
+        const url = process.env.HSGQ_OLT_URL;
+        const username = process.env.HSGQ_OLT_USERNAME;
+        const key = process.env.HSGQ_OLT_KEY;
+        const value = process.env.HSGQ_OLT_VALUE;
+        const defaultToken = process.env.HSGQ_OLT_TOKEN || '';
+
+        if (!url) {
+            return;
+        }
+
+        const axios = require('axios');
+
+        const login = async () => {
+            if (!username || !key || !value) {
+                global.hsgqTokenCache = defaultToken;
+                return defaultToken;
+            }
+            try {
+                const payload = {
+                    method: "set",
+                    param: { name: username, key: key, value: value, captcha_v: "", captcha_f: "" }
+                };
+                const res = await axios.post(`${url}/userlogin?form=login`, payload, {
+                    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'x-token': 'null' },
+                    timeout: 10000
+                });
+                if (res.data && res.data.code === 1 && res.headers['x-token']) {
+                    global.hsgqTokenCache = res.headers['x-token'];
+                    console.info(`[OLT Session] Login sukses, token baru didapatkan.`);
+                    return global.hsgqTokenCache;
+                }
+            } catch (e) {
+                console.error(`[OLT Session] Gagal login ke OLT:`, e.message);
+            }
+            global.hsgqTokenCache = defaultToken;
+            return defaultToken;
+        };
+
+        let token = global.hsgqTokenCache;
+        if (!token) {
+            console.info(`[OLT Session] Token tidak ditemukan di cache. Melakukan login awal...`);
+            await login();
+            return;
+        }
+
+        // Test if the current token is still valid
+        try {
+            const res = await axios.get(`${url}/ontinfo_table?_t=${Date.now()}`, {
+                headers: { 'x-token': token },
+                timeout: 10000
+            });
+            if (res.data && res.data.code === 0 && res.data.message === 'Token Check Failed') {
+                console.warn(`[OLT Session] Token kedaluwarsa (Token Check Failed). Melakukan login ulang...`);
+                await login();
+            } else {
+                console.info(`[OLT Session] Sesi OLT aktif dan valid.`);
+            }
+        } catch (err) {
+            console.error(`[OLT Session] Gagal memverifikasi sesi OLT (network/timeout):`, err.message);
+            if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+                await login();
+            }
+        }
+    }
+
+    // Jalankan pengecekan dan keep-alive sesi HSGQ OLT berkala setiap 2 menit
+    const runHsgqOltKeepAliveLoop = async () => {
+        await keepHsgqOltSessionAlive();
+        setTimeout(runHsgqOltKeepAliveLoop, 2 * 60 * 1000); // 2 menit
+    };
+    setTimeout(runHsgqOltKeepAliveLoop, 5000);
+
     // Fungsi penjadwalan agar task berjalan tepat di awal pergantian interval secara dinamis
     function scheduleAtIntervalBoundary(callback, intervalKey, offsetSeconds = 0) {
         const runLoop = async () => {
