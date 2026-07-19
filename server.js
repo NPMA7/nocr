@@ -1217,4 +1217,18 @@ app.prepare().then(() => {
         if (err) throw err;
         console.info(`> Ready on http://${hostname}:${port}`);
     });
+
+    const handleShutdown = async (signal) => {
+        console.info(`Received ${signal}. Cleaning up...`);
+        try {
+            await whatsapp.stop();
+            console.info('WhatsApp client stopped successfully.');
+        } catch (e) {
+            console.error('Error stopping WhatsApp client during shutdown:', e);
+        }
+        process.exit(0);
+    };
+
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 });
