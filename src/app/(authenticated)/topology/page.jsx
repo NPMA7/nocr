@@ -1331,7 +1331,7 @@ function TopologyContent() {
                 }}
                 className={`cursor-pointer flex-1 min-w-fit px-2 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${networkMode === "l2tp" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
               >
-                <MapPin size={14} /> Zoom All
+                <MapPin size={14} /> Zoom Desa
               </button>
               <button
                 onClick={() => setShowMobileMode((prev) => !prev)}
@@ -1428,7 +1428,15 @@ function TopologyContent() {
 
         {/* Manual Add Modal */}
         {canCreate && showManualAddModal && (
-          <div className="absolute inset-0 z-[3000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowManualAddModal(false);
+                setManualIfaceSearch("");
+              }
+            }}
+            className="absolute inset-0 z-[3000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          >
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md max-h-[min(90dvh,100%)] my-auto flex flex-col overflow-hidden animate-fade-in-up">
               <div className="flex-shrink-0 p-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
                 <h3 className="font-bold text-slate-100 flex items-center gap-2">
@@ -1956,7 +1964,7 @@ function TopologyContent() {
                   className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30"
                 >
                   <Wifi size={12} />
-                  Jaringan: {networkMode === "pppoe" ? "PPPoE" : "L2TP"}
+                  Jaringan: {networkMode === "pppoe" ? "OPD" : "Desa"}
                 </button>
                 <div className="h-px bg-slate-700/50 w-full my-1"></div>
                 <button
