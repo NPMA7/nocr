@@ -33,7 +33,7 @@ export default function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = pathname.startsWith("/settings")
-    ? pathname.split("/")[2] || "core"
+    ? pathname.split("/")[2] || "mikrotik-gateway"
     : null;
   const { sessionUser } = useAppState();
   const [currentUser, setCurrentUser] = useState(null);
@@ -627,11 +627,11 @@ export default function Sidebar({
                   </div>
                   {hasAccess(currentUser, "settings-mikrotik", "read") && (
                     <Link
-                      href="/settings/core"
+                      href="/settings/mikrotik-gateway"
                       onClick={onNavigate}
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "core"
+                        currentTab === "mikrotik-gateway"
                           ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
@@ -753,11 +753,11 @@ export default function Sidebar({
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
                 {hasAccess(currentUser, "settings-mikrotik", "read") && (
                   <Link
-                    href="/settings/core"
+                    href="/settings/mikrotik-gateway"
                     onClick={onNavigate}
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "core"
+                      currentTab === "mikrotik-gateway"
                         ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
