@@ -1301,7 +1301,7 @@ export default function SettingsWrapper(props) {
 
   useEffect(() => {
     if (pathname === "/settings") {
-      router.replace("/settings/core");
+      router.replace("/settings/mikrotik-gateway");
     }
   }, [pathname, router]);
 
@@ -1342,7 +1342,7 @@ function Settings({ activeTab: activeTabProp }) {
     });
   };
   const searchParams = useSearchParams();
-  const activeTab = activeTabProp || searchParams.get("tab") || "core";
+  const activeTab = activeTabProp || searchParams.get("tab") || "mikrotik-gateway";
 
   const [coreDevice, setCoreDevice] = useState({
     name: "MikroTik Gateway",
@@ -1515,7 +1515,7 @@ function Settings({ activeTab: activeTabProp }) {
       <div>
         {/* Content Settings - full width, tab driven by URL */}
         <div>
-          {activeTab === "core" && (
+          {activeTab === "mikrotik-gateway" && (
             <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
               <div className="p-5 border-b border-slate-700/50">
                 <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
