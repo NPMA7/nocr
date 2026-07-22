@@ -61,19 +61,38 @@ export async function GET(request) {
     if (type === 'Version Information') endpoint = '/ontversion_table';
     else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
     else if (type === 'WLAN') endpoint = '/ontwificonfig_table';
-    const doRequest = async (token) => {
-      return await axios.get(`${url}${endpoint}?_t=${Date.now()}`, {
+    const doRequest = async (token, ep = endpoint) => {
+      return await axios.get(`${url}${ep}?_t=${Date.now()}`, {
         headers: { ...(token ? { 'x-token': token } : {}) },
         timeout: 10000
       });
     };
 
     let token = await getHsgqToken();
-    let response = await doRequest(token);
+    let response;
+    try {
+      response = await doRequest(token);
+    } catch (epErr) {
+      if (endpoint === '/ontprofile_table') {
+        endpoint = '/ontinfo_table';
+        response = await doRequest(token);
+      } else {
+        throw epErr;
+      }
+    }
     
-    if (response.data && response.data.code === 0 && response.data.message === 'Token Check Failed') {
+    if (response.data && response.data.code === 0) {
        token = await getHsgqToken(true);
-       response = await doRequest(token);
+       try {
+         response = await doRequest(token);
+       } catch (epErr) {
+         if (endpoint === '/ontprofile_table') {
+           endpoint = '/ontinfo_table';
+           response = await doRequest(token);
+         } else {
+           throw epErr;
+         }
+       }
     }
 
     const data = response.data;

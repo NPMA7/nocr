@@ -228,26 +228,49 @@ class MikroTikService {
         }
     }
 
-    async addPPPoESecret(device, { name, password, profile, service }) {
-        if (isDemoMode) return true;
+    async getPPPProfiles(device) {
+        if (isDemoMode) {
+            return [{ name: 'default' }, { name: 'default-encryption' }];
+        }
 
         const api = this.connections.get(device.id);
         if (!api) throw new Error('Not connected');
 
         try {
-            await this.safeWrite(device, '/ppp/secret/add', [
+            return await this.safeWrite(device, '/ppp/profile/print');
+        } catch (e) {
+            console.error('Error fetching PPP profiles:', e.message);
+            return [];
+        }
+    }
+
+    async addPPPoESecret(device, { name, password, profile, service, localAddress, remoteAddress, 'local-address': localAddr, 'remote-address': remoteAddr }) {
+        if (isDemoMode) return true;
+
+        const api = this.connections.get(device.id);
+        if (!api) throw new Error('Not connected');
+
+        const lAddr = localAddress || localAddr;
+        const rAddr = remoteAddress || remoteAddr;
+
+        try {
+            const params = [
                 `=name=${name}`,
                 `=password=${password}`,
                 `=service=${service || 'pppoe'}`,
                 `=profile=${profile || 'default'}`
-            ]);
+            ];
+            if (lAddr) params.push(`=local-address=${lAddr}`);
+            if (rAddr) params.push(`=remote-address=${rAddr}`);
+
+            await this.safeWrite(device, '/ppp/secret/add', params);
             return true;
         } catch (e) {
             throw new Error('Gagal menambah pelanggan: ' + e.message);
         }
     }
 
-    async addInterface(device, { name, type, vlanId, parentInterface }) {
+    async addInterface(device, { name, type, vlanId, parentInterface, user, service, mtu }) {
         if (isDemoMode) return true;
 
         const api = this.connections.get(device.id);
@@ -258,17 +281,34 @@ class MikroTikService {
                 if (!vlanId || !parentInterface) {
                     throw new Error('VLAN ID dan Parent Interface harus diisi untuk tipe VLAN.');
                 }
-                await this.safeWrite(device, '/interface/vlan/add', [
+                const params = [
                     `=name=${name}`,
                     `=vlan-id=${vlanId}`,
                     `=interface=${parentInterface}`
-                ]);
+                ];
+                if (mtu) params.push(`=mtu=${mtu}`);
+                await this.safeWrite(device, '/interface/vlan/add', params);
             } else if (type === 'bridge') {
-                await this.safeWrite(device, '/interface/bridge/add', [
-                    `=name=${name}`
-                ]);
+                const params = [`=name=${name}`];
+                if (mtu) params.push(`=mtu=${mtu}`);
+                await this.safeWrite(device, '/interface/bridge/add', params);
+            } else if (type === 'l2tp-in' || type === 'l2tp-server-binding') {
+                if (!user) throw new Error('User (PPP) harus diisi untuk L2TP Server Binding.');
+                const params = [
+                    `=name=${name}`,
+                    `=user=${user}`
+                ];
+                await this.safeWrite(device, '/interface/l2tp-server/add', params);
+            } else if (type === 'pppoe-in' || type === 'pppoe-server-binding') {
+                if (!user) throw new Error('User (PPP) harus diisi untuk PPPoE Server Binding.');
+                const params = [
+                    `=name=${name}`,
+                    `=user=${user}`
+                ];
+                if (service) params.push(`=service=${service}`);
+                await this.safeWrite(device, '/interface/pppoe-server/add', params);
             } else {
-                throw new Error('Hanya pembuatan VLAN dan Bridge yang didukung secara dinamis.');
+                throw new Error('Tipe interface tidak didukung.');
             }
             return true;
         } catch (e) {
@@ -276,11 +316,14 @@ class MikroTikService {
         }
     }
 
-    async editPPPoESecret(device, id, { name, password, profile, service }) {
+    async editPPPoESecret(device, id, { name, password, profile, service, localAddress, remoteAddress, 'local-address': localAddr, 'remote-address': remoteAddr }) {
         if (isDemoMode) return true;
 
         const api = this.connections.get(device.id);
         if (!api) throw new Error('Not connected');
+
+        const lAddr = localAddress !== undefined ? localAddress : localAddr;
+        const rAddr = remoteAddress !== undefined ? remoteAddress : remoteAddr;
 
         try {
             const params = [`=.id=${id}`];
@@ -288,6 +331,8 @@ class MikroTikService {
             if (password) params.push(`=password=${password}`);
             if (profile) params.push(`=profile=${profile}`);
             if (service) params.push(`=service=${service}`);
+            if (lAddr !== undefined) params.push(`=local-address=${lAddr || ''}`);
+            if (rAddr !== undefined) params.push(`=remote-address=${rAddr || ''}`);
 
             await this.safeWrite(device, '/ppp/secret/set', params);
             return true;
@@ -341,6 +386,8 @@ class MikroTikService {
             let path = '/interface/remove';
             if (type === 'vlan') path = '/interface/vlan/remove';
             else if (type === 'bridge') path = '/interface/bridge/remove';
+            else if (type === 'l2tp-in' || type === 'l2tp-server-binding') path = '/interface/l2tp-server/remove';
+            else if (type === 'pppoe-in' || type === 'pppoe-server-binding') path = '/interface/pppoe-server/remove';
 
             await this.safeWrite(device, path, [
                 `=.id=${id}`
