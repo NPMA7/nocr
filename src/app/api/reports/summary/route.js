@@ -184,16 +184,21 @@ export async function GET(request) {
     ];
 
     // 4. Grafik Top Laporan Perangkat/Sites Terbanyak
-    const deviceCounts = {};
+    const deviceDetailsMap = {};
     filteredReports.forEach(r => {
-      const key = r.prefix_name || r.ruijie_mac || 'UNKNOWN';
-      deviceCounts[key] = (deviceCounts[key] || 0) + 1;
+      const name = r.prefix_name || r.ruijie_mac || 'UNKNOWN';
+      const type = r.ruijie_mac && r.ruijie_mac.startsWith('MANUAL_')
+        ? (r.ruijie_mac.includes('PPPOE') ? 'PPPOE' : 'L2TP')
+        : (typeMap[r.ruijie_mac] || 'Unknown');
+
+      if (!deviceDetailsMap[name]) {
+        deviceDetailsMap[name] = { name, count: 0, type, mac: r.ruijie_mac || '' };
+      }
+      deviceDetailsMap[name].count++;
     });
 
-    const topDevices = Object.entries(deviceCounts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    const allDevices = Object.values(deviceDetailsMap).sort((a, b) => b.count - a.count);
+    const topDevices = allDevices.slice(0, 10);
 
     // List saat ini offline (tetap diambil realtime dari DB, tanpa dipengaruhi rentang tanggal lama)
     const activeOfflineList = (reports || [])
@@ -234,6 +239,7 @@ export async function GET(request) {
       trend,
       weeklyAverage,
       topDevices,
+      allDevices,
       topIssues,
       activeOfflineList
     });

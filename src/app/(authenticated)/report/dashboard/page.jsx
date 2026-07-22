@@ -12,7 +12,7 @@ import {
   Calendar,
   Layers,
 } from "lucide-react";
-import { useAppState } from "@/App";
+import { API_URL, socket as directSocket, useAppState } from "@/App";
 import { getStoredUser } from "@/lib/roles";
 import Link from "next/link";
 
@@ -20,7 +20,9 @@ export default function DailyReportDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { socket } = useAppState();
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const appState = useAppState() || {};
+  const socket = appState.socket || directSocket;
 
   // Filter States
   const [type, setType] = useState("ALL"); // ALL, L2TP, PPPOE
@@ -96,19 +98,36 @@ export default function DailyReportDashboard() {
     );
   }
 
-  const { stats, trend, weeklyAverage, topDevices, topIssues } = data || {
-    stats: { totalReports: 0, averagePerDay: 0 },
-    trend: [],
-    weeklyAverage: [],
-    topDevices: [],
-    topIssues: [],
-  };
+  const stats = data?.stats || { totalReports: 0, averagePerDay: 0 };
+  const trend = Array.isArray(data?.trend)
+    ? data.trend.map((t) => ({
+        label: String(t?.label || ""),
+        count: Number(t?.count || 0),
+      }))
+    : [];
+  const weeklyAverage = Array.isArray(data?.weeklyAverage)
+    ? data.weeklyAverage.map((w) => ({
+        week: String(w?.week || ""),
+        average: Number(w?.average || 0),
+      }))
+    : [];
+  const topDevices = Array.isArray(data?.topDevices)
+    ? data.topDevices.map((d) => ({
+        name: String(d?.name || "Lainnya"),
+        count: Number(d?.count || 0),
+      }))
+    : [];
+  const topIssues = Array.isArray(data?.topIssues)
+    ? data.topIssues.map((i) => ({
+        issue: String(i?.issue || "Lainnya"),
+        count: Number(i?.count || 0),
+      }))
+    : [];
 
   // Max value for scaling SVG/HTML bar charts
-  const maxTrendReports = Math.max(...trend.map((t) => t.count), 5);
   const maxWeeklyAverage = Math.max(...weeklyAverage.map((w) => w.average), 1);
   const maxDeviceCount = Math.max(...topDevices.map((d) => d.count), 1);
-  const maxIssueCount = Math.max(...(topIssues || []).map((i) => i.count), 1);
+  const maxIssueCount = Math.max(...topIssues.map((i) => i.count), 1);
 
   const formatLocalDate = (isoString) => {
     if (!isoString) return "-";
@@ -391,11 +410,25 @@ export default function DailyReportDashboard() {
 
       {/* Trend Chart - Full Width - SVG Line Chart */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
             <TrendingUp size={16} className="text-blue-400" />
             Tren Total Laporan Gangguan
           </h2>
+
+          {/* Legenda Chart */}
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <div className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 px-2.5 py-1 rounded-lg">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-blue-500/30"></span>
+              <span className="text-blue-300 font-semibold text-[11px]">Total Laporan Gangguan</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-400 text-[11px]">
+              <span>Kategori:</span>
+              <span className="text-slate-200 font-semibold">
+                {type === "ALL" ? "Semua (Desa & OPD)" : type === "L2TP" ? "Desa (L2TP)" : "OPD (PPPoE)"}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* SVG Line Chart */}
@@ -410,11 +443,17 @@ export default function DailyReportDashboard() {
           const innerH = chartH - padT - padB;
           const maxVal = Math.max(...trend.map((t) => t.count), 1);
           const stepCount = trend.length > 1 ? trend.length - 1 : 1;
+          const slotWidth = innerW / stepCount;
 
           const points = trend.map((item, i) => {
             const x = padL + (i / stepCount) * innerW;
-            const y = padT + innerH - (item.count / maxVal) * innerH;
-            return { x, y, ...item };
+            const countRatio = maxVal > 0 ? item.count / maxVal : 0;
+            const y = padT + innerH - countRatio * innerH;
+            return {
+              x: isNaN(x) ? padL : x,
+              y: isNaN(y) ? padT + innerH : y,
+              ...item,
+            };
           });
 
           const linePath = points
@@ -431,12 +470,85 @@ export default function DailyReportDashboard() {
             return { val, y };
           });
 
+          // Sampling parameters for clean presentation regardless of data length
+          const totalPoints = points.length;
+          // Maximum number of X-axis labels to display (max ~8-10 evenly spaced labels)
+          const maxLabels = totalPoints > 31 ? 8 : 10;
+          const labelStep = Math.max(1, Math.ceil(totalPoints / maxLabels));
+
+          // Maximum number of top numeric count indicators to display above line dots
+          const maxCountLabels = totalPoints > 31 ? 10 : 14;
+          const countStep = Math.max(1, Math.ceil(totalPoints / maxCountLabels));
+
+          // Format function for date label
+          const formatDateLabel = (item) => {
+            const isMonthly = range === "1y" || (range === "all" && totalPoints > 365);
+            if (isMonthly) return item.label;
+            if (!item.label) return "";
+
+            // Format YYYY-MM-DD to "DD MMM" (e.g. 15 Jan)
+            const parts = item.label.split("-");
+            if (parts.length === 3) {
+              const mIndex = parseInt(parts[1], 10) - 1;
+              const monthNames = [
+                "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+                "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
+              ];
+              return `${parseInt(parts[2], 10)} ${monthNames[mIndex] || parts[1]}`;
+            }
+            return item.label;
+          };
+
+          const formatHoverDate = (dateStr) => {
+            if (!dateStr) return "-";
+            const parts = dateStr.split("-");
+            if (parts.length === 3) {
+              const monthNames = [
+                "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+              ];
+              const mIdx = parseInt(parts[1], 10) - 1;
+              return `${parseInt(parts[2], 10)} ${monthNames[mIdx] || parts[1]} ${parts[0]}`;
+            }
+            return dateStr;
+          };
+
+          const isTopPeak = hoveredPoint ? hoveredPoint.y < 60 : false;
+          const isRightEdge = hoveredPoint ? hoveredPoint.x > chartW - 100 : false;
+          const isLeftEdge = hoveredPoint ? hoveredPoint.x < 100 : false;
+
+          const transformClass = `${isRightEdge ? "-translate-x-full" : isLeftEdge ? "translate-x-0" : "-translate-x-1/2"} ${isTopPeak ? "translate-y-3 mt-1" : "-translate-y-full mb-3"}`;
+
           return (
-            <div className="relative overflow-x-hidden">
+            <div className="relative overflow-visible group">
+              {/* Floating Custom Interactive Hover Tooltip */}
+              {hoveredPoint && (
+                <div
+                  className={`absolute pointer-events-none z-30 transition-all duration-150 transform ${transformClass}`}
+                  style={{
+                    left: `${(hoveredPoint.x / chartW) * 100}%`,
+                    top: `${(hoveredPoint.y / chartH) * 100}%`,
+                  }}
+                >
+                  <div className="bg-slate-950/95 border border-blue-500/50 rounded-xl px-3 py-2 text-xs shadow-2xl flex flex-col gap-1 min-w-[140px] backdrop-blur-md">
+                    <div className="text-[11px] font-semibold text-slate-300 border-b border-slate-800 pb-1">
+                      📅 {formatHoverDate(hoveredPoint.label)}
+                    </div>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-500/20 animate-pulse"></span>
+                      <span className="font-bold text-blue-400 text-xs">
+                        {hoveredPoint.count} Laporan
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <svg
                 viewBox={`0 0 ${chartW} ${chartH}`}
                 className="w-full h-auto min-h-[180px]"
                 preserveAspectRatio="xMidYMid meet"
+                onMouseLeave={() => setHoveredPoint(null)}
               >
                 {/* Y-axis grid lines */}
                 {yGridLines.map((line, i) => (
@@ -460,6 +572,20 @@ export default function DailyReportDashboard() {
                     </text>
                   </g>
                 ))}
+
+                {/* Vertical Dashed Hover Guide Line */}
+                {hoveredPoint && (
+                  <line
+                    x1={hoveredPoint.x}
+                    y1={padT}
+                    x2={hoveredPoint.x}
+                    y2={padT + innerH}
+                    stroke="#3b82f6"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 4"
+                    opacity="0.8"
+                  />
+                )}
 
                 {/* Gradient fill under line */}
                 <defs>
@@ -494,62 +620,84 @@ export default function DailyReportDashboard() {
                   />
                 )}
 
-                {/* Data points */}
-                {points.map((p, i) => (
-                  <g key={i}>
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r="4"
-                      fill="#1e293b"
-                      stroke="#3b82f6"
-                      strokeWidth="2"
-                      className="hover:r-6 cursor-pointer"
-                    />
-                    {/* Tooltip on hover - using SVG title */}
-                    <title>{`${p.label}: ${p.count} Laporan`}</title>
-                    {/* Count label on top of dot */}
-                    {(trend.length <= 14 ||
-                      i % Math.ceil(trend.length / 14) === 0) && (
-                      <text
-                        x={p.x}
-                        y={p.y - 10}
-                        textAnchor="middle"
-                        fill="#93c5fd"
-                        fontSize="8"
-                        fontWeight="600"
-                      >
-                        {p.count}
-                      </text>
-                    )}
-                  </g>
-                ))}
-
-                {/* X-axis labels */}
+                {/* Data points and invisible hover hit areas */}
                 {points.map((p, i) => {
-                  const isMonthly = range === "1y" || range === "all";
-                  const label = isMonthly
-                    ? p.label
-                    : getDayName(p.label) || p.label.slice(8);
-                  const subLabel = !isMonthly ? p.label.slice(5) : "";
+                  const isHovered = hoveredPoint?.label === p.label;
+                  const isSampledDot = totalPoints <= 40 || i % labelStep === 0 || i === totalPoints - 1 || p.count > 0;
+                  // Only show static count text numbers directly on line if range is <= 14 days
+                  const showCount = totalPoints <= 14;
+
+                  return (
+                    <g key={i}>
+                      {/* Transparent wide hover area */}
+                      <rect
+                        x={p.x - slotWidth / 2}
+                        y={padT}
+                        width={Math.max(slotWidth, 8)}
+                        height={innerH}
+                        fill="transparent"
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHoveredPoint(p)}
+                      />
+
+                      {/* Dot circle */}
+                      {(isSampledDot || isHovered) && (
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={isHovered ? 6 : totalPoints > 50 ? 2.5 : 4}
+                          fill={isHovered ? "#3b82f6" : "#1e293b"}
+                          stroke="#3b82f6"
+                          strokeWidth={isHovered ? 3 : totalPoints > 50 ? 1.5 : 2}
+                          className="transition-all duration-150 pointer-events-none"
+                        />
+                      )}
+
+                      {/* Count label on top of dot (only for small ranges <= 14 days) */}
+                      {showCount && !isHovered && (
+                        <text
+                          x={p.x}
+                          y={p.y - 8}
+                          textAnchor="middle"
+                          fill="#93c5fd"
+                          fontSize="8"
+                          fontWeight="600"
+                          className="pointer-events-none"
+                        >
+                          {p.count}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+
+                {/* X-axis sampled labels */}
+                {points.map((p, i) => {
+                  const showLabel = i % labelStep === 0 || i === totalPoints - 1;
+                  if (!showLabel) return null;
+
+                  const formattedLabel = formatDateLabel(p);
+                  const showYear = range === "custom" && startYear !== endYear;
+                  const subLabel = showYear && p.label ? p.label.slice(0, 4) : "";
+
                   return (
                     <g key={`label-${i}`}>
                       <text
                         x={p.x}
                         y={padT + innerH + 16}
                         textAnchor="middle"
-                        fill="#64748b"
-                        fontSize="8"
+                        fill="#94a3b8"
+                        fontSize="9"
                         fontWeight="500"
                       >
-                        {label}
+                        {formattedLabel}
                       </text>
                       {subLabel && (
                         <text
                           x={p.x}
                           y={padT + innerH + 26}
                           textAnchor="middle"
-                          fill="#475569"
+                          fill="#64748b"
                           fontSize="7"
                         >
                           {subLabel}
@@ -568,10 +716,16 @@ export default function DailyReportDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Chart 1: Rata-rata Mingguan */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <Calendar size={16} className="text-emerald-400" />
-            Rata-rata Laporan Mingguan
-          </h2>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <Calendar size={16} className="text-emerald-400" />
+              Rata-rata Laporan Mingguan
+            </h2>
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg text-[11px] font-medium text-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Rata-rata Laporan</span>
+            </div>
+          </div>
           <div className="flex items-end justify-between h-44 px-8 border-b border-slate-800/85 pt-4">
             {weeklyAverage.map((week, idx) => {
               const roundedAverage = Math.ceil(week.average);
@@ -614,10 +768,25 @@ export default function DailyReportDashboard() {
 
         {/* Chart 2: Top Laporan Perangkat/Sites Terbanyak - Column Chart */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <Layers size={16} className="text-purple-400" />
-            Top Laporan Sites Terbanyak
-          </h2>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <Layers size={16} className="text-purple-400" />
+              Top 10 Laporan Sites Terbanyak
+            </h2>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded-lg text-[11px] font-medium text-purple-300">
+                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                <span>Jumlah Laporan</span>
+              </div>
+              <Link
+                href="/report/dashboard/sites"
+                className="flex items-center gap-1 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:scale-105 active:scale-95"
+              >
+                <span>Detail Laporan</span>
+                <ChevronRight size={13} />
+              </Link>
+            </div>
+          </div>
           {topDevices.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
               Tidak ada data laporan gangguan
