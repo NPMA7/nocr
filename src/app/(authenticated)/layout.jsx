@@ -495,7 +495,7 @@ export default function AuthenticatedLayout({ children }) {
             isSidebarOpen={isDesktopSidebarOpen}
           />
 
-          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden p-4 md:p-6">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto p-4 md:p-6">
             {children}
           </div>
         </main>
