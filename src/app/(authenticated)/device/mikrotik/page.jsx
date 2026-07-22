@@ -136,6 +136,8 @@ export default function Mikrotik() {
   const [interfaces, setInterfaces] = useState([]);
   const [pppoe, setPppoe] = useState([]);
   const [pppoeSecrets, setPppoeSecrets] = useState([]);
+  const [pppProfiles, setPppProfiles] = useState([]);
+  const [isCustomProfile, setIsCustomProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
@@ -155,6 +157,8 @@ export default function Mikrotik() {
     password: "",
     profile: "default",
     service: "pppoe",
+    localAddress: "",
+    remoteAddress: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showListPasswords, setShowListPasswords] = useState({});
@@ -170,6 +174,8 @@ export default function Mikrotik() {
     mtu: 1500,
     vlanId: "",
     parentInterface: "",
+    user: "",
+    service: "",
     disabled: "false",
   });
 
@@ -227,14 +233,19 @@ export default function Mikrotik() {
       const secretsRes = await axios
         .get(`${API_URL}/devices/core/pppoe-secrets${queryParams}`)
         .catch(() => ({ data: [] }));
+      const profilesRes = await axios
+        .get(`${API_URL}/devices/core/ppp-profiles${queryParams}`)
+        .catch(() => ({ data: [] }));
 
       setCoreStatus(statusRes.data);
       const ifaces = ifaceRes.data || [];
       const pppoeData = pppoeRes.data || [];
       const secretsData = secretsRes.data || [];
+      const profilesData = (profilesRes.data || []).map((p) => p.name).filter(Boolean);
       setInterfaces(ifaces);
       setPppoe(pppoeData);
       setPppoeSecrets(secretsData);
+      setPppProfiles(profilesData);
       setSyncStatus({
         interfaces: ifaces[0]?._fromCache ? "cache" : "live",
         pppoe: pppoeData[0]?._fromCache ? "cache" : "live",
@@ -295,26 +306,43 @@ export default function Mikrotik() {
     }
   };
 
+  const availableProfilesList = Array.from(
+    new Set([
+      "default",
+      ...pppProfiles,
+      ...pppoeSecrets.map((s) => s.profile).filter(Boolean),
+    ]),
+  ).sort();
+
   const openAddSecret = () => {
     setEditingSecret(null);
+    const defaultProf = availableProfilesList[0] || "default";
     setSecretForm({
       name: "",
       password: "",
-      profile: "default",
+      profile: defaultProf,
       service: "pppoe",
+      localAddress: "",
+      remoteAddress: "",
     });
+    setIsCustomProfile(false);
     setShowPassword(false);
     setShowAddSecret(true);
   };
 
   const openEditSecret = (s) => {
     setEditingSecret(s);
+    const currentProf = s.profile || "default";
+    const exists = availableProfilesList.includes(currentProf);
     setSecretForm({
       name: s.name,
       password: s.password || "",
-      profile: s.profile || "default",
+      profile: currentProf,
       service: s.service || "pppoe",
+      localAddress: s["local-address"] || s.local_address || s.localAddress || "",
+      remoteAddress: s["remote-address"] || s.remote_address || s.remoteAddress || "",
     });
+    setIsCustomProfile(!exists);
     setShowPassword(false);
     setShowAddSecret(true);
   };
@@ -372,6 +400,8 @@ export default function Mikrotik() {
       mtu: 1500,
       vlanId: "",
       parentInterface: "",
+      user: "",
+      service: "",
       disabled: "false",
     });
     setShowAddInterface(true);
@@ -385,6 +415,8 @@ export default function Mikrotik() {
       mtu: iface.mtu || 1500,
       vlanId: iface["vlan-id"] || "",
       parentInterface: iface.interface || "",
+      user: iface.user || "",
+      service: iface.service || "",
       disabled: iface.disabled || "false",
     });
     setShowAddInterface(true);
@@ -404,11 +436,18 @@ export default function Mikrotik() {
         const payload = {
           name: interfaceForm.name,
           type: interfaceForm.type,
-          mtu: interfaceForm.mtu,
         };
+        if (interfaceForm.type === "vlan" || interfaceForm.type === "bridge") {
+          payload.mtu = interfaceForm.mtu;
+        }
         if (interfaceForm.type === "vlan") {
           payload.vlanId = interfaceForm.vlanId;
           payload.parentInterface = interfaceForm.parentInterface;
+        } else if (interfaceForm.type === "l2tp-in" || interfaceForm.type === "pppoe-in") {
+          payload.user = interfaceForm.user;
+          if (interfaceForm.type === "pppoe-in") {
+            payload.service = interfaceForm.service;
+          }
         }
         await axios.post(`${API_URL}/devices/core/interfaces`, payload);
         addToast("Interface berhasil ditambahkan ke MikroTik!", "success");
@@ -773,6 +812,20 @@ export default function Mikrotik() {
                           <Edit2 size={18} />
                         </button>
                       )}
+                      {canDelete && (
+                        <button
+                          title="Hapus Interface"
+                          onClick={() =>
+                            setConfirmDelete({
+                              type: "interface",
+                              item: iface,
+                            })
+                          }
+                          className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -856,8 +909,7 @@ export default function Mikrotik() {
                                   <Edit2 size={14} />
                                 </button>
                               )}
-                              {canDelete && (iface.type === "vlan" ||
-                                iface.type === "bridge") && (
+                              {canDelete && (
                                 <button
                                   title="Hapus Interface"
                                   onClick={() =>
@@ -1348,16 +1400,42 @@ export default function Mikrotik() {
                 <label className="text-xs font-semibold text-slate-400">
                   Profile
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={secretForm.profile}
-                  onChange={(e) =>
-                    setSecretForm({ ...secretForm, profile: e.target.value })
-                  }
-                  placeholder="Contoh: default atau 10Mbps"
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
-                />
+                <div className="flex flex-col gap-2">
+                  <select
+                    value={isCustomProfile ? "__custom__" : secretForm.profile}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setIsCustomProfile(true);
+                      } else {
+                        setIsCustomProfile(false);
+                        setSecretForm({ ...secretForm, profile: e.target.value });
+                      }
+                    }}
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full cursor-pointer"
+                  >
+                    {availableProfilesList.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                    <option value="__custom__">-- Input Profile Custom --</option>
+                  </select>
+                  {isCustomProfile && (
+                    <input
+                      type="text"
+                      required
+                      value={secretForm.profile}
+                      onChange={(e) =>
+                        setSecretForm({ ...secretForm, profile: e.target.value })
+                      }
+                      placeholder="Ketik nama profile MikroTik persis..."
+                      className="bg-slate-900 border border-blue-500 rounded-lg p-2.5 text-xs text-slate-100 outline-none w-full"
+                    />
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  *Pilih profile yang tersedia di MikroTik atau ketik nama profile yang persis sama.
+                </p>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-400">
@@ -1373,6 +1451,34 @@ export default function Mikrotik() {
                   <option value="pppoe">pppoe</option>
                   <option value="any">any</option>
                 </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-400">
+                  Local Address
+                </label>
+                <input
+                  type="text"
+                  value={secretForm.localAddress}
+                  onChange={(e) =>
+                    setSecretForm({ ...secretForm, localAddress: e.target.value })
+                  }
+                  placeholder="Contoh: 10.16.25.1 (Opsional)"
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-400">
+                  Remote Address
+                </label>
+                <input
+                  type="text"
+                  value={secretForm.remoteAddress}
+                  onChange={(e) =>
+                    setSecretForm({ ...secretForm, remoteAddress: e.target.value })
+                  }
+                  placeholder="Contoh: 10.16.25.20 (Opsional)"
+                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
+                />
               </div>
               <div className="flex gap-3 justify-end mt-2">
                 <button
@@ -1440,18 +1546,61 @@ export default function Mikrotik() {
                   </label>
                   <select
                     value={interfaceForm.type}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      let defaultMtu = 1500;
+                      if (newType === "l2tp-in") defaultMtu = 1450;
+                      if (newType === "pppoe-in") defaultMtu = 1492;
                       setInterfaceForm({
                         ...interfaceForm,
-                        type: e.target.value,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
+                        type: newType,
+                        mtu: defaultMtu,
+                      });
+                    }}
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full cursor-pointer"
                   >
                     <option value="vlan">VLAN</option>
                     <option value="bridge">Bridge</option>
+                    <option value="l2tp-in">L2TP Server Binding</option>
+                    <option value="pppoe-in">PPPoE Server Binding</option>
                   </select>
                 </div>
+              )}
+
+              {(interfaceForm.type === "l2tp-in" || interfaceForm.type === "pppoe-in") && !editingInterface && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      User (PPP Username)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={interfaceForm.user}
+                      onChange={(e) =>
+                        setInterfaceForm({ ...interfaceForm, user: e.target.value })
+                      }
+                      placeholder="Contoh: baperinda_pakabid"
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
+                    />
+                  </div>
+                  {interfaceForm.type === "pppoe-in" && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-400">
+                        Service (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        value={interfaceForm.service}
+                        onChange={(e) =>
+                          setInterfaceForm({ ...interfaceForm, service: e.target.value })
+                        }
+                        placeholder="Contoh: pppoe (opsional)"
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               {interfaceForm.type === "vlan" && !editingInterface && (
@@ -1509,23 +1658,27 @@ export default function Mikrotik() {
                 </>
               )}
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">
-                  MTU
-                </label>
-                <input
-                  type="number"
-                  required
-                  value={interfaceForm.mtu}
-                  onChange={(e) =>
-                    setInterfaceForm({
-                      ...interfaceForm,
-                      mtu: parseInt(e.target.value) || 1500,
-                    })
-                  }
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
-                />
-              </div>
+              {(interfaceForm.type === "vlan" ||
+                interfaceForm.type === "bridge" ||
+                editingInterface) && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    MTU
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={interfaceForm.mtu}
+                    onChange={(e) =>
+                      setInterfaceForm({
+                        ...interfaceForm,
+                        mtu: parseInt(e.target.value) || 1500,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
+                  />
+                </div>
+              )}
 
               {editingInterface && (
                 <div className="flex flex-col gap-1.5">

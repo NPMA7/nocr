@@ -288,6 +288,15 @@ export async function GET(req, { params }) {
 
                 return NextResponse.json(secrets || []);
             }
+
+            if (path[1] === 'ppp-profiles') {
+                const conn = await mikrotik.connect(device);
+                if (!conn.connected) {
+                    return NextResponse.json([]);
+                }
+                const profiles = await mikrotik.getPPPProfiles(device);
+                return NextResponse.json(profiles || []);
+            }
         } else if (path.length === 1) { // GET perangkat tunggal /[id]
             const id = path[0];
             const { data, error } = await db
@@ -350,12 +359,16 @@ export async function POST(req, { params }) {
                 await mikrotik.addPPPoESecret(device, body);
 
                 try {
+                    const localAddr = body.localAddress || body.local_address || body['local-address'] || null;
+                    const remoteAddr = body.remoteAddress || body.remote_address || body['remote-address'] || null;
                     await db.from('pppoe_secrets').insert([{
                         device_id: device.id,
                         name: body.name,
                         password: body.password,
                         profile: body.profile || 'default',
-                        service: body.service || 'pppoe'
+                        service: body.service || 'pppoe',
+                        local_address: localAddr,
+                        remote_address: remoteAddr
                     }]);
                 } catch (dbErr) {}
 
@@ -403,18 +416,31 @@ export async function PUT(req, { params }) {
             if (path[1] === 'pppoe-secrets' && path[2]) {
                 const id = path[2];
                 const body = await req.json();
-                const { name, password, profile, service, oldName } = body;
+                const { name, password, profile, service, oldName, localAddress, remoteAddress } = body;
+                const localAddr = localAddress !== undefined ? localAddress : (body.local_address !== undefined ? body.local_address : body['local-address']);
+                const remoteAddr = remoteAddress !== undefined ? remoteAddress : (body.remote_address !== undefined ? body.remote_address : body['remote-address']);
 
-                await mikrotik.editPPPoESecret(device, id, { name, password, profile, service });
+                await mikrotik.editPPPoESecret(device, id, {
+                    name,
+                    password,
+                    profile,
+                    service,
+                    localAddress: localAddr,
+                    remoteAddress: remoteAddr
+                });
 
                 try {
+                    const updatePayload = {
+                        name: name,
+                        password: password,
+                        profile: profile || 'default',
+                        service: service || 'pppoe'
+                    };
+                    if (localAddr !== undefined) updatePayload.local_address = localAddr || null;
+                    if (remoteAddr !== undefined) updatePayload.remote_address = remoteAddr || null;
+
                     await db.from('pppoe_secrets')
-                        .update({
-                            name: name,
-                            password: password,
-                            profile: profile || 'default',
-                            service: service || 'pppoe'
-                        })
+                        .update(updatePayload)
                         .eq('device_id', device.id)
                         .eq('name', oldName || name);
                 } catch (dbErr) {}

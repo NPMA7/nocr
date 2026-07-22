@@ -666,6 +666,7 @@ export default function HsgqOltPage() {
             key={idx}
             onClick={() => {
               setActiveTab(tab);
+              setError(null);
               setDisplayType("All");
               setDisplayValue("");
               setSelectedPort("All");
@@ -1197,14 +1198,14 @@ export default function HsgqOltPage() {
                         const equipId = isArray
                           ? row[4]
                           : row.equipmentid || "-";
-                        const lprofId = isArray ? row[5] : (row.lprofid ?? "-");
+                        const lprofId = isArray ? row[5] : (row.lprofid ?? row.lineprof_id ?? "-");
                         const lprofName = isArray
                           ? row[6]
-                          : row.lprofname || "-";
-                        const sprofId = isArray ? row[7] : (row.sprofid ?? "-");
+                          : row.lprofname || row.lineprof_name || (row.lineprof_id !== undefined ? `PROFILE_${row.lineprof_id}` : "-");
+                        const sprofId = isArray ? row[7] : (row.sprofid ?? row.srvprof_id ?? "-");
                         const sprofName = isArray
                           ? row[8]
-                          : row.sprofname || "-";
+                          : row.sprofname || row.srvprof_name || (row.srvprof_id !== undefined ? `PROFILE_${row.srvprof_id}` : "-");
 
                         return (
                           <tr
