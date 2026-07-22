@@ -659,11 +659,14 @@ function SystemHealth({ isAdmin }) {
   };
 
   const formatBytes = (bytes, decimals = 2) => {
-    if (!+bytes) return "0 Bytes";
+    if (!bytes || Number(bytes) <= 0 || isNaN(bytes)) return "0 Bytes";
     const k = 1024,
       dm = decimals < 0 ? 0 : decimals;
     const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const i = Math.min(
+      Math.max(0, Math.floor(Math.log(bytes) / Math.log(k))),
+      sizes.length - 1
+    );
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
   };
 
