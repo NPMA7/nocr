@@ -1258,7 +1258,7 @@ export default function DailyReportPage() {
                 </label>
 
                 <span className="inline-flex items-center rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-sm font-medium text-purple-300">
-                  {importType === "L2TP" ? "Desa (L2TP)" : "OPD (PPPoE)"}
+                  {importType === "L2TP" ? "Desa" : "OPD"}
                 </span>
                 <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-sm font-medium text-amber-300">
                   {startDate === endDate
