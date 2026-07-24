@@ -146,8 +146,8 @@ export default function SitesReportDetailPage() {
           <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
             {[
               { id: "ALL", label: "Semua Kategori" },
-              { id: "L2TP", label: "Desa (L2TP)" },
-              { id: "PPPOE", label: "OPD (PPPoE)" },
+              { id: "L2TP", label: "Desa" },
+              { id: "PPPOE", label: "OPD" },
             ].map((t) => (
               <button
                 key={t.id}
@@ -168,7 +168,7 @@ export default function SitesReportDetailPage() {
             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
               {[
                 { id: "7d", label: "7 Hari" },
-                { id: "1m", label: "30 Hari" },
+                { id: "1m", label: "1 Bulan" },
                 { id: "1y", label: "1 Tahun" },
                 { id: "all", label: "Semua" },
                 { id: "custom", label: "Custom" },
@@ -371,7 +371,7 @@ export default function SitesReportDetailPage() {
                             <div className="absolute bottom-full mb-6 bg-slate-950/95 border border-blue-500/30 text-[11px] text-slate-200 rounded-xl px-3 py-2 opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-0.5">
                               <div className="font-bold text-slate-100">{site.name}</div>
                               <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                                <span>{site.type === "PPPOE" ? "OPD (PPPoE)" : "Desa (L2TP)"}</span>
+                                <span>{site.type === "PPPOE" ? "OPD" : "Desa"}</span>
                                 <span>•</span>
                                 <span className="text-blue-300 font-semibold">{site.count} Laporan ({percentage}%)</span>
                               </div>
@@ -479,7 +479,7 @@ export default function SitesReportDetailPage() {
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-950 border border-blue-500/30 text-[11px] text-slate-200 rounded-xl px-3 py-2 opacity-0 group-hover:opacity-100 transition pointer-events-none z-30 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-0.5">
                             <div className="font-bold text-slate-100">{site.name}</div>
                             <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                              <span>{site.type === "PPPOE" ? "OPD (PPPoE)" : "Desa (L2TP)"}</span>
+                              <span>{site.type === "PPPOE" ? "OPD" : "Desa"}</span>
                               <span>•</span>
                               <span className="text-blue-300 font-semibold">{count} Laporan ({percentage}%)</span>
                             </div>
@@ -617,9 +617,9 @@ export default function SitesReportDetailPage() {
                               }`}
                             >
                               {site.type === "PPPOE"
-                                ? "OPD (PPPoE)"
+                                ? "OPD"
                                 : site.type === "L2TP"
-                                ? "Desa (L2TP)"
+                                ? "Desa"
                                 : "Unknown"}
                             </span>
                           </td>

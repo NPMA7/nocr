@@ -176,11 +176,11 @@ export async function GET(request) {
 
     const monthsInPeriod = Math.max(monthYearCounts.size, 1);
     const weeklyAverage = [
-      { week: 'Minggu 1', average: parseFloat((weeklyCounts[1] / monthsInPeriod).toFixed(1)) },
-      { week: 'Minggu 2', average: parseFloat((weeklyCounts[2] / monthsInPeriod).toFixed(1)) },
-      { week: 'Minggu 3', average: parseFloat((weeklyCounts[3] / monthsInPeriod).toFixed(1)) },
-      { week: 'Minggu 4', average: parseFloat((weeklyCounts[4] / monthsInPeriod).toFixed(1)) },
-      { week: 'Minggu 5', average: parseFloat((weeklyCounts[5] / monthsInPeriod).toFixed(1)) }
+      { week: 'Minggu ke 1', average: parseFloat((weeklyCounts[1] / monthsInPeriod).toFixed(1)) },
+      { week: 'Minggu ke 2', average: parseFloat((weeklyCounts[2] / monthsInPeriod).toFixed(1)) },
+      { week: 'Minggu ke 3', average: parseFloat((weeklyCounts[3] / monthsInPeriod).toFixed(1)) },
+      { week: 'Minggu ke 4', average: parseFloat((weeklyCounts[4] / monthsInPeriod).toFixed(1)) },
+      { week: 'Minggu ke 5', average: parseFloat((weeklyCounts[5] / monthsInPeriod).toFixed(1)) }
     ];
 
     // 4. Grafik Top Laporan Perangkat/Sites Terbanyak

@@ -11,6 +11,8 @@ import {
   BarChart3,
   Calendar,
   Layers,
+  FileText,
+  Check,
 } from "lucide-react";
 import { API_URL, socket as directSocket, useAppState } from "@/App";
 import { getStoredUser } from "@/lib/roles";
@@ -21,6 +23,7 @@ export default function DailyReportDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [copied, setCopied] = useState(false);
   const appState = useAppState() || {};
   const socket = appState.socket || directSocket;
 
@@ -107,7 +110,7 @@ export default function DailyReportDashboard() {
     : [];
   const weeklyAverage = Array.isArray(data?.weeklyAverage)
     ? data.weeklyAverage.map((w) => ({
-        week: String(w?.week || ""),
+        week: String(w?.week || "").replace(/^Minggu (\d+)$/, "Minggu ke $1"),
         average: Number(w?.average || 0),
       }))
     : [];
@@ -183,6 +186,68 @@ export default function DailyReportDashboard() {
   // Year list for dropdown
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+  // Helper untuk membuat kalimat kesimpulan otomatis sesuai periode yang dipilih
+  const getPeriodLabelText = () => {
+    if (range === "7d") return "7 Hari Terakhir";
+    if (range === "1m") return "1 Bulan Terakhir";
+    if (range === "1y") return "1 Tahun Terakhir";
+    if (range === "all") return "Semua Waktu";
+    if (range === "custom") {
+      const sM = months.find((m) => m.value === startMonth)?.label || startMonth;
+      const eM = months.find((m) => m.value === endMonth)?.label || endMonth;
+      return `Periode Kustom (${sM} ${startYear} - ${eM} ${endYear})`;
+    }
+    return "Periode Terpilih";
+  };
+
+  const maxTrendPoint = (trend && trend.length > 0)
+    ? trend.reduce((max, item) => (item.count > max.count ? item : max), { count: 0, label: "-" })
+    : { count: 0, label: "-" };
+
+  const maxWeekPoint = (weeklyAverage && weeklyAverage.length > 0)
+    ? weeklyAverage.reduce((max, item) => (item.average > max.average ? item : max), { average: 0, week: "-" })
+    : { average: 0, week: "-" };
+
+  // Format top sites text (top 1-3 sites)
+  let topSitesText = "tidak ada titik dominan";
+  if (topDevices.length > 0) {
+    const s1 = `${topDevices[0].name} (${topDevices[0].count} kasus)`;
+    if (topDevices.length === 2) {
+      topSitesText = `${s1}, disusul ${topDevices[1].name} (${topDevices[1].count} kasus)`;
+    } else if (topDevices.length >= 3) {
+      topSitesText = `${s1}, disusul ${topDevices[1].name} (${topDevices[1].count} kasus) dan ${topDevices[2].name} (${topDevices[2].count} kasus)`;
+    } else {
+      topSitesText = s1;
+    }
+  }
+
+  // Format top issues text (top 1-2 issues)
+  let topIssuesText = "faktor operasional umum";
+  if (topIssues.length > 0) {
+    const i1 = `${topIssues[0].issue} (${topIssues[0].count} kasus)`;
+    if (topIssues.length >= 2) {
+      topIssuesText = `${i1}, serta ${topIssues[1].issue} (${topIssues[1].count} kasus)`;
+    } else {
+      topIssuesText = i1;
+    }
+  }
+
+  const categoryText = type === "ALL" ? "Desa & OPD" : type === "L2TP" ? "Desa" : "OPD";
+
+  const weeklyText = maxWeekPoint.average > 0
+    ? ` Secara distribusi mingguan, konsentrasi rata-rata laporan tertinggi terjadi pada ${maxWeekPoint.week} (rata-rata ${Math.ceil(maxWeekPoint.average)} kasus/hari).`
+    : "";
+
+  const executiveSummaryText = `Berdasarkan data laporan untuk ${getPeriodLabelText()} (Kategori: ${categoryText}), tercatat sebanyak ${stats.totalReports} total kasus gangguan dengan rata-rata ${Math.ceil(Number(stats.averagePerDay || 0))} kasus per hari.${weeklyText} Tren tertinggi harian terjadi pada ${maxTrendPoint.label !== "-" ? `periode/tanggal ${maxTrendPoint.label}` : "periode terpilih"} dengan jumlah ${maxTrendPoint.count} laporan. Lokasi dengan frekuensi gangguan terbanyak tercatat di ${topSitesText}, di mana indikasi kendala utama didominasi oleh ${topIssuesText}.`;
+
+  const handleCopySummary = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(executiveSummaryText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-1 pb-10">
@@ -364,7 +429,50 @@ export default function DailyReportDashboard() {
           )}
         </div>
       </div>
+{/* Dynamic Executive Audit Summary Card */}
+      <div className="bg-gradient-to-r from-blue-950/40 via-slate-900/60 to-emerald-950/30 border border-blue-800/40 rounded-xl p-5 shadow-lg flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+              <FileText size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                Kesimpulan Laporan 
+                <span className="text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  {getPeriodLabelText()}
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Ringkasan naratif otomatis berdasarkan data &amp; periode terpilih
+              </p>
+            </div>
+          </div>
 
+          <button
+            onClick={handleCopySummary}
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 rounded-lg text-xs transition"
+          >
+            {copied ? (
+              <>
+                <Check size={13} className="text-emerald-400" />
+                <span className="text-emerald-400 font-medium">Tersalin!</span>
+              </>
+            ) : (
+              <>
+                <FileText size={13} />
+                <span>Salin Kesimpulan</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <blockquote className="text-sm text-slate-200 leading-relaxed italic bg-slate-950/60 p-4 rounded-lg border border-slate-800/80 border-l-4 border-l-blue-500">
+          "{executiveSummaryText}"
+        </blockquote>
+      </div>
+
+      
       {/* Grid Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Card 1: Total Reports */}
@@ -408,6 +516,8 @@ export default function DailyReportDashboard() {
         </div>
       </div>
 
+      
+
       {/* Trend Chart - Full Width - SVG Line Chart */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -425,7 +535,7 @@ export default function DailyReportDashboard() {
             <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-400 text-[11px]">
               <span>Kategori:</span>
               <span className="text-slate-200 font-semibold">
-                {type === "ALL" ? "Semua (Desa & OPD)" : type === "L2TP" ? "Desa (L2TP)" : "OPD (PPPoE)"}
+                {type === "ALL" ? "Semua (Desa & OPD)" : type === "L2TP" ? "Desa" : "OPD"}
               </span>
             </div>
           </div>
@@ -871,18 +981,19 @@ export default function DailyReportDashboard() {
             {topIssues.map((item, idx) => {
               const pct = Math.round((item.count / maxIssueCount) * 100);
               const colors = [
-                "from-amber-600 to-amber-400",
-                "from-orange-600 to-orange-400",
-                "from-red-700 to-red-500",
-                "from-rose-700 to-rose-500",
-                "from-yellow-700 to-yellow-500",
-                "from-amber-700 to-amber-500",
-                "from-orange-700 to-orange-500",
-                "from-red-600 to-red-400",
-                "from-rose-600 to-rose-400",
-                "from-yellow-600 to-yellow-400",
+                "from-rose-600 via-red-600 to-rose-500", // Rank 1 (Paling Merah di paling atas)
+                "from-red-600 to-red-500",               // Rank 2 (Merah Terang)
+                "from-red-500 to-rose-500",              // Rank 3 (Merah-Rose)
+                "from-rose-500 to-orange-500",           // Rank 4 (Merah-Oranye)
+                "from-orange-500 to-amber-500",          // Rank 5 (Oranye)
+                "from-amber-500 to-amber-400",           // Rank 6 (Amber)
+                "from-amber-400 to-yellow-500",          // Rank 7 (Kuning-Amber)
+                "from-yellow-500 to-yellow-600",         // Rank 8 (Kuning)
+                "from-yellow-600 to-slate-500",          // Rank 9 (Kuning-Kelu-Abu)
+                "from-slate-500 to-slate-600",            // Rank 10 (Abu-abu)
               ];
               const color = colors[idx % colors.length];
+              const countColor = idx === 0 ? "text-rose-400 font-extrabold" : idx === 1 ? "text-red-400 font-bold" : "text-amber-300";
               return (
                 <div key={idx} className="flex items-center gap-3 group">
                   {/* Rank */}
@@ -904,7 +1015,7 @@ export default function DailyReportDashboard() {
                     />
                   </div>
                   {/* Count */}
-                  <span className="text-[11px] font-bold text-amber-300 w-8 text-right flex-shrink-0">
+                  <span className={`text-[11px] font-bold ${countColor} w-8 text-right flex-shrink-0`}>
                     {item.count}
                   </span>
                 </div>
