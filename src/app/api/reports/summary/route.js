@@ -234,24 +234,33 @@ export async function GET(request) {
       })
       .sort((a, b) => new Date(b.offline_since) - new Date(a.offline_since));
 
-    // 5. Top Kendala/Issue Terbanyak
+    // 5. Top Kendala/Issue Terbanyak (Hanya sertakan kendala valid yang terisi)
     const issueCounts = {};
     filteredReports.forEach(r => {
       if (!r.issue || !r.issue.trim()) return;
       const key = r.issue.trim();
+      const lower = key.toLowerCase();
+      if (lower === 'belum diisi' || lower.startsWith('belum diisi') || lower === 'lainnya') return;
       issueCounts[key] = (issueCounts[key] || 0) + 1;
     });
 
     const topIssues = Object.entries(issueCounts)
       .map(([issue, count]) => ({ issue, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+      .sort((a, b) => b.count - a.count);
+
+    // Hitung rincian Total AP / Sites terdaftar dari Ruijie (Desa vs OPD)
+    const totalApDesa = (allRuijie || []).filter(r => r.connection_type === 'L2TP').length;
+    const totalApOpd = (allRuijie || []).filter(r => r.connection_type === 'PPPOE').length;
+    const totalApAll = (allRuijie || []).length;
 
     return NextResponse.json({
       stats: {
         totalReports,
         averagePerDay,
-        currentlyOffline: activeOfflineList.length
+        currentlyOffline: activeOfflineList.length,
+        totalApDesa,
+        totalApOpd,
+        totalApAll
       },
       trend,
       weeklyAverage,

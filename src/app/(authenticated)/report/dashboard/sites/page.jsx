@@ -107,6 +107,19 @@ export default function SitesReportDetailPage() {
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const apDesa = data?.stats?.totalApDesa ?? 280;
+  const apOpd = data?.stats?.totalApOpd ?? 131;
+  const apAll = data?.stats?.totalApAll ?? (apDesa + apOpd);
+
+  let tableTitleText = `Tabel Rincian Seluruh Sites (${filteredSites.length})`;
+  if (type === "ALL") {
+    tableTitleText = `Tabel Rincian Seluruh Sites (${filteredSites.length} / ${apAll} Sites)`;
+  } else if (type === "L2TP") {
+    tableTitleText = `Tabel Rincian Seluruh Sites Desa (${filteredSites.length} / ${apDesa} Sites)`;
+  } else if (type === "PPPOE") {
+    tableTitleText = `Tabel Rincian Seluruh Sites OPD (${filteredSites.length} / ${apOpd} Sites)`;
+  }
+
   // Pagination Math
   const totalFilteredCount = filteredSites.length;
   const isAllPages = pageSize === "all";
@@ -546,7 +559,7 @@ export default function SitesReportDetailPage() {
               <div>
                 <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                   <Building size={16} className="text-blue-400" />
-                  Tabel Rincian Seluruh Sites ({filteredSites.length})
+                  {tableTitleText}
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Daftar lengkap rekapitulasi gangguan per lokasi
@@ -874,7 +887,7 @@ export default function SitesReportDetailPage() {
                                 </td>
                                 <td className="py-3 px-3 font-mono text-slate-200">
                                   {formatTimeWIB(rep.offline_since)}
-                                </td>
+                                  </td>
                                 <td className="py-3 px-3 font-mono text-slate-300">
                                   {formatTimeWIB(rep.online_since)}
                                 </td>

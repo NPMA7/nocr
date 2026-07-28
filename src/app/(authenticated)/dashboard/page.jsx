@@ -337,7 +337,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-3 md:gap-4 overflow-y-auto lg:overflow-hidden">
+    <div className="h-full min-h-0 flex flex-col gap-3 md:gap-4 overflow-y-auto lg:overflow-hidden p-1">
       <div className="flex-shrink-0 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100">Dashboard Utama</h1>
@@ -345,18 +345,20 @@ export default function Dashboard() {
             Ringkasan status jaringan & resource MikroTik Pusat
           </p>
         </div>
-        <span className="flex items-center gap-1.5 text-[10px] font-semibold bg-slate-800/80 border border-slate-700/50 px-2.5 py-1 rounded-full select-none">
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              isConnected
-                ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse"
-                : "bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"
-            }`}
-          />
-          <span className="text-slate-400 uppercase tracking-wider">
-            {isConnected ? "Live" : "Terputus"}
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 text-[10px] font-semibold bg-slate-800/80 border border-slate-700/50 px-2.5 py-1.5 rounded-full select-none">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isConnected
+                  ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse"
+                  : "bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"
+              }`}
+            />
+            <span className="text-slate-400 uppercase tracking-wider">
+              {isConnected ? "Live" : "Terputus"}
+            </span>
           </span>
-        </span>
+        </div>
       </div>
 
       {/* Core Router Resources */}

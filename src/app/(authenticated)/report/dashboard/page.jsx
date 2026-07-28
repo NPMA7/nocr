@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Activity,
@@ -13,6 +13,8 @@ import {
   Layers,
   FileText,
   Check,
+  Download,
+  Image as ImageIcon,
 } from "lucide-react";
 import { API_URL, socket as directSocket, useAppState } from "@/App";
 import { getStoredUser } from "@/lib/roles";
@@ -24,6 +26,9 @@ export default function DailyReportDashboard() {
   const [error, setError] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const dashboardRef = useRef(null);
   const appState = useAppState() || {};
   const socket = appState.socket || directSocket;
 
@@ -118,8 +123,16 @@ export default function DailyReportDashboard() {
     ? data.topDevices.map((d) => ({
         name: String(d?.name || "Lainnya"),
         count: Number(d?.count || 0),
+        type: String(d?.type || "Unknown"),
       }))
     : [];
+  const allDevices = Array.isArray(data?.allDevices)
+    ? data.allDevices.map((d) => ({
+        name: String(d?.name || "Lainnya"),
+        count: Number(d?.count || 0),
+        type: String(d?.type || "Unknown"),
+      }))
+    : topDevices;
   const topIssues = Array.isArray(data?.topIssues)
     ? data.topIssues.map((i) => ({
         issue: String(i?.issue || "Lainnya"),
@@ -127,7 +140,7 @@ export default function DailyReportDashboard() {
       }))
     : [];
 
-  // Max value for scaling SVG/HTML bar charts
+  // Max values for scaling visual bar charts
   const maxWeeklyAverage = Math.max(...weeklyAverage.map((w) => w.average), 1);
   const maxDeviceCount = Math.max(...topDevices.map((d) => d.count), 1);
   const maxIssueCount = Math.max(...topIssues.map((i) => i.count), 1);
@@ -135,39 +148,15 @@ export default function DailyReportDashboard() {
   const formatLocalDate = (isoString) => {
     if (!isoString) return "-";
     const d = new Date(isoString);
-    if (isNaN(d.getTime())) return "-";
-    try {
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: "Asia/Jakarta",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h23",
-      });
-      const parts = formatter.formatToParts(d);
-      const partObj = {};
-      parts.forEach((p) => {
-        partObj[p.type] = p.value;
-      });
-      return `${partObj.year}-${partObj.month}-${partObj.day} ${partObj.hour}:${partObj.minute}:${partObj.second}`;
-    } catch (e) {
-      return "-";
-    }
+    return isNaN(d.getTime())
+      ? "-"
+      : d.toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
   };
 
-  const getDayName = (dateStr) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("id-ID", { weekday: "short" });
-    } catch (e) {
-      return "";
-    }
-  };
-
-  // Month list for dropdown
   const months = [
     { value: 1, label: "Januari" },
     { value: 2, label: "Februari" },
@@ -183,63 +172,94 @@ export default function DailyReportDashboard() {
     { value: 12, label: "Desember" },
   ];
 
-  // Year list for dropdown
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
-  // Helper untuk membuat kalimat kesimpulan otomatis sesuai periode yang dipilih
   const getPeriodLabelText = () => {
     if (range === "7d") return "7 Hari Terakhir";
     if (range === "1m") return "1 Bulan Terakhir";
     if (range === "1y") return "1 Tahun Terakhir";
-    if (range === "all") return "Semua Waktu";
     if (range === "custom") {
-      const sM = months.find((m) => m.value === startMonth)?.label || startMonth;
-      const eM = months.find((m) => m.value === endMonth)?.label || endMonth;
-      return `Periode Kustom (${sM} ${startYear} - ${eM} ${endYear})`;
+      const monthNames = [
+        "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", 
+        "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+      ];
+      return `${monthNames[startMonth - 1]} ${startYear} s/d ${monthNames[endMonth - 1]} ${endYear}`;
     }
     return "Periode Terpilih";
   };
 
-  const maxTrendPoint = (trend && trend.length > 0)
-    ? trend.reduce((max, item) => (item.count > max.count ? item : max), { count: 0, label: "-" })
-    : { count: 0, label: "-" };
+  const getPeriodDateRangeStr = () => {
+    const today = new Date();
+    let startDate = new Date();
+    let endDate = new Date();
 
-  const maxWeekPoint = (weeklyAverage && weeklyAverage.length > 0)
-    ? weeklyAverage.reduce((max, item) => (item.average > max.average ? item : max), { average: 0, week: "-" })
-    : { average: 0, week: "-" };
-
-  // Format top sites text (top 1-3 sites)
-  let topSitesText = "tidak ada titik dominan";
-  if (topDevices.length > 0) {
-    const s1 = `${topDevices[0].name} (${topDevices[0].count} kasus)`;
-    if (topDevices.length === 2) {
-      topSitesText = `${s1}, disusul ${topDevices[1].name} (${topDevices[1].count} kasus)`;
-    } else if (topDevices.length >= 3) {
-      topSitesText = `${s1}, disusul ${topDevices[1].name} (${topDevices[1].count} kasus) dan ${topDevices[2].name} (${topDevices[2].count} kasus)`;
-    } else {
-      topSitesText = s1;
+    if (range === "7d") {
+      startDate.setDate(today.getDate() - 6);
+    } else if (range === "1m") {
+      startDate.setDate(today.getDate() - 29);
+    } else if (range === "1y") {
+      startDate.setDate(today.getDate() - 364);
+    } else if (range === "custom") {
+      if (startMonth > 0 && startYear > 0 && endMonth > 0 && endYear > 0) {
+        startDate = new Date(startYear, startMonth - 1, 1);
+        endDate = new Date(endYear, endMonth, 0);
+      } else {
+        startDate.setDate(today.getDate() - 6);
+      }
     }
+
+    const startStr = startDate.toLocaleDateString("sv", { timeZone: "Asia/Jakarta" });
+    const endStr = endDate.toLocaleDateString("sv", { timeZone: "Asia/Jakarta" });
+    return `${startStr} s/d ${endStr}`;
+  };
+
+  const categoryText =
+    type === "ALL" ? "Desa & OPD" : type === "PPPOE" ? "OPD" : "Desa";
+
+  const maxTrendPoint = trend.reduce(
+    (max, t) => (t.count > max.count ? t : max),
+    { label: "-", count: 0 },
+  );
+
+  const maxWeeklyPoint = weeklyAverage.reduce(
+    (max, w) => (w.average > max.average ? w : max),
+    { week: "-", average: 0 },
+  );
+
+  const topSitesText =
+    topDevices.length > 0
+      ? topDevices
+          .slice(0, 3)
+          .map((d) => `${d.name} (${d.count} kasus)`)
+          .join(", ")
+      : "tidak ada lokasi menonjol";
+
+  const topIssuesText =
+    topIssues.length > 0
+      ? topIssues
+          .slice(0, 2)
+          .map((i) => `${i.issue} (${i.count} kasus)`)
+          .join(" dan ")
+      : "tidak ada indikasi kendala spesifik";
+
+  const weeklyText =
+    maxWeeklyPoint.average > 0
+      ? ` Secara distribusi mingguan, konsentrasi rata-rata laporan tertinggi terjadi pada ${maxWeeklyPoint.week} (rata-rata ${Math.ceil(maxWeeklyPoint.average)} kasus/hari).`
+      : "";
+
+  const apDesaCount = stats.totalApDesa ?? 280;
+  const apOpdCount = stats.totalApOpd ?? 131;
+
+  let categorySummaryTag = "";
+  if (type === "ALL") {
+    categorySummaryTag = `Kategori: Desa ${apDesaCount} & OPD ${apOpdCount}`;
+  } else if (type === "L2TP") {
+    categorySummaryTag = `Kategori: Desa ${apDesaCount}`;
+  } else if (type === "PPPOE") {
+    categorySummaryTag = `Kategori: OPD ${apOpdCount}`;
   }
 
-  // Format top issues text (top 1-2 issues)
-  let topIssuesText = "faktor operasional umum";
-  if (topIssues.length > 0) {
-    const i1 = `${topIssues[0].issue} (${topIssues[0].count} kasus)`;
-    if (topIssues.length >= 2) {
-      topIssuesText = `${i1}, serta ${topIssues[1].issue} (${topIssues[1].count} kasus)`;
-    } else {
-      topIssuesText = i1;
-    }
-  }
-
-  const categoryText = type === "ALL" ? "Desa & OPD" : type === "L2TP" ? "Desa" : "OPD";
-
-  const weeklyText = maxWeekPoint.average > 0
-    ? ` Secara distribusi mingguan, konsentrasi rata-rata laporan tertinggi terjadi pada ${maxWeekPoint.week} (rata-rata ${Math.ceil(maxWeekPoint.average)} kasus/hari).`
-    : "";
-
-  const executiveSummaryText = `Berdasarkan data laporan untuk ${getPeriodLabelText()} (Kategori: ${categoryText}), tercatat sebanyak ${stats.totalReports} total kasus gangguan dengan rata-rata ${Math.ceil(Number(stats.averagePerDay || 0))} kasus per hari.${weeklyText} Tren tertinggi harian terjadi pada ${maxTrendPoint.label !== "-" ? `periode/tanggal ${maxTrendPoint.label}` : "periode terpilih"} dengan jumlah ${maxTrendPoint.count} laporan. Lokasi dengan frekuensi gangguan terbanyak tercatat di ${topSitesText}, di mana indikasi kendala utama didominasi oleh ${topIssuesText}.`;
+  const executiveSummaryText = `Berdasarkan data laporan untuk ${getPeriodLabelText()} (${categorySummaryTag}), tercatat sebanyak ${stats.totalReports} total kasus gangguan dengan rata-rata ${Math.ceil(Number(stats.averagePerDay || 0))} kasus per hari.${weeklyText} Tren tertinggi harian terjadi pada ${maxTrendPoint.label !== "-" ? `periode/tanggal ${maxTrendPoint.label}` : "periode terpilih"} dengan jumlah ${maxTrendPoint.count} laporan. Lokasi dengan frekuensi gangguan terbanyak tercatat di ${topSitesText}, di mana indikasi kendala utama didominasi oleh ${topIssuesText}.`;
 
   const handleCopySummary = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -249,8 +269,482 @@ export default function DailyReportDashboard() {
     }
   };
 
+  const handleDownloadPDF = async (mode = "full") => {
+    setIsExporting(true);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
+      const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
+
+      // ==========================================
+      // PAGE 1: VECTOR DASHBOARD GRAPHICS & CARDS
+      // ==========================================
+
+      // 1. Top Header Banner Background (Navy Blue #0f172a)
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageWidth, 22, "F");
+
+      // Banner Title & Metadata
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("DASHBOARD REKAPITULASI LAPORAN GANGGUAN", 12, 10);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(203, 213, 225);
+      doc.text(`NOCR System | Kategori: ${categoryText} | Periode: ${getPeriodDateRangeStr()}`, 12, 16);
+
+      const printDateStr = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" });
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Dicetak: ${printDateStr}`, pageWidth - 12, 16, { align: "right" });
+
+      let currentY = 26;
+
+      // 2. Executive Summary Narrative Box
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text("Ringkasan Eksekutif", 12, currentY);
+      currentY += 3;
+
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7.5);
+      doc.setTextColor(51, 65, 85);
+
+      const summaryLines = doc.splitTextToSize(executiveSummaryText, pageWidth - 30);
+      const lineHeight = 4.6;
+      const boxHeight = summaryLines.length * lineHeight + 5;
+
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(12, currentY, pageWidth - 24, boxHeight, "FD");
+
+      doc.text(executiveSummaryText, 15, currentY + 4.5, {
+        maxWidth: pageWidth - 30,
+        align: "justify",
+        lineHeightFactor: 1.45,
+      });
+      currentY += boxHeight + 6;
+
+      // 3. Stats Cards (Top 2 Metric Boxes)
+      const cardW = 90;
+      const cardH = 18;
+
+      // Card 1: Total Laporan (Blue Tint)
+      doc.setFillColor(239, 246, 255);
+      doc.setDrawColor(191, 219, 254);
+      doc.rect(12, currentY, cardW, cardH, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(30, 64, 175);
+      doc.text("TOTAL LAPORAN GANGGUAN", 16, currentY + 5);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(29, 78, 216);
+      doc.text(String(stats.totalReports || 0), 16, currentY + 13);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(96, 165, 250);
+      doc.text("Jumlah kasus dalam periode", 48, currentY + 13);
+
+      // Integer rounded up average per day
+      const roundedDailyAvg = Math.ceil(Number(stats.averagePerDay || 0));
+
+      // Card 2: Rata-rata Laporan (Emerald Tint)
+      doc.setFillColor(240, 253, 244);
+      doc.setDrawColor(187, 247, 208);
+      doc.rect(108, currentY, cardW, cardH, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(6, 95, 70);
+      doc.text("RATA-RATA LAPORAN (HARIAN)", 112, currentY + 5);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(4, 120, 87);
+      doc.text(String(roundedDailyAvg), 112, currentY + 13);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(52, 211, 153);
+      doc.text("Kasus laporan per hari", 144, currentY + 13);
+
+      currentY += cardH + 6;
+
+      // 4. Line Chart: Tren Total Laporan Gangguan
+      const lineChartH = 46;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(12, currentY, pageWidth - 24, lineChartH, "FD");
+
+      // Line Chart Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text("Tren Total Laporan Gangguan (Harian)", 16, currentY + 6);
+
+      // Draw Grid & Points
+      if (trend.length > 0) {
+        const chartLeft = 26;
+        const chartRight = pageWidth - 20;
+        const chartTop = currentY + 12;
+        const chartBottom = currentY + lineChartH - 8;
+        const drawW = chartRight - chartLeft;
+        const drawH = chartBottom - chartTop;
+
+        const maxCount = Math.max(...trend.map((t) => t.count), 1);
+
+        // Draw horizontal grid lines
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.3);
+        for (let g = 0; g <= 3; g++) {
+          const gridY = chartBottom - (drawH * g) / 3;
+          doc.line(chartLeft, gridY, chartRight, gridY);
+          const gridVal = Math.round((maxCount * g) / 3);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(6.5);
+          doc.setTextColor(148, 163, 184);
+          doc.text(String(gridVal), chartLeft - 2, gridY + 1, { align: "right" });
+        }
+
+        // Calculate Point coordinates
+        const points = trend.map((t, idx) => {
+          const stepX = trend.length > 1 ? drawW / (trend.length - 1) : 0;
+          const x = chartLeft + idx * stepX;
+          const y = chartBottom - (t.count / maxCount) * drawH;
+          return { x, y, count: t.count, label: t.label };
+        });
+
+        // Draw Line Segments
+        doc.setDrawColor(37, 99, 235); // Blue-600
+        doc.setLineWidth(0.8);
+        for (let i = 0; i < points.length - 1; i++) {
+          doc.line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+        }
+
+        // Draw Points & Labels
+        const labelStep = Math.max(1, Math.ceil(points.length / 7));
+        points.forEach((p, idx) => {
+          // Circle Dot
+          doc.setFillColor(37, 99, 235);
+          doc.circle(p.x, p.y, 1.0, "F");
+
+          // Data Value above point
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(5.5);
+          doc.setTextColor(30, 58, 138);
+          doc.text(String(p.count), p.x, p.y - 1.8, { align: "center" });
+
+          // Date Label below X axis (spaced out & short format DD/MM)
+          if (idx % labelStep === 0 || idx === points.length - 1) {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(5.5);
+            doc.setTextColor(100, 116, 139);
+            let displayDate = p.label;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(displayDate)) {
+              const [y, m, d] = displayDate.split("-");
+              displayDate = `${d}/${m}`;
+            }
+            doc.text(displayDate, p.x, chartBottom + 4.5, { align: "center" });
+          }
+        });
+      }
+
+      currentY += lineChartH + 6;
+
+      // 5. Side-by-Side Vertical Bar Charts (Rata-rata Mingguan & Top Sites)
+      const barBoxW = 90;
+      const barBoxH = 65;
+
+      // Left Box: Rata-rata Mingguan
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(12, currentY, barBoxW, barBoxH, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(5, 150, 105);
+      doc.text("Rata-rata Laporan Mingguan", 16, currentY + 6);
+
+      if (weeklyAverage.length > 0) {
+        const vLeft = 18;
+        const vRight = 12 + barBoxW - 6;
+        const vTop = currentY + 12;
+        const vBottom = currentY + 44;
+        const vW = vRight - vLeft;
+        const vH = vBottom - vTop;
+
+        const maxWk = Math.max(...weeklyAverage.map((w) => w.average), 1);
+        const colW = (vW / weeklyAverage.length) * 0.55;
+
+        weeklyAverage.forEach((w, idx) => {
+          const stepX = vW / weeklyAverage.length;
+          const x = vLeft + idx * stepX + (stepX - colW) / 2;
+          const barH = (w.average / maxWk) * vH;
+          const y = vBottom - barH;
+
+          // Bar Rect
+          doc.setFillColor(16, 185, 129); // Emerald-500
+          doc.rect(x, y, colW, Math.max(barH, 1), "F");
+
+          // Value Top (rounded up integer)
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(6);
+          doc.setTextColor(4, 120, 87);
+          doc.text(String(Math.ceil(w.average)), x + colW / 2, y - 1, { align: "center" });
+
+          // Week Label Bottom (Use full "Minggu ke 1", "Minggu ke 2", etc.)
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(5);
+          doc.setTextColor(100, 116, 139);
+          doc.text(w.week, x + colW / 2, vBottom + 4, { align: "center" });
+        });
+      }
+
+      // Right Box: Top 10 Laporan Sites Terbanyak
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(108, currentY, barBoxW, barBoxH, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(124, 58, 237);
+      doc.text("Top 10 Laporan Sites Terbanyak", 111, currentY + 6);
+
+      const top10Devices = topDevices.slice(0, 10);
+      if (top10Devices.length > 0) {
+        const sLeft = 111;
+        const sRight = 108 + barBoxW - 3;
+        const sTop = currentY + 12;
+        const sBottom = currentY + 44;
+        const sW = sRight - sLeft;
+        const sH = sBottom - sTop;
+
+        const maxDev = Math.max(...top10Devices.map((d) => d.count), 1);
+        const colW = (sW / top10Devices.length) * 0.55;
+
+        top10Devices.forEach((d, idx) => {
+          const stepX = sW / top10Devices.length;
+          const x = sLeft + idx * stepX + (stepX - colW) / 2;
+          const barH = (d.count / maxDev) * sH;
+          const y = sBottom - barH;
+
+          // Bar Rect
+          doc.setFillColor(139, 92, 246); // Purple-500
+          doc.rect(x, y, colW, Math.max(barH, 1), "F");
+
+          // Value Top
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(5);
+          doc.setTextColor(109, 40, 217);
+          doc.text(String(d.count), x + colW / 2, y - 1, { align: "center" });
+
+          // Site Name Bottom - Rotated 45deg (bottom-left to top-right /) positioned right beneath bar
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(3.5);
+          doc.setTextColor(71, 85, 105);
+          const displayName = String(d.name || "");
+          const barCenterX = x + colW / 2;
+          doc.text(displayName, barCenterX + 1.8, sBottom + 4.5, { align: "center", angle: 45 });
+        });
+      }
+
+      currentY += barBoxH + 5;
+
+      // 6. Horizontal Bar Chart: Top 10 Kendala / Issue Terbanyak
+      const issueBoxH = 55;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(12, currentY, pageWidth - 24, issueBoxH, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(225, 29, 72);
+      doc.text("Top 10 Indikasi Kendala / Issue Terbanyak", 16, currentY + 6);
+
+      const top10Issues = topIssues.slice(0, 10);
+      if (top10Issues.length > 0) {
+        const maxIss = Math.max(...top10Issues.map((i) => i.count), 1);
+        const rowH = 4.4;
+        const startBarY = currentY + 9.5;
+        const maxBarW = 95;
+
+        top10Issues.forEach((iss, idx) => {
+          const rY = startBarY + idx * rowH;
+
+          // Issue Name (Left Label)
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(5.5);
+          doc.setTextColor(51, 65, 85);
+          const labelText = `${idx + 1}. ${iss.issue.length > 25 ? iss.issue.substring(0, 24) + ".." : iss.issue}`;
+          doc.text(labelText, 16, rY + 3.2);
+
+          // Horizontal Bar Rect
+          const barW = (iss.count / maxIss) * maxBarW;
+          doc.setFillColor(244, 63, 94); // Rose-500
+          doc.rect(72, rY + 0.8, Math.max(barW, 1.5), 3, "F");
+
+          // Count Text (Right of Bar)
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(5.5);
+          doc.setTextColor(190, 18, 60);
+          doc.text(`${iss.count} Kasus`, 72 + Math.max(barW, 1.5) + 2.5, rY + 3.2);
+        });
+      }
+
+      if (mode === "full") {
+        // ==========================================
+        // PAGE 2+: STRUCTURED TABLES ("KAYAK BIASA")
+        // ==========================================
+        doc.addPage();
+        currentY = 15; // Reset currentY to 15 to eliminate Page 2 top blank gap!
+
+        // Section 1: Main Statistics Table
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59);
+        doc.text("1. Ringkasan Angka Statistik Utama", 14, currentY);
+        currentY += 3;
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [["Indikator Statistik", "Nilai / Jumlah", "Keterangan"]],
+          body: [
+            ["Total Laporan Gangguan", `${stats.totalReports} Kasus`, `Kategori: ${categoryText}`],
+            ["Rata-rata Laporan Per Hari", `${roundedDailyAvg} Kasus/Hari`, `Berdasarkan ${getPeriodLabelText()}`],
+          ],
+          theme: "grid",
+          styles: { fontSize: 8.5, cellPadding: 2.5 },
+          headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: "bold" },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 8;
+
+        // Section 2: All Devices Table with Kategori Tipe Column
+        const devicesToRender = allDevices.length > 0 ? allDevices : topDevices;
+        if (devicesToRender.length > 0) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.setTextColor(30, 41, 59);
+          doc.text("2. Rincian Seluruh Lokasi / Site Gangguan", 14, currentY);
+          currentY += 3;
+
+          const totalDeviceReports = devicesToRender.reduce((sum, d) => sum + d.count, 0);
+
+          const deviceRows = devicesToRender.map((d, i) => {
+            const percentage = totalDeviceReports > 0 ? ((d.count / totalDeviceReports) * 100).toFixed(1) : "0.0";
+            const catLabel = d.type === "L2TP" ? "Desa" : d.type === "PPPOE" ? "OPD" : "Desa";
+            return [i + 1, d.name, catLabel, `${d.count} Laporan`, `${percentage}%`];
+          });
+
+          autoTable(doc, {
+            startY: currentY,
+            head: [["No", "Nama Site / Lokasi", "Kategori Tipe", "Jumlah Laporan", "Persentase Total"]],
+            body: deviceRows,
+            theme: "striped",
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+          });
+
+          currentY = doc.lastAutoTable.finalY + 8;
+        }
+
+        // Section 3: All Issues Table
+        if (topIssues.length > 0) {
+          if (currentY > 230) {
+            doc.addPage();
+            currentY = 15;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.setTextColor(30, 41, 59);
+          doc.text("3. Rincian Seluruh Indikasi Kendala / Issue", 14, currentY);
+          currentY += 3;
+
+          const totalValidIssueCount = topIssues.reduce((sum, item) => sum + item.count, 0);
+
+          const issueRows = topIssues.map((i, idx) => {
+            const percentage = totalValidIssueCount > 0 ? ((i.count / totalValidIssueCount) * 100).toFixed(1) : "0.0";
+            return [idx + 1, i.issue, `${i.count} Kasus`, `${percentage}%`];
+          });
+
+          autoTable(doc, {
+            startY: currentY,
+            head: [["No", "Jenis Kendala / Issue", "Jumlah Kasus", "Persentase Total"]],
+            body: issueRows,
+            theme: "striped",
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [147, 51, 234], textColor: 255, fontStyle: "bold" },
+          });
+
+          currentY = doc.lastAutoTable.finalY + 8;
+        }
+      }
+
+      // Footer Page Numbers 
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `Dokumen Resmi NOCR - Halaman ${i} dari ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 8,
+          { align: "center" }
+        );
+      }
+
+      const kategoriTag = type === "L2TP" ? "DESA" : type === "PPPOE" ? "OPD" : "OPD-DESA";
+      const modeTag = mode === "full" ? "Lengkap" : "Ringkas";
+
+      const today = new Date();
+      let startDate = new Date();
+      let endDate = new Date();
+
+      if (range === "7d") {
+        startDate.setDate(today.getDate() - 6);
+      } else if (range === "1m") {
+        startDate.setDate(today.getDate() - 29);
+      } else if (range === "1y") {
+        startDate.setDate(today.getDate() - 364);
+      } else if (range === "custom") {
+        if (startMonth > 0 && startYear > 0 && endMonth > 0 && endYear > 0) {
+          startDate = new Date(startYear, startMonth - 1, 1);
+          endDate = new Date(endYear, endMonth, 0);
+        } else {
+          startDate.setDate(today.getDate() - 6);
+        }
+      }
+
+      const startStr = startDate.toLocaleDateString("sv", { timeZone: "Asia/Jakarta" });
+      const endStr = endDate.toLocaleDateString("sv", { timeZone: "Asia/Jakarta" });
+
+      doc.save(`Dashboard_Laporan_${modeTag}_${kategoriTag}_${startStr}_${endStr}.pdf`);
+    } catch (err) {
+      console.error("Gagal mengunduh PDF:", err);
+      alert("Gagal mengunduh PDF dashboard.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-1 pb-10">
+    <div ref={dashboardRef} className="h-full overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-1 pb-10">
       {/* Header & Main Controls */}
       <div className="flex flex-col gap-4 bg-slate-900/40 p-5 border border-slate-800/80 rounded-2xl">
         {/* Top Row: Title & Actions */}
@@ -268,10 +762,20 @@ export default function DailyReportDashboard() {
           <div className="flex items-center gap-2 self-end md:self-auto">
             <button
               onClick={() => fetchSummary(true)}
-              className="cursor-pointer flex items-center gap-2 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-300 rounded-lg text-xs transition"
+              disabled={isExporting}
+              className="cursor-pointer flex items-center gap-2 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-300 rounded-lg text-xs transition disabled:opacity-50"
             >
-              <RefreshCw size={13} />
+              <RefreshCw size={13} className={isExporting ? "animate-spin" : ""} />
               Segarkan
+            </button>
+            <button
+              onClick={() => setShowPdfModal(true)}
+              disabled={isExporting}
+              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold shadow transition disabled:opacity-50"
+              title="Unduh Rekap Laporan Dashboard sebagai PDF"
+            >
+              <Download size={13} />
+              <span>{isExporting ? "Memproses PDF..." : "Download PDF"}</span>
             </button>
             <Link
               href="/daily-reports"
@@ -448,23 +952,6 @@ export default function DailyReportDashboard() {
               </p>
             </div>
           </div>
-
-          <button
-            onClick={handleCopySummary}
-            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 rounded-lg text-xs transition"
-          >
-            {copied ? (
-              <>
-                <Check size={13} className="text-emerald-400" />
-                <span className="text-emerald-400 font-medium">Tersalin!</span>
-              </>
-            ) : (
-              <>
-                <FileText size={13} />
-                <span>Salin Kesimpulan</span>
-              </>
-            )}
-          </button>
         </div>
 
         <blockquote className="text-sm text-slate-200 leading-relaxed italic bg-slate-950/60 p-4 rounded-lg border border-slate-800/80 border-l-4 border-l-blue-500">
@@ -978,7 +1465,7 @@ export default function DailyReportDashboard() {
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
-            {topIssues.map((item, idx) => {
+            {topIssues.slice(0, 10).map((item, idx) => {
               const pct = Math.round((item.count / maxIssueCount) * 100);
               const colors = [
                 "from-rose-600 via-red-600 to-rose-500", // Rank 1 (Paling Merah di paling atas)
@@ -1024,6 +1511,96 @@ export default function DailyReportDashboard() {
           </div>
         )}
       </div>
+
+      {/* PDF Export Version Selector Modal */}
+      {showPdfModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-red-500/10 text-red-400 rounded-lg">
+                  <Download size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-100 text-base">Unduh Laporan PDF</h3>
+                  <p className="text-xs text-slate-400">Pilih format dokumen PDF yang ingin Anda unduh</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPdfModal(false)}
+                className="text-slate-400 hover:text-slate-200 text-sm p-1 rounded-lg hover:bg-slate-800 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {/* Option 1: Ringkas (1 Halaman) */}
+              <button
+                onClick={() => {
+                  setShowPdfModal(false);
+                  handleDownloadPDF("summary");
+                }}
+                disabled={isExporting}
+                className="group flex items-start gap-4 p-4 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/50 rounded-xl transition text-left cursor-pointer"
+              >
+                <div className="p-2.5 bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 rounded-lg flex-shrink-0 mt-0.5">
+                  <BarChart3 size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-200 text-sm group-hover:text-blue-400 transition">
+                      Laporan Ringkas
+                    </span>
+                    <span className="text-[10px] font-medium bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20">
+                      1 Halaman
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Berisi Halaman 1 Grafik saja (Ringkasan Eksekutif, Grafik Tren, Top 10 Lokasi, & Top 10 Issue).
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Lengkap (Multi Halaman) */}
+              <button
+                onClick={() => {
+                  setShowPdfModal(false);
+                  handleDownloadPDF("full");
+                }}
+                disabled={isExporting}
+                className="group flex items-start gap-4 p-4 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-purple-500/50 rounded-xl transition text-left cursor-pointer"
+              >
+                <div className="p-2.5 bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 rounded-lg flex-shrink-0 mt-0.5">
+                  <FileText size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-200 text-sm group-hover:text-purple-400 transition">
+                      Laporan Komprehensif
+                    </span>
+                    <span className="text-[10px] font-medium bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/20">
+                      Lengkap
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Berisi Halaman 1 Grafik + Rincian Seluruh Lokasi Gangguan & Rincian Seluruh Issue (Halaman 2 dst).
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-800/60">
+              <button
+                onClick={() => setShowPdfModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition font-medium"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
