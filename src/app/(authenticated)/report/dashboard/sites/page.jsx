@@ -12,6 +12,11 @@ import {
   ChevronRight,
   ChevronLeft,
   LayoutGrid,
+  Activity,
+  Eye,
+  X,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -36,6 +41,36 @@ export default function SitesReportDetailPage() {
   // Table Pagination & Page Size (15, 50, 100, all)
   const [pageSize, setPageSize] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Modal State for Case Details
+  const [selectedSiteForCases, setSelectedSiteForCases] = useState(null);
+  const [modalSearchTerm, setModalSearchTerm] = useState("");
+
+  const formatTimeWIB = (isoString) => {
+    if (!isoString) return "-";
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "-";
+    try {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      });
+      const parts = formatter.formatToParts(d);
+      const partObj = {};
+      parts.forEach((p) => {
+        partObj[p.type] = p.value;
+      });
+      return `${partObj.year}-${partObj.month}-${partObj.day} ${partObj.hour}:${partObj.minute}:${partObj.second}`;
+    } catch (e) {
+      return "-";
+    }
+  };
 
   const fetchSummary = async () => {
     setLoading(true);
@@ -352,7 +387,8 @@ export default function SitesReportDetailPage() {
                         return (
                           <div
                             key={idx}
-                            className="relative h-full flex flex-col items-center justify-end flex-1 group"
+                            onClick={() => setSelectedSiteForCases(site)}
+                            className="relative h-full flex flex-col items-center justify-end flex-1 group cursor-pointer"
                           >
                             {/* Top Count Label */}
                             <span className="text-[11px] font-bold text-blue-300 mb-1">
@@ -375,6 +411,7 @@ export default function SitesReportDetailPage() {
                                 <span>•</span>
                                 <span className="text-blue-300 font-semibold">{site.count} Laporan ({percentage}%)</span>
                               </div>
+                              <div className="text-[9px] text-blue-400 mt-0.5">Klik untuk rincian kasus</div>
                             </div>
                           </div>
                         );
@@ -391,8 +428,9 @@ export default function SitesReportDetailPage() {
                       {chartSites.map((site, idx) => (
                         <div key={idx} className="flex-1 flex justify-center min-w-0 relative">
                           <span
-                            className="text-[10px] text-slate-300 font-medium absolute top-2 left-1/2 -translate-x-1/2 origin-center -rotate-45 whitespace-nowrap hover:text-blue-300 transition select-none"
-                            title={site.name}
+                            onClick={() => setSelectedSiteForCases(site)}
+                            className="text-[10px] text-slate-300 font-medium absolute top-2 left-1/2 -translate-x-1/2 origin-center -rotate-45 whitespace-nowrap hover:text-blue-300 transition select-none cursor-pointer"
+                            title={`Klik untuk rincian kasus ${site.name}`}
                           >
                             {site.name}
                           </span>
@@ -431,7 +469,7 @@ export default function SitesReportDetailPage() {
                     Tidak ada data laporan gangguan pada periode ini
                   </div>
                 ) : (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-2 max-h-[460px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-2 max-h-[500px] overflow-y-auto p-2 pb-20">
                     {allDevices.map((site, idx) => {
                       const count = site.count;
                       const percentage = totalReportsCount > 0 ? ((count / totalReportsCount) * 100).toFixed(1) : "0.0";
@@ -441,7 +479,8 @@ export default function SitesReportDetailPage() {
                       return (
                         <div
                           key={idx}
-                          className={`relative p-2.5 rounded-lg border transition-all cursor-pointer group flex flex-col justify-between h-16 ${
+                          onClick={() => setSelectedSiteForCases(site)}
+                          className={`relative p-2.5 rounded-lg border transition-all cursor-pointer group flex flex-col justify-between h-16 group-hover:z-30 ${
                             isHigh
                               ? "bg-blue-600/90 border-blue-400 text-white hover:bg-blue-500 shadow-md shadow-blue-600/20"
                               : isMedium
@@ -475,8 +514,10 @@ export default function SitesReportDetailPage() {
                             </span>
                           </div>
 
-                          {/* Hover Tooltip Popover */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-950 border border-blue-500/30 text-[11px] text-slate-200 rounded-xl px-3 py-2 opacity-0 group-hover:opacity-100 transition pointer-events-none z-30 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-0.5">
+                          {/* Hover Tooltip Popover (Always opens downwards into open space below card) */}
+                          <div
+                            className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-blue-500/50 text-[11px] text-slate-200 rounded-xl px-3 py-2 opacity-0 group-hover:opacity-100 transition pointer-events-none z-40 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-0.5"
+                          >
                             <div className="font-bold text-slate-100">{site.name}</div>
                             <div className="flex items-center gap-2 text-[10px] text-slate-400">
                               <span>{site.type === "PPPOE" ? "OPD" : "Desa"}</span>
@@ -488,6 +529,7 @@ export default function SitesReportDetailPage() {
                                 MAC: {site.mac}
                               </div>
                             )}
+                            <div className="text-[9px] text-blue-400 mt-0.5">Klik kotak untuk rincian kasus</div>
                           </div>
                         </div>
                       );
@@ -642,19 +684,35 @@ export default function SitesReportDetailPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className="px-2.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold rounded text-xs">
-                              {site.count} Laporan
-                            </span>
+                            <button
+                              onClick={() => setSelectedSiteForCases(site)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/25 border border-blue-500/30 hover:border-blue-500/50 text-blue-300 hover:text-blue-200 font-semibold rounded-lg text-xs transition cursor-pointer shadow-sm group/btn"
+                              title="Klik untuk melihat rincian laporan / kasus"
+                            >
+                              <span>{site.count} Laporan</span>
+                              <Eye size={13} className="text-blue-400 group-hover/btn:scale-110 transition-transform" />
+                            </button>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            {siteDetailUrl ? (
-                              <Link
-                                href={siteDetailUrl}
-                                className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-2.5 py-1 rounded transition"
-                              >
-                                <span>Detail Site</span>
-                                <ExternalLink size={12} />
-                              </Link>
+                            {site.mac && !site.mac.startsWith("MANUAL_") ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Link
+                                  href={`/monitoring/${isDesa ? "desa" : "opd"}/traffic/${encodeURIComponent(site.mac)}`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2.5 py-1 rounded transition"
+                                  title="Lihat Traffic Per Site"
+                                >
+                                  <Activity size={12} />
+                                  <span>Traffic Site</span>
+                                </Link>
+                                <Link
+                                  href={`/sites/${isDesa ? "desa" : "opd"}/${encodeURIComponent(site.mac)}`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-2.5 py-1 rounded transition"
+                                  title="Lihat Detail Informasional Site"
+                                >
+                                  <span>Detail Site</span>
+                                  <ExternalLink size={12} />
+                                </Link>
+                              </div>
                             ) : (
                               <span className="text-[10px] text-slate-500 italic">
                                 Perangkat manual
@@ -712,6 +770,172 @@ export default function SitesReportDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Case Details Modal */}
+          {selectedSiteForCases && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                {/* Modal Header */}
+                <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-950/40">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                          selectedSiteForCases.type === "PPPOE"
+                            ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                            : "bg-slate-800 text-slate-300 border-slate-700"
+                        }`}
+                      >
+                        {selectedSiteForCases.type === "PPPOE" ? "OPD" : "Desa"}
+                      </span>
+                      <span className="text-xs text-slate-400">Rincian Laporan Kasus</span>
+                    </div>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                      <Building className="text-blue-400" size={20} />
+                      <span>{selectedSiteForCases.name}</span>
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-semibold rounded-lg">
+                      {selectedSiteForCases.count} Total Laporan
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedSiteForCases(null);
+                        setModalSearchTerm("");
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+                      title="Tutup Modal"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Filter / Action Bar */}
+                <div className="px-4 sm:px-5 py-3 border-b border-slate-800/80 bg-slate-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari issue atau tindakan..."
+                      value={modalSearchTerm}
+                      onChange={(e) => setModalSearchTerm(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  {selectedSiteForCases.mac && !selectedSiteForCases.mac.startsWith("MANUAL_") && (
+                    <Link
+                      href={`/monitoring/${selectedSiteForCases.type === "L2TP" ? "desa" : "opd"}/traffic/${encodeURIComponent(selectedSiteForCases.mac)}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium transition cursor-pointer w-fit"
+                    >
+                      <Activity size={13} />
+                      <span>Lihat Traffic Site</span>
+                    </Link>
+                  )}
+                </div>
+
+                {/* Modal Body / Table Content */}
+                <div className="p-4 sm:p-5 overflow-y-auto flex-1">
+                  {(!selectedSiteForCases.reports || selectedSiteForCases.reports.length === 0) ? (
+                    <div className="py-12 text-center text-slate-500 text-xs">
+                      Tidak ada detail rincian laporan pada periode ini.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-[11px] uppercase font-semibold tracking-wider">
+                            <th className="py-2.5 px-3 w-10 text-center">No</th>
+                            <th className="py-2.5 px-3">Jam Offline</th>
+                            <th className="py-2.5 px-3">Jam Online Kembali</th>
+                            <th className="py-2.5 px-3 text-center">Status</th>
+                            <th className="py-2.5 px-3">Issue / Kendala</th>
+                            <th className="py-2.5 px-3">Tindakan / Penanganan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 text-xs">
+                          {selectedSiteForCases.reports
+                            .filter((r) => {
+                              if (!modalSearchTerm) return true;
+                              const q = modalSearchTerm.toLowerCase();
+                              return (
+                                (r.issue && r.issue.toLowerCase().includes(q)) ||
+                                (r.tindakan && r.tindakan.toLowerCase().includes(q)) ||
+                                (r.report_date && r.report_date.includes(q))
+                              );
+                            })
+                            .map((rep, idx) => (
+                              <tr key={rep.id || idx} className="hover:bg-slate-800/40 transition">
+                                <td className="py-3 px-3 text-center font-medium text-slate-500">
+                                  {idx + 1}
+                                </td>
+                                <td className="py-3 px-3 font-mono text-slate-200">
+                                  {formatTimeWIB(rep.offline_since)}
+                                </td>
+                                <td className="py-3 px-3 font-mono text-slate-300">
+                                  {formatTimeWIB(rep.online_since)}
+                                </td>
+                                <td className="py-3 px-3 text-center">
+                                  <span
+                                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded border ${
+                                      rep.status_progress === "Progress"
+                                        ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                                        : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                                    }`}
+                                  >
+                                    {rep.status_progress === "Progress" ? (
+                                      <Clock size={10} />
+                                    ) : (
+                                      <CheckCircle2 size={10} />
+                                    )}
+                                    <span>{rep.status_progress || "Progress"}</span>
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span className="text-slate-200 font-medium whitespace-pre-wrap">
+                                    {rep.issue || "Belum diisi"}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span className="text-slate-300 whitespace-pre-wrap">
+                                    {rep.tindakan || "-"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 border-t border-slate-800 bg-slate-950/40 flex items-center justify-between gap-4 text-xs text-slate-400">
+                  <span>Rincian data diambil dari Kelola Laporan.</span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/report"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition"
+                    >
+                      Buka Kelola Laporan
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setSelectedSiteForCases(null);
+                        setModalSearchTerm("");
+                      }}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
