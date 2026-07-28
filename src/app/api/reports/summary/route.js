@@ -192,9 +192,26 @@ export async function GET(request) {
         : (typeMap[r.ruijie_mac] || 'Unknown');
 
       if (!deviceDetailsMap[name]) {
-        deviceDetailsMap[name] = { name, count: 0, type, mac: r.ruijie_mac || '' };
+        deviceDetailsMap[name] = { name, count: 0, type, mac: r.ruijie_mac || '', reports: [] };
       }
       deviceDetailsMap[name].count++;
+      deviceDetailsMap[name].reports.push({
+        id: r.id,
+        report_date: r.report_date,
+        kecamatan: r.kecamatan,
+        desa: r.desa,
+        dinas: r.dinas,
+        lokasi: r.lokasi,
+        offline_since: r.offline_since,
+        online_since: r.online_since,
+        status_progress: r.status_progress || 'Progress',
+        issue: r.issue || 'Belum diisi',
+        tindakan: r.tindakan || '-',
+      });
+    });
+
+    Object.values(deviceDetailsMap).forEach(dev => {
+      dev.reports.sort((a, b) => new Date(b.offline_since || b.report_date || 0) - new Date(a.offline_since || a.report_date || 0));
     });
 
     const allDevices = Object.values(deviceDetailsMap).sort((a, b) => b.count - a.count);
