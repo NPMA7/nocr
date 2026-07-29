@@ -2175,9 +2175,12 @@ function TopologyContent() {
                             {mData && (
                               <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-col gap-1.5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-slate-400 text-[10px] uppercase tracking-wider">
-                                    Status Ruijie
-                                  </span>
+                                  <div className="flex flex-col">
+                                    <span className="text-slate-400 text-[10px] uppercase tracking-wider">
+                                      Status Ruijie {mData.ruijie_mac || "-"} :
+                                    </span>
+                                  
+                                  </div>
                                   <span
                                     className={`text-[10px] font-bold ${mData.status_ruijie === "Online" ? "text-emerald-400" : mData.status_ruijie === "Offline" ? "text-red-500" : "text-slate-500"}`}
                                   >
@@ -2189,9 +2192,11 @@ function TopologyContent() {
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-slate-400 text-[10px] uppercase tracking-wider">
-                                    Status Mikrotik
-                                  </span>
+                                  <div className="flex flex-col">
+                                    <span className="text-slate-400 text-[10px] uppercase tracking-wider">
+                                      Status Mikrotik {mData.remote_address || "-"} :
+                                    </span>
+                                  </div>
                                   <span
                                     className={`text-[10px] font-bold ${mData.status_mikrotik === "Online" ? "text-emerald-400" : mData.status_mikrotik === "Offline" ? "text-red-500" : "text-slate-500"}`}
                                   >

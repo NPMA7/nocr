@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Search,
   AlertTriangle,
+  CheckCircle2,
   Link as LinkIcon,
   Unlink,
   X,
@@ -172,7 +173,7 @@ export default function MonitorDevice() {
           return false;
         if (filterStatus === "OFFLINE" && d.final_status !== "Offline")
           return false;
-        if (filterStatus === "ISSUE" && !d.issue) return false;
+        if (filterStatus === "ISSUE" && (!d.issue || d.issue === "Normal")) return false;
       }
 
       return true;
@@ -195,7 +196,7 @@ export default function MonitorDevice() {
   const totalMikrotikOffline = mergedDevices.filter(
     (d) => d.status_mikrotik === "Offline",
   ).length;
-  const totalIssues = mergedDevices.filter((d) => d.issue).length;
+  const totalIssues = mergedDevices.filter((d) => d.issue && d.issue !== "Normal").length;
 
   const handleOpenModal = (device) => {
     setSelectedAp({
@@ -520,13 +521,13 @@ export default function MonitorDevice() {
 
                       <div className="flex justify-between items-center gap-2 mt-1">
                         <div className="flex flex-col gap-1.5">
-                          {d.issue ? (
+                          {d.issue && d.issue !== "Normal" ? (
                             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-orange-400 bg-orange-400/10 px-2 py-1 rounded-md border border-orange-400/20 w-max">
                               <AlertTriangle size={12} /> {d.issue}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md border border-emerald-400/20 w-max">
-                              <Wifi size={12} /> Normal
+                              <CheckCircle2 size={12} /> {d.issue || "Normal"}
                             </span>
                           )}
                         </div>
@@ -673,12 +674,14 @@ export default function MonitorDevice() {
                             {getSourceStatus(d.status_mikrotik)}
                           </td>
                           <td className="px-4 py-3">
-                            {d.issue ? (
+                            {d.issue && d.issue !== "Normal" ? (
                               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-orange-400 bg-orange-400/10 px-2 py-1 rounded-md border border-orange-400/20">
                                 <AlertTriangle size={12} /> {d.issue}
                               </span>
                             ) : (
-                              <span className="text-slate-500 text-xs">-</span>
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md border border-emerald-400/20">
+                                <CheckCircle2 size={12} /> {d.issue || "Normal"}
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">

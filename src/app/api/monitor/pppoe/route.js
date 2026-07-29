@@ -61,9 +61,10 @@ export async function GET() {
       let finalStatus = 'Unknown';
       let issue = null;
       finalStatus = apStatus;
-      if (apStatus === 'Online' && mikrotikStatus === 'Offline') issue = 'Mikrotik Mati';
+      if (apStatus === 'Online' && mikrotikStatus === 'Offline') issue = 'Mikrotik Tidak Terhubung';
       else if (apStatus === 'Offline' && mikrotikStatus === 'Offline') issue = 'Semua Perangkat Mati';
-      else if (apStatus === 'Offline' && mikrotikStatus === 'Online') issue = 'Access Point Mati / Kecabut';
+      else if (apStatus === 'Offline' && mikrotikStatus === 'Online') issue = 'Access Point Tidak Terhubung';
+      else if (apStatus === 'Online' && mikrotikStatus === 'Online') issue = 'Normal';
 
       if (!secretName || secretName === '-') {
         issue = 'Belum ditautkan (Nama Tidak Cocok)';
