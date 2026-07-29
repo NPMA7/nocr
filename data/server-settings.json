@@ -12,7 +12,7 @@
     "Kabel Perangkat Dicabut",
     "Listrik Dimatikan"
   ],
-  "min_offline_duration_minutes": 10,
+  "min_offline_duration_minutes": 20,
   "ping_interval_seconds": 5,
   "ping_timeout_seconds": 15,
   "core_broadcast_interval_seconds": 10,

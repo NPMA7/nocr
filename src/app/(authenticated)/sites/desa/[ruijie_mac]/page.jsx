@@ -289,7 +289,7 @@ export default function SiteDetailPage() {
                     {data?.status_mikrotik}
                   </span>
                 </p>
-                {data?.issue && (
+                {data?.issue && data?.issue !== "Normal" && (
                   <p className="text-xs text-orange-400 mt-1">
                     Issue: {data.issue}
                   </p>
