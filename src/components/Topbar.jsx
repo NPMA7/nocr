@@ -323,7 +323,7 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
 
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-slate-200">
+              <span className="text-xs font-bold text-slate-200 uppercase">
                 {username}
               </span>
               <span
@@ -338,12 +338,10 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
                 {getRoleLabel(role)}
               </span>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-md">
+            <div className="w-9 h-9 rounded-full bg-slate-600/20 flex items-center justify-center font-bold text-slate-200 shadow-xl">
               {initials}
             </div>
           </div>
-
-          <div className="h-6 w-[1px] bg-slate-700/50"></div>
 
           <button
             onClick={handleLogout}
