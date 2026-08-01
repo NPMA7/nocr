@@ -27,6 +27,8 @@ import {
   getRoleLabel,
   isEditorRole,
 } from "@/lib/roles";
+import MikrotikStatCards from "@/components/device/mikrotik/MikrotikStatCards";
+import PPPoEUserModal from "@/components/device/mikrotik/PPPoEUserModal";
 
 const statusColor = (running, disabled) => {
   if (disabled === "true") return "bg-slate-600 text-slate-300";
@@ -599,68 +601,10 @@ export default function Mikrotik() {
       </div>
 
       {/* Core Status Card */}
-      {coreStatus && (
-        <div
-          className={`flex-shrink-0 rounded-xl border p-5 flex items-center gap-5 ${coreStatus.connected ? "bg-emerald-500/5 border-emerald-500/20" : "bg-red-500/5 border-red-500/20"}`}
-        >
-          <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${coreStatus.connected ? "bg-emerald-500/20" : "bg-red-500/20"}`}
-          >
-            {coreStatus.connected ? (
-              <Wifi size={22} className="text-emerald-400" />
-            ) : (
-              <WifiOff size={22} className="text-red-400" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-slate-100">
-                {coreStatus.device_name || "MikroTik Pusat"}
-              </span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full font-semibold ${coreStatus.connected ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}
-              >
-                {coreStatus.connected ? "Connected" : "Disconnected"}
-              </span>
-            </div>
-            {coreStatus.connected ? (
-              <div className="flex gap-6 mt-1.5 text-xs text-slate-400 flex-wrap">
-                <span>
-                  IP:{" "}
-                  <span className="text-slate-200">
-                    {coreStatus.ip_address}
-                  </span>
-                </span>
-                <span>
-                  Uptime:{" "}
-                  <span className="text-slate-200">{coreStatus.uptime}</span>
-                </span>
-                <span>
-                  CPU: <span className="text-slate-200">{coreStatus.cpu}%</span>
-                </span>
-                <span>
-                  Board:{" "}
-                  <span className="text-slate-200">{coreStatus.board}</span>
-                </span>
-                <span>
-                  RouterOS:{" "}
-                  <span className="text-slate-200">{coreStatus.version}</span>
-                </span>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 mt-1">{coreStatus.error}</p>
-            )}
-          </div>
-          {notConfigured && (
-            <a
-              href="/settings"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex-shrink-0"
-            >
-              <Settings size={15} /> Konfigurasi
-            </a>
-          )}
-        </div>
-      )}
+      <MikrotikStatCards
+        coreStatus={coreStatus}
+        notConfigured={notConfigured}
+      />
 
       {/* Tab Switcher */}
       <div className="flex-shrink-0 flex flex-wrap gap-1.5 w-full">
@@ -1332,174 +1276,19 @@ export default function Mikrotik() {
       )}
 
       {/* ===== Modal: Add/Edit Secret ===== */}
-      {showAddSecret && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[1001] p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md max-h-[min(90dvh,100%)] my-auto flex flex-col overflow-hidden shadow-2xl">
-            <div className="flex-shrink-0 p-4 border-b border-slate-700/50 flex justify-between items-center">
-              <h3 className="cursor-pointer font-bold text-slate-100 flex items-center gap-2">
-                <UserPlus size={18} className="text-blue-400" />
-                {editingSecret
-                  ? `Edit Pelanggan: ${editingSecret.name}`
-                  : "Tambah PPPoE Pelanggan"}
-              </h3>
-              <button
-                onClick={() => setShowAddSecret(false)}
-                className="cursor-pointer text-slate-400 hover:text-white transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <form
-              onSubmit={handleSaveSecret}
-              className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 flex flex-col gap-4"
-            >
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">
-                  Username PPPoE
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={secretForm.name}
-                  onChange={(e) =>
-                    setSecretForm({ ...secretForm, name: e.target.value })
-                  }
-                  placeholder="Contoh: pelanggan_budi"
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required={!editingSecret}
-                    value={secretForm.password}
-                    onChange={(e) =>
-                      setSecretForm({ ...secretForm, password: e.target.value })
-                    }
-                    placeholder={
-                      editingSecret
-                        ? "Kosongkan jika tidak diubah"
-                        : "Masukkan password pelanggan"
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 pr-10 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">
-                  Profile
-                </label>
-                <div className="flex flex-col gap-2">
-                  <select
-                    value={isCustomProfile ? "__custom__" : secretForm.profile}
-                    onChange={(e) => {
-                      if (e.target.value === "__custom__") {
-                        setIsCustomProfile(true);
-                      } else {
-                        setIsCustomProfile(false);
-                        setSecretForm({ ...secretForm, profile: e.target.value });
-                      }
-                    }}
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full cursor-pointer"
-                  >
-                    {availableProfilesList.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                    <option value="__custom__">-- Input Profile Custom --</option>
-                  </select>
-                  {isCustomProfile && (
-                    <input
-                      type="text"
-                      required
-                      value={secretForm.profile}
-                      onChange={(e) =>
-                        setSecretForm({ ...secretForm, profile: e.target.value })
-                      }
-                      placeholder="Ketik nama profile MikroTik persis..."
-                      className="bg-slate-900 border border-blue-500 rounded-lg p-2.5 text-xs text-slate-100 outline-none w-full"
-                    />
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  *Pilih profile yang tersedia di MikroTik atau ketik nama profile yang persis sama.
-                </p>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">
-                  Service
-                </label>
-                <select
-                  value={secretForm.service}
-                  onChange={(e) =>
-                    setSecretForm({ ...secretForm, service: e.target.value })
-                  }
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
-                >
-                  <option value="pppoe">pppoe</option>
-                  <option value="any">any</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">
-                  Local Address
-                </label>
-                <input
-                  type="text"
-                  value={secretForm.localAddress}
-                  onChange={(e) =>
-                    setSecretForm({ ...secretForm, localAddress: e.target.value })
-                  }
-                  placeholder="Contoh: 10.16.25.1 (Opsional)"
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">
-                  Remote Address
-                </label>
-                <input
-                  type="text"
-                  value={secretForm.remoteAddress}
-                  onChange={(e) =>
-                    setSecretForm({ ...secretForm, remoteAddress: e.target.value })
-                  }
-                  placeholder="Contoh: 10.16.25.20 (Opsional)"
-                  className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
-                />
-              </div>
-              <div className="flex gap-3 justify-end mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddSecret(false)}
-                  className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-xs font-semibold transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2"
-                >
-                  <Check size={15} />{" "}
-                  {editingSecret ? "Simpan Perubahan" : "Tambah Pelanggan"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <PPPoEUserModal
+        showAddSecret={showAddSecret}
+        setShowAddSecret={setShowAddSecret}
+        editingSecret={editingSecret}
+        secretForm={secretForm}
+        setSecretForm={setSecretForm}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        availableProfilesList={availableProfilesList}
+        isCustomProfile={isCustomProfile}
+        setIsCustomProfile={setIsCustomProfile}
+        handleSaveSecret={handleSaveSecret}
+      />
 
       {/* ===== Modal: Add/Edit Interface ===== */}
       {showAddInterface && (

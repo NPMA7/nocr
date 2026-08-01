@@ -113,7 +113,7 @@ export const PRESET_THEMES = [
 ];
 
 export function getStoredThemeConfig() {
-  if (typeof window === "undefined") return PRESET_THEMES[1];
+  if (typeof window === "undefined") return PRESET_THEMES[0];
   try {
     const raw = localStorage.getItem("nocr_custom_theme");
     if (raw) {
@@ -122,7 +122,7 @@ export function getStoredThemeConfig() {
   } catch (e) {
     console.error("Gagal membaca tema dari localStorage", e);
   }
-  return PRESET_THEMES[1];
+  return PRESET_THEMES[0];
 }
 
 export function applyThemeConfig(config) {
@@ -151,23 +151,23 @@ export function applyThemeConfig(config) {
     }
   }
 
-  // Set CSS Variables on root for dynamic custom color system
-  root.style.setProperty("--color-app-bg", config.bg || "#F6F5F4");
-  root.style.setProperty("--color-card-bg", config.card || "#FFFFFF");
+  // Set CSS Variables on root for dynamic custom color system (Default: Blue NOCR)
+  root.style.setProperty("--color-app-bg", config.bg || "#0F172A");
+  root.style.setProperty("--color-card-bg", config.card || "#1E293B");
   root.style.setProperty(
     "--color-header-bg",
-    config.header || config.card || "#FFFFFF",
+    config.header || config.card || "#1E293B",
   );
-  root.style.setProperty("--color-border-main", config.border || "#DFDCD9");
-  root.style.setProperty("--color-text-main", config.text || "#111111");
-  root.style.setProperty("--color-text-muted", config.muted || "#615D59");
-  root.style.setProperty("--color-primary", config.primary || "#097FE8");
-  root.style.setProperty("--color-success", config.success || "#1AAE39");
-  root.style.setProperty("--color-warning", config.warning || "#FFB110");
-  root.style.setProperty("--color-danger", config.danger || "#F64932");
-  root.style.setProperty("--color-purple", config.purple || "#AD6DED");
-  root.style.setProperty("--color-tag-opd", config.tagOpd || config.purple || "#AD6DED");
-  root.style.setProperty("--color-tag-desa", config.tagDesa || config.primary || "#097FE8");
+  root.style.setProperty("--color-border-main", config.border || "#334155");
+  root.style.setProperty("--color-text-main", config.text || "#F8FAFC");
+  root.style.setProperty("--color-text-muted", config.muted || "#94A3B8");
+  root.style.setProperty("--color-primary", config.primary || "#3B82F6");
+  root.style.setProperty("--color-success", config.success || "#10B981");
+  root.style.setProperty("--color-warning", config.warning || "#F59E0B");
+  root.style.setProperty("--color-danger", config.danger || "#EF4444");
+  root.style.setProperty("--color-purple", config.purple || "#8B5CF6");
+  root.style.setProperty("--color-tag-opd", config.tagOpd || config.purple || "#A855F7");
+  root.style.setProperty("--color-tag-desa", config.tagDesa || config.primary || "#3B82F6");
 
   // Legacy fallback properties
   root.style.setProperty("--color-light-bg", config.bg || "#F6F5F4");

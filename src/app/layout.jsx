@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
                 try {
                   var raw = localStorage.getItem('nocr_custom_theme');
                   var theme = raw ? JSON.parse(raw) : null;
-                  var mode = localStorage.getItem('nocr_theme') || (theme ? theme.category : 'light');
+                  var mode = localStorage.getItem('nocr_theme') || (theme ? theme.category : 'dark');
                   if (mode === 'light') {
                     document.documentElement.classList.add('light');
                     document.documentElement.setAttribute('data-theme', 'light');
@@ -38,19 +38,19 @@ export default function RootLayout({ children }) {
                     document.documentElement.setAttribute('data-theme', 'dark');
                   }
                   if (theme) {
-                    document.documentElement.style.setProperty('--color-app-bg', theme.bg || '#F6F5F4');
-                    document.documentElement.style.setProperty('--color-card-bg', theme.card || '#FFFFFF');
-                    document.documentElement.style.setProperty('--color-header-bg', theme.header || theme.card || '#FFFFFF');
-                    document.documentElement.style.setProperty('--color-border-main', theme.border || '#DFDCD9');
-                    document.documentElement.style.setProperty('--color-text-main', theme.text || '#111111');
-                    document.documentElement.style.setProperty('--color-text-muted', theme.muted || '#615D59');
-                    document.documentElement.style.setProperty('--color-primary', theme.primary || '#097FE8');
-                    document.documentElement.style.setProperty('--color-success', theme.success || '#1AAE39');
-                    document.documentElement.style.setProperty('--color-warning', theme.warning || '#FFB110');
-                    document.documentElement.style.setProperty('--color-danger', theme.danger || '#F64932');
-                    document.documentElement.style.setProperty('--color-purple', theme.purple || '#AD6DED');
-                    document.documentElement.style.setProperty('--color-tag-opd', theme.tagOpd || theme.purple || '#AD6DED');
-                    document.documentElement.style.setProperty('--color-tag-desa', theme.tagDesa || theme.primary || '#097FE8');
+                    document.documentElement.style.setProperty('--color-app-bg', theme.bg || '#0F172A');
+                    document.documentElement.style.setProperty('--color-card-bg', theme.card || '#1E293B');
+                    document.documentElement.style.setProperty('--color-header-bg', theme.header || theme.card || '#1E293B');
+                    document.documentElement.style.setProperty('--color-border-main', theme.border || '#334155');
+                    document.documentElement.style.setProperty('--color-text-main', theme.text || '#F8FAFC');
+                    document.documentElement.style.setProperty('--color-text-muted', theme.muted || '#94A3B8');
+                    document.documentElement.style.setProperty('--color-primary', theme.primary || '#3B82F6');
+                    document.documentElement.style.setProperty('--color-success', theme.success || '#10B981');
+                    document.documentElement.style.setProperty('--color-warning', theme.warning || '#F59E0B');
+                    document.documentElement.style.setProperty('--color-danger', theme.danger || '#EF4444');
+                    document.documentElement.style.setProperty('--color-purple', theme.purple || '#8B5CF6');
+                    document.documentElement.style.setProperty('--color-tag-opd', theme.tagOpd || theme.purple || '#A855F7');
+                    document.documentElement.style.setProperty('--color-tag-desa', theme.tagDesa || theme.primary || '#3B82F6');
                   }
                 } catch(e) {}
               })();
