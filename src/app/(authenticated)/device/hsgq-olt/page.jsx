@@ -646,7 +646,7 @@ export default function HsgqOltPage() {
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <Server size={24} className="text-purple-400" />
+            <Server size={24} className="text-blue-500 dark:text-blue-400" />
             HSGQ OLT
           </h1>
           <p className="text-xs text-slate-400 mt-1">

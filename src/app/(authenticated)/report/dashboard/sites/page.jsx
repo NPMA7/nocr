@@ -189,9 +189,10 @@ export default function SitesReportDetailPage() {
 
       {/* Filter Bar */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col gap-4 shadow-sm">
+        {/* Top Row: Category Type Toggle & Range Selector */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* Connection Type Tabs */}
-          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+          {/* Category Type Toggle */}
+          <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
             {[
               { id: "ALL", label: "Semua Kategori" },
               { id: "L2TP", label: "Desa" },
@@ -200,10 +201,14 @@ export default function SitesReportDetailPage() {
               <button
                 key={t.id}
                 onClick={() => setType(t.id)}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                   type === t.id
-                    ? "bg-blue-600 text-white shadow"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                    ? t.id === "PPPOE"
+                      ? "tag-opd shadow"
+                      : t.id === "L2TP"
+                      ? "tag-desa shadow"
+                      : "bg-blue-600 text-white shadow"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
               >
                 {t.label}
@@ -213,7 +218,7 @@ export default function SitesReportDetailPage() {
 
           {/* Date Range Options */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+            <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
               {[
                 { id: "7d", label: "7 Hari" },
                 { id: "1m", label: "1 Bulan" },
@@ -224,10 +229,10 @@ export default function SitesReportDetailPage() {
                 <button
                   key={r.id}
                   onClick={() => setRange(r.id)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                     range === r.id
-                      ? "bg-slate-700 text-white shadow"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                      ? "bg-blue-600 text-white shadow"
+                      : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   {r.label}
@@ -332,10 +337,10 @@ export default function SitesReportDetailPage() {
 
               <div className="flex items-center gap-3 flex-wrap">
                 {/* View Mode Toggle Switcher */}
-                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-lg border border-slate-700/50 text-xs">
                   <button
                     onClick={() => setChartViewMode("column")}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded transition cursor-pointer font-medium ${
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded transition cursor-pointer font-semibold ${
                       chartViewMode === "column"
                         ? "bg-blue-600 text-white shadow"
                         : "text-slate-400 hover:text-slate-200"
@@ -347,7 +352,7 @@ export default function SitesReportDetailPage() {
 
                   <button
                     onClick={() => setChartViewMode("heatmap")}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded transition cursor-pointer font-medium ${
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded transition cursor-pointer font-semibold ${
                       chartViewMode === "heatmap"
                         ? "bg-blue-600 text-white shadow"
                         : "text-slate-400 hover:text-slate-200"
@@ -365,7 +370,7 @@ export default function SitesReportDetailPage() {
                     <select
                       value={chartLimit}
                       onChange={(e) => setChartLimit(e.target.value === "all" ? "all" : Number(e.target.value))}
-                      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 focus:outline-none focus:border-blue-500 text-xs cursor-pointer"
+                      className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-100 focus:outline-none focus:border-blue-500 text-xs cursor-pointer"
                     >
                       <option value={10}>Top 10 Sites</option>
                       <option value={15}>Top 15 Sites</option>
@@ -417,14 +422,29 @@ export default function SitesReportDetailPage() {
                             </div>
 
                             {/* Hover Tooltip Card */}
-                            <div className="absolute bottom-full mb-6 bg-slate-950/95 border border-blue-500/30 text-[11px] text-slate-200 rounded-xl px-3 py-2 opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-0.5">
-                              <div className="font-bold text-slate-100">{site.name}</div>
-                              <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                                <span>{site.type === "PPPOE" ? "OPD" : "Desa"}</span>
-                                <span>•</span>
-                                <span className="text-blue-300 font-semibold">{site.count} Laporan ({percentage}%)</span>
+                            <div
+                              className="absolute bottom-full mb-6 text-[11px] rounded-xl px-3.5 py-2.5 opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-40 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-1 border"
+                              style={{
+                                backgroundColor: "var(--color-card-bg, #1E293B)",
+                                borderColor: "var(--color-border-main, #334155)",
+                                color: "var(--color-text-main, #F8FAFC)",
+                              }}
+                            >
+                              <div className="font-extrabold text-xs tracking-wide" style={{ color: "var(--color-text-main, #F8FAFC)" }}>
+                                {site.name}
                               </div>
-                              <div className="text-[9px] text-blue-400 mt-0.5">Klik untuk rincian kasus</div>
+                              <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--color-text-muted, #94A3B8)" }}>
+                                <span className={`px-1 py-0.2 rounded font-bold ${site.type === "PPPOE" ? "tag-opd" : "tag-desa"}`}>
+                                  {site.type === "PPPOE" ? "OPD" : "Desa"}
+                                </span>
+                                <span>•</span>
+                                <span className="font-bold" style={{ color: "var(--color-text-main, #F8FAFC)" }}>
+                                  {site.count} Laporan ({percentage}%)
+                                </span>
+                              </div>
+                              <div className="text-[9px] font-bold mt-0.5" style={{ color: "var(--color-primary, #097FE8)" }}>
+                                Klik untuk rincian kasus
+                              </div>
                             </div>
                           </div>
                         );
@@ -459,18 +479,18 @@ export default function SitesReportDetailPage() {
             {chartViewMode === "heatmap" && (
               <div className="flex flex-col gap-4">
                 {/* Heatmap Legend */}
-                <div className="flex items-center justify-between flex-wrap gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800 text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">Intensitas Frekuensi Kasus:</span>
+                <div className="flex items-center justify-between flex-wrap gap-3 bg-slate-800/40 p-3 rounded-lg border border-slate-700/60 text-xs text-slate-300 dark:text-slate-200">
+                  <span className="font-bold text-slate-200">Intensitas Frekuensi Kasus:</span>
                   <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded bg-blue-600 border border-blue-400"></span>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <span className="w-3 h-3 rounded bg-blue-600 border border-blue-500 shadow-xs"></span>
                       <span>Tinggi (≥5 Kasus)</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded bg-blue-900/80 border border-blue-700"></span>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <span className="w-3 h-3 rounded bg-blue-500/30 border border-blue-500/50"></span>
                       <span>Sedang (3-4 Kasus)</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 font-medium">
                       <span className="w-3 h-3 rounded bg-slate-800 border border-slate-700"></span>
                       <span>Rendah (1-2 Kasus)</span>
                     </div>
@@ -482,7 +502,7 @@ export default function SitesReportDetailPage() {
                     Tidak ada data laporan gangguan pada periode ini
                   </div>
                 ) : (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-2 max-h-[500px] overflow-y-auto p-2 pb-20">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 max-h-[500px] overflow-y-auto p-2 pb-20">
                     {allDevices.map((site, idx) => {
                       const count = site.count;
                       const percentage = totalReportsCount > 0 ? ((count / totalReportsCount) * 100).toFixed(1) : "0.0";
@@ -495,10 +515,10 @@ export default function SitesReportDetailPage() {
                           onClick={() => setSelectedSiteForCases(site)}
                           className={`relative p-2.5 rounded-lg border transition-all cursor-pointer group flex flex-col justify-between h-16 group-hover:z-30 ${
                             isHigh
-                              ? "bg-blue-600/90 border-blue-400 text-white hover:bg-blue-500 shadow-md shadow-blue-600/20"
+                              ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20"
                               : isMedium
-                              ? "bg-blue-900/50 border-blue-700/80 text-blue-100 hover:bg-blue-800/80"
-                              : "bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:border-slate-700"
+                              ? "bg-blue-500/15 border-blue-500/30 text-blue-500 dark:text-blue-400 hover:bg-blue-500/25"
+                              : "bg-slate-800/60 border-slate-700/60 text-slate-300 dark:text-slate-200 hover:bg-slate-700/60"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-1">
@@ -510,39 +530,52 @@ export default function SitesReportDetailPage() {
                                 isHigh
                                   ? "bg-white text-blue-700 shadow-sm"
                                   : isMedium
-                                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                                  : "bg-slate-800 text-slate-400 border border-slate-700"
+                                  ? "bg-blue-500/20 text-blue-500 dark:text-blue-400 border border-blue-500/30"
+                                  : "bg-slate-800 text-slate-300 border border-slate-700"
                               }`}
                             >
                               {count}
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between text-[9px] text-slate-400 mt-1">
-                            <span className="truncate opacity-80">
+                          <div className="flex items-center justify-between text-[9px] mt-1">
+                            <span className={`px-1 py-0.2 rounded font-bold ${site.type === "PPPOE" ? "tag-opd" : "tag-desa"}`}>
                               {site.type === "PPPOE" ? "OPD" : "Desa"}
                             </span>
-                            <span className="font-semibold text-slate-300">
+                            <span className="font-semibold text-slate-300 dark:text-slate-300">
                               {percentage}%
                             </span>
                           </div>
 
                           {/* Hover Tooltip Popover (Always opens downwards into open space below card) */}
                           <div
-                            className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-blue-500/50 text-[11px] text-slate-200 rounded-xl px-3 py-2 opacity-0 group-hover:opacity-100 transition pointer-events-none z-40 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-0.5"
+                            className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 text-[11px] rounded-xl px-3.5 py-2.5 opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-40 whitespace-nowrap shadow-2xl backdrop-blur-md flex flex-col gap-1 border"
+                            style={{
+                              backgroundColor: "var(--color-card-bg, #1E293B)",
+                              borderColor: "var(--color-border-main, #334155)",
+                              color: "var(--color-text-main, #F8FAFC)",
+                            }}
                           >
-                            <div className="font-bold text-slate-100">{site.name}</div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                              <span>{site.type === "PPPOE" ? "OPD" : "Desa"}</span>
+                            <div className="font-extrabold text-xs tracking-wide" style={{ color: "var(--color-text-main, #F8FAFC)" }}>
+                              {site.name}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--color-text-muted, #94A3B8)" }}>
+                              <span className={`px-1 py-0.2 rounded font-bold ${site.type === "PPPOE" ? "tag-opd" : "tag-desa"}`}>
+                                {site.type === "PPPOE" ? "OPD" : "Desa"}
+                              </span>
                               <span>•</span>
-                              <span className="text-blue-300 font-semibold">{count} Laporan ({percentage}%)</span>
+                              <span className="font-bold" style={{ color: "var(--color-text-main, #F8FAFC)" }}>
+                                {count} Laporan ({percentage}%)
+                              </span>
                             </div>
                             {site.mac && (
-                              <div className="text-[9px] text-slate-500 font-mono">
+                              <div className="text-[9px] font-mono" style={{ color: "var(--color-text-muted, #94A3B8)" }}>
                                 MAC: {site.mac}
                               </div>
                             )}
-                            <div className="text-[9px] text-blue-400 mt-0.5">Klik kotak untuk rincian kasus</div>
+                            <div className="text-[9px] font-bold mt-0.5" style={{ color: "var(--color-primary, #097FE8)" }}>
+                              Klik kotak untuk rincian kasus
+                            </div>
                           </div>
                         </div>
                       );
@@ -578,7 +611,7 @@ export default function SitesReportDetailPage() {
                     placeholder="Cari nama site..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -592,7 +625,7 @@ export default function SitesReportDetailPage() {
                         e.target.value === "all" ? "all" : Number(e.target.value)
                       )
                     }
-                    className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500 text-xs cursor-pointer"
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-blue-500 text-xs cursor-pointer"
                   >
                     <option value={15}>15 Per Halaman</option>
                     <option value={50}>50 Per Halaman</option>
@@ -608,7 +641,7 @@ export default function SitesReportDetailPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-[11px] uppercase font-semibold tracking-wider">
+                  <tr className="border-b border-slate-700/60 bg-slate-800/80 text-slate-300 dark:text-slate-200 text-[11px] uppercase font-bold tracking-wider">
                     <th className="py-2.5 px-4 w-12 text-center">No</th>
                     <th className="py-2.5 px-4">Nama Site / Lokasi</th>
                     <th className="py-2.5 px-4">Kategori Tipe</th>
@@ -665,17 +698,17 @@ export default function SitesReportDetailPage() {
                             <span
                               className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
                                 site.type === "PPPOE"
-                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                  ? "tag-opd"
                                   : site.type === "L2TP"
-                                  ? "bg-slate-800 text-slate-300 border-slate-700"
+                                  ? "tag-desa"
                                   : "bg-slate-800 text-slate-400 border-slate-700"
                               }`}
                             >
                               {site.type === "PPPOE"
                                 ? "OPD"
                                 : site.type === "L2TP"
-                                ? "Desa"
-                                : "Unknown"}
+                                ? "DESA"
+                                : site.type}
                             </span>
                           </td>
                           <td className="py-3 px-4">
@@ -786,17 +819,15 @@ export default function SitesReportDetailPage() {
 
           {/* Case Details Modal */}
           {selectedSiteForCases && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+              <div className="bg-slate-900 border border-slate-700/80 rounded-2xl flex flex-col max-h-[85vh] w-full max-w-4xl shadow-2xl overflow-hidden">
                 {/* Modal Header */}
-                <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-950/40">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
+                <div className="p-4 sm:p-5 border-b border-slate-700/60 flex items-center justify-between gap-4 bg-slate-800/60">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
-                          selectedSiteForCases.type === "PPPOE"
-                            ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                            : "bg-slate-800 text-slate-300 border-slate-700"
+                          selectedSiteForCases.type === "PPPOE" ? "tag-opd" : "tag-desa"
                         }`}
                       >
                         {selectedSiteForCases.type === "PPPOE" ? "OPD" : "Desa"}
@@ -804,13 +835,13 @@ export default function SitesReportDetailPage() {
                       <span className="text-xs text-slate-400">Rincian Laporan Kasus</span>
                     </div>
                     <h2 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
-                      <Building className="text-blue-400" size={20} />
+                      <Building className="text-blue-500 dark:text-blue-400" size={20} />
                       <span>{selectedSiteForCases.name}</span>
                     </h2>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-semibold rounded-lg">
+                    <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500 dark:text-blue-400 text-xs font-bold rounded-lg">
                       {selectedSiteForCases.count} Total Laporan
                     </span>
                     <button
@@ -818,7 +849,7 @@ export default function SitesReportDetailPage() {
                         setSelectedSiteForCases(null);
                         setModalSearchTerm("");
                       }}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
                       title="Tutup Modal"
                     >
                       <X size={18} />
@@ -827,7 +858,7 @@ export default function SitesReportDetailPage() {
                 </div>
 
                 {/* Modal Filter / Action Bar */}
-                <div className="px-4 sm:px-5 py-3 border-b border-slate-800/80 bg-slate-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="px-4 sm:px-5 py-3 border-b border-slate-700/60 bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="relative flex-1 max-w-sm">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
@@ -835,14 +866,14 @@ export default function SitesReportDetailPage() {
                       placeholder="Cari issue atau tindakan..."
                       value={modalSearchTerm}
                       onChange={(e) => setModalSearchTerm(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
                   {selectedSiteForCases.mac && !selectedSiteForCases.mac.startsWith("MANUAL_") && (
                     <Link
                       href={`/monitoring/${selectedSiteForCases.type === "L2TP" ? "desa" : "opd"}/traffic/${encodeURIComponent(selectedSiteForCases.mac)}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium transition cursor-pointer w-fit"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-500 dark:text-blue-400 rounded-lg text-xs font-semibold transition cursor-pointer w-fit"
                     >
                       <Activity size={13} />
                       <span>Lihat Traffic Site</span>
@@ -860,7 +891,7 @@ export default function SitesReportDetailPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-[11px] uppercase font-semibold tracking-wider">
+                          <tr className="border-b border-slate-700/60 bg-slate-800/80 text-slate-300 dark:text-slate-200 text-[11px] uppercase font-bold tracking-wider">
                             <th className="py-2.5 px-3 w-10 text-center">No</th>
                             <th className="py-2.5 px-3">Jam Offline</th>
                             <th className="py-2.5 px-3">Jam Online Kembali</th>
@@ -926,12 +957,12 @@ export default function SitesReportDetailPage() {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="p-4 border-t border-slate-800 bg-slate-950/40 flex items-center justify-between gap-4 text-xs text-slate-400">
+                <div className="p-4 border-t border-slate-700/60 bg-slate-800/60 flex items-center justify-between gap-4 text-xs text-slate-300 dark:text-slate-200">
                   <span>Rincian data diambil dari Kelola Laporan.</span>
                   <div className="flex items-center gap-2">
                     <Link
                       href="/report"
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition"
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow transition"
                     >
                       Buka Kelola Laporan
                     </Link>
@@ -940,7 +971,7 @@ export default function SitesReportDetailPage() {
                         setSelectedSiteForCases(null);
                         setModalSearchTerm("");
                       }}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer"
+                      className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
                     >
                       Tutup
                     </button>

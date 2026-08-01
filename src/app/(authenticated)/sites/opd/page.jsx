@@ -239,7 +239,7 @@ function SitesListPage() {
                             <span className="font-bold text-slate-100 text-sm truncate">
                               {d.prefix || "—"}
                             </span>
-                            <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold bg-purple-500/10 text-purple-400 border-purple-500/20">
+                            <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold tag-opd">
                               OPD
                             </span>
                             {!d.has_site_profile && (
@@ -388,7 +388,7 @@ function SitesListPage() {
                               >
                                 {d.prefix || "—"}
                               </span>
-                              <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold bg-purple-500/10 text-purple-400 border-purple-500/20">
+                              <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold tag-opd">
                                 OPD
                               </span>
                             </div>

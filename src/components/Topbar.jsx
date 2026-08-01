@@ -9,12 +9,15 @@ import {
   ChevronRight,
   Volume2,
   VolumeX,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { API_URL, useAppState } from "@/App";
 import { normalizeRole, getRoleLabel, getStoredUser } from "@/lib/roles";
+import { PRESET_THEMES, applyThemeConfig, getStoredThemeConfig } from "@/lib/themeEngine";
 
 export default function Topbar({ onMenuClick, isSidebarOpen }) {
   const { sessionUser, lastSyncTime, alerts, alarmEnabled, setAlarmEnabled, markAlertsRead, testAlarm } = useAppState();
@@ -46,6 +49,33 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const notificationRef = useRef(null);
+
+  // Theme Toggle State
+  const [theme, setTheme] = useState("dark");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const config = getStoredThemeConfig();
+      const currentMode = config.category || (localStorage.getItem("nocr_theme") || "dark");
+      setTheme(currentMode);
+      applyThemeConfig(config);
+
+      const handleThemeChanged = (e) => {
+        if (e.detail) {
+          setTheme(e.detail.category || "dark");
+        }
+      };
+      window.addEventListener("nocr-theme-changed", handleThemeChanged);
+      return () => window.removeEventListener("nocr-theme-changed", handleThemeChanged);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextMode = theme === "dark" ? "light" : "dark";
+    setTheme(nextMode);
+    const targetPreset = nextMode === "light" ? PRESET_THEMES[0] : PRESET_THEMES[1];
+    applyThemeConfig(targetPreset);
+  };
 
   // Unread count = alerts with isRead: false
   const unreadCount = (alerts || []).filter((a) => !a.isRead).length;
@@ -211,27 +241,10 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
               >
                 {alarmEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </button>
-
-              {/* Alarm Test Button */}
-              {/* <button
-                onClick={() => {
-                  if (!testAlarm || isTesting) return;
-                  setIsTesting(true);
-                  testAlarm();
-                  setTimeout(() => setIsTesting(false), 1200);
-                }}
-                title="Test suara alarm offline"
-                disabled={isTesting}
-                className={`cursor-pointer text-[10px] font-bold px-2 py-1 rounded-md border transition ${
-                  isTesting
-                    ? "bg-amber-500/20 border-amber-500/40 text-amber-300 animate-pulse"
-                    : "bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500 hover:bg-slate-700"
-                }`}
-              >
-                {isTesting ? "▶ ···" : "▶ Test"}
-              </button> */}
             </>
           )}
+
+          {/* Notification Bell */}
 
           <div
             ref={notificationRef}

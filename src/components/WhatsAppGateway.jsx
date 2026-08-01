@@ -115,7 +115,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
   return (
     <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
       <div className="p-5 border-b border-slate-700/50">
-        <h2 className="text-base font-bold text-emerald-400 flex items-center gap-2">
+        <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
           <MessageCircle size={20} /> WhatsApp Gateway & Omni
         </h2>
         <p className="text-xs text-slate-400 mt-1">
@@ -127,7 +127,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
       <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Status Area */}
         <div className="flex flex-col gap-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 shadow-inner">
+          <div className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 shadow-inner">
             <h3 className="text-xs font-bold text-slate-300 mb-4">
               Status Koneksi
             </h3>
@@ -173,7 +173,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
                 <button
                   onClick={() => performAction("start")}
                   disabled={loading}
-                  className="cursor-pointer flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                  className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow disabled:opacity-50"
                 >
                   <Play size={16} /> Mulai Gateway
                 </button>
@@ -184,7 +184,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
                 <button
                   onClick={() => performAction("stop")}
                   disabled={loading}
-                  className="cursor-pointer flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                  className="cursor-pointer flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded-lg text-xs font-semibold transition disabled:opacity-50"
                 >
                   <Square size={16} /> Hentikan Klien
                 </button>
@@ -214,7 +214,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
         <div className="flex flex-col gap-4">
           <form
             onSubmit={saveSettings}
-            className="bg-slate-900 border border-slate-700 rounded-xl p-5 shadow-inner flex flex-col gap-4 h-full"
+            className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 shadow-inner flex flex-col gap-4 h-full"
           >
             <h3 className="text-xs font-bold text-slate-300 border-b border-slate-700/50 pb-2">
               Pengaturan Bot
@@ -230,7 +230,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
                   onChange={(e) => canUpdate && handleToggle("botEnabled", e.target.checked)}
                 />
                 <div
-                  className={`block w-10 h-6 rounded-full transition ${settings.botEnabled ? "bg-emerald-500" : "bg-slate-600"} ${!canUpdate ? "opacity-50" : ""}`}
+                  className={`block w-10 h-6 rounded-full transition ${settings.botEnabled ? "bg-blue-600" : "bg-slate-600"} ${!canUpdate ? "opacity-50" : ""}`}
                 ></div>
                 <div
                   className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${settings.botEnabled ? "transform translate-x-4" : ""}`}
@@ -256,7 +256,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
                   onChange={(e) => canUpdate && handleToggle("autoReply", e.target.checked)}
                 />
                 <div
-                  className={`block w-10 h-6 rounded-full transition ${settings.autoReply ? "bg-emerald-500" : "bg-slate-600"} ${!canUpdate ? "opacity-50" : ""}`}
+                  className={`block w-10 h-6 rounded-full transition ${settings.autoReply ? "bg-blue-600" : "bg-slate-600"} ${!canUpdate ? "opacity-50" : ""}`}
                 ></div>
                 <div
                   className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${settings.autoReply ? "transform translate-x-4" : ""}`}
@@ -276,7 +276,7 @@ export default function WhatsAppGateway({ canCreate = true, canUpdate = true, ca
               {canUpdate ? (
                 <button
                   type="submit"
-                  className="cursor-pointer w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg text-xs transition shadow-lg shadow-blue-500/20"
+                  className="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-xs transition shadow-lg shadow-blue-500/20"
                 >
                   Simpan Pengaturan
                 </button>

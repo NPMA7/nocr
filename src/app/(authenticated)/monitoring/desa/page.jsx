@@ -327,7 +327,7 @@ export default function MonitorDevice() {
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <Monitor size={24} className="text-blue-400" />
+            <Monitor size={24} className="text-blue-500 dark:text-blue-400" />
             Monitor Perangkat Desa
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -485,8 +485,8 @@ export default function MonitorDevice() {
                             <span className="font-bold text-slate-100 text-sm truncate">
                               {d.prefix || "-"}
                             </span>
-                            <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">
-                              Prefix
+                            <span className="text-[10px] tag-desa px-1.5 py-0.5 rounded border font-semibold">
+                              Desa
                             </span>
                           </div>
                           <div className="flex flex-col gap-1.5">

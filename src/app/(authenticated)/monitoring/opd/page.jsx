@@ -36,7 +36,7 @@ function MikrotikAliasCell({
     <div className={`flex flex-col group/mikrotik min-w-0 ${className}`}>
       <div className="flex items-center gap-2">
         <span
-          className={`font-mono truncate  ${device.is_manual ? "text-purple-400" : "text-slate-200"}`}
+          className={`font-mono truncate  ${device.is_manual ? "text-blue-500 dark:text-blue-400 font-semibold" : "text-slate-200"}`}
           title={device.mikrotik_alias}
         >
           {device.mikrotik_alias}
@@ -45,7 +45,7 @@ function MikrotikAliasCell({
         {device.is_manual && (
           <span
             title="Tautan manual aktif"
-            className="flex-shrink-0 bg-purple-500/20 text-purple-400 p-1 rounded group-hover/mikrotik:opacity-0 transition-opacity"
+            className="flex-shrink-0 bg-blue-500/20 text-blue-500 dark:text-blue-400 p-1 rounded group-hover/mikrotik:opacity-0 transition-opacity"
           >
             <LinkIcon size={10} />
           </span>
@@ -64,7 +64,7 @@ function MikrotikAliasCell({
             <button
               type="button"
               onClick={() => onLink(device)}
-              className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 transition"
+              className="cursor-pointer flex-shrink-0 opacity-0 group-hover/mikrotik:opacity-100 p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 dark:text-blue-400 border border-blue-500/20 transition"
               title="Tautkan manual ke akun Mikrotik OPD"
             >
               <LinkIcon size={10} />
@@ -333,7 +333,7 @@ export default function MonitorPppoe() {
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <Monitor size={24} className="text-purple-400" />
+            <Monitor size={24} className="text-blue-500 dark:text-blue-400" />
             Monitor Perangkat OPD
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -344,7 +344,7 @@ export default function MonitorPppoe() {
           <button
             onClick={() => fetchData()}
             disabled={loading}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg bg-purple-600 hover:bg-purple-700 border border-purple-500 text-white shadow-purple-500/20"
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20"
           >
             {" "}
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
@@ -422,14 +422,14 @@ export default function MonitorPppoe() {
               placeholder="Cari Alias AP atau Mikrotik..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:border-purple-500 outline-none w-full"
+              className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full"
             />
           </div>
 
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-purple-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Semua Data</option>
             <option value="ONLINE">Hanya Online</option>
@@ -440,7 +440,7 @@ export default function MonitorPppoe() {
           <select
             value={timeMode}
             onChange={(e) => setTimeMode(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-purple-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="duration">Uptime</option>
             <option value="timestamp">Timestamp</option>
@@ -488,7 +488,7 @@ export default function MonitorPppoe() {
                             <span className="font-bold text-slate-100 text-sm truncate">
                               {d.prefix || "-"}
                             </span>
-                            <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/20">
+                            <span className="text-[10px] tag-opd px-1.5 py-0.5 rounded border font-semibold">
                               OPD
                             </span>
                           </div>
@@ -611,14 +611,14 @@ export default function MonitorPppoe() {
                                   onChange={(e) =>
                                     setEditPrefixValue(e.target.value)
                                   }
-                                  className="cursor-pointer bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-purple-500 w-full min-w-[150px]"
+                                  className="cursor-pointer bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500 w-full min-w-[150px]"
                                   autoFocus
                                   disabled={isSavingPrefix}
                                 />
                                 <button
                                   onClick={() => handleSavePrefix(d)}
                                   disabled={isSavingPrefix}
-                                  className="cursor-pointer p-1.5 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 rounded flex-shrink-0"
+                                  className="cursor-pointer p-1.5 bg-blue-500/20 text-blue-500 dark:text-blue-400 hover:bg-blue-500/30 rounded flex-shrink-0"
                                 >
                                   <Save size={14} />
                                 </button>
@@ -643,7 +643,7 @@ export default function MonitorPppoe() {
                                       setEditingPrefixMac(d.ruijie_mac);
                                       setEditPrefixValue(d.prefix || "");
                                     }}
-                                    className="cursor-pointer opacity-0 group-hover/prefix:opacity-100 p-1 text-slate-400 hover:text-purple-400 transition"
+                                    className="cursor-pointer opacity-0 group-hover/prefix:opacity-100 p-1 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition"
                                     title="Edit Prefix"
                                   >
                                     <Edit2 size={12} />
@@ -713,7 +713,7 @@ export default function MonitorPppoe() {
           <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80">
               <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                <LinkIcon size={16} className="text-purple-400" />
+                <LinkIcon size={16} className="text-blue-500 dark:text-blue-400" />
                 Tautkan Manual AP ke Mikrotik OPD
               </h3>
               <button
@@ -745,7 +745,7 @@ export default function MonitorPppoe() {
                 <select
                   value={selectedMikrotikName}
                   onChange={(e) => setSelectedMikrotikName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-100 focus:border-purple-500 outline-none"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
                 >
                   <option value="" disabled>
                     -- Pilih Akun --
@@ -780,7 +780,7 @@ export default function MonitorPppoe() {
               <button
                 onClick={handleSaveMapping}
                 disabled={isSaving || !selectedMikrotikName}
-                className="cursor-pointer px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <RefreshCw size={16} className="animate-spin" />

@@ -19,6 +19,7 @@ import {
   ChevronDown,
   User,
   Activity,
+  Palette,
 } from "lucide-react";
 
 import { useAppState } from "@/App";
@@ -79,7 +80,7 @@ export default function Sidebar({
   const getLinkClass = (href) => {
     const isActive =
       pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-    return `flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"} py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition duration-200 font-medium text-sm ${
+    return `flex items-center ${isCollapsed ? "justify-center px-2 w-full" : "gap-3 px-4 w-full"} py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition duration-200 font-medium text-sm ${
       isActive ? "bg-blue-600 text-white hover:bg-blue-700" : ""
     }`;
   };
@@ -105,7 +106,7 @@ export default function Sidebar({
           <img
             src="/logo.png"
             alt="NOCR Logo"
-            className="w-10 h-10 border-2 border-slate-600 rounded-full object-contain flex-shrink-0 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+            className="w-10 h-10 border-2 border-slate-600 rounded-full flex-shrink-0 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
           />
           {!isCollapsed && (
             <div>
@@ -222,7 +223,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         pathname.startsWith("/monitoring/opd")
-                          ? "text-emerald-400 bg-emerald-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -258,7 +259,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       pathname.startsWith("/monitoring/opd")
-                        ? "text-emerald-400 bg-emerald-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -309,7 +310,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         pathname.startsWith("/device/ruijie")
-                          ? "text-emerald-400 bg-emerald-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -339,7 +340,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         pathname.startsWith("/device/hsgq-olt")
-                          ? "text-purple-400 bg-purple-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -360,7 +361,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       pathname.startsWith("/device/ruijie")
-                        ? "text-emerald-400 bg-emerald-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -390,7 +391,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       pathname.startsWith("/device/hsgq-olt")
-                        ? "text-purple-400 bg-purple-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -647,7 +648,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         currentTab === "vpn"
-                          ? "text-emerald-400 bg-emerald-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -662,7 +663,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         currentTab === "health"
-                          ? "text-cyan-400 bg-cyan-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -677,7 +678,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         currentTab === "whatsapp"
-                          ? "text-green-400 bg-green-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -692,7 +693,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         currentTab === "users"
-                          ? "text-purple-400 bg-purple-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -707,7 +708,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         currentTab === "roles"
-                          ? "text-orange-400 bg-orange-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -722,7 +723,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         currentTab === "password"
-                          ? "text-yellow-400 bg-yellow-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -737,7 +738,7 @@ export default function Sidebar({
                       scroll={false}
                       className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                         currentTab === "system"
-                          ? "text-red-400 bg-red-500/10"
+                          ? "text-blue-400 bg-blue-500/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
@@ -745,6 +746,19 @@ export default function Sidebar({
                       <span>Konfigurasi Server</span>
                     </Link>
                   )}
+                  <Link
+                    href="/settings/design"
+                    onClick={onNavigate}
+                    scroll={false}
+                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                      currentTab === "design" || pathname === "/settings/design"
+                        ? "text-blue-400 bg-blue-500/10"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <Palette size={14} className="flex-shrink-0" />
+                    <span>Desain & Warna</span>
+                  </Link>
                 </div>
               </div>
             )}
@@ -773,7 +787,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       currentTab === "vpn"
-                        ? "text-emerald-400 bg-emerald-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -788,7 +802,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       currentTab === "health"
-                        ? "text-cyan-400 bg-cyan-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -803,7 +817,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       currentTab === "whatsapp"
-                        ? "text-green-400 bg-green-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -818,7 +832,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       currentTab === "users"
-                        ? "text-purple-400 bg-purple-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -833,7 +847,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       currentTab === "roles"
-                        ? "text-orange-400 bg-orange-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -848,7 +862,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       currentTab === "password"
-                        ? "text-yellow-400 bg-yellow-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -863,7 +877,7 @@ export default function Sidebar({
                     scroll={false}
                     className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
                       currentTab === "system"
-                        ? "text-red-400 bg-red-500/10"
+                        ? "text-blue-400 bg-blue-500/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
@@ -871,6 +885,19 @@ export default function Sidebar({
                     <span>Konfigurasi Server</span>
                   </Link>
                 )}
+                <Link
+                  href="/settings/design"
+                  onClick={onNavigate}
+                  scroll={false}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                    currentTab === "design" || pathname === "/settings/design"
+                      ? "text-blue-400 bg-blue-500/10"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  }`}
+                >
+                  <Palette size={14} className="flex-shrink-0 text-blue-400" />
+                  <span>Desain & Warna</span>
+                </Link>
               </div>
             )}
           </div>

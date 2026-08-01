@@ -751,7 +751,7 @@ export default function DailyReportDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-              <Activity className="text-blue-500 animate-pulse" size={24} />
+              <Activity className="text-blue-500 dark:text-blue-400 animate-pulse" size={24} />
               Dashboard Laporan Harian
             </h1>
             <p className="text-xs text-slate-400 mt-1">
@@ -792,7 +792,7 @@ export default function DailyReportDashboard() {
         {/* Bottom Row: Filters */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Connection Type Toggle */}
-          <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+          <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
             <button
               onClick={() => setType("ALL")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
@@ -807,7 +807,7 @@ export default function DailyReportDashboard() {
               onClick={() => setType("L2TP")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
                 type === "L2TP"
-                  ? "bg-blue-600 text-white shadow"
+                  ? "tag-desa shadow"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -817,7 +817,7 @@ export default function DailyReportDashboard() {
               onClick={() => setType("PPPOE")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
                 type === "PPPOE"
-                  ? "bg-blue-600 text-white shadow"
+                  ? "tag-opd shadow"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -826,12 +826,12 @@ export default function DailyReportDashboard() {
           </div>
 
           {/* Time Range Selector */}
-          <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+          <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
             <button
               onClick={() => setRange("7d")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
                 range === "7d"
-                  ? "bg-emerald-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -841,7 +841,7 @@ export default function DailyReportDashboard() {
               onClick={() => setRange("1m")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
                 range === "1m"
-                  ? "bg-emerald-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -851,7 +851,7 @@ export default function DailyReportDashboard() {
               onClick={() => setRange("1y")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
                 range === "1y"
-                  ? "bg-emerald-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -861,7 +861,7 @@ export default function DailyReportDashboard() {
               onClick={() => setRange("all")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
                 range === "all"
-                  ? "bg-emerald-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -871,7 +871,7 @@ export default function DailyReportDashboard() {
               onClick={() => setRange("custom")}
               className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
                 range === "custom"
-                  ? "bg-emerald-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -881,15 +881,15 @@ export default function DailyReportDashboard() {
 
           {/* Custom Date Range selector */}
           {range === "custom" && (
-            <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-950/60 border border-slate-800 px-3 py-1.5 rounded-lg">
-              <span className="text-slate-400 font-semibold">Dari:</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-900/60 border border-slate-700/50 px-3 py-1.5 rounded-lg">
+              <span className="text-slate-300 font-semibold">Dari:</span>
               <select
                 value={startMonth}
                 onChange={(e) => setStartMonth(parseInt(e.target.value, 10))}
-                className="bg-slate-950 text-slate-200 border border-slate-800 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
               >
                 {months.map((m) => (
-                  <option key={m.value} value={m.value}>
+                  <option key={m.value} value={m.value} className="bg-slate-900 text-slate-100">
                     {m.label.slice(0, 3)}
                   </option>
                 ))}
@@ -897,23 +897,23 @@ export default function DailyReportDashboard() {
               <select
                 value={startYear}
                 onChange={(e) => setStartYear(parseInt(e.target.value, 10))}
-                className="bg-slate-950 text-slate-200 border border-slate-800 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
               >
                 {years.map((y) => (
-                  <option key={y} value={y}>
+                  <option key={y} value={y} className="bg-slate-900 text-slate-100">
                     {y}
                   </option>
                 ))}
               </select>
 
-              <span className="text-slate-400 font-semibold ml-2">Sampai:</span>
+              <span className="text-slate-300 font-semibold ml-2">Sampai:</span>
               <select
                 value={endMonth}
                 onChange={(e) => setEndMonth(parseInt(e.target.value, 10))}
-                className="bg-slate-950 text-slate-200 border border-slate-800 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
               >
                 {months.map((m) => (
-                  <option key={m.value} value={m.value}>
+                  <option key={m.value} value={m.value} className="bg-slate-900 text-slate-100">
                     {m.label.slice(0, 3)}
                   </option>
                 ))}
@@ -921,10 +921,10 @@ export default function DailyReportDashboard() {
               <select
                 value={endYear}
                 onChange={(e) => setEndYear(parseInt(e.target.value, 10))}
-                className="bg-slate-950 text-slate-200 border border-slate-800 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
               >
                 {years.map((y) => (
-                  <option key={y} value={y}>
+                  <option key={y} value={y} className="bg-slate-900 text-slate-100">
                     {y}
                   </option>
                 ))}
@@ -933,9 +933,9 @@ export default function DailyReportDashboard() {
           )}
         </div>
       </div>
-{/* Dynamic Executive Audit Summary Card */}
-      <div className="bg-gradient-to-r from-blue-950/40 via-slate-900/60 to-emerald-950/30 border border-blue-800/40 rounded-xl p-5 shadow-lg flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+      {/* Dynamic Executive Audit Summary Card */}
+      <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 shadow-lg flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
               <FileText size={18} />
@@ -943,7 +943,7 @@ export default function DailyReportDashboard() {
             <div>
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 Kesimpulan Laporan 
-                <span className="text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-medium bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">
                   {getPeriodLabelText()}
                 </span>
               </h3>
@@ -954,7 +954,7 @@ export default function DailyReportDashboard() {
           </div>
         </div>
 
-        <blockquote className="text-sm text-slate-200 leading-relaxed italic bg-slate-950/60 p-4 rounded-lg border border-slate-800/80 border-l-4 border-l-blue-500">
+        <blockquote className="text-sm text-slate-300 dark:text-slate-200 leading-relaxed italic bg-slate-900/50 p-4 rounded-lg border border-slate-700/60 border-l-4 border-l-blue-500">
           "{executiveSummaryText}"
         </blockquote>
       </div>
@@ -1017,11 +1017,11 @@ export default function DailyReportDashboard() {
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <div className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 px-2.5 py-1 rounded-lg">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-blue-500/30"></span>
-              <span className="text-blue-300 font-semibold text-[11px]">Total Laporan Gangguan</span>
+              <span className="text-blue-500 dark:text-blue-400 font-semibold text-[11px]">Total Laporan Gangguan</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-400 text-[11px]">
+            <div className="flex items-center gap-1.5 bg-slate-800/40 border border-slate-700/60 px-2.5 py-1 rounded-lg text-slate-300 dark:text-slate-200 text-[11px]">
               <span>Kategori:</span>
-              <span className="text-slate-200 font-semibold">
+              <span className="text-slate-100 font-bold">
                 {type === "ALL" ? "Semua (Desa & OPD)" : type === "L2TP" ? "Desa" : "OPD"}
               </span>
             </div>
