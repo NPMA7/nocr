@@ -197,11 +197,11 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
   return (
     <header className="bg-slate-800 border-b border-slate-700/50 flex flex-col md:flex-row md:justify-between md:items-center relative z-[2000] shrink-0">
       {/* Baris Atas: Hamburger, Pencarian Desktop, Profil */}
-      <div className="h-[70px] flex justify-between items-center px-4 md:px-6 w-full">
-        <div className="flex items-center gap-3 flex-1 md:flex-none md:w-96 relative mr-4">
+      <div className="h-[70px] flex justify-between items-center px-3 md:px-6 w-full gap-2">
+        <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0 md:max-w-md relative mr-1 md:mr-3">
           <button
             onClick={onMenuClick}
-            className="cursor-pointer text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition flex items-center justify-center"
+            className="cursor-pointer text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition flex items-center justify-center flex-shrink-0"
           >
             <div className="hidden md:block">
               {isSidebarOpen ? (
@@ -216,10 +216,10 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
           </button>
 
           {/* Bilah Pencarian Desktop */}
-          <div className="hidden md:block w-full">{searchInput}</div>
+          <div className="hidden md:block w-full min-w-0">{searchInput}</div>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-5 flex-shrink-0">
+        <div className="flex items-center gap-2.5 md:gap-4 flex-shrink-0">
           {lastSyncTime && (
             <div className="text-[10px] md:text-xs text-slate-400 flex items-center gap-1.5 bg-slate-800/50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-slate-700/50">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
