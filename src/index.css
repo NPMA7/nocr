@@ -1,30 +1,366 @@
 @import "tailwindcss";
 
 @theme {
+  /* Dark Mode Baseline Tokens */
   --color-slate-900: #0f172a;
   --color-slate-800: #1e293b;
   --color-slate-700: #334155;
+
+  /* Notion White Mode / Light Mode Specific Tokens (Source: DESIGN-notions.md) */
+  --color-light-bg: #F6F5F4;
+  --color-light-card: #FFFFFF;
+  --color-light-border: #DFDCD9;
+  --color-light-hover: #F0EFEF;
+  --color-light-text: #111111;
+  --color-light-muted: #615D59;
+
+  /* Brand Colors (Notion Primary Palette) */
   --color-brand-blue: #3b82f6;
+  --color-brand-blue-notion: #097FE8;
   --color-brand-emerald: #10b981;
+  --color-brand-emerald-notion: #1AAE39;
   --color-brand-amber: #f59e0b;
+  --color-brand-amber-notion: #FFB110;
   --color-brand-red: #ef4444;
+  --color-brand-red-notion: #F64932;
   --color-brand-purple: #8b5cf6;
+  --color-brand-purple-notion: #AD6DED;
 }
 
-/* Custom Scrollbar for premium dark feel */
+/* ==========================================================================
+   DYNAMIC CUSTOM THEME & NOTION LIGHT SYSTEM OVERRIDES
+   ========================================================================== */
+
+/* 1. Global Page Background & Base Text */
+html.light,
+body.light,
+[data-theme="light"] {
+  background-color: var(--color-app-bg, #F6F5F4) !important;
+  color: var(--color-text-main, #111111) !important;
+}
+
+html.dark,
+body.dark,
+[data-theme="dark"] {
+  background-color: var(--color-app-bg, #0F172A) !important;
+  color: var(--color-text-main, #F8FAFC) !important;
+}
+
+/* 2. Main Containers & Backgrounds */
+.light main,
+[data-theme="light"] main,
+.light [class*="bg-slate-900"],
+.light [class*="bg-slate-950"] {
+  background-color: var(--color-app-bg, #F6F5F4) !important;
+}
+
+.dark main,
+[data-theme="dark"] main,
+.dark [class*="bg-slate-900"],
+[data-theme="dark"] [class*="bg-slate-900"],
+.dark [class*="bg-slate-950"],
+[data-theme="dark"] [class*="bg-slate-950"] {
+  background-color: var(--color-app-bg, #0F172A) !important;
+}
+
+/* 3. Header & Sidebar Navigation Containers */
+.light header,
+.light aside,
+.light nav,
+[data-theme="light"] header,
+[data-theme="light"] aside {
+  background-color: var(--color-header-bg, #FFFFFF) !important;
+}
+
+.dark header,
+.dark aside,
+.dark nav,
+[data-theme="dark"] header,
+[data-theme="dark"] aside {
+  background-color: var(--color-header-bg, #0F172A) !important;
+}
+
+/* 4. Cards, Panels & Modals Surfaces */
+.light [class*="bg-slate-800"],
+.light [class*="bg-slate-700"],
+[data-theme="light"] [class*="bg-slate-800"],
+[data-theme="light"] [class*="bg-slate-700"] {
+  background-color: var(--color-card-bg, #FFFFFF) !important;
+}
+
+.dark [class*="bg-slate-800"],
+.dark [class*="bg-slate-700"],
+[data-theme="dark"] [class*="bg-slate-800"],
+[data-theme="dark"] [class*="bg-slate-700"] {
+  background-color: var(--color-card-bg, #1E293B) !important;
+}
+
+/* 4. Borders & Dividers */
+.light [class*="border-slate-700"],
+.light [class*="border-slate-800"],
+.light [class*="border-slate-600"],
+.light [class*="border-slate-500"],
+[data-theme="light"] [class*="border-slate-700"],
+[data-theme="light"] [class*="border-slate-800"] {
+  border-color: var(--color-border-main, #DFDCD9) !important;
+}
+
+.dark [class*="border-slate-700"],
+.dark [class*="border-slate-800"],
+.dark [class*="border-slate-600"],
+[data-theme="dark"] [class*="border-slate-700"],
+[data-theme="dark"] [class*="border-slate-800"] {
+  border-color: var(--color-border-main, #334155) !important;
+}
+
+/* 5. Typography Colors */
+.light [class*="text-slate-100"],
+.light [class*="text-slate-200"],
+.light [class*="text-slate-300"],
+[data-theme="light"] [class*="text-slate-100"],
+[data-theme="light"] [class*="text-slate-200"],
+[data-theme="light"] [class*="text-slate-300"] {
+  color: var(--color-text-main, #111111) !important;
+}
+
+.light [class*="text-slate-400"],
+.light [class*="text-slate-500"],
+[data-theme="light"] [class*="text-slate-400"],
+[data-theme="light"] [class*="text-slate-500"] {
+  color: var(--color-text-muted, #615D59) !important;
+}
+
+/* 6. Inputs & Search Boxes */
+.light input,
+.light select,
+.light textarea,
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background-color: var(--color-card-bg, #FFFFFF) !important;
+  color: var(--color-text-main, #111111) !important;
+  border-color: var(--color-border-main, #DFDCD9) !important;
+}
+.light input::placeholder,
+.light textarea::placeholder,
+[data-theme="light"] input::placeholder {
+  color: var(--color-text-muted, #A39E98) !important;
+}
+
+/* 7. Hover & Active States */
+.light [class*="hover:bg-slate-700"]:hover,
+.light [class*="hover:bg-slate-800"]:hover,
+[data-theme="light"] [class*="hover:bg-slate-700"]:hover {
+  background-color: var(--color-light-hover, #F0EFEF) !important;
+}
+
+/* 8. Primary & Accent Colors for Active Buttons */
+.light .text-blue-400,
+.light .text-blue-500,
+[data-theme="light"] .text-blue-400 {
+  color: var(--color-primary, #097FE8) !important;
+}
+.light .bg-blue-500,
+.light .bg-blue-600,
+[data-theme="light"] .bg-blue-500,
+[data-theme="light"] .bg-blue-600 {
+  background-color: var(--color-primary, #097FE8) !important;
+  color: #FFFFFF !important;
+}
+
+.light .bg-amber-500,
+.light .bg-amber-600,
+[data-theme="light"] .bg-amber-500,
+[data-theme="light"] .bg-amber-600 {
+  background-color: var(--color-warning, #D97706) !important;
+  color: #FFFFFF !important;
+}
+
+.light .bg-red-500,
+.light .bg-red-600,
+[data-theme="light"] .bg-red-500,
+[data-theme="light"] .bg-red-600 {
+  background-color: var(--color-danger, #F64932) !important;
+  color: #FFFFFF !important;
+}
+
+.light .text-emerald-400,
+.light .text-emerald-500,
+.light .text-green-500,
+[data-theme="light"] .text-emerald-400 {
+  color: var(--color-success, #1AAE39) !important;
+}
+
+.light .text-amber-400,
+.light .text-amber-500,
+[data-theme="light"] .text-amber-400 {
+  color: var(--color-warning, #FFB110) !important;
+}
+
+.light .text-red-400,
+.light .text-red-500,
+[data-theme="light"] .text-red-400 {
+  color: var(--color-danger, #F64932) !important;
+}
+
+/* Custom Purple Accent / Badge OPD & RBAC Variable */
+.text-purple-300,
+.text-purple-400,
+.text-purple-500,
+.text-purple-600,
+.light .text-purple-400,
+.light .text-purple-500,
+[data-theme="light"] .text-purple-400 {
+  color: var(--color-purple, #AD6DED) !important;
+}
+
+[class*="bg-purple-500/10"],
+[class*="bg-purple-600/10"],
+.light [class*="bg-purple-500/10"],
+[data-theme="light"] [class*="bg-purple-500/10"] {
+  background-color: color-mix(in srgb, var(--color-purple, #AD6DED) 15%, transparent) !important;
+}
+
+[class*="bg-purple-500/20"],
+[class*="bg-purple-600/20"],
+.light [class*="bg-purple-500/20"],
+[data-theme="light"] [class*="bg-purple-500/20"] {
+  background-color: color-mix(in srgb, var(--color-purple, #AD6DED) 22%, transparent) !important;
+}
+
+[class*="border-purple-500/20"],
+[class*="border-purple-500/30"],
+[class*="border-purple-500/40"],
+.light [class*="border-purple-500/20"],
+[data-theme="light"] [class*="border-purple-500/20"] {
+  border-color: color-mix(in srgb, var(--color-purple, #AD6DED) 35%, transparent) !important;
+}
+
+.bg-purple-500,
+.bg-purple-600,
+.light .bg-purple-600,
+[data-theme="light"] .bg-purple-600 {
+  background-color: var(--color-purple, #AD6DED) !important;
+  color: #FFFFFF !important;
+}
+
+/* Explicit Badge OPD & Badge Desa Theme Variables */
+.badge-opd,
+.tag-opd {
+  background-color: color-mix(in srgb, var(--color-tag-opd, #AD6DED) 20%, transparent) !important;
+  color: var(--color-tag-opd, #AD6DED) !important;
+  border-color: color-mix(in srgb, var(--color-tag-opd, #AD6DED) 35%, transparent) !important;
+}
+
+.badge-desa,
+.tag-desa {
+  background-color: color-mix(in srgb, var(--color-tag-desa, #097FE8) 20%, transparent) !important;
+  color: var(--color-tag-desa, #097FE8) !important;
+  border-color: color-mix(in srgb, var(--color-tag-desa, #097FE8) 35%, transparent) !important;
+}
+
+/* Inactive Buttons & Toolbar Text Contrast Overrides */
+.light button[class*="bg-slate-800"],
+.light button[class*="bg-slate-700"],
+[data-theme="light"] button[class*="bg-slate-800"],
+[data-theme="light"] button[class*="bg-slate-700"] {
+  background-color: var(--color-card-bg, #FFFFFF) !important;
+  color: var(--color-text-main, #111111) !important;
+  border-color: var(--color-border-main, #DFDCD9) !important;
+}
+
+.light button[class*="text-slate-400"],
+[data-theme="light"] button[class*="text-slate-400"] {
+  color: var(--color-text-muted, #615D59) !important;
+}
+
+/* Sidebar Nav Text & Active State Light Mode Overrides */
+.light aside,
+[data-theme="light"] aside {
+  background-color: var(--color-header-bg, #FFFFFF) !important;
+}
+
+.light aside .text-white,
+[data-theme="light"] aside .text-white {
+  color: var(--color-primary, #097FE8) !important;
+}
+
+/* Sidebar Nav Text & Active State Overrides (Light & Dark) */
+aside a.bg-blue-600,
+aside button.bg-blue-600 {
+  background-color: var(--color-primary, #097FE8) !important;
+  color: #FFFFFF !important;
+}
+
+/* Sidebar Submenu Active Highlights to match Custom Primary Accent */
+aside [class*="bg-purple-500/10"],
+aside [class*="bg-emerald-500/10"],
+aside [class*="bg-blue-500/10"],
+aside [class*="bg-blue-600/10"] {
+  background-color: color-mix(in srgb, var(--color-primary, #097FE8) 15%, transparent) !important;
+}
+
+aside [class*="text-purple-400"],
+aside [class*="text-emerald-400"],
+aside [class*="text-blue-400"],
+aside [class*="text-purple-500"],
+aside [class*="text-emerald-500"],
+aside [class*="text-blue-500"] {
+  color: var(--color-primary, #097FE8) !important;
+  opacity: 1 !important;
+}
+
+/* Global Primary Accent Overrides for Buttons, Texts & Borders */
+button.bg-blue-600,
+a.bg-blue-600,
+.bg-blue-600 {
+  background-color: var(--color-primary, #097FE8) !important;
+}
+
+.border-blue-500,
+.border-blue-600 {
+  border-color: var(--color-primary, #097FE8) !important;
+}
+
+.text-blue-400,
+.text-blue-500,
+.text-blue-600,
+[class*="text-blue-400"],
+[class*="text-blue-500"] {
+  color: var(--color-primary, #097FE8) !important;
+}
+
+/* Custom Scrollbar Dynamic & Theme-Adaptive */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: var(--color-app-bg, #0f172a);
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--color-border-main, #334155);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--color-primary, #097FE8);
+}
+
+/* Light Mode & Custom Theme Scrollbar Overrides */
+.light ::-webkit-scrollbar-track,
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: var(--color-app-bg, #F6F5F4) !important;
+}
+
+.light ::-webkit-scrollbar-thumb,
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--color-border-main, #DCD8D3) !important;
+  border-radius: 4px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover,
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary, #097FE8) !important;
 }
 
 /* vis-network styling fixes */

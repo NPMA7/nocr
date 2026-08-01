@@ -327,7 +327,7 @@ export default function Ruijie() {
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <Wifi size={24} className="text-blue-400" />
+            <Wifi size={24} className="text-blue-500 dark:text-blue-400" />
             Ruijie AP Monitoring
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -338,7 +338,7 @@ export default function Ruijie() {
           <button
             onClick={fetchDevices}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />{" "}
             Sync Sekarang

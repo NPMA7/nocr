@@ -13,6 +13,7 @@ import {
 } from "@/lib/roles";
 import axios from "axios";
 import { Network } from "lucide-react";
+import { getStoredThemeConfig, applyThemeConfig } from "@/lib/themeEngine";
 
 export default function AuthenticatedLayout({ children }) {
   const router = useRouter();
@@ -66,6 +67,11 @@ export default function AuthenticatedLayout({ children }) {
   };
 
   useEffect(() => {
+    // Theme setup on mount
+    if (typeof window !== "undefined") {
+      const config = getStoredThemeConfig();
+      applyThemeConfig(config);
+    }
     // Auth check
     const token = localStorage.getItem("nocr_token");
     if (!token) {
@@ -400,20 +406,32 @@ export default function AuthenticatedLayout({ children }) {
 
   if (!tokenChecked) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-300">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center transition-colors duration-300"
+        style={{
+          backgroundColor: "var(--color-app-bg, #F6F5F4)",
+          color: "var(--color-text-main, #111111)",
+        }}
+      >
         <div className="flex flex-col items-center gap-4 animate-pulse">
           <img
             src="/logo.png"
             alt="NOCR Logo"
-            className="w-24 h-24 border-2 border-slate-600 rounded-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+            className="w-24 h-24 border-2 rounded-full shadow-lg"
+            style={{
+              borderColor: "var(--color-border-main, #DFDCD9)",
+            }}
           />
-          <div className="text-xl font-bold text-blue-500 flex items-center gap-2">
-            NOCR{" "}
-            {/* <span className="text-xs text-slate-400 font-normal mt-2">
-              by: npma
-            </span> */}
+          <div
+            className="text-xl font-extrabold flex items-center gap-2"
+            style={{ color: "var(--color-primary, #097FE8)" }}
+          >
+            NOCR
           </div>
-          <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase mt-4">
+          <p
+            className="text-xs font-semibold tracking-wider uppercase mt-4"
+            style={{ color: "var(--color-text-muted, #615D59)" }}
+          >
             Loading setup...
           </p>
         </div>

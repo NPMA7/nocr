@@ -21,6 +21,9 @@ import { fetchTopologyCached } from "@/lib/globalCache";
 import { API_URL, socket, useAppState } from "@/App";
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import dynamic from "next/dynamic";
+import CoreResourceCard from "@/components/dashboard/CoreResourceCard";
+import StatCard from "@/components/dashboard/StatCard";
+import ActivityLogList from "@/components/dashboard/ActivityLogList";
 
 const DashboardMap = dynamic(() => import("@/components/DashboardMap"), {
   ssr: false,
@@ -363,146 +366,91 @@ export default function Dashboard() {
 
       {/* Core Router Resources */}
       <div className="flex-shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
-          <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <Cpu size={13} className="text-blue-400" />{" "}
-            <span className="text-[11px] font-semibold uppercase">
-              CPU Load
-            </span>
-          </div>
-          <span className="text-base font-bold text-slate-100">
-            {coreStatus ? `${coreStatus.cpu}%` : "--"}
-          </span>
-        </div>
-        <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
-          <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <HardDrive size={13} className="text-emerald-400" />{" "}
-            <span className="text-[11px] font-semibold uppercase">
-              Memory Free
-            </span>
-          </div>
-          <span className="text-base font-bold text-slate-100">
-            {coreStatus
+        <CoreResourceCard
+          icon={Cpu}
+          iconColorClass="text-blue-500"
+          title="CPU Load"
+          value={coreStatus ? `${coreStatus.cpu}%` : "--"}
+        />
+        <CoreResourceCard
+          icon={HardDrive}
+          iconColorClass="text-emerald-500"
+          title="Memory Free"
+          value={
+            coreStatus
               ? `${(coreStatus.free_memory / 1024 / 1024).toFixed(1)} MB`
-              : "--"}
-          </span>
-        </div>
-        <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
-          <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <Clock size={13} className="text-orange-400" />{" "}
-            <span className="text-[11px] font-semibold uppercase">Uptime</span>
-          </div>
-          <span className="text-base font-bold text-slate-100">
-            {coreStatus ? coreStatus.uptime : "--"}
-          </span>
-        </div>
-        <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center">
-          <div className="flex items-center gap-2 text-slate-400 mb-1.5">
-            <Server size={13} className="text-purple-400" />{" "}
-            <span className="text-[11px] font-semibold uppercase">
-              Versi RouterOS
-            </span>
-          </div>
-          <span className="text-sm font-bold text-slate-100">
-            {coreStatus ? `${coreStatus.board} (v${coreStatus.version})` : "--"}
-          </span>
-        </div>
+              : "--"
+          }
+        />
+        <CoreResourceCard
+          icon={Clock}
+          iconColorClass="text-amber-500"
+          title="Uptime"
+          value={coreStatus ? coreStatus.uptime : "--"}
+        />
+        <CoreResourceCard
+          icon={Server}
+          iconColorClass="text-purple-500"
+          title="Versi RouterOS"
+          value={
+            coreStatus ? `${coreStatus.board} (v${coreStatus.version})` : "--"
+          }
+        />
       </div>
 
+      {/* Network Metrics Cards */}
       <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 md:gap-3">
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Router size={14} className="text-blue-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              Total Interfaces
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">{totalNodes}</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Users size={14} className="text-amber-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              Node Client Terpasang
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {clientCount}
-          </span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Server size={14} className="text-purple-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              Infrastruktur (OLT,ODC,ODP)
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {infrasCount}
-          </span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <AlertTriangle size={14} className="text-red-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              Mikrotik Offline
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {offlineCount}
-          </span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <Router size={14} className="text-cyan-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              Total Wilayah
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {totalL2tpRuijie}
-          </span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <ArrowUpRight size={14} className="text-orange-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              Client Aktif
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {activeRuijieClients}
-          </span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <AlertTriangle size={14} className="text-red-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              Desa Offline 
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {offlineL2tpRuijie}
-          </span>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center shadow-lg hover:-translate-y-1 transition duration-300 relative overflow-hidden">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <AlertTriangle size={14} className="text-red-500" />{" "}
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              OPD Offline 
-            </span>
-          </div>
-          <span className="text-lg font-bold text-slate-100">
-            {offlinePppoeRuijie}
-          </span>
-        </div>
+        <StatCard
+          icon={Router}
+          iconColorClass="text-blue-500"
+          title="Total Interfaces"
+          value={totalNodes}
+        />
+        <StatCard
+          icon={Users}
+          iconColorClass="text-amber-500"
+          title="Node Client Terpasang"
+          value={clientCount}
+        />
+        <StatCard
+          icon={Server}
+          iconColorClass="text-purple-500"
+          title="Infrastruktur (OLT,ODC,ODP)"
+          value={infrasCount}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          iconColorClass="text-red-500"
+          title="Mikrotik Offline"
+          value={offlineCount}
+          isAlert={true}
+        />
+        <StatCard
+          icon={Router}
+          iconColorClass="text-cyan-500"
+          title="Total Wilayah"
+          value={totalL2tpRuijie}
+        />
+        <StatCard
+          icon={ArrowUpRight}
+          iconColorClass="text-orange-500"
+          title="Client Aktif"
+          value={activeRuijieClients}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          iconColorClass="text-red-500"
+          title="Desa Offline"
+          value={offlineL2tpRuijie}
+          isAlert={true}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          iconColorClass="text-red-500"
+          title="OPD Offline"
+          value={offlinePppoeRuijie}
+          isAlert={true}
+        />
       </div>
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
@@ -546,88 +494,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-4 md:p-5 flex flex-col min-h-0 min-h-[240px] lg:min-h-0">
-          <style>{`
-            .custom-scrollbar::-webkit-scrollbar {
-              width: 4px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-track {
-              background: rgba(15, 23, 42, 0.1);
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(148, 163, 184, 0.3);
-              border-radius: 4px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-              background: rgba(148, 163, 184, 0.5);
-            }
-          `}</style>
-          <h3 className="flex-shrink-0 text-sm font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center">
-            <span>Log Aktivitas</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold bg-slate-900/60 border border-slate-700/50 px-2 py-0.5 rounded-full select-none">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isConnected
-                    ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse"
-                    : "bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"
-                }`}
-              />
-              <span className="text-slate-400 uppercase tracking-wider">
-                {isConnected ? "Live" : "Terputus"}
-              </span>
-            </span>
-          </h3>
-
-          <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2.5 custom-scrollbar">
-            {dbLogs && dbLogs.length > 0 ? (
-              dbLogs.map((a, i) => {
-                const style = getLogStyle(a.message || a.msg);
-                return (
-                  <div
-                    key={i}
-                    className={`flex gap-3 p-3 rounded-lg border text-xs transition duration-200 hover:translate-x-0.5 ${style.bgColor}`}
-                  >
-                    <div className="flex-shrink-0 mt-0.5">
-                      {style.icon === "check" && (
-                        <CheckCircle2 size={14} className="text-emerald-400" />
-                      )}
-                      {style.icon === "alert" && (
-                        <AlertCircle size={14} className="text-rose-400" />
-                      )}
-                      {style.icon === "settings" && (
-                        <Settings size={14} className="text-amber-400" />
-                      )}
-                      {style.icon === "info" && (
-                        <Info size={14} className="text-blue-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 flex flex-col gap-1 min-w-0">
-                      <span className="text-slate-200 leading-relaxed break-words">
-                        {a.message || a.msg}
-                      </span>
-                      <span className="text-[9px] text-slate-500 font-mono self-start uppercase">
-                        {new Date(a.time).toLocaleDateString("id-ID", {
-                          day: "2-digit",
-                          month: "short",
-                        })}{" "}
-                        {new Date(a.time).toLocaleTimeString("id-ID", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="flex flex-col items-center justify-center flex-1 py-12 text-slate-500 gap-2">
-                <Info size={24} className="text-slate-600 animate-pulse" />
-                <span className="text-xs">Belum ada aktivitas</span>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Right Column: Activity Log Panel */}
+        <ActivityLogList logs={dbLogs} isConnected={isConnected} />
       </div>
     </div>
   );

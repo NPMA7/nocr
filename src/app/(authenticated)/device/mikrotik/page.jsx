@@ -550,7 +550,7 @@ export default function Mikrotik() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold flex items-center text-slate-100 gap-3">
-              <Server size={24} className="text-emerald-400" /> Mikrotik RO
+              <Server size={24} className="text-blue-500 dark:text-blue-400" /> Mikrotik RO
             </h1>
             {syncStatus?.syncedAt && (
               <span
@@ -590,7 +590,7 @@ export default function Mikrotik() {
           <button
             onClick={() => fetchAll(true)}
             disabled={loading}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />{" "}
             Sync Sekarang

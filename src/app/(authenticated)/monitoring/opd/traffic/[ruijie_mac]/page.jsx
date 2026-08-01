@@ -874,9 +874,7 @@ export default function TrafficDetailPage() {
               </span>
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
-                  isOPD
-                    ? "bg-purple-500/10 border-purple-500/20 text-purple-400"
-                    : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  isOPD ? "tag-opd" : "tag-desa"
                 }`}
               >
                 {isOPD ? "OPD · PPPoE" : "Desa · L2TP"}
