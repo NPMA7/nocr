@@ -64,34 +64,36 @@ body.dark,
 }
 
 /* 3. Header & Sidebar Navigation Containers */
+header,
+aside,
+header[class*="bg-slate"],
+aside[class*="bg-slate"],
 .light header,
 .light aside,
-.light nav,
-[data-theme="light"] header,
-[data-theme="light"] aside {
-  background-color: var(--color-header-bg, #FFFFFF) !important;
-}
-
+.light header[class*="bg-slate"],
+.light aside[class*="bg-slate"],
 .dark header,
 .dark aside,
-.dark nav,
+.dark header[class*="bg-slate"],
+.dark aside[class*="bg-slate"],
+[data-theme="light"] header,
+[data-theme="light"] aside,
 [data-theme="dark"] header,
 [data-theme="dark"] aside {
-  background-color: var(--color-header-bg, #0F172A) !important;
+  background-color: var(--color-header-bg, #1E293B) !important;
 }
 
-/* 4. Cards, Panels & Modals Surfaces */
-.light [class*="bg-slate-800"],
-.light [class*="bg-slate-700"],
-[data-theme="light"] [class*="bg-slate-800"],
-[data-theme="light"] [class*="bg-slate-700"] {
-  background-color: var(--color-card-bg, #FFFFFF) !important;
-}
-
-.dark [class*="bg-slate-800"],
-.dark [class*="bg-slate-700"],
-[data-theme="dark"] [class*="bg-slate-800"],
-[data-theme="dark"] [class*="bg-slate-700"] {
+/* 4. Cards, Panels & Modals Surfaces (exclusively excludes header and aside) */
+[class*="bg-slate-800"]:not(header):not(aside),
+[class*="bg-slate-700"]:not(header):not(aside),
+.light [class*="bg-slate-800"]:not(header):not(aside),
+.light [class*="bg-slate-700"]:not(header):not(aside),
+.dark [class*="bg-slate-800"]:not(header):not(aside),
+.dark [class*="bg-slate-700"]:not(header):not(aside),
+[data-theme="light"] [class*="bg-slate-800"]:not(header):not(aside),
+[data-theme="light"] [class*="bg-slate-700"]:not(header):not(aside),
+[data-theme="dark"] [class*="bg-slate-800"]:not(header):not(aside),
+[data-theme="dark"] [class*="bg-slate-700"]:not(header):not(aside) {
   background-color: var(--color-card-bg, #1E293B) !important;
 }
 
@@ -113,21 +115,36 @@ body.dark,
   border-color: var(--color-border-main, #334155) !important;
 }
 
-/* 5. Typography Colors */
+/* 5. Typography Colors (Dynamic Binding for Main & Subtitle/Muted Text) */
+[class*="text-slate-100"],
+[class*="text-slate-200"],
+[class*="text-slate-300"],
 .light [class*="text-slate-100"],
 .light [class*="text-slate-200"],
 .light [class*="text-slate-300"],
+.dark [class*="text-slate-100"],
+.dark [class*="text-slate-200"],
+.dark [class*="text-slate-300"],
 [data-theme="light"] [class*="text-slate-100"],
 [data-theme="light"] [class*="text-slate-200"],
-[data-theme="light"] [class*="text-slate-300"] {
-  color: var(--color-text-main, #111111) !important;
+[data-theme="light"] [class*="text-slate-300"],
+[data-theme="dark"] [class*="text-slate-100"],
+[data-theme="dark"] [class*="text-slate-200"],
+[data-theme="dark"] [class*="text-slate-300"] {
+  color: var(--color-text-main, #F8FAFC) !important;
 }
 
+[class*="text-slate-400"],
+[class*="text-slate-500"],
 .light [class*="text-slate-400"],
 .light [class*="text-slate-500"],
+.dark [class*="text-slate-400"],
+.dark [class*="text-slate-500"],
 [data-theme="light"] [class*="text-slate-400"],
-[data-theme="light"] [class*="text-slate-500"] {
-  color: var(--color-text-muted, #615D59) !important;
+[data-theme="light"] [class*="text-slate-500"],
+[data-theme="dark"] [class*="text-slate-400"],
+[data-theme="dark"] [class*="text-slate-500"] {
+  color: var(--color-text-muted, #94A3B8) !important;
 }
 
 /* 6. Inputs & Search Boxes */
@@ -184,23 +201,91 @@ body.dark,
   color: #FFFFFF !important;
 }
 
+/* Dynamic Global Binding for Status Success (Online / UP) */
+.text-emerald-400,
+.text-emerald-500,
+.text-green-400,
+.text-green-500,
 .light .text-emerald-400,
-.light .text-emerald-500,
-.light .text-green-500,
-[data-theme="light"] .text-emerald-400 {
-  color: var(--color-success, #1AAE39) !important;
+.dark .text-emerald-400,
+[data-theme="light"] .text-emerald-400,
+[data-theme="dark"] .text-emerald-400 {
+  color: var(--color-success, #10B981) !important;
 }
 
-.light .text-amber-400,
-.light .text-amber-500,
-[data-theme="light"] .text-amber-400 {
-  color: var(--color-warning, #FFB110) !important;
+.bg-emerald-400,
+.bg-emerald-500,
+.bg-green-400,
+.bg-green-500 {
+  background-color: var(--color-success, #10B981) !important;
 }
 
+[class*="bg-emerald-500/20"],
+[class*="bg-emerald-500/10"],
+[class*="bg-emerald-400/20"] {
+  background-color: color-mix(in srgb, var(--color-success, #10B981) 18%, transparent) !important;
+}
+
+[class*="border-emerald-500/30"],
+[class*="border-emerald-500/20"] {
+  border-color: color-mix(in srgb, var(--color-success, #10B981) 30%, transparent) !important;
+}
+
+/* Dynamic Global Binding for Status Danger (Offline / DOWN) */
+.text-red-400,
+.text-red-500,
 .light .text-red-400,
-.light .text-red-500,
-[data-theme="light"] .text-red-400 {
-  color: var(--color-danger, #F64932) !important;
+.dark .text-red-400,
+[data-theme="light"] .text-red-400,
+[data-theme="dark"] .text-red-400 {
+  color: var(--color-danger, #EF4444) !important;
+}
+
+.bg-red-400,
+.bg-red-500 {
+  background-color: var(--color-danger, #EF4444) !important;
+}
+
+[class*="bg-red-500/20"],
+[class*="bg-red-500/10"],
+[class*="bg-red-500/15"] {
+  background-color: color-mix(in srgb, var(--color-danger, #EF4444) 18%, transparent) !important;
+}
+
+[class*="border-red-500/30"],
+[class*="border-red-500/20"] {
+  border-color: color-mix(in srgb, var(--color-danger, #EF4444) 30%, transparent) !important;
+}
+
+/* Dynamic Global Binding for Status Warning */
+.text-amber-400,
+.text-amber-500,
+.text-orange-400,
+.text-orange-500,
+.light .text-amber-400,
+.dark .text-amber-400,
+.light .text-orange-400,
+.dark .text-orange-400,
+[data-theme="light"] .text-amber-400,
+[data-theme="dark"] .text-amber-400,
+[data-theme="light"] .text-orange-400,
+[data-theme="dark"] .text-orange-400 {
+  color: var(--color-warning, #F59E0B) !important;
+}
+
+[class*="bg-amber-500/20"],
+[class*="bg-amber-500/10"],
+[class*="bg-amber-400/10"],
+[class*="bg-orange-400/10"],
+[class*="bg-orange-500/10"] {
+  background-color: color-mix(in srgb, var(--color-warning, #F59E0B) 18%, transparent) !important;
+}
+
+[class*="border-amber-500/30"],
+[class*="border-amber-500/20"],
+[class*="border-orange-400/20"],
+[class*="border-orange-500/20"] {
+  border-color: color-mix(in srgb, var(--color-warning, #F59E0B) 30%, transparent) !important;
 }
 
 /* Custom Purple Accent / Badge OPD & RBAC Variable */
