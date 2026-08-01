@@ -205,12 +205,12 @@ export default function DesignSettingsPage() {
 
               <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-900/40">
                 <span className="font-semibold text-slate-700 dark:text-slate-300">
-                  Warna Header & Sidebar
+                  Warna Header Topbar & Sidebar
                 </span>
                 <input
                   type="color"
                   value={
-                    currentConfig.header || currentConfig.card || "#FFFFFF"
+                    currentConfig.header || (currentConfig.category === "light" ? "#FFFFFF" : "#1E293B")
                   }
                   onChange={(e) => handleColorChange("header", e.target.value)}
                   className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent"
@@ -452,6 +452,16 @@ export default function DesignSettingsPage() {
                   }}
                 >
                   <AlertTriangle size={10} /> Offline (DOWN)
+                </span>
+                <span
+                  className="px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border"
+                  style={{
+                    backgroundColor: `${currentConfig.warning || "#F59E0B"}20`,
+                    color: currentConfig.warning || "#F59E0B",
+                    borderColor: `${currentConfig.warning || "#F59E0B"}40`,
+                  }}
+                >
+                  <AlertTriangle size={10} /> Warning (Issue)
                 </span>
                 <span
                   className="px-2 py-0.5 rounded font-bold border"
