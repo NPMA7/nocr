@@ -280,32 +280,53 @@ body.dark,
   background-color: var(--color-header-bg, #FFFFFF) !important;
 }
 
-.light aside .text-white,
-[data-theme="light"] aside .text-white {
-  color: var(--color-primary, #097FE8) !important;
-}
-
-/* Sidebar Nav Text & Active State Overrides (Light & Dark) */
+/* Sidebar Active Main Item (Dashboard, Topology, Live Chat, etc.) */
 aside a.bg-blue-600,
-aside button.bg-blue-600 {
+aside button.bg-blue-600,
+.light aside a.bg-blue-600,
+.light aside button.bg-blue-600,
+[data-theme="light"] aside a.bg-blue-600,
+[data-theme="light"] aside button.bg-blue-600 {
   background-color: var(--color-primary, #097FE8) !important;
   color: #FFFFFF !important;
 }
 
-/* Sidebar Submenu Active Highlights to match Custom Primary Accent */
-aside [class*="bg-purple-500/10"],
-aside [class*="bg-emerald-500/10"],
-aside [class*="bg-blue-500/10"],
-aside [class*="bg-blue-600/10"] {
-  background-color: color-mix(in srgb, var(--color-primary, #097FE8) 15%, transparent) !important;
+aside a.bg-blue-600 *,
+aside button.bg-blue-600 *,
+.light aside a.bg-blue-600 *,
+.light aside button.bg-blue-600 *,
+[data-theme="light"] aside a.bg-blue-600 *,
+[data-theme="light"] aside button.bg-blue-600 * {
+  color: #FFFFFF !important;
 }
 
-aside [class*="text-purple-400"],
-aside [class*="text-emerald-400"],
-aside [class*="text-blue-400"],
-aside [class*="text-purple-500"],
-aside [class*="text-emerald-500"],
-aside [class*="text-blue-500"] {
+/* Sidebar Active Parent Dropdown Button in Light Mode (ONLY target the parent button itself) */
+.light aside button[class*="bg-slate-800/50"],
+[data-theme="light"] aside button[class*="bg-slate-800/50"] {
+  background-color: color-mix(in srgb, var(--color-primary, #097FE8) 12%, transparent) !important;
+  color: var(--color-primary, #097FE8) !important;
+}
+
+.light aside button[class*="bg-slate-800/50"] > *,
+.light aside button[class*="bg-slate-800/50"] > * > *,
+[data-theme="light"] aside button[class*="bg-slate-800/50"] > *,
+[data-theme="light"] aside button[class*="bg-slate-800/50"] > * > * {
+  color: var(--color-primary, #097FE8) !important;
+}
+
+/* Sidebar Submenu Active Highlights to match Custom Primary Accent (ONLY active sub-links) */
+aside a[class*="bg-purple-500/10"],
+aside a[class*="bg-emerald-500/10"],
+aside a[class*="bg-blue-500/10"],
+aside a[class*="bg-blue-600/10"] {
+  background-color: color-mix(in srgb, var(--color-primary, #097FE8) 15%, transparent) !important;
+  color: var(--color-primary, #097FE8) !important;
+}
+
+aside a[class*="bg-purple-500/10"] *,
+aside a[class*="bg-emerald-500/10"] *,
+aside a[class*="bg-blue-500/10"] *,
+aside a[class*="bg-blue-600/10"] * {
   color: var(--color-primary, #097FE8) !important;
   opacity: 1 !important;
 }
