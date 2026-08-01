@@ -289,7 +289,7 @@ export default function MonitorPppoe() {
     if (isOnline) {
       return (
         <div className="flex flex-col gap-1 items-end lg:items-start">
-          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 w-max flex items-center gap-1.5">
+          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 w-max flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>{" "}
             Online
           </span>
@@ -301,8 +301,8 @@ export default function MonitorPppoe() {
     } else {
       return (
         <div className="flex flex-col gap-1 items-end lg:items-start">
-          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-400 border border-red-500/30 w-max flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
             Offline
           </span>
           {device.offline_since && (
@@ -315,9 +315,9 @@ export default function MonitorPppoe() {
 
   const getSourceStatus = (status) => {
     if (status === "Online")
-      return <span className="text-xs font-bold text-emerald-400">UP</span>;
+      return <span className="text-xs font-bold text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">UP</span>;
     if (status === "Offline")
-      return <span className="text-xs font-bold text-red-500">DOWN</span>;
+      return <span className="text-xs font-bold text-red-400 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20">DOWN</span>;
     return <span className="text-xs font-bold text-slate-500">-</span>;
   };
 

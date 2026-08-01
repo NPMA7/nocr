@@ -1789,7 +1789,7 @@ function Settings({ activeTab: activeTabProp }) {
                                 type="button"
                                 disabled={!perms.vpnUpdate}
                                 onClick={() => perms.vpnUpdate && setShowVpnPassword(!showVpnPassword)}
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms.vpnUpdate ? "text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
+                                className={`cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 ${perms.vpnUpdate ? "text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
                                 title={perms.vpnUpdate ? "" : "Anda hanya memiliki akses baca"}
                               >
                                 {showVpnPassword && perms.vpnUpdate ? (

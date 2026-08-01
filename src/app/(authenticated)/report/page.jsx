@@ -1438,7 +1438,7 @@ export default function DailyReportPage() {
                       status_progress: e.target.value,
                     }))
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition cursor-pointer"
+                  className=" bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition cursor-pointer"
                 >
                   <option value="Progress">Progress</option>
                   <option value="Done">Done</option>

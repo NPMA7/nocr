@@ -895,7 +895,7 @@ export default function Sidebar({
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
                 >
-                  <Palette size={14} className="flex-shrink-0 text-blue-400" />
+                  <Palette size={14} className="flex-shrink-0" />
                   <span>Desain & Warna</span>
                 </Link>
               </div>

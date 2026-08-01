@@ -188,8 +188,8 @@ export default function SiteDetailPage() {
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-bold ${
               online
-                ? "bg-emerald-500/20 text-emerald-400"
-                : "bg-slate-700 text-slate-400"
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : "bg-red-500/20 text-red-400 border border-red-500/30"
             }`}
           >
             {data?.final_status || "—"}
