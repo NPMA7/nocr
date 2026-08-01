@@ -380,15 +380,14 @@ function SitesListPage() {
                           key={d.ruijie_mac}
                           className="border-b border-slate-700/20 hover:bg-slate-700/20 transition cursor-default group"
                         >
-                          <td className="px-4 py-3 font-bold text-slate-100 max-w-[200px]">
-                            <div className="flex items-center gap-2">
+                          <td className="px-4 py-3 font-bold text-slate-100 max-w-[240px]">
+                            <div className="flex items-center justify-between gap-2">
                               <span
-                                className="truncate"
                                 title={d.prefix || undefined}
                               >
                                 {d.prefix || "—"}
                               </span>
-                              <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-bold tag-desa">
+                              <span className="flex-shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded border font-bold tag-desa">
                                 DESA
                               </span>
                             </div>

@@ -49,7 +49,7 @@ export default function DesignSettingsPage() {
     setIsSaved(false);
   };
   const handleReset = () => {
-    const defaultConfig = PRESET_THEMES[0]; // Notion Light default
+    const defaultConfig = PRESET_THEMES[0]; // Blue NOCR default
     setCurrentConfig(defaultConfig);
     applyThemeConfig(defaultConfig);
     setIsSaved(false);

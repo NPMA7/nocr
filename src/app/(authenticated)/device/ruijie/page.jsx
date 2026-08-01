@@ -25,6 +25,8 @@ import {
   Link
 } from "lucide-react";
 import { getStoredUser, hasAccess } from "@/lib/roles";
+import RuijieEwebModal from "@/components/device/ruijie/RuijieEwebModal";
+import RuijieRebootConfirmModal from "@/components/device/ruijie/RuijieRebootConfirmModal";
 
 export default function Ruijie() {
   const [devices, setDevices] = useState([]);
@@ -724,150 +726,18 @@ export default function Ruijie() {
         </div>
       )}
 
-      {/* eWeb Connection Selector Modal */}
-      {ewebModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-slate-700/50 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
-                <Globe size={16} className="text-blue-400" />
-                Koneksi Remote eWeb
-              </h3>
-              <button
-                onClick={() => setEwebModalData(null)}
-                className="cursor-pointer text-slate-400 hover:text-slate-200 transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="p-5 space-y-5">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-lg leading-relaxed">
-                Succeeded in creating the tunnel. The eWeb system is connected.
-              </div>
-
-              <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Nama Alias:</span>
-                  <span className="text-slate-200 font-semibold">{ewebModalData.device?.alias || "-"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Serial Number:</span>
-                  <span className="text-slate-200 font-mono">{ewebModalData.device?.sn || "-"}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2.5">
-                <p className="text-xs text-slate-400">Sistem eWeb berhasil terhubung. Pilih metode akses:</p>
-                
-                {ewebModalData.urls?.domainUrl && (
-                  <button
-                    onClick={() => {
-                      window.open(ewebModalData.urls.domainUrl, "_blank");
-                      setEwebModalData(null);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 text-xs font-semibold text-white transition shadow-lg shadow-indigo-500/10 cursor-pointer text-left"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Globe size={14} />
-                      Open with Domain (Recommended)
-                    </span>
-                    <ExternalLink size={12} />
-                  </button>
-                )}
-
-                {ewebModalData.urls?.ipUrl && (
-                  <button
-                    onClick={() => {
-                      window.open(ewebModalData.urls.ipUrl, "_blank");
-                      setEwebModalData(null);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 transition cursor-pointer text-left"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Server size={14} className="text-slate-400" />
-                      Open with IP Address
-                    </span>
-                    <ExternalLink size={12} className="text-slate-500" />
-                  </button>
-                )}
-
-                {ewebModalData.urls?.useUrl && (
-                  <button
-                    onClick={() => {
-                      window.open(ewebModalData.urls.useUrl, "_blank");
-                      setEwebModalData(null);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 transition cursor-pointer text-left"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Link size={14} className="text-slate-400" />
-                      Open with useUrl
-                    </span>
-                    <ExternalLink size={12} className="text-slate-500" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex justify-end pt-2 border-t border-slate-700/30">
-                <button
-                  type="button"
-                  onClick={() => setEwebModalData(null)}
-                  className="px-4 py-2 rounded-lg bg-slate-950/60 hover:bg-slate-900 border border-slate-700/70 text-xs text-slate-300 font-medium transition cursor-pointer"
-                >
-                  Tutup
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* eWeb Tunnel Modal */}
+      <RuijieEwebModal
+        ewebModalData={ewebModalData}
+        setEwebModalData={setEwebModalData}
+      />
 
       {/* Reboot Confirmation Modal */}
-      {rebootConfirmDevice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-slate-700/50 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
-                <Power size={16} className="text-red-400" />
-                Konfirmasi Reboot
-              </h3>
-              <button
-                onClick={() => setRebootConfirmDevice(null)}
-                className="cursor-pointer text-slate-400 hover:text-slate-200 transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Apakah Anda yakin ingin me-reboot perangkat{" "}
-                <span className="font-bold text-white">{rebootConfirmDevice.alias || rebootConfirmDevice.sn}</span>?
-              </p>
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg leading-relaxed">
-                ⚠️ Perangkat akan offline sementara selama proses reboot berlangsung.
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-700/30">
-                <button
-                  type="button"
-                  onClick={() => setRebootConfirmDevice(null)}
-                  className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmReboot}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 border border-red-500 text-xs text-white font-semibold transition shadow-lg shadow-red-500/10 cursor-pointer"
-                >
-                  <Power size={13} />
-                  Ya, Reboot
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <RuijieRebootConfirmModal
+        rebootConfirmDevice={rebootConfirmDevice}
+        setRebootConfirmDevice={setRebootConfirmDevice}
+        confirmReboot={confirmReboot}
+      />
     </div>
   );
 }
