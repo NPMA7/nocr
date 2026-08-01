@@ -1081,9 +1081,9 @@ export default function Mikrotik() {
                             {s.name || "-"}
                           </p>
                           <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${isOnline ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-700 text-slate-400"}`}
+                            className={`text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${isOnline ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}
                           >
-                            {isOnline ? "● Online" : "○ Offline"}
+                            {isOnline ? "● Online" : "● Offline"}
                           </span>
                         </div>
                         <p className="text-xs text-slate-400">

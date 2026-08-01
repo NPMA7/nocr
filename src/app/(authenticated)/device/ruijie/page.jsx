@@ -293,8 +293,8 @@ export default function Ruijie() {
     } else {
       return (
         <div className="flex flex-col items-end md:items-start">
-          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-400 w-max flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-400 border border-red-500/30 w-max flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
             Offline
           </span>
           {device.last_online && (
