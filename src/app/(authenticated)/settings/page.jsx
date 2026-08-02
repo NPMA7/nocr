@@ -23,6 +23,7 @@ import {
   HardDrive,
   Cpu,
   RefreshCw,
+  RotateCw,
   Play,
   Square,
   X,
