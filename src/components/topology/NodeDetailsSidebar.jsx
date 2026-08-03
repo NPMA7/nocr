@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, X, Clock, Trash2 } from "lucide-react";
+import { MapPin, X, Clock, Trash2, ExternalLink, Users } from "lucide-react";
 
 export default function NodeDetailsSidebar({
   currentSelectedNode,
@@ -48,7 +48,7 @@ export default function NodeDetailsSidebar({
             >
               <MapPin size={14} />{" "}
               <span className="font-bold text-xs text-slate-100 ml-1 cursor-pointer">
-                Zoom Location
+                Zoom Lokasi
               </span>
             </button>
           )}
@@ -116,11 +116,7 @@ export default function NodeDetailsSidebar({
                     isUp = c.running === "true";
                     isDown = c.running !== "true";
                     statusText =
-                      c.disabled === "true"
-                        ? "Disabled"
-                        : isUp
-                          ? "Up"
-                          : "Down";
+                      c.disabled === "true" ? "Disabled" : isUp ? "Up" : "Down";
                   }
                 }
 
@@ -134,6 +130,7 @@ export default function NodeDetailsSidebar({
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Status Interface</span>
+
                       <span
                         className={`font-bold px-2 py-0.5 rounded ${
                           isUp
@@ -141,7 +138,10 @@ export default function NodeDetailsSidebar({
                             : "bg-red-500/20 text-red-400"
                         }`}
                       >
-                        {statusText}
+                        {statusText}{" "}
+                        {mData?.clients != null && (
+                          <span className="">{mData.clients} Client</span>
+                        )}
                       </span>
                     </div>
                     {isDown && offlineSince && (
@@ -304,76 +304,25 @@ export default function NodeDetailsSidebar({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-slate-400">
-            Nama / Label
+            Vendor Perangkat - ID Pelanggan
           </label>
           <input
             type="text"
-            readOnly={readOnly}
-            value={currentSelectedNode.label || ""}
-            onChange={(e) =>
-              setNodesFromUser((prev) =>
-                prev.map((n) =>
-                  n.id === currentSelectedNode.id
-                    ? { ...n, label: e.target.value }
-                    : n,
-                ),
-              )
-            }
-            className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${
-              readOnly ? "opacity-70 cursor-default" : ""
-            }`}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-slate-400">
-            Vendor Perangkat
-          </label>
-          <input
-            type="text"
-            readOnly={readOnly}
-            placeholder="Contoh: Ruijie, MikroTik, VSOL"
-            value={currentSelectedNode.vendor || ""}
-            onChange={(e) =>
-              setNodesFromUser((prev) =>
-                prev.map((n) =>
-                  n.id === currentSelectedNode.id
-                    ? { ...n, vendor: e.target.value }
-                    : n,
-                ),
-              )
-            }
-            className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${
-              readOnly ? "opacity-70 cursor-default" : ""
-            }`}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-slate-400">
-            ID Pelanggan
-          </label>
-          <input
-            type="text"
-            readOnly={readOnly}
-            placeholder="Contoh: 131175137140"
-            value={
-              currentSelectedNode.customer_id !== undefined
-                ? currentSelectedNode.customer_id
-                : currentSelectedNode.site?.customer_id || ""
-            }
-            onChange={(e) =>
-              setNodesFromUser((prev) =>
-                prev.map((n) =>
-                  n.id === currentSelectedNode.id
-                    ? { ...n, customer_id: e.target.value }
-                    : n,
-                ),
-              )
-            }
-            className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${
-              readOnly ? "opacity-70 cursor-default" : ""
-            }`}
+            readOnly
+            placeholder="-"
+            value={(() => {
+              const vendor =
+                currentSelectedNode.vendor ||
+                currentSelectedNode.site?.vendor ||
+                "";
+              const custId =
+                currentSelectedNode.customer_id !== undefined
+                  ? currentSelectedNode.customer_id
+                  : currentSelectedNode.site?.customer_id || "";
+              if (vendor && custId) return `${vendor} - ${custId}`;
+              return vendor || custId || "";
+            })()}
+            className="bg-slate-900/60 border border-slate-700/50 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none w-full opacity-80 cursor-not-allowed"
           />
         </div>
 
@@ -400,9 +349,7 @@ export default function NodeDetailsSidebar({
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400">CPU</span>
-                <span className="text-slate-200">
-                  {nodeDetail?.cpu || 0}%
-                </span>
+                <span className="text-slate-200">{nodeDetail?.cpu || 0}%</span>
               </div>
             </div>
           )}
@@ -412,49 +359,25 @@ export default function NodeDetailsSidebar({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-slate-400">
-            Nama PIC
+            Nama PIC - Nomor PIC
           </label>
           <input
             type="text"
-            readOnly={readOnly}
-            placeholder="Nama penanggung jawab titik"
-            value={currentSelectedNode.pic_name || ""}
-            onChange={(e) =>
-              setNodesFromUser((prev) =>
-                prev.map((n) =>
-                  n.id === currentSelectedNode.id
-                    ? { ...n, pic_name: e.target.value }
-                    : n,
-                ),
-              )
-            }
-            className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${
-              readOnly ? "opacity-70 cursor-default" : ""
-            }`}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-slate-400">
-            Nomor PIC
-          </label>
-          <input
-            type="text"
-            readOnly={readOnly}
-            placeholder="Contoh: 08123456789"
-            value={currentSelectedNode.pic_phone || ""}
-            onChange={(e) =>
-              setNodesFromUser((prev) =>
-                prev.map((n) =>
-                  n.id === currentSelectedNode.id
-                    ? { ...n, pic_phone: e.target.value }
-                    : n,
-                ),
-              )
-            }
-            className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${
-              readOnly ? "opacity-70 cursor-default" : ""
-            }`}
+            readOnly
+            placeholder="-"
+            value={(() => {
+              const name =
+                currentSelectedNode.pic_name ||
+                currentSelectedNode.site?.pics?.[0]?.name ||
+                "";
+              const phone =
+                currentSelectedNode.pic_phone ||
+                currentSelectedNode.site?.pics?.[0]?.phone ||
+                "";
+              if (name && phone) return `${name} - ${phone}`;
+              return name || phone || "";
+            })()}
+            className="bg-slate-900/60 border border-slate-700/50 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none w-full opacity-80 cursor-not-allowed"
           />
         </div>
 
@@ -489,6 +412,35 @@ export default function NodeDetailsSidebar({
             style={{ minWidth: 0 }}
           />
         </div>
+
+        {(() => {
+          const linkedMap = (mappings || []).find(
+            (m) => m.prefix === currentSelectedNode.linked_interface,
+          );
+          const mac =
+            currentSelectedNode.site?.ruijie_mac || linkedMap?.ruijie_mac;
+          if (!mac) return null;
+          const siteCategory = (currentSelectedNode.linked_interface || "")
+            .toUpperCase()
+            .includes("OPD")
+            ? "opd"
+            : "desa";
+          return (
+            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-between text-xs text-blue-300">
+              <span className="text-[11px] text-blue-200">
+                Kelola detail site ini di Halaman Site
+              </span>
+              <a
+                href={`/sites/${siteCategory}/${encodeURIComponent(mac)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 shrink-0 cursor-pointer"
+              >
+                Detail Site <ExternalLink size={12} />
+              </a>
+            </div>
+          );
+        })()}
 
         {canDelete && (
           <button

@@ -1528,7 +1528,7 @@ export default function DailyReportDashboard() {
               </div>
               <button
                 onClick={() => setShowPdfModal(false)}
-                className="text-slate-400 hover:text-slate-200 text-sm p-1 rounded-lg hover:bg-slate-800 transition"
+                className="cursor-pointer text-slate-400 hover:text-slate-200 text-sm py-2 px-3 rounded-lg hover:bg-slate-800 transition"
               >
                 ✕
               </button>
@@ -1593,7 +1593,7 @@ export default function DailyReportDashboard() {
             <div className="flex justify-end pt-2 border-t border-slate-800/60">
               <button
                 onClick={() => setShowPdfModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition font-medium"
+                className="cursor-pointer px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition font-medium"
               >
                 Batal
               </button>

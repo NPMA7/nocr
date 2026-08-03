@@ -376,7 +376,7 @@ export default function SiteDetailPage() {
                       className="w-1/2 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60"
                     />
                     <input
-                      type="text"
+                      type="number"
                       placeholder="Nomor telepon"
                       value={pic.phone}
                       onChange={(e) => updatePic(idx, "phone", e.target.value)}
