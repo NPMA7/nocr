@@ -18,7 +18,7 @@ export async function GET(req) {
     const { data, error } = await db.from('device_mappings').select('*');
     if (error) throw error;
 
-    const { data: ruijieData } = await db.from('ruijie_devices').select('mac_address, last_online, connection_type, last_log_history');
+    const { data: ruijieData } = await db.from('ruijie_devices').select('mac_address, last_online, connection_type, last_log_history, clients');
     const { data: pppoeData } = await db.from('pppoe_secrets').select('name, last_logged_out, remote_address');
     
     const enrichedData = (data || []).map(m => {
@@ -45,7 +45,7 @@ export async function GET(req) {
         if (sec && sec.last_logged_out) offlineTime = sec.last_logged_out;
       }
       
-      return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType, last_log_history: lastLogHistory, last_online: ap?.last_online || null };
+      return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType, last_log_history: lastLogHistory, last_online: ap?.last_online || null, clients: ap?.clients ?? null };
     });
 
     cachedData = enrichedData;
