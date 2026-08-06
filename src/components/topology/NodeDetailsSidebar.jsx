@@ -216,7 +216,7 @@ export default function NodeDetailsSidebar({
                   setTimeout(() => setShowNodeIfaceDropdown(false), 200)
                 }
                 className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${
-                  readOnly ? "opacity-70 cursor-default" : ""
+                  readOnly ? "opacity-80 cursor-text select-text" : ""
                 }`}
               />
 
@@ -322,7 +322,7 @@ export default function NodeDetailsSidebar({
               if (vendor && custId) return `${vendor} - ${custId}`;
               return vendor || custId || "";
             })()}
-            className="bg-slate-900/60 border border-slate-700/50 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none w-full opacity-80 cursor-not-allowed"
+            className="bg-slate-900/60 border border-slate-700/50 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none w-full opacity-80 cursor-text select-text"
           />
         </div>
 
@@ -377,7 +377,7 @@ export default function NodeDetailsSidebar({
               if (name && phone) return `${name} - ${phone}`;
               return name || phone || "";
             })()}
-            className="bg-slate-900/60 border border-slate-700/50 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none w-full opacity-80 cursor-not-allowed"
+            className="bg-slate-900/60 border border-slate-700/50 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none w-full opacity-80 cursor-text select-text"
           />
         </div>
 
@@ -407,7 +407,7 @@ export default function NodeDetailsSidebar({
               );
             }}
             className={`bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full ${
-              readOnly ? "opacity-70 cursor-default" : ""
+              readOnly ? "opacity-80 cursor-text select-text" : ""
             }`}
             style={{ minWidth: 0 }}
           />
