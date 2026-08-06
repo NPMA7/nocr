@@ -1009,7 +1009,7 @@ function SystemConfigSettings({ canUpdate = true }) {
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
-          1. PARAMETER LAPORAN HARIAN
+          1. PARAMETER LAPORAN
         </button>
         <button
           type="button"
@@ -1029,13 +1029,13 @@ function SystemConfigSettings({ canUpdate = true }) {
           {activeSubTab === "report" && (
             <div className="flex flex-col gap-4">
               <h3 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">
-                1. Parameter Laporan Harian
+                1. Parameter Laporan
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-400">
-                    Minimal Durasi Offline (Menit)
+                    Minimal Durasi Offline - Laporan Harian (Menit)
                   </label>
                   <input
                     type="number"
@@ -1053,6 +1053,29 @@ function SystemConfigSettings({ canUpdate = true }) {
                   />
                   <span className="text-[10px] text-slate-500">
                     Perangkat offline yang kurang dari waktu ini tidak akan dimasukkan otomatis ke laporan harian.
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Batas Waktu Flapping Log Aktivitas (Menit)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    readOnly={!canUpdate}
+                    value={settings.activity_log_flapping_minutes ?? 10}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        activity_log_flapping_minutes: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                  <span className="text-[10px] text-slate-500">
+                    Log pergantian status (Offline/Online) yang kurang dari waktu ini akan otomatis dihapus agar tidak mengotori Log Aktivitas.
                   </span>
                 </div>
               </div>
