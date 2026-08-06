@@ -453,7 +453,7 @@ export default function SiteDetailPage() {
                       type="text"
                       readOnly
                       value={latitude || "—"}
-                      className="w-full bg-slate-900/60 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-400 font-mono cursor-not-allowed"
+                      className="w-full bg-slate-900/60 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono cursor-text select-text"
                     />
                   </div>
                   <div>
@@ -464,7 +464,7 @@ export default function SiteDetailPage() {
                       type="text"
                       readOnly
                       value={longitude || "—"}
-                      className="w-full bg-slate-900/60 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-400 font-mono cursor-not-allowed"
+                      className="w-full bg-slate-900/60 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono cursor-text select-text"
                     />
                   </div>
                 </div>
