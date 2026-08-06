@@ -8,6 +8,7 @@ const path = require('path');
 const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');
 const whatsapp = require('./src/lib/whatsapp');
+const { getStatusLogInfo, filterFlappingLogs, getFlappingThresholdMs } = require('./src/lib/logUtils');
 
 function getSystemSettings() {
     try {
@@ -104,6 +105,9 @@ app.prepare().then(() => {
         },
         (err) => console.error('Gagal memuat state awal:', err.message)
     );
+
+    // Jalankan pembersihan awal log flapping (<10m) di database
+    cleanupFlappingActivityLogs();
 
     let previousTidakSinkronCount = -1;
 
@@ -223,11 +227,64 @@ app.prepare().then(() => {
         }
     }
 
+    async function cleanupFlappingActivityLogs() {
+        try {
+            const { data: logs, error } = await db
+                .from('activity_logs')
+                .select('*')
+                .order('time', { ascending: false })
+                .limit(500);
+
+            if (error || !logs || logs.length === 0) return;
+
+            const { flappingIds } = filterFlappingLogs(logs);
+            if (flappingIds && flappingIds.length > 0) {
+                console.info(`Memangkas ${flappingIds.length} log flapping (<10m) dari database...`);
+                await db.from('activity_logs').delete().in('id', flappingIds);
+                io.emit('activity_log_updated', { action: 'cleanup' });
+            }
+        } catch (err) {
+            console.error('Gagal membersihkan log flapping di DB:', err.message);
+        }
+    }
+
     // Fungsi utama penampung log - MURNI DB DAN EMIT SOCKET REALTIME
     async function addActivityLog(message) {
         if (!message) return;
 
         const now = Date.now();
+
+        // Cek apakah pesan log merupakan perubahan status pelanggan / perangkat
+        const statusInfo = getStatusLogInfo(message);
+        if (statusInfo) {
+            try {
+                // Cari log status terakhir untuk target yang sama di database
+                const { data: prevLogs } = await db
+                    .from('activity_logs')
+                    .select('*')
+                    .ilike('message', `%${statusInfo.targetName}%berubah menjadi%`)
+                    .order('time', { ascending: false })
+                    .limit(1);
+
+                if (prevLogs && prevLogs.length > 0) {
+                    const prev = prevLogs[0];
+                    const prevTime = new Date(prev.time).getTime();
+                    const diff = now - prevTime;
+                    const thresholdMs = getFlappingThresholdMs();
+                    if (diff < thresholdMs) {
+                        // Terdeteksi flapping (di bawah batas waktu konfigurasi server-settings.json):
+                        // Hapus log status sebelumnya dari DB dan abaikan penyimpan log baru
+                        console.info(`Log flapping terdeteksi untuk ${statusInfo.targetName}. Menghapus log sebelumnya (ID: ${prev.id}) dan mengabaikan log baru.`);
+                        await db.from('activity_logs').delete().eq('id', prev.id);
+                        io.emit('activity_log_updated', { action: 'delete', id: prev.id });
+                        return;
+                    }
+                }
+            } catch (flappingErr) {
+                console.error("Gagal memeriksa log flapping:", flappingErr.message);
+            }
+        }
+
         // Bersihkan cache yang berumur lebih dari 10 detik
         for (const [msg, ts] of recentLogsCache.entries()) {
             if (now - ts > 10000) {
@@ -279,6 +336,7 @@ app.prepare().then(() => {
                     io.emit('activity_log_updated', data[0]);
                 }
                 await trimActivityLogsInDb();
+                await cleanupFlappingActivityLogs();
             }
         } catch (err) {
             console.error("Gagal koneksi simpan log database:", err.message);
