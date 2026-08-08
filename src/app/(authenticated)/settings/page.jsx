@@ -18,6 +18,7 @@ import {
   Monitor,
   Terminal,
   Pencil,
+  Check,
   Key,
   Activity,
   HardDrive,
@@ -28,6 +29,7 @@ import {
   Square,
   X,
   Power,
+  Trash,
 } from "lucide-react";
 import { hasAccess, getStoredUser, getRoleLabel } from "@/lib/roles";
 import RoleSettings from "@/components/RoleSettings";
@@ -924,6 +926,9 @@ function SystemConfigSettings({ canUpdate = true }) {
   const [newIssue, setNewIssue] = useState("");
   const [activeSubTab, setActiveSubTab] = useState("report");
 
+  const [editingIssue, setEditingIssue] = useState(null);
+  const [renamedIssues, setRenamedIssues] = useState([]);
+
   const fetchSettings = async () => {
     setLoading(true);
     try {
@@ -946,8 +951,19 @@ function SystemConfigSettings({ canUpdate = true }) {
     if (!canUpdate) return;
     setSaving(true);
     try {
-      await axios.post("/api/settings/server", settings);
+      const payload = {
+        ...settings,
+        renamed_issues: renamedIssues,
+      };
+      const res = await axios.post("/api/settings/server", payload);
       showToast("Pengaturan server berhasil disimpan!", "success");
+      if (res.data?.renamed_count > 0) {
+        showToast(
+          `Berhasil memperbarui ${res.data.renamed_count} data laporan harian yang menggunakan issue lama!`,
+          "success"
+        );
+      }
+      setRenamedIssues([]);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("server-settings-updated", { detail: settings }));
       }
@@ -970,6 +986,44 @@ function SystemConfigSettings({ canUpdate = true }) {
       standard_issues: [...settings.standard_issues, newIssue.trim()],
     });
     setNewIssue("");
+  };
+
+  const handleSaveEditIssue = (oldName, newValue) => {
+    const trimmedNew = newValue.trim();
+    if (!trimmedNew) return;
+    if (oldName === trimmedNew) {
+      setEditingIssue(null);
+      return;
+    }
+    if (
+      settings.standard_issues.includes(trimmedNew) &&
+      trimmedNew.toLowerCase() !== oldName.toLowerCase()
+    ) {
+      showToast("Issue dengan nama tersebut sudah ada di daftar", "warning");
+      return;
+    }
+
+    const updatedList = settings.standard_issues.map((i) =>
+      i === oldName ? trimmedNew : i
+    );
+
+    setSettings({
+      ...settings,
+      standard_issues: updatedList,
+    });
+
+    setRenamedIssues((prev) => {
+      const filtered = prev.filter((r) => r.new !== oldName);
+      const existing = prev.find((r) => r.new === oldName);
+      if (existing) {
+        return [...filtered, { old: existing.old, new: trimmedNew }];
+      } else {
+        return [...filtered, { old: oldName, new: trimmedNew }];
+      }
+    });
+
+    setEditingIssue(null);
+    showToast(`Issue "${oldName}" diubah menjadi "${trimmedNew}"`, "info");
   };
 
   const handleRemoveIssue = (issue) => {
@@ -1106,23 +1160,85 @@ function SystemConfigSettings({ canUpdate = true }) {
                 )}
 
                 <div className="flex flex-wrap gap-2 mt-2 p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg max-h-48 overflow-y-auto">
-                  {settings.standard_issues.map((issue) => (
-                    <div
-                      key={issue}
-                      className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-full"
-                    >
-                      <span>{issue}</span>
-                      {canUpdate && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveIssue(issue)}
-                          className="text-slate-400 hover:text-red-400 transition"
-                        >
-                          <X size={12} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {settings.standard_issues.map((issue) => {
+                    const isEditing = editingIssue?.oldName === issue;
+                    return (
+                      <div
+                        key={issue}
+                        className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-full"
+                      >
+                        {isEditing ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              value={editingIssue.value}
+                              onChange={(e) =>
+                                setEditingIssue({
+                                  ...editingIssue,
+                                  value: e.target.value,
+                                })
+                              }
+                              className="bg-slate-900 border border-blue-500 rounded px-2 py-0.5 text-xs text-white outline-none w-48"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleSaveEditIssue(issue, editingIssue.value);
+                                }
+                                if (e.key === "Escape") {
+                                  setEditingIssue(null);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSaveEditIssue(issue, editingIssue.value)
+                              }
+                              className="text-green-400 hover:text-green-300 p-0.5 transition cursor-pointer"
+                              title="Simpan perbaikan nama issue"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingIssue(null)}
+                              className="text-slate-400 hover:text-slate-200 p-0.5 transition cursor-pointer"
+                              title="Batal"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span>{issue}</span>
+                            {canUpdate && (
+                              <div className="flex items-center gap-1 ml-1 border-l border-slate-700/60 pl-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingIssue({ oldName: issue, value: issue })
+                                  }
+                                  className="text-slate-400 hover:text-blue-400 transition cursor-pointer"
+                                  title="Edit nama issue ini"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveIssue(issue)}
+                                  className="text-slate-400 hover:text-red-400 transition cursor-pointer"
+                                  title="Hapus issue"
+                                >
+                                  <Trash size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

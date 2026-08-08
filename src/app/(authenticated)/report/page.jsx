@@ -70,17 +70,33 @@ export default function DailyReportPage() {
   }, []);
 
   useEffect(() => {
-    axios
-      .get("/api/settings/server")
-      .then((res) => {
-        if (res.data && Array.isArray(res.data.standard_issues)) {
-          setStandardIssues(res.data.standard_issues);
-        }
-      })
-      .catch((err) => {
-        console.error("Gagal memuat issue standar dari server:", err);
-      });
-  }, []);
+    const fetchServerSettings = () => {
+      axios
+        .get("/api/settings/server")
+        .then((res) => {
+          if (res.data && Array.isArray(res.data.standard_issues)) {
+            setStandardIssues(res.data.standard_issues);
+          }
+        })
+        .catch((err) => {
+          console.error("Gagal memuat issue standar dari server:", err);
+        });
+    };
+
+    fetchServerSettings();
+
+    const onSettingsUpdate = (e) => {
+      if (e.detail && Array.isArray(e.detail.standard_issues)) {
+        setStandardIssues(e.detail.standard_issues);
+      } else {
+        fetchServerSettings();
+      }
+      fetchReports(startDate, endDate, type, true);
+    };
+
+    window.addEventListener("server-settings-updated", onSettingsUpdate);
+    return () => window.removeEventListener("server-settings-updated", onSettingsUpdate);
+  }, [startDate, endDate, type]);
 
   useEffect(() => {
     const todayStr = new Date().toISOString().split("T")[0];
@@ -306,6 +322,108 @@ export default function DailyReportPage() {
     }).format(d);
   };
 
+  const monthNamesMap = {
+    jan: "01", januari: "01", january: "01",
+    feb: "02", februari: "02", february: "02",
+    mar: "03", maret: "03", march: "03",
+    apr: "04", april: "04",
+    mei: "05", may: "05",
+    jun: "06", juni: "06", june: "06",
+    jul: "07", juli: "07", july: "07",
+    agu: "08", agust: "08", agustus: "08", aug: "08", august: "08",
+    sep: "09", september: "09",
+    okt: "10", oktober: "10", oct: "10", october: "10",
+    nov: "11", november: "11",
+    des: "12", desember: "12", dec: "12", december: "12",
+  };
+
+  const parseDateToISO = (str) => {
+    if (!str || typeof str !== "string") return null;
+    let s = str.trim();
+    if (!s || s === "-") return null;
+
+    // Fix 5-digit year typos in string (e.g. 20226-02-11 -> 2026-02-11)
+    s = s.replace(/\b20\d{3}\b/g, (match) => "20" + match.slice(-2));
+
+    // Pattern 1: DD/MM/YYYY or DD-MM-YYYY with optional time HH:mm:ss
+    const dmyMatch = s.match(
+      /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4,5})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+    if (dmyMatch) {
+      const day = dmyMatch[1].padStart(2, "0");
+      const month = dmyMatch[2].padStart(2, "0");
+      let year = dmyMatch[3];
+      if (year.length > 4) year = "20" + year.slice(-2);
+      const hour = dmyMatch[4] ? dmyMatch[4].padStart(2, "0") : "00";
+      const min = dmyMatch[5] ? dmyMatch[5].padStart(2, "0") : "00";
+      const sec = dmyMatch[6] ? dmyMatch[6].padStart(2, "0") : "00";
+      const isoStr = `${year}-${month}-${day}T${hour}:${min}:${sec}+07:00`;
+      const d = new Date(isoStr);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+
+    // Pattern 2: 19April2026, 19 April 2026, 19-April-2026 with optional time
+    const textMonthMatch = s.match(
+      /^(\d{1,2})[\s\-]?([A-Za-z]+)[\s\-]?(\d{4,5})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+    if (textMonthMatch) {
+      const day = textMonthMatch[1].padStart(2, "0");
+      const monthKey = textMonthMatch[2].toLowerCase();
+      let year = textMonthMatch[3];
+      if (year.length > 4) year = "20" + year.slice(-2);
+      const month = monthNamesMap[monthKey];
+      if (month) {
+        const hour = textMonthMatch[4]
+          ? textMonthMatch[4].padStart(2, "0")
+          : "00";
+        const min = textMonthMatch[5]
+          ? textMonthMatch[5].padStart(2, "0")
+          : "00";
+        const sec = textMonthMatch[6]
+          ? textMonthMatch[6].padStart(2, "0")
+          : "00";
+        const isoStr = `${year}-${month}-${day}T${hour}:${min}:${sec}+07:00`;
+        const d = new Date(isoStr);
+        return isNaN(d.getTime()) ? null : d.toISOString();
+      }
+    }
+
+    // Pattern 3: YYYY-MM-DD or YYYY/MM/DD with optional time
+    const ymdMatch = s.match(
+      /^(\d{4,5})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+    if (ymdMatch) {
+      let year = ymdMatch[1];
+      if (year.length > 4) year = "20" + year.slice(-2);
+      const month = ymdMatch[2].padStart(2, "0");
+      const day = ymdMatch[3].padStart(2, "0");
+      const hour = ymdMatch[4] ? ymdMatch[4].padStart(2, "0") : "00";
+      const min = ymdMatch[5] ? ymdMatch[5].padStart(2, "0") : "00";
+      const sec = ymdMatch[6] ? ymdMatch[6].padStart(2, "0") : "00";
+      const isoStr = `${year}-${month}-${day}T${hour}:${min}:${sec}+07:00`;
+      const d = new Date(isoStr);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+
+    // Fallback standard new Date
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      if (d.getFullYear() > 2099) {
+        d.setFullYear(2026);
+      }
+      return d.toISOString();
+    }
+
+    return null;
+  };
+
+  const parseDateToYYYYMMDD = (str, fallbackDate) => {
+    const iso = parseDateToISO(str);
+    if (!iso) return fallbackDate;
+    const d = new Date(iso);
+    return d.toLocaleDateString("sv", { timeZone: "Asia/Jakarta" });
+  };
+
   const handleImport = async () => {
     if (!importText.trim()) {
       showToast(
@@ -326,44 +444,55 @@ export default function DailyReportPage() {
         // Skip header row if it matches known column names exactly
         const col0 = columns[0].toLowerCase().trim();
         if (
+          col0 === "tanggal sheet" ||
+          col0 === "tanggal" ||
           col0 === "nama dinas" ||
           col0 === "nama kecamatan" ||
           col0 === "no" ||
-          col0 === "no." ||
-          col0 === "tanggal"
+          col0 === "no."
         ) {
           continue;
         }
 
-        // We need at least Nama Dinas/Kecamatan & Jam Offline
-        if (columns.length < 3) continue;
+        let sheetDateCol = "";
+        let nameCol = "";
+        let locCol = "";
+        let offlineCol = "";
+        let onlineCol = "";
+        let statusCol = "";
+        let issueCol = "";
+        let tindakanCol = "";
 
-        const nameCol = columns[0] || "";
-        const locCol = columns[1] || "";
-        const offlineCol = columns[2] || "";
-        const onlineCol = columns[3] || "";
-        const statusCol = columns[4] || "";
-        const issueCol = columns[5] || "";
-        const tindakanCol = columns[6] || "";
+        const parsedCol0Date = parseDateToYYYYMMDD(columns[0], null);
 
-        // Parse date from offline_since or fallback to today
-        let offlineDate = null;
-        let onlineDate = null;
-        let reportDate = date; // Default to currently selected date on calendar
-
-        if (offlineCol && offlineCol !== "-") {
-          const parsedOffline = new Date(offlineCol);
-          if (!isNaN(parsedOffline.getTime())) {
-            offlineDate = parsedOffline.toISOString();
-          }
+        if (columns.length >= 8 || (columns.length >= 7 && parsedCol0Date)) {
+          sheetDateCol = columns[0] || "";
+          nameCol = columns[1] || "";
+          locCol = columns[2] || "";
+          offlineCol = columns[3] || "";
+          onlineCol = columns[4] || "";
+          statusCol = columns[5] || "";
+          issueCol = columns[6] || "";
+          tindakanCol = columns[7] || "";
+        } else {
+          nameCol = columns[0] || "";
+          locCol = columns[1] || "";
+          offlineCol = columns[2] || "";
+          onlineCol = columns[3] || "";
+          statusCol = columns[4] || "";
+          issueCol = columns[5] || "";
+          tindakanCol = columns[6] || "";
         }
 
-        if (onlineCol && onlineCol !== "-") {
-          const parsedOnline = new Date(onlineCol);
-          if (!isNaN(parsedOnline.getTime())) {
-            onlineDate = parsedOnline.toISOString();
-          }
-        }
+        // Skip row if Nama Dinas / Kecamatan is missing
+        if (!nameCol) continue;
+
+        const reportDate = sheetDateCol
+          ? parseDateToYYYYMMDD(sheetDateCol, startDate)
+          : startDate;
+
+        const offlineDate = parseDateToISO(offlineCol);
+        const onlineDate = parseDateToISO(onlineCol);
 
         let status = "Progress";
         if (
@@ -375,10 +504,14 @@ export default function DailyReportPage() {
           status = "Done";
         }
 
+        const prefix_name = locCol
+          ? `${nameCol}-${locCol}`.toUpperCase()
+          : nameCol.toUpperCase();
+
         reportsList.push({
           date: reportDate,
           type: importType,
-          prefix_name: `${nameCol}-${locCol}`.toUpperCase(),
+          prefix_name,
           location: locCol.toUpperCase(),
           offline_since: offlineDate,
           online_since: onlineDate,
@@ -408,7 +541,21 @@ export default function DailyReportPage() {
       }
       setShowImportModal(false);
       setImportText("");
-      fetchReports(startDate, endDate, type);
+
+      const importedDates = reportsList
+        .map((r) => r.date)
+        .filter(Boolean)
+        .sort();
+
+      if (importedDates.length > 0) {
+        const minImportDate = importedDates[0];
+        const maxImportDate = importedDates[importedDates.length - 1];
+        setStartDate(minImportDate);
+        setEndDate(maxImportDate);
+        fetchReports(minImportDate, maxImportDate, type);
+      } else {
+        fetchReports(startDate, endDate, type);
+      }
     } catch (err) {
       showToast(
         err.response?.data?.error || err.message || "Gagal mengimpor data",
@@ -1231,22 +1378,21 @@ export default function DailyReportPage() {
                   <li>
                     Salin (Ctrl+C) kolom berurutan:{" "}
                     <strong>
-                      Nama Dinas/Kecamatan, Lokasi/Desa, Jam Offline, Jam
-                      Online, Status, Issue, Tindakan
+                      Tanggal Sheet, Nama Dinas/Kecamatan, Lokasi/Desa, Jam
+                      Offline, Jam Online, Status, Issue, Tindakan
                     </strong>
                     .
                   </li>
                   <li>Tempelkan (Ctrl+V) ke kolom teks di bawah ini.</li>
                 </ol>
                 <div className="mt-2.5 pt-2 border-t border-purple-900/40 text-[11px] text-amber-300 flex items-center gap-1.5 font-semibold">
-                  <span>⚠️</span>
+                  <span>💡</span>
                   <span>
-                    PENTING: Pastikan data yang Anda salin adalah untuk tanggal:{" "}
+                    INFO: Tanggal laporan akan diambil langsung dari kolom{" "}
                     <span className="underline decoration-wavy decoration-amber-500 font-extrabold text-white text-xs">
-                      {startDate === endDate
-                        ? formatFriendlyDate(startDate)
-                        : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
-                    </span>
+                      Tanggal Sheet
+                    </span>{" "}
+                    pada setiap baris data secara dinamis.
                   </span>
                 </div>
               </div>
@@ -1260,11 +1406,6 @@ export default function DailyReportPage() {
                 <span className="inline-flex items-center rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-sm font-medium text-purple-300">
                   {importType === "L2TP" ? "Desa" : "OPD"}
                 </span>
-                <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-sm font-medium text-amber-300">
-                  {startDate === endDate
-                    ? formatFriendlyDate(startDate)
-                    : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
-                </span>
               </div>
 
               {/* Paste Textarea */}
@@ -1275,7 +1416,7 @@ export default function DailyReportPage() {
                 <textarea
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
-                  placeholder="Contoh:&#10;ARJASARI&#9;MEKARJAYA&#9;2025-06-25 08:25:09&#9;2025-06-25 12:11:13&#9;Done&#9;kabel putus&#9;perbaikan kabel"
+                  placeholder={"Contoh:\n19April2026\tDishub 3\tR Pacantel\t17/04/2026\t\tProgress\t\t\n19April2026\tDishub 3\tR Angkutan\t18/04/2026\t19/04/2026\tDone\tPerangkat Hang / Telat Sinkronisasi\trestart perangkat ONT dan AP"}
                   rows={8}
                   className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg p-2.5 text-xs outline-none focus:border-purple-500 font-mono transition resize-none"
                 />

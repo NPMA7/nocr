@@ -146,16 +146,39 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Array is empty' }, { status: 400 });
       }
 
+      const sanitizeIsoDate = (isoStr) => {
+        if (!isoStr || typeof isoStr !== 'string') return null;
+        if (isoStr.startsWith('+') || (new Date(isoStr).getFullYear() > 2099)) {
+          try {
+            const clean = isoStr.replace(/\+0?20\d{3}/, (match) => {
+              const yearSuffix = match.slice(-2);
+              return `20${yearSuffix}`;
+            });
+            const d = new Date(clean);
+            if (!isNaN(d.getTime())) {
+              if (d.getFullYear() > 2099) d.setFullYear(2026);
+              return d.toISOString();
+            }
+          } catch(e) {
+            return null;
+          }
+        }
+        return isoStr;
+      };
+
       const reportsToProcess = body.map((r, idx) => {
         const type = r.type || 'L2TP';
-        const reportDate = r.date || new Date().toISOString().split('T')[0];
+        let reportDate = r.date || new Date().toISOString().split('T')[0];
+        if (reportDate && reportDate.length > 10) {
+          reportDate = reportDate.slice(0, 10);
+        }
         return {
           report_date: reportDate,
           ruijie_mac: r.ruijie_mac || `MANUAL_${type}_${Date.now()}_${idx}`,
           prefix_name: r.prefix_name || 'MANUAL ENTRY',
           location: r.location || '',
-          offline_since: r.offline_since || null,
-          online_since: r.online_since || null,
+          offline_since: sanitizeIsoDate(r.offline_since),
+          online_since: sanitizeIsoDate(r.online_since),
           status_progress: r.status_progress || 'Progress',
           issue: r.issue || '',
           tindakan: r.tindakan || ''
@@ -194,16 +217,38 @@ export async function POST(request) {
         let match = exactMap[key] || pendingMap[deviceKey];
 
         if (match) {
-          toUpdate.push({
-            id: match.id,
-            report_date: r.report_date, // Move the record to the active target date
-            online_since: r.online_since,
-            status_progress: r.status_progress,
-            issue: r.issue,
-            tindakan: r.tindakan
-          });
+          if (match.isPendingInsert) {
+            match.report_date = r.report_date;
+            if (r.offline_since) match.offline_since = r.offline_since;
+            match.online_since = r.online_since;
+            match.status_progress = r.status_progress;
+            if (r.issue) match.issue = r.issue;
+            if (r.tindakan) match.tindakan = r.tindakan;
+
+            if (r.status_progress !== 'Progress') {
+              delete pendingMap[deviceKey];
+            }
+          } else {
+            toUpdate.push({
+              id: match.id,
+              report_date: r.report_date,
+              offline_since: r.offline_since,
+              online_since: r.online_since,
+              status_progress: r.status_progress,
+              issue: r.issue,
+              tindakan: r.tindakan
+            });
+            if (r.status_progress !== 'Progress') {
+              delete pendingMap[deviceKey];
+            }
+          }
         } else {
+          r.isPendingInsert = true;
           toInsert.push(r);
+          exactMap[key] = r;
+          if (r.status_progress === 'Progress') {
+            pendingMap[deviceKey] = r;
+          }
         }
       });
 
@@ -211,9 +256,11 @@ export async function POST(request) {
       let updatedCount = 0;
 
       if (toInsert.length > 0) {
-        const { error: insErr } = await db.from('daily_reports').insert(toInsert);
+        // Strip temporary helper flag before insert
+        const cleanToInsert = toInsert.map(({ isPendingInsert, ...rest }) => rest);
+        const { error: insErr } = await db.from('daily_reports').insert(cleanToInsert);
         if (insErr) throw insErr;
-        insertedCount = toInsert.length;
+        insertedCount = cleanToInsert.length;
       }
 
       if (toUpdate.length > 0) {
@@ -222,6 +269,7 @@ export async function POST(request) {
             .from('daily_reports')
             .update({
               report_date: u.report_date,
+              offline_since: u.offline_since,
               online_since: u.online_since,
               status_progress: u.status_progress,
               issue: u.issue,

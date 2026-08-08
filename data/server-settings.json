@@ -2,16 +2,16 @@
   "standard_issues": [
     "Mati Listrik / Pemadaman",
     "Kabel Power / Adaptor Terlepas / Rusak",
-    "Stop Kontak / Terminal Longgar",
-    "ONT Loss / FO Cut / Gangguan Kabel",
     "Kabel UTP / LAN Bermasalah / Loop",
     "Perangkat Hang / Telat Sinkronisasi",
     "Sedang Renovasi / Perbaikan Bangunan",
     "Relokasi Perangkat / ONT / AP",
     "Gangguan Massal / ISP Down",
-    "Kabel Perangkat Dicabut",
     "Listrik Dimatikan",
-    "Slow Speed"
+    "Slow Speed",
+    "ONT Loss / FO Cut / Tidak Ada Internet",
+    "Stop Kontak / Terminal Bermasalah",
+    "Kabel / Perangkat Dicabut"
   ],
   "min_offline_duration_minutes": 20,
   "activity_log_flapping_minutes": 10,
