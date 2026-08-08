@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { resolveAuth } from "@/lib/auth";
 import { hasAccess } from "@/lib/roles";
+import db from "@/lib/dbClient";
 
 const getFilePath = () => path.join(process.cwd(), "data", "server-settings.json");
 
@@ -75,9 +76,30 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid data body" }, { status: 400 });
     }
 
-    await fs.writeFile(filePath, JSON.stringify(body, null, 2), "utf-8");
+    const { renamed_issues, ...settingsToSave } = body;
 
-    return NextResponse.json({ success: true, data: body });
+    await fs.writeFile(filePath, JSON.stringify(settingsToSave, null, 2), "utf-8");
+
+    let totalRenamedCount = 0;
+
+    if (Array.isArray(renamed_issues) && renamed_issues.length > 0) {
+      for (const item of renamed_issues) {
+        if (item.old && item.new && item.old !== item.new) {
+          const { data, error } = await db
+            .from("daily_reports")
+            .update({ issue: item.new })
+            .eq("issue", item.old);
+
+          if (error) {
+            console.error("Error updating daily_reports issue column:", error);
+          } else if (Array.isArray(data)) {
+            totalRenamedCount += data.length;
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, data: settingsToSave, renamed_count: totalRenamedCount });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
