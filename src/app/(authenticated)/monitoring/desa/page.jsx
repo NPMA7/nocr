@@ -608,7 +608,7 @@ export default function MonitorDevice() {
                                   onChange={(e) =>
                                     setEditPrefixValue(e.target.value)
                                   }
-                                  className="cursor-pointer bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500 w-full min-w-[150px]"
+                                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500 w-full min-w-[150px]"
                                   autoFocus
                                   disabled={isSavingPrefix}
                                 />

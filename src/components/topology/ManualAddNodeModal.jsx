@@ -33,10 +33,10 @@ export default function ManualAddNodeModal({
           setManualIfaceSearch("");
         }
       }}
-      className="absolute inset-0 z-[3000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      className="absolute inset-0 z-[3000] flex items-center justify-center p-3 sm:p-4 overflow-y-auto pointer-events-none"
     >
-      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md max-h-[min(90dvh,100%)] my-auto flex flex-col overflow-hidden animate-fade-in-up">
-        <div className="flex-shrink-0 p-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
+      <div className="pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl w-full max-w-md max-h-[min(90dvh,100%)] my-auto flex flex-col overflow-hidden animate-fade-in-up">
+        <div className="flex-shrink-0 p-4 border-b border-slate-700/50 flex justify-between items-center">
           <h3 className="font-bold text-slate-100 flex items-center gap-2">
             <MapPin size={18} className="text-emerald-400" /> Tambah Titik Node
             Manual
@@ -56,7 +56,7 @@ export default function ManualAddNodeModal({
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Ketik nama tempat atau paste koordinat..."
+                placeholder="Paste URL Google Maps, Plus Code, atau Koordinat..."
                 value={manualAddData.addressSearch || ""}
                 onChange={(e) => {
                   setManualAddData({
@@ -113,8 +113,7 @@ export default function ManualAddNodeModal({
             )}
 
             <p className="text-[10px] text-slate-500 leading-tight">
-              Tekan Enter atau klik Cari untuk mencari lokasi atau paste
-              koordinat.
+              Bisa paste link Google Maps (maps.app.goo.gl), Plus Code (cth: WM7G+WR9), atau titik koordinat (-7.039, 107.567). Tekan Enter / Cari.
             </p>
           </div>
 
@@ -238,7 +237,7 @@ export default function ManualAddNodeModal({
                   type: e.target.value,
                 })
               }
-              className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 w-full appearance-none"
+              className="cursor-pointer bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 w-full appearance-none"
             >
               <option value="client">Client (Rumah)</option>
               <option value="odp">ODP (Kotak Distribusi)</option>
@@ -303,7 +302,7 @@ export default function ManualAddNodeModal({
             </div>
           </div>
         </div>
-        <div className="flex-shrink-0 p-4 border-t border-slate-700/50 bg-slate-800/50 flex justify-end gap-2">
+        <div className="flex-shrink-0 p-4 border-t border-slate-700/50 flex justify-end gap-2">
           <button
             onClick={() => {
               setShowManualAddModal(false);
