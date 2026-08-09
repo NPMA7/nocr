@@ -277,7 +277,7 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
               </button>
             </div>
             <div className="p-6 flex flex-col gap-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1.5">
                     Nama Role
@@ -309,8 +309,8 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                 <label className="block text-xs font-medium text-slate-400 mb-3 border-b border-slate-700 pb-2">
                   Konfigurasi Akses Menu
                 </label>
-                <div className="border border-slate-700 rounded-lg overflow-hidden">
-                  <table className="w-full text-xs text-left">
+                <div className="border border-slate-700 rounded-lg overflow-x-auto">
+                  <table className="w-full text-xs text-left min-w-[520px]">
                     <thead className="bg-slate-700/50 text-slate-300">
                       <tr>
                         <th className="px-4 py-2.5 font-medium">Menu</th>

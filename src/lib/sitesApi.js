@@ -43,7 +43,7 @@ export function mergeMappingWithSite(mapping, site, pics = []) {
     is_prefix_manual: mapping.is_prefix_manual,
     offline_since: mapping.offline_since,
     site: siteData,
-    has_site_profile: !!siteData,
+    has_site_profile: Boolean(siteData?.vendor && siteData.vendor.trim() !== ""),
   };
 }
 

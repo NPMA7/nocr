@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import axios from "axios";
 import { API_URL, socket, useAppState } from "@/App";
 import {
@@ -209,6 +209,9 @@ export default function Mikrotik() {
     secrets: null,
     pppoe: null,
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(30);
 
   const fetchAll = async (forceRefresh = false, lazy = false) => {
     if (!lazy) setLoading(true);
@@ -532,6 +535,39 @@ export default function Mikrotik() {
         s.profile.toLowerCase().includes(secretSearch.toLowerCase())),
   );
 
+  const paginatedInterfaces = useMemo(() => {
+    if (itemsPerPage === "all") return filteredInterfaces;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredInterfaces.slice(start, start + itemsPerPage);
+  }, [filteredInterfaces, currentPage, itemsPerPage]);
+
+  const totalInterfacePages = useMemo(() => {
+    if (itemsPerPage === "all") return 1;
+    return Math.ceil(filteredInterfaces.length / itemsPerPage) || 1;
+  }, [filteredInterfaces.length, itemsPerPage]);
+
+  const paginatedSessions = useMemo(() => {
+    if (itemsPerPage === "all") return filteredSessions;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredSessions.slice(start, start + itemsPerPage);
+  }, [filteredSessions, currentPage, itemsPerPage]);
+
+  const totalSessionPages = useMemo(() => {
+    if (itemsPerPage === "all") return 1;
+    return Math.ceil(filteredSessions.length / itemsPerPage) || 1;
+  }, [filteredSessions.length, itemsPerPage]);
+
+  const paginatedSecrets = useMemo(() => {
+    if (itemsPerPage === "all") return filteredSecrets;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredSecrets.slice(start, start + itemsPerPage);
+  }, [filteredSecrets, currentPage, itemsPerPage]);
+
+  const totalSecretPages = useMemo(() => {
+    if (itemsPerPage === "all") return 1;
+    return Math.ceil(filteredSecrets.length / itemsPerPage) || 1;
+  }, [filteredSecrets.length, itemsPerPage]);
+
   const notConfigured =
     coreStatus &&
     !coreStatus.connected &&
@@ -540,11 +576,11 @@ export default function Mikrotik() {
     "cursor-pointer p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition";
 
   const dataPanelClass =
-    "flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden";
-  const dataScrollClass = "flex-1 min-h-0 overflow-y-auto overscroll-contain";
+    "flex flex-col min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-xl";
+  const dataScrollClass = "overflow-x-auto overflow-y-visible min-w-0 touch-auto";
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden relative">
+    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4 relative">
       <Toast toasts={toasts} />
 
       {/* Header */}
@@ -698,10 +734,24 @@ export default function Mikrotik() {
               <option value="running">Running</option>
               <option value="down">Down</option>
             </select>
-            <div className="flex items-center gap-3 ml-auto flex-shrink-0">
-              <span className="text-xs text-slate-500">
-                {filteredInterfaces.length} / {interfaces.length}
-              </span>
+            <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
+              <span className="text-xs text-slate-400">Tampilkan:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "all" ? "all" : Number(e.target.value);
+                  setItemsPerPage(val);
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="all">Semua ({filteredInterfaces.length})</option>
+              </select>
               {canCreate && (
                 <button
                   id="btn-tambah-interface"
@@ -721,7 +771,7 @@ export default function Mikrotik() {
                   Tidak ada data interface
                 </p>
               ) : (
-                filteredInterfaces.map((iface, i) => (
+                paginatedInterfaces.map((iface, i) => (
                   <div
                     key={i}
                     className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-700/20 active:bg-slate-700/40 transition"
@@ -813,7 +863,7 @@ export default function Mikrotik() {
                       </td>
                     </tr>
                   ) : (
-                    filteredInterfaces.map((iface, i) => (
+                    paginatedInterfaces.map((iface, i) => (
                       <tr
                         key={i}
                         className="border-b border-slate-700/20 hover:bg-slate-700/20 transition"
@@ -877,6 +927,41 @@ export default function Mikrotik() {
               </table>
             </div>
           </div>
+
+          {filteredInterfaces.length > 0 && (
+            <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
+              <span className="text-slate-400">
+                {itemsPerPage === "all"
+                  ? `Menampilkan ${filteredInterfaces.length} dari ${filteredInterfaces.length}`
+                  : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredInterfaces.length)}-${Math.min(currentPage * itemsPerPage, filteredInterfaces.length)} dari ${filteredInterfaces.length}`}
+              </span>
+              {itemsPerPage !== "all" && totalInterfacePages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-400 font-medium px-2">
+                    {currentPage} / {totalInterfacePages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) =>
+                        Math.min(totalInterfacePages, p + 1),
+                      )
+                    }
+                    disabled={currentPage === totalInterfacePages}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : tab === "pppoe" ? (
         <div className={dataPanelClass}>
@@ -900,9 +985,25 @@ export default function Mikrotik() {
               <option value="pppoe">OPD</option>
               <option value="l2tp">Desa</option>
             </select>
-            <span className="text-xs text-slate-500 ml-auto flex-shrink-0">
-              {filteredSessions.length} sesi aktif
-            </span>
+            <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
+              <span className="text-xs text-slate-400">Tampilkan:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "all" ? "all" : Number(e.target.value);
+                  setItemsPerPage(val);
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="all">Semua ({filteredSessions.length})</option>
+              </select>
+            </div>
           </div>
           <div className={dataScrollClass}>
             {/* Mobile card view */}
@@ -912,7 +1013,7 @@ export default function Mikrotik() {
                   Tidak ada sesi aktif
                 </p>
               ) : (
-                filteredSessions.map((p, i) => (
+                paginatedSessions.map((p, i) => (
                   <div
                     key={i}
                     className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-700/20 active:bg-slate-700/40 transition"
@@ -989,7 +1090,7 @@ export default function Mikrotik() {
                       </td>
                     </tr>
                   ) : (
-                    filteredSessions.map((p, i) => (
+                    paginatedSessions.map((p, i) => (
                       <tr
                         key={i}
                         className="border-b border-slate-700/20 hover:bg-slate-700/20 transition"
@@ -1035,6 +1136,41 @@ export default function Mikrotik() {
               </table>
             </div>
           </div>
+
+          {filteredSessions.length > 0 && (
+            <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
+              <span className="text-slate-400">
+                {itemsPerPage === "all"
+                  ? `Menampilkan ${filteredSessions.length} dari ${filteredSessions.length}`
+                  : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredSessions.length)}-${Math.min(currentPage * itemsPerPage, filteredSessions.length)} dari ${filteredSessions.length}`}
+              </span>
+              {itemsPerPage !== "all" && totalSessionPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-400 font-medium px-2">
+                    {currentPage} / {totalSessionPages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) =>
+                        Math.min(totalSessionPages, p + 1),
+                      )
+                    }
+                    disabled={currentPage === totalSessionPages}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className={dataPanelClass}>
@@ -1049,15 +1185,34 @@ export default function Mikrotik() {
               onChange={(e) => setSecretSearch(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
-            {canCreate && (
-              <button
-                id="btn-tambah-pelanggan"
-                onClick={openAddSecret}
-                className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ml-auto flex-shrink-0"
+            <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
+              <span className="text-xs text-slate-400">Tampilkan:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "all" ? "all" : Number(e.target.value);
+                  setItemsPerPage(val);
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
               >
-                <Plus size={14} /> Tambah
-              </button>
-            )}
+                <option value={10}>10</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="all">Semua ({filteredSecrets.length})</option>
+              </select>
+              {canCreate && (
+                <button
+                  id="btn-tambah-pelanggan"
+                  onClick={openAddSecret}
+                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition flex-shrink-0"
+                >
+                  <Plus size={14} /> Tambah
+                </button>
+              )}
+            </div>
           </div>
           <div className={dataScrollClass}>
             {/* Mobile card view */}
@@ -1067,7 +1222,7 @@ export default function Mikrotik() {
                   Tidak ada pelanggan terdaftar
                 </p>
               ) : (
-                filteredSecrets.map((s, i) => {
+                paginatedSecrets.map((s, i) => {
                   const activeSess = pppoe.find((p) => p.name === s.name);
                   const isOnline = !!activeSess;
                   return (
@@ -1161,7 +1316,7 @@ export default function Mikrotik() {
                       </td>
                     </tr>
                   ) : (
-                    filteredSecrets.map((s, i) => {
+                    paginatedSecrets.map((s, i) => {
                       const activeSess = pppoe.find((p) => p.name === s.name);
                       const isOnline = !!activeSess;
                       return (
@@ -1272,6 +1427,41 @@ export default function Mikrotik() {
               </table>
             </div>
           </div>
+
+          {filteredSecrets.length > 0 && (
+            <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
+              <span className="text-slate-400">
+                {itemsPerPage === "all"
+                  ? `Menampilkan ${filteredSecrets.length} dari ${filteredSecrets.length}`
+                  : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredSecrets.length)}-${Math.min(currentPage * itemsPerPage, filteredSecrets.length)} dari ${filteredSecrets.length}`}
+              </span>
+              {itemsPerPage !== "all" && totalSecretPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-400 font-medium px-2">
+                    {currentPage} / {totalSecretPages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) =>
+                        Math.min(totalSecretPages, p + 1),
+                      )
+                    }
+                    disabled={currentPage === totalSecretPages}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
