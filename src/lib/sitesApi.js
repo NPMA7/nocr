@@ -133,10 +133,21 @@ export async function upsertSiteProfile(db, ruijie_mac, payload) {
     .eq('ruijie_mac', ruijie_mac)
     .maybeSingle();
   if (mapCheck) throw mapCheck;
+
+  let sitePrefix = mapping?.prefix;
   if (!mapping) {
-    const err = new Error('Mapping L2TP tidak ditemukan untuk MAC ini');
-    err.status = 404;
-    throw err;
+    const { data: dev } = await db
+      .from('ruijie_devices')
+      .select('mac_address, alias')
+      .eq('mac_address', ruijie_mac)
+      .maybeSingle();
+
+    if (!dev) {
+      const err = new Error('Mapping atau peranti tidak ditemukan untuk MAC ini');
+      err.status = 404;
+      throw err;
+    }
+    sitePrefix = dev.alias || ruijie_mac;
   }
 
   const siteRow = {
@@ -194,19 +205,19 @@ export async function upsertSiteProfile(db, ruijie_mac, payload) {
   const { data: savedSite } = await db.from('sites').select('*').eq('id', siteId).single();
   const savedPics = await loadSitePics(db, siteId);
 
-  await syncSiteToTopologyNode(db, savedSite, savedPics, mapping.prefix);
+  await syncSiteToTopologyNode(db, savedSite, savedPics, sitePrefix);
 
-  let node = await findTopologyNodeForSite(db, savedSite, mapping.prefix);
-  if (!node && mapping.prefix) {
+  let node = await findTopologyNodeForSite(db, savedSite, sitePrefix);
+  if (!node && sitePrefix) {
     const { data: candidates } = await db
       .from('topology_nodes')
       .select('*')
-      .ilike('linked_interface', mapping.prefix.trim());
+      .ilike('linked_interface', sitePrefix.trim());
     node =
       (candidates || []).find(
         (n) =>
           n.linked_interface &&
-          n.linked_interface.trim().toLowerCase() === mapping.prefix.trim().toLowerCase()
+          n.linked_interface.trim().toLowerCase() === sitePrefix.trim().toLowerCase()
       ) || null;
     if (node) await autoLinkTopologyNode(db, node);
   }

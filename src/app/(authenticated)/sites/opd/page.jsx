@@ -52,11 +52,13 @@ function SitesListPage() {
   const filterType = "PPPOE"; // Locked to PPPOE for OPD
 
   const [hasReadAccess, setHasReadAccess] = useState(true);
+  const [hasUpdateAccess, setHasUpdateAccess] = useState(true);
 
   useEffect(() => {
     const user = getStoredUser();
-    if (user && user.role && !hasAccess(user, "sites", "read")) {
-      setHasReadAccess(false);
+    if (user && user.role) {
+      if (!hasAccess(user, "sites", "read")) setHasReadAccess(false);
+      if (!hasAccess(user, "sites", "update")) setHasUpdateAccess(false);
     }
   }, []);
 
@@ -139,7 +141,7 @@ function SitesListPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">
-              Total PPPoE
+              Total OPD
             </p>
             <p className="text-xl font-bold text-slate-100">
               {typeItems.length}
@@ -382,9 +384,7 @@ function SitesListPage() {
                         >
                           <td className="px-4 py-3 font-bold text-slate-100 max-w-[240px]">
                             <div className="flex items-center justify-between gap-2">
-                              <span
-                                title={d.prefix || undefined}
-                              >
+                              <span title={d.prefix || undefined}>
                                 {d.prefix || "—"}
                               </span>
                               <span className="flex-shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded border font-bold tag-opd">
@@ -508,7 +508,11 @@ function SitesListPage() {
 
 export default function SitesPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-slate-400 text-xs">Loading data...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-6 text-slate-400 text-xs">Loading data...</div>
+      }
+    >
       <SitesListPage />
     </Suspense>
   );

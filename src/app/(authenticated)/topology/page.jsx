@@ -54,6 +54,59 @@ function isInfrastructureNode(node) {
   return INFRA_NODE_TYPES.includes((node?.type || "").toLowerCase());
 }
 
+function checkIsPPPoENode(node, mappings = []) {
+  if (!node) return false;
+  if (node.type === "pppoe-client") return true;
+
+  const iface = (node.linked_interface || node.label || "").toLowerCase();
+  if (iface.includes("pppoe")) return true;
+
+  if (node.linked_interface) {
+    const m = mappings.find(
+      (map) =>
+        map.prefix &&
+        map.prefix.toLowerCase() === node.linked_interface.toLowerCase(),
+    );
+    if (m && m.connection_type === "PPPOE") return true;
+    if (m && m.connection_type === "L2TP") return false;
+  }
+
+  if (
+    iface.includes("-opd") ||
+    iface.includes("opd") ||
+    iface.includes("dinas") ||
+    iface.includes("badan") ||
+    iface.includes("kantor") ||
+    iface.includes("bag-") ||
+    iface.includes("bagian") ||
+    iface.includes("setda") ||
+    iface.includes("diskominfo") ||
+    iface.includes("satpol") ||
+    iface.includes("bapperida") ||
+    iface.includes("bkpsdm") ||
+    iface.includes("kesbangpol") ||
+    iface.includes("inspektorat") ||
+    iface.includes("sekwan") ||
+    iface.includes("dishub") ||
+    iface.includes("disperindag") ||
+    iface.includes("dispar") ||
+    iface.includes("dispakan") ||
+    iface.includes("distan") ||
+    iface.includes("dinkes") ||
+    iface.includes("disdik") ||
+    iface.includes("disdukcapil") ||
+    iface.includes("dinsos") ||
+    iface.includes("dpmd") ||
+    iface.includes("putr") ||
+    iface.includes("bapenda") ||
+    iface.includes("bkad")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 const TopologyMap = dynamic(() => import("@/components/TopologyMap"), {
   ssr: false,
   loading: () => (
@@ -589,6 +642,12 @@ function TopologyContent() {
         !isNaN(targetNode.latitude) &&
         !isNaN(targetNode.longitude)
       ) {
+        const isPPPoE = checkIsPPPoENode(targetNode, mappings);
+        const requiredMode = isPPPoE ? "pppoe" : "l2tp";
+        if (networkMode !== requiredMode) {
+          setNetworkMode(requiredMode);
+        }
+
         setFlyToTarget({
           lat: targetNode.latitude,
           lng: targetNode.longitude,
@@ -599,7 +658,7 @@ function TopologyContent() {
         router.replace("/topology", { scroll: false });
       }
     }
-  }, [focusId, nodes]);
+  }, [focusId, nodes, mappings, networkMode]);
 
   useEffect(() => {
     if (selectedNode) {
@@ -1082,17 +1141,7 @@ function TopologyContent() {
     }
   }, [nodeViewFilter, mapNodeIds, selectedNode, selectedEdge]);
 
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    if (networkMode === "pppoe") {
-      setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
-    } else {
-      setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 });
-    }
-  }, [networkMode]);
+
 
   return (
     <div className="flex flex-col h-full min-h-0 -m-4 md:-m-6 relative overflow-hidden bg-slate-950">
