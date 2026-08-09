@@ -870,7 +870,7 @@ export default function DailyReportPage() {
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
+    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4">
       <style>{`
         .custom-date-picker::-webkit-calendar-picker-indicator {
           filter: invert(0.85);
@@ -1020,7 +1020,7 @@ export default function DailyReportPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+      <div className="flex flex-col min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-xl">
         {/* Header Stats like in Sheet */}
         <div className="p-4 border-b border-slate-700/30 flex flex-wrap gap-6 bg-slate-800/80">
           <div className="flex flex-col gap-1">
@@ -1105,7 +1105,7 @@ export default function DailyReportPage() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-auto">
+        <div className="overflow-x-auto overflow-y-visible min-w-0 touch-auto">
           {loading ? (
             <div className="p-6 space-y-2">
               {[...Array(5)].map((_, i) => (

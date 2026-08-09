@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import axios from "axios";
 import { API_URL, socket, useAppState } from "@/App";
 import {
@@ -52,6 +52,9 @@ export default function Ruijie() {
   const [rebootConfirmDevice, setRebootConfirmDevice] = useState(null);
   // Menyimpan alias yg sudah direname optimistic tapi belum tersinkron oleh scraper
   const pendingRenames = useRef({}); // { [sn]: newAlias }
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(30);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -109,53 +112,59 @@ export default function Ruijie() {
     }
   }, []);
 
-  const filteredDevices = devices.filter((d) => {
-    const term = search.toLowerCase();
-    const matchesSearch =
-      !term ||
-      (d.alias && d.alias.toLowerCase().includes(term)) ||
-      (d.mac_address && d.mac_address.toLowerCase().includes(term)) ||
-      (d.sn && d.sn.toLowerCase().includes(term)) ||
-      (d.ip_address && d.ip_address.includes(term));
+  const filteredDevices = useMemo(() => {
+    return devices.filter((d) => {
+      const term = search.toLowerCase();
+      const matchesSearch =
+        !term ||
+        (d.alias && d.alias.toLowerCase().includes(term)) ||
+        (d.mac_address && d.mac_address.toLowerCase().includes(term)) ||
+        (d.sn && d.sn.toLowerCase().includes(term)) ||
+        (d.ip_address && d.ip_address.includes(term));
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
 
-    if (filterStatus !== "all") {
-      if (filterStatus === "ON" && d.status !== "ON") return false;
-      if (filterStatus === "OFF" && d.status !== "OFF") return false;
-    }
+      if (filterStatus !== "all") {
+        if (filterStatus === "ON" && d.status !== "ON") return false;
+        if (filterStatus === "OFF" && d.status !== "OFF") return false;
+      }
 
-    if (filterType !== "all") {
-      if (d.connection_type !== filterType) return false;
-    }
+      if (filterType !== "all") {
+        if (d.connection_type !== filterType) return false;
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [devices, search, filterStatus, filterType]);
 
-  const handleSort = (key) => {
-    setSortConfig((prev) =>
-      prev.key === key
-        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" }
-    );
-  };
+  const sortedDevices = useMemo(() => {
+    return [...filteredDevices].sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      let aVal = a[sortConfig.key] ?? "";
+      let bVal = b[sortConfig.key] ?? "";
+      if (sortConfig.key === "clients") {
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+        return sortConfig.dir === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      aVal = String(aVal).toLowerCase();
+      bVal = String(bVal).toLowerCase();
+      if (aVal < bVal) return sortConfig.dir === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortConfig.dir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredDevices, sortConfig]);
 
-  const sortedDevices = [...filteredDevices].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    let aVal = a[sortConfig.key] ?? "";
-    let bVal = b[sortConfig.key] ?? "";
-    // numeric sort for clients
-    if (sortConfig.key === "clients") {
-      aVal = Number(aVal) || 0;
-      bVal = Number(bVal) || 0;
-      return sortConfig.dir === "asc" ? aVal - bVal : bVal - aVal;
-    }
-    aVal = String(aVal).toLowerCase();
-    bVal = String(bVal).toLowerCase();
-    if (aVal < bVal) return sortConfig.dir === "asc" ? -1 : 1;
-    if (aVal > bVal) return sortConfig.dir === "asc" ? 1 : -1;
-    return 0;
-  });
+  const totalPages = useMemo(() => {
+    if (itemsPerPage === "all") return 1;
+    return Math.ceil(sortedDevices.length / itemsPerPage) || 1;
+  }, [sortedDevices.length, itemsPerPage]);
+
+  const paginatedDevices = useMemo(() => {
+    if (itemsPerPage === "all") return sortedDevices;
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedDevices.slice(start, start + itemsPerPage);
+  }, [sortedDevices, currentPage, itemsPerPage]);
 
   const SortIcon = ({ col }) => {
     if (sortConfig.key !== col)
@@ -308,8 +317,8 @@ export default function Ruijie() {
   };
 
   const dataPanelClass =
-    "flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden";
-  const dataScrollClass = "flex-1 min-h-0 overflow-y-auto overscroll-contain";
+    "flex flex-col min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-xl";
+  const dataScrollClass = "overflow-x-auto overflow-y-visible min-w-0 touch-auto";
 
   if (!hasReadAccess) {
     return (
@@ -324,13 +333,13 @@ export default function Ruijie() {
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden relative">
+    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4 relative">
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
             <Wifi size={24} className="text-blue-500 dark:text-blue-400" />
-            Ruijie AP Monitoring
+            Ruijie AP
           </h1>
           <p className="text-xs text-slate-400 mt-1">
             Daftar perangkat Access Point Ruijie Reyee
@@ -438,10 +447,24 @@ export default function Ruijie() {
             <option value="OFF">Offline</option>
           </select>
 
-          <div className="flex items-center gap-3 ml-auto flex-shrink-0">
-            <span className="text-xs text-slate-500 font-medium">
-              Menampilkan {filteredDevices.length} dari {devices.length} AP
-            </span>
+          <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
+            <span className="text-xs text-slate-400">Tampilkan:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                const val =
+                  e.target.value === "all" ? "all" : Number(e.target.value);
+                setItemsPerPage(val);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value="all">Semua ({sortedDevices.length})</option>
+            </select>
           </div>
         </div>
 
@@ -469,7 +492,7 @@ export default function Ruijie() {
                     Tidak ada data AP
                   </p>
                 ) : (
-                  sortedDevices.map((d, i) => (
+                  paginatedDevices.map((d, i) => (
                     <div
                       key={i}
                       className="px-5 py-4 flex items-start justify-between gap-4 hover:bg-slate-700/20 transition"
@@ -584,7 +607,7 @@ export default function Ruijie() {
                         </td>
                       </tr>
                     ) : (
-                      sortedDevices.map((d, i) => (
+                      paginatedDevices.map((d, i) => (
                         <tr
                           key={i}
                           className="border-b border-slate-700/20 hover:bg-slate-700/20 transition"
@@ -665,6 +688,37 @@ export default function Ruijie() {
             </>
           )}
         </div>
+
+        {sortedDevices.length > 0 && (
+          <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
+            <span className="text-slate-400">
+              {itemsPerPage === "all"
+                ? `Menampilkan ${sortedDevices.length} dari ${sortedDevices.length}`
+                : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, sortedDevices.length)}-${Math.min(currentPage * itemsPerPage, sortedDevices.length)} dari ${sortedDevices.length}`}
+            </span>
+            {itemsPerPage !== "all" && totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                >
+                  Prev
+                </button>
+                <span className="text-slate-400 font-medium px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Rename Modal */}

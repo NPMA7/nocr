@@ -87,6 +87,8 @@ export default function MonitorDevice() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [timeMode, setTimeMode] = useState("duration");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(30);
   const { setLastSyncTime } = useAppState();
 
   // Status Modal
@@ -183,6 +185,9 @@ export default function MonitorDevice() {
       const prefixB = b.prefix || "";
       return prefixA.localeCompare(prefixB);
     });
+
+  const totalPages = itemsPerPage === "all" ? 1 : (Math.ceil(filteredDevices.length / itemsPerPage) || 1);
+  const paginatedDevices = itemsPerPage === "all" ? filteredDevices : filteredDevices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const totalOnline = mergedDevices.filter(
     (d) => d.final_status === "Online",
@@ -316,12 +321,12 @@ export default function MonitorDevice() {
   };
 
   const dataPanelClass =
-    "flex-1 min-w-0 w-full min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden";
+    "w-full flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl min-w-0";
   const dataScrollClass =
-    "flex-1 min-w-0 w-full min-h-0 overflow-y-auto overscroll-contain relative";
+    "w-full overflow-x-auto overflow-y-visible min-w-0 touch-auto relative";
 
   return (
-    <div className="h-full w-full min-w-0 min-h-0 flex flex-col gap-4 overflow-hidden relative">
+    <div className="flex-1 w-full min-w-0 flex flex-col gap-3 pb-4 relative">
       {ToastComponent}
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
@@ -443,10 +448,23 @@ export default function MonitorDevice() {
             <option value="timestamp">Timestamp</option>
           </select>
 
-          <div className="flex items-center gap-3 ml-auto flex-shrink-0">
-            <span className="text-xs text-slate-500 font-medium">
-              Menampilkan {filteredDevices.length} dari {mergedDevices.length}
-            </span>
+          <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
+            <span className="text-xs text-slate-400">Tampilkan:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                const val = e.target.value === "all" ? "all" : Number(e.target.value);
+                setItemsPerPage(val);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value="all">Semua ({filteredDevices.length})</option>
+            </select>
           </div>
         </div>
 
@@ -474,7 +492,7 @@ export default function MonitorDevice() {
                     Tidak ada data
                   </p>
                 ) : (
-                  filteredDevices.map((d, i) => (
+                  paginatedDevices.map((d, i) => (
                     <div
                       key={i}
                       className="px-5 py-4 flex flex-col gap-3 hover:bg-slate-700/20 transition"
@@ -591,7 +609,7 @@ export default function MonitorDevice() {
                         </td>
                       </tr>
                     ) : (
-                      filteredDevices.map((d, i) => (
+                      paginatedDevices.map((d, i) => (
                         <tr
                           key={i}
                           className="border-b border-slate-700/20 hover:bg-slate-700/20 transition group"
@@ -702,6 +720,37 @@ export default function MonitorDevice() {
             </>
           )}
         </div>
+
+        {filteredDevices.length > 0 && (
+          <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
+            <span className="text-slate-400">
+              {itemsPerPage === "all"
+                ? `Menampilkan ${filteredDevices.length} dari ${filteredDevices.length}`
+                : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredDevices.length)}-${Math.min(currentPage * itemsPerPage, filteredDevices.length)} dari ${filteredDevices.length}`}
+            </span>
+            {itemsPerPage !== "all" && totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                >
+                  Prev
+                </button>
+                <span className="text-slate-400 font-medium px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modal Manual Link */}

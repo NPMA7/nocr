@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import {
@@ -51,6 +51,9 @@ function SitesListPage() {
   const [filterProfile, setFilterProfile] = useState("all");
   const filterType = "PPPOE"; // Locked to PPPOE for OPD
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(30);
+
   const [hasReadAccess, setHasReadAccess] = useState(true);
   const [hasUpdateAccess, setHasUpdateAccess] = useState(true);
 
@@ -81,26 +84,59 @@ function SitesListPage() {
     fetchData();
   }, []);
 
-  const filtered = items.filter((d) => {
-    const term = search.toLowerCase();
-    const matchesSearch =
-      !term ||
-      (d.prefix && d.prefix.toLowerCase().includes(term)) ||
-      (d.ruijie_alias && d.ruijie_alias.toLowerCase().includes(term)) ||
-      (d.mikrotik_alias && d.mikrotik_alias.toLowerCase().includes(term)) ||
-      (d.site?.vendor && d.site.vendor.toLowerCase().includes(term)) ||
-      (d.site?.full_address &&
-        d.site.full_address.toLowerCase().includes(term));
+  const typeItems = useMemo(
+    () => items.filter((d) => d.connection_type === filterType),
+    [items, filterType],
+  );
 
-    if (!matchesSearch) return false;
-    if (filterProfile === "filled" && !d.has_site_profile) return false;
-    if (filterProfile === "empty" && d.has_site_profile) return false;
-    if (d.connection_type !== filterType) return false;
-    return true;
-  });
+  const filledItems = useMemo(
+    () =>
+      typeItems.filter((d) => d.site?.vendor && d.site.vendor.trim() !== ""),
+    [typeItems],
+  );
 
-  const typeItems = items.filter((d) => d.connection_type === filterType);
-  const withProfile = typeItems.filter((d) => d.has_site_profile).length;
+  const withProfile = filledItems.length;
+
+  const vendorCounts = useMemo(() => {
+    const counts = {};
+    filledItems.forEach((d) => {
+      let v = d.site.vendor.trim();
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [filledItems]);
+
+  const filtered = useMemo(() => {
+    return items.filter((d) => {
+      const term = search.toLowerCase();
+      const hasVendor = Boolean(d.site?.vendor && d.site.vendor.trim() !== "");
+      const matchesSearch =
+        !term ||
+        (d.prefix && d.prefix.toLowerCase().includes(term)) ||
+        (d.ruijie_alias && d.ruijie_alias.toLowerCase().includes(term)) ||
+        (d.mikrotik_alias && d.mikrotik_alias.toLowerCase().includes(term)) ||
+        (d.site?.vendor && d.site.vendor.toLowerCase().includes(term)) ||
+        (d.site?.full_address &&
+          d.site.full_address.toLowerCase().includes(term));
+
+      if (!matchesSearch) return false;
+      if (filterProfile === "filled" && !hasVendor) return false;
+      if (filterProfile === "empty" && hasVendor) return false;
+      if (d.connection_type !== filterType) return false;
+      return true;
+    });
+  }, [items, search, filterProfile, filterType]);
+
+  const totalPages = useMemo(() => {
+    if (itemsPerPage === "all") return 1;
+    return Math.ceil(filtered.length / itemsPerPage) || 1;
+  }, [filtered.length, itemsPerPage]);
+
+  const paginatedFiltered = useMemo(() => {
+    if (itemsPerPage === "all") return filtered;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, currentPage, itemsPerPage]);
 
   if (!hasReadAccess) {
     return (
@@ -112,7 +148,7 @@ function SitesListPage() {
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
+    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4">
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
@@ -134,9 +170,9 @@ function SitesListPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 flex-shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-shrink-0">
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
             <MapPin size={16} className="text-orange-400" />
           </div>
           <div>
@@ -148,33 +184,48 @@ function SitesListPage() {
             </p>
           </div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-            <Building2 size={16} className="text-emerald-400" />
+
+        <div className="sm:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Building2 size={16} className="text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase">
+                Profil Terisi
+              </p>
+              <p className="text-xl font-bold text-slate-100">
+                {withProfile}{" "}
+                <span className="text-xs font-normal text-slate-400">
+                  / {typeItems.length}
+                </span>
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase">
-              Profil Terisi
-            </p>
-            <p className="text-xl font-bold text-slate-100">{withProfile}</p>
-          </div>
-        </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 flex items-center gap-3 col-span-2 lg:col-span-1">
-          <div className="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center">
-            <Wifi size={16} className="text-slate-400" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase">
-              Belum Ada Profil
-            </p>
-            <p className="text-xl font-bold text-slate-100">
-              {typeItems.length - withProfile}
-            </p>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto sm:flex-wrap max-w-full pb-1 sm:pb-0 scrollbar-none">
+            {vendorCounts.length > 0 ? (
+              vendorCounts.map(([vName, vCount]) => (
+                <div
+                  key={vName}
+                  className="bg-slate-900/80 border border-slate-700/60 rounded-lg px-2.5 py-1 flex items-center gap-1.5 text-xs whitespace-nowrap flex-shrink-0"
+                >
+                  <span className="text-slate-300 font-medium">{vName}:</span>
+                  <span className="text-emerald-400 font-mono font-bold">
+                    {vCount}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <span className="text-xs text-slate-500 italic">
+                Belum ada profil terisi
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+      <div className="flex flex-col min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-xl">
         <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <Search
@@ -191,19 +242,39 @@ function SitesListPage() {
           </div>
           <select
             value={filterProfile}
-            onChange={(e) => setFilterProfile(e.target.value)}
+            onChange={(e) => {
+              setFilterProfile(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
           >
-            <option value="all">Semua</option>
+            <option value="all">Semua Profil</option>
             <option value="filled">Profil sudah diisi</option>
             <option value="empty">Belum ada profil</option>
           </select>
-          <span className="text-xs text-slate-500 ml-auto">
-            {filtered.length} dari {typeItems.length}
-          </span>
+
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <span className="text-xs text-slate-400">Tampilkan:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                const val =
+                  e.target.value === "all" ? "all" : Number(e.target.value);
+                setItemsPerPage(val);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value="all">Semua ({filtered.length})</option>
+            </select>
+          </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div className="overflow-x-auto overflow-y-visible min-w-0 touch-auto">
           {loading && items.length === 0 ? (
             <div className="p-6 space-y-2">
               {[...Array(6)].map((_, i) => (
@@ -224,7 +295,7 @@ function SitesListPage() {
             <>
               {/* Mobile card view */}
               <div className="lg:hidden divide-y divide-slate-700/30">
-                {filtered.map((d) => {
+                {paginatedFiltered.map((d) => {
                   const loc = getSiteLocationDisplay(d.site);
                   const vendor = d.site?.vendor;
                   const customerId = d.site?.customer_id;
@@ -373,7 +444,7 @@ function SitesListPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((d) => {
+                    {paginatedFiltered.map((d) => {
                       const loc = getSiteLocationDisplay(d.site);
                       const vendor = d.site?.vendor;
                       const customerId = d.site?.customer_id;
@@ -501,6 +572,37 @@ function SitesListPage() {
             </>
           )}
         </div>
+
+        {filtered.length > 0 && (
+          <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
+            <span className="text-slate-400">
+              {itemsPerPage === "all"
+                ? `Menampilkan ${filtered.length} dari ${filtered.length}`
+                : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filtered.length)}-${Math.min(currentPage * itemsPerPage, filtered.length)} dari ${filtered.length}`}
+            </span>
+            {itemsPerPage !== "all" && totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                >
+                  Prev
+                </button>
+                <span className="text-slate-400 font-medium px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

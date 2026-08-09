@@ -641,7 +641,7 @@ export default function HsgqOltPage() {
 
   return (
     <>
-    <div className="max-w-full h-full flex flex-col">
+    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4">
       {ToastComponent}
       {/* Header Tabs */}
       <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
@@ -655,7 +655,7 @@ export default function HsgqOltPage() {
           </p>
         </div>
       </div>
-      <div className="flex border-b border-slate-700/50 my-4 overflow-x-auto">
+      <div className="flex-shrink-0 flex items-center gap-1 border-b border-slate-700/50 my-3 overflow-x-auto scrollbar-none flex-nowrap max-w-full pb-0.5">
         {[
           "Authenticate List",
           "Version Information",
@@ -679,10 +679,10 @@ export default function HsgqOltPage() {
                 window.history.pushState({}, "", url);
               }
             }}
-            className={`cursor-pointer px-4 py-3 whitespace-nowrap text-xs font-medium transition-colors ${
+            className={`cursor-pointer px-3.5 py-2.5 whitespace-nowrap text-xs font-semibold rounded-t-lg transition-all flex-shrink-0 ${
               activeTab === tab
-                ? "text-blue-400 border-b-2 border-blue-400"
-                : "text-slate-400 hover:text-slate-200"
+                ? "text-blue-400 bg-blue-500/10 border-b-2 border-blue-400"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
             }`}
           >
             {tab}
@@ -822,8 +822,8 @@ export default function HsgqOltPage() {
       ) : (
         <>
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <span className="text-slate-400 text-xs">Port ID:</span>
               <select
                 className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500 mr-2"
@@ -874,7 +874,7 @@ export default function HsgqOltPage() {
 
               {displayType === "Running state" ? (
                 <select
-                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-32 cursor-pointer "
+                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-full sm:w-32 cursor-pointer"
                   value={displayValue}
                   onChange={(e) => {
                     setDisplayValue(e.target.value);
@@ -888,7 +888,7 @@ export default function HsgqOltPage() {
               ) : displayType !== "All" ? (
                 <input
                   type="text"
-                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-48"
+                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-full sm:w-48 flex-1 sm:flex-none"
                   value={displayValue}
                   onChange={(e) => {
                     setDisplayValue(e.target.value);
@@ -973,9 +973,9 @@ export default function HsgqOltPage() {
           )}
 
           {/* Table */}
-          <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col flex-1 overflow-hidden min-h-[400px]">
-            <div className="overflow-auto flex-1">
-              <table className="w-full text-left text-xs text-slate-300 relative">
+          <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
+            <div className="overflow-x-auto overflow-y-visible min-w-0 max-w-full touch-auto scrollbar-thin">
+              <table className="w-full text-left text-xs text-slate-300 relative min-w-[750px]">
                 <thead className="bg-slate-800/90 text-slate-400 border-b border-slate-700/50 uppercase text-xs sticky top-0 z-10 backdrop-blur-sm">
                   <tr>
                     <th className="px-4 py-3">ONT ID</th>
