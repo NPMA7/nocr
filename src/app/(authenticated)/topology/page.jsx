@@ -139,32 +139,34 @@ function TopologyContent() {
 
     const query = manualAddData.addressSearch.trim();
 
-    // Cek apakah input berupa koordinat (contoh: "-7.165, 107.549" atau "-7.165 107.549")
-    const coordRegex = /^([-+]?\d{1,2}\.\d+)[,\s]+([-+]?\d{1,3}\.\d+)$/;
-    const coordMatch = query.match(coordRegex);
-
-    if (coordMatch) {
-      setManualAddData((prev) => ({
-        ...prev,
-        lat: coordMatch[1],
-        lng: coordMatch[2],
-        label: prev.label || "Titik dari Koordinat",
-      }));
-      addToast("Titik koordinat berhasil diekstrak!", "success");
-      setSearchSuggestions([]);
-      return;
-    }
-
-    // Jika bukan koordinat, coba cari di OpenStreetMap Nominatim
     try {
       setIsSearching(true);
       const res = await axios.get(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=id`,
+        `/api/topology/geocode?q=${encodeURIComponent(query)}`,
       );
-      if (res.data && res.data.length > 0) {
-        setSearchSuggestions(res.data);
+
+      if (res.data?.extracted) {
+        const { lat, lng, label, type, plusCode } = res.data.extracted;
+        setManualAddData((prev) => ({
+          ...prev,
+          lat,
+          lng,
+          addressSearch: query,
+          label: prev.label || label,
+        }));
+        const toastMsg =
+          type === "pluscode"
+            ? `Plus Code ${plusCode || ""} berhasil diekstrak! (${lat}, ${lng})`
+            : `Titik koordinat berhasil diekstrak! (${lat}, ${lng})`;
+        addToast(toastMsg, "success");
+        setSearchSuggestions([]);
+        return;
+      }
+
+      if (res.data?.results && res.data.results.length > 0) {
+        setSearchSuggestions(res.data.results);
       } else {
-        addToast("Lokasi tidak ditemukan.", "error");
+        addToast("Lokasi tidak ditemukan. Coba ketik nama tempat / desa / kecamatan.", "error");
         setSearchSuggestions([]);
       }
     } catch (error) {
