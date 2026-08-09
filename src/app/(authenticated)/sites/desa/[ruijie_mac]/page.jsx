@@ -14,9 +14,11 @@ import {
   Trash2,
   Info,
   X,
+  FileSpreadsheet,
 } from "lucide-react";
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import { useAppState } from "@/App";
+import ImportSiteModal from "@/components/sites/ImportSiteModal";
 
 const SiteCoordinateMap = dynamic(
   () => import("@/components/SiteCoordinateMap"),
@@ -46,6 +48,8 @@ export default function SiteDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [vendorModalOpen, setVendorModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [allSitesList, setAllSitesList] = useState([]);
 
   const [vendor, setVendor] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -79,9 +83,13 @@ export default function SiteDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get(`/api/sites/${encodeURIComponent(mac)}`);
-      setData(res.data);
-      applyForm(res.data);
+      const [resDetail, resList] = await Promise.all([
+        axios.get(`/api/sites/${encodeURIComponent(mac)}`),
+        axios.get("/api/sites").catch(() => ({ data: [] })),
+      ]);
+      setData(resDetail.data);
+      applyForm(resDetail.data);
+      if (resList?.data) setAllSitesList(resList.data);
     } catch (e) {
       setError(
         e.response?.data?.error || e.message || "Gagal memuat detail site",
@@ -119,6 +127,41 @@ export default function SiteDetailPage() {
       if (showToast) showToast("Profil wilayah berhasil disimpan", "success");
     } catch (e) {
       const msg = e.response?.data?.error || e.message || "Gagal menyimpan";
+      if (showToast) showToast(msg, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImportApplied = async (imported) => {
+    if (!imported) return;
+    const nextVendor = imported.vendor || vendor;
+    const nextCustomerId = imported.customer_id || customerId;
+    const nextActivation = imported.activation_date || activationDate || null;
+    const nextAddress = imported.full_address || fullAddress;
+    const nextPics = imported.pics?.length ? imported.pics : pics;
+
+    setVendor(nextVendor);
+    setCustomerId(nextCustomerId);
+    setActivationDate(nextActivation);
+    setFullAddress(nextAddress);
+    setPics(nextPics);
+
+    setSaving(true);
+    try {
+      const res = await axios.patch(`/api/sites/${encodeURIComponent(mac)}`, {
+        vendor: nextVendor,
+        customer_id: nextCustomerId,
+        activation_date: nextActivation,
+        full_address: nextAddress,
+        pics: nextPics,
+        connection_type: "l2tp",
+      });
+      setData(res.data);
+      applyForm(res.data);
+      if (showToast) showToast("Data site berhasil diperbarui dari Sheet!", "success");
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || "Gagal menyimpan data";
       if (showToast) showToast(msg, "error");
     } finally {
       setSaving(false);
@@ -195,19 +238,29 @@ export default function SiteDetailPage() {
             {data?.final_status || "—"}
           </span>
           {canEdit && (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-            >
-              {saving ? (
-                <RefreshCw size={15} className="animate-spin" />
-              ) : (
-                <Save size={15} />
-              )}
-              Simpan
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(true)}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+              >
+                <FileSpreadsheet size={15} className="text-emerald-400" />
+                Import Sheet
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+              >
+                {saving ? (
+                  <RefreshCw size={15} className="animate-spin" />
+                ) : (
+                  <Save size={15} />
+                )}
+                Simpan
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -565,6 +618,14 @@ export default function SiteDetailPage() {
           </div>
         </div>
       )}
+
+      <ImportSiteModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        sitePrefix={data?.prefix || ""}
+        siteType="Desa"
+        onApply={handleImportApplied}
+      />
     </div>
   );
 }
