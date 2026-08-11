@@ -712,12 +712,12 @@ export default function Mikrotik() {
               type="text"
               placeholder="Cari nama, tipe, MAC..."
               value={interfaceSearch}
-              onChange={(e) => setInterfaceSearch(e.target.value)}
+              onChange={(e) => { setInterfaceSearch(e.target.value); setCurrentPage(1); }}
               className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
               className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Tipe</option>
@@ -727,7 +727,7 @@ export default function Mikrotik() {
             </select>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
               className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Status</option>
@@ -973,12 +973,12 @@ export default function Mikrotik() {
               type="text"
               placeholder="Cari nama user atau IP..."
               value={pppoeSearch}
-              onChange={(e) => setPppoeSearch(e.target.value)}
+              onChange={(e) => { setPppoeSearch(e.target.value); setCurrentPage(1); }}
               className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
             <select
               value={sessionFilterService}
-              onChange={(e) => setSessionFilterService(e.target.value)}
+              onChange={(e) => { setSessionFilterService(e.target.value); setCurrentPage(1); }}
               className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="all">Semua Service</option>
@@ -1182,7 +1182,7 @@ export default function Mikrotik() {
               type="text"
               placeholder="Cari nama atau profile..."
               value={secretSearch}
-              onChange={(e) => setSecretSearch(e.target.value)}
+              onChange={(e) => { setSecretSearch(e.target.value); setCurrentPage(1); }}
               className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
             />
             <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
