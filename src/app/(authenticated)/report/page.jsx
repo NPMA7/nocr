@@ -47,6 +47,8 @@ export default function DailyReportPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState("");
@@ -211,6 +213,38 @@ export default function DailyReportPage() {
     } finally {
       setDeleteConfirmId(null);
     }
+  };
+
+  const confirmBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(ids.map((id) => axios.delete(`/api/reports?id=${id}`)));
+      setReports((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+      showToast(`${ids.length} laporan berhasil dihapus`, "success");
+      setSelectedIds(new Set());
+    } catch (err) {
+      showToast("Gagal menghapus beberapa laporan", "error");
+    } finally {
+      setShowBatchDeleteConfirm(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedReports.length && paginatedReports.every(r => selectedIds.has(r.id))) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedReports.map((r) => r.id)));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const handleAddReport = async () => {
@@ -1058,6 +1092,15 @@ export default function DailyReportPage() {
             </span>
           </div>
           <div className="ml-auto flex items-center gap-4">
+            {canDelete && selectedIds.size > 0 && (
+              <button
+                onClick={() => setShowBatchDeleteConfirm(true)}
+                className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 hover:bg-red-700 border border-red-500 text-white shadow-lg shadow-red-500/20 transition animate-in fade-in duration-200"
+              >
+                <Trash2 size={13} />
+                Hapus {selectedIds.size} Data
+              </button>
+            )}
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 hidden sm:inline">
                 Tampilkan:
@@ -1067,6 +1110,7 @@ export default function DailyReportPage() {
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
+                  setSelectedIds(new Set());
                 }}
                 className="bg-slate-700/50 border border-slate-600 text-slate-200 text-xs rounded-md px-2 py-1.5 outline-none cursor-pointer hover:bg-slate-700 transition"
               >
@@ -1223,7 +1267,15 @@ export default function DailyReportPage() {
                     </div>
                   </th>
                   <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase w-12">
-                    Aksi
+                    {canDelete ? (
+                      <input
+                        type="checkbox"
+                        checked={paginatedReports.length > 0 && paginatedReports.every(r => selectedIds.has(r.id))}
+                        onChange={toggleSelectAll}
+                        className="cursor-pointer w-3.5 h-3.5 accent-red-500"
+                        title="Pilih semua di halaman ini"
+                      />
+                    ) : "Aksi"}
                   </th>
                 </tr>
               </thead>
@@ -1231,7 +1283,7 @@ export default function DailyReportPage() {
                 {paginatedReports.map((r, i) => (
                   <tr
                     key={r.id}
-                    className="hover:bg-slate-700/20 transition group"
+                    className={`hover:bg-slate-700/20 transition group ${selectedIds.has(r.id) ? "bg-red-500/5 border-l-2 border-l-red-500/40" : ""}`}
                   >
                     <td className="px-3 py-3 text-center text-slate-500 border-r border-slate-700/30">
                       {startIndex + i + 1}
@@ -1398,13 +1450,13 @@ export default function DailyReportPage() {
                     </td>
                     <td className="px-2 py-2 text-center">
                       {canDelete && (
-                        <button
-                          onClick={() => setDeleteConfirmId(r.id)}
-                          className="text-slate-500 hover:text-red-400 transition p-1 cursor-pointer"
-                          title="Hapus Laporan"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(r.id)}
+                          onChange={() => toggleSelect(r.id)}
+                          className="cursor-pointer w-3.5 h-3.5 accent-red-500"
+                          title="Pilih untuk dihapus"
+                        />
                       )}
                     </td>
                   </tr>
@@ -1442,6 +1494,38 @@ export default function DailyReportPage() {
                 className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 rounded-lg transition cursor-pointer"
               >
                 Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBatchDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-700/50">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <Trash2 size={20} className="text-red-400" />
+                Hapus {selectedIds.size} Laporan
+              </h3>
+            </div>
+            <div className="p-5">
+              <p className="text-xs text-slate-300">
+                Anda akan menghapus <span className="font-bold text-red-400">{selectedIds.size} laporan</span> sekaligus. Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowBatchDeleteConfirm(false)}
+                className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmBatchDelete}
+                className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 rounded-lg transition cursor-pointer"
+              >
+                Ya, Hapus Semua
               </button>
             </div>
           </div>
