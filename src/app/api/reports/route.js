@@ -70,22 +70,42 @@ export async function GET(request) {
         }
       }
 
-      const reportDateOnly = r.report_date ? new Date(r.report_date).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' }) : '';
+      const sDate = startDate || dateStr;
+      const eDate = endDate || dateStr;
       
-      if (startDate && endDate) {
-        const isWithinRange = reportDateOnly >= startDate && reportDateOnly <= endDate;
-        const isPastProgress = reportDateOnly < startDate && r.status_progress === 'Progress';
-        return isWithinRange || isPastProgress;
-      } else {
-        const isDateStr = reportDateOnly === dateStr;
-        const isPastProgress = new Date(reportDateOnly) < new Date(dateStr) && r.status_progress === 'Progress';
-        return isDateStr || isPastProgress;
-      }
+      const offlineDate = r.offline_since ? new Date(r.offline_since).toISOString().split('T')[0] : null;
+      const onlineDate = r.online_since ? new Date(r.online_since).toISOString().split('T')[0] : null;
+      
+      if (!offlineDate) return false;
+
+      // Filter: offline_since <= endDate AND (online_since > startDate OR online_since IS NULL)
+      return offlineDate <= eDate && (onlineDate === null || onlineDate >= sDate);
     });
 
     filteredReports.sort((a, b) => (a.prefix_name || '').localeCompare(b.prefix_name || ''));
 
-    return NextResponse.json(filteredReports);
+    // ─── Transformasi kontekstual berdasarkan tanggal filter ───────────────────
+    // Jika laporan offline sebelum/dalam range tapi baru online SETELAH endDate,
+    // tampilkan sebagai "Progress" (masih offline selama periode ini).
+    // Data asli di DB tidak berubah — ini hanya penyesuaian tampilan.
+    const contextualReports = filteredReports.map(r => {
+      const eDate = endDate || dateStr;
+      const onlineDateOnly = r.online_since ? new Date(r.online_since).toISOString().split('T')[0] : null;
+
+      if (onlineDateOnly && onlineDateOnly > eDate) {
+        return {
+          ...r,
+          online_since: null,
+          status_progress: 'Progress',
+          issue: '',
+          tindakan: ''
+        };
+      }
+
+      return r;
+    });
+
+    return NextResponse.json(contextualReports);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
