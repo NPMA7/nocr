@@ -6,7 +6,7 @@ import L from 'leaflet';
 const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels, isFront) => {
     let colorClass = 'bg-blue-500 border-blue-200';
     const t = node.type?.toLowerCase() || '';
-    const isInfrastructure = ['olt', 'odc', 'odp', 'core', 'pole'].includes(t);
+    const isInfrastructure = ['olt', 'odc', 'odp', 'core'].includes(t);
 
     if (isDisabled) colorClass = 'bg-slate-500 border-slate-300';
     else if (isUp) colorClass = isInfrastructure ? 'bg-blue-500 border-blue-300 ring-2 ring-blue-500/50' : 'bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50';
@@ -24,7 +24,6 @@ const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels, isFront) => {
       case 'olt': html = `<div class="w-8 h-8 rounded-lg flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-server text-xs" style="color:#ffffff!important"></i></div>`; break;
       case 'odc': html = `<div class="w-8 h-8 rounded-full flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-box text-xs" style="color:#ffffff!important"></i></div>`; break;
       case 'odp': html = `<div class="w-8 h-8 rounded-full flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-network-wired text-xs" style="color:#ffffff!important"></i></div>`; break;
-      case 'pole': html = `<div class="w-7 h-7 rounded-sm flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-grip-lines-vertical text-[10px]" style="color:#ffffff!important"></i></div>`; break;
       case 'client': html = `<div class="w-6 h-6 rounded-full flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-home text-[10px]" style="color:#ffffff!important"></i></div>`; break;
       default: html = `<div class="w-6 h-6 rounded-full flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-map-pin text-[10px]" style="color:#ffffff!important"></i></div>`;
     }
@@ -49,7 +48,6 @@ const MemoizedDashboardMarker = React.memo(({ node, isDown, isUp, isDisabled, sh
       case 'olt': return 800;
       case 'core': return 600;
       case 'client': return 200;
-      case 'pole': return 100;
       case 'odc': return -500;
       case 'odp': return -600;
       default: return 0;
@@ -131,7 +129,7 @@ export default function DashboardMap({ topologyNodes = [], edges = [], coreInter
     });
     processQueue();
 
-    topologyNodes.filter(n => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id)).forEach(n => {
+    topologyNodes.filter(n => (n.type === "odp") && !visitedBFS.has(n.id)).forEach(n => {
        visitedBFS.add(n.id); queue.push(n.id);
     });
     processQueue();

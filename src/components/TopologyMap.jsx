@@ -159,7 +159,7 @@ const getStaticMarkerIcon = (
 ) => {
   let colorClass = "bg-blue-500 border-blue-200";
   const t = node.type?.toLowerCase() || "";
-  const isInfrastructure = ["olt", "odc", "odp", "core", "pole"].includes(t);
+  const isInfrastructure = ["olt", "odc", "odp", "core"].includes(t);
 
   if (isDisabled) colorClass = "bg-slate-500 border-slate-300";
   else if (isUp)
@@ -201,9 +201,6 @@ const getStaticMarkerIcon = (
       break;
     case "odp":
       html = `<div class="w-8 h-8 rounded-full flex items-center justify-center border text-white shadow-lg ${colorClass}"><i class="fa-solid fa-network-wired text-xs" style="color:#ffffff!important"></i></div>`;
-      break;
-    case "pole":
-      html = `<div class="w-7 h-7 rounded-sm flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-grip-lines-vertical text-[10px]" style="color:#ffffff!important"></i></div>`;
       break;
     case "client":
       html = `<div class="w-6 h-6 rounded-full flex items-center justify-center border text-white shadow-md ${colorClass}"><i class="fa-solid fa-home text-[10px]" style="color:#ffffff!important"></i></div>`;
@@ -393,8 +390,6 @@ const DraggableMarker = React.memo(function DraggableMarker({
         return 600;
       case "client":
         return 200;
-      case "pole":
-        return 100;
       case "odc":
         return -500;
       case "odp":
@@ -463,6 +458,8 @@ const MemoizedEdge = React.memo(
 );
 
 export default function TopologyMap({
+  center = DEFAULT_CENTER,
+  zoom = 11,
   mapTheme = "dark",
   showLabels = false,
   nodes,
@@ -486,7 +483,7 @@ export default function TopologyMap({
   onEdgeDelete,
   readOnly = false,
 }) {
-  const [currentZoom, setCurrentZoom] = useState(11);
+  const [currentZoom, setCurrentZoom] = useState(zoom);
   const undoStackRef = useRef([]); // [{id, lat, lng}]
   const draggedNodeCoordRef = useRef({}); // { [nodeId]: { lat, lng } }
 
@@ -608,8 +605,8 @@ export default function TopologyMap({
 
   return (
     <MapContainer
-      center={DEFAULT_CENTER}
-      zoom={11}
+      center={center}
+      zoom={zoom}
       scrollWheelZoom={true}
       className="w-full h-full z-0 outline-none"
       fadeAnimation={true}

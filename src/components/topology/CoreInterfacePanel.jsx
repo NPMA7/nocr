@@ -3,6 +3,16 @@
 import { Cpu, Network, Clock, RefreshCw, ChevronUp, ChevronDown, Wifi, Users, Server } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 
+// Inline SVG icon for split view
+function SplitHIcon({ size = 12 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="18" rx="1" />
+      <rect x="14" y="3" width="7" height="18" rx="1" />
+    </svg>
+  );
+}
+
 export default function CoreInterfacePanel({
   coreStatus,
   siteAktif,
@@ -12,12 +22,15 @@ export default function CoreInterfacePanel({
   showMobileMode,
   networkMode,
   setNetworkMode,
+  setFlyToTarget,
   mapTheme,
   setMapTheme,
   showLabels,
   setShowLabels,
   nodeViewFilter,
   setNodeViewFilter,
+  splitMode,
+  setSplitMode,
 }) {
   return (
     <>
@@ -132,7 +145,7 @@ export default function CoreInterfacePanel({
             )}
           </button>
           {showIfacePanel && (
-            <div className="border-t border-slate-700/50 max-h-72 flex flex-col">
+            <div className="border-t border-slate-700/50 max-h-80 flex flex-col">
               <div className="overflow-auto flex-1">
                 {liveLogs.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-500">
@@ -175,61 +188,57 @@ export default function CoreInterfacePanel({
         </div>
       </div>
 
-      {/* Right Floating Panel — Legend & Theme Toggle */}
+      {/* Right Floating Panel — Theme & Mode Toggle */}
       <div
         className={`${
           showMobileMode ? "flex" : "hidden"
         } w-42 md:flex absolute bottom-8 left-3 md:bottom-auto md:top-3 md:left-auto md:right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}
       >
-        {/* Cable Color Legend */}
-        <div className="hidden md:block rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-            Legenda Warna Kabel dan Node
-          </p>
-          <div className="flex flex-col gap-1.5 text-[10px] text-slate-400">
-            <span className="flex items-center gap-2">
-              <span className="w-6 h-1 bg-green-500 rounded inline-block" />{" "}
-              UP
-            </span>
-            <span className="flex items-center gap-2">
-              <span
-                className="w-6 h-1 rounded inline-block"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(90deg,#ef4444 0,#ef4444 4px,transparent 4px,transparent 10px)",
-                }}
-              />{" "}
-              DOWN
-            </span>
-            <span className="flex items-center gap-2">
-              <span
-                className="w-6 h-1 rounded inline-block"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(90deg,#475569 0,#475569 3px,transparent 3px,transparent 7px)",
-                }}
-              />{" "}
-              Disabled
-            </span>
-          </div>
-        </div>
-
         {/* Mode Panel */}
         <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
             Mode
           </p>
           <div className="flex flex-col gap-1.5">
+            {/* Tombol Jaringan: hanya tampil saat split TIDAK aktif */}
+            {!splitMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  const nextMode = networkMode === "pppoe" ? "l2tp" : "pppoe";
+                  setNetworkMode(nextMode);
+                  if (setFlyToTarget) {
+                    if (nextMode === "pppoe") {
+                      setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
+                    } else {
+                      setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 });
+                    }
+                  }
+                }}
+                className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-blue-500/10 text-blue-500 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30"
+              >
+                <Wifi size={12} />
+                Jaringan: {networkMode === "pppoe" ? "OPD" : "Desa"}
+              </button>
+            )}
+
+            {/* Tombol Split View — selalu tampil, letakkan di bawah Jaringan */}
             <button
               type="button"
               onClick={() =>
-                setNetworkMode((prev) => (prev === "pppoe" ? "l2tp" : "pppoe"))
+                setSplitMode((prev) => (prev === "horizontal" ? null : "horizontal"))
               }
-              className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-blue-500/10 text-blue-500 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30"
+              className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                splitMode === "horizontal"
+                  ? "bg-blue-600 text-white ring-1 ring-violet-400/50"
+                  : "bg-slate-800 text-slate-400 hover:text-white"
+              }`}
+              title="Split View: OPD (kiri) | Desa (kanan)"
             >
-              <Wifi size={12} />
-              Jaringan: {networkMode === "pppoe" ? "OPD" : "Desa"}
+              <SplitHIcon size={12} />
+              {splitMode === "horizontal" ? "Keluar Split View" : "Split View"}
             </button>
+
             <div className="h-px bg-slate-700/50 w-full my-1" />
             <button
               type="button"
@@ -299,6 +308,7 @@ export default function CoreInterfacePanel({
           </div>
         </div>
       </div>
+
     </>
   );
 }

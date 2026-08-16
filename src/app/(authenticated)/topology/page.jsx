@@ -44,7 +44,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 
-const INFRA_NODE_TYPES = ["olt", "odc", "odp", "pole"];
+const INFRA_NODE_TYPES = ["olt", "odc", "odp"];
 
 function isClientNode(node) {
   return (node?.type || "").toLowerCase() === "client";
@@ -142,6 +142,7 @@ function TopologyContent() {
   const [nodeViewFilter, setNodeViewFilter] = useState("all");
   const [activeNodeTab, setActiveNodeTab] = useState("informasi");
   const [networkMode, setNetworkMode] = useState("l2tp");
+  const [splitMode, setSplitMode] = useState(null); // null | 'horizontal' | 'vertical'
 
   const [interactionMode, setInteractionMode] = useState("select");
   const [newNodeType, setNewNodeType] = useState("odp");
@@ -182,6 +183,7 @@ function TopologyContent() {
   const [manualIfaceSearch, setManualIfaceSearch] = useState("");
   const [showManualIfaceDropdown, setShowManualIfaceDropdown] = useState(false);
   const [flyToTarget, setFlyToTarget] = useState(null);
+  const [flyToTargetOPD, setFlyToTargetOPD] = useState(null);
 
   // States untuk fitur pencarian lokasi OpenStreetMap (Nominatim)
   const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -219,7 +221,10 @@ function TopologyContent() {
       if (res.data?.results && res.data.results.length > 0) {
         setSearchSuggestions(res.data.results);
       } else {
-        addToast("Lokasi tidak ditemukan. Coba ketik nama tempat / desa / kecamatan.", "error");
+        addToast(
+          "Lokasi tidak ditemukan. Coba ketik nama tempat / desa / kecamatan.",
+          "error",
+        );
         setSearchSuggestions([]);
       }
     } catch (error) {
@@ -243,7 +248,7 @@ function TopologyContent() {
   const [coreStatus, setCoreStatus] = useState(null);
   const [coreInterfaces, setCoreInterfaces] = useState([]);
   const [coreLoading, setCoreLoading] = useState(false);
-  const [showIfacePanel, setShowIfacePanel] = useState(false);
+  const [showIfacePanel, setShowIfacePanel] = useState(true);
   const [liveLogs, setLiveLogs] = useState([]);
   const [showMobileMode, setShowMobileMode] = useState(false);
 
@@ -1016,9 +1021,7 @@ function TopologyContent() {
     processQueue();
 
     nodes
-      .filter(
-        (n) => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id),
-      )
+      .filter((n) => n.type === "odp" && !visitedBFS.has(n.id))
       .forEach((n) => {
         visitedBFS.add(n.id);
         queue.push(n.id);
@@ -1114,6 +1117,197 @@ function TopologyContent() {
     return filtered;
   }, [nodes, edges, nodeViewFilter, networkMode]);
 
+  // Shared BFS topology counts — reused by mapNodes, mapNodesOPD, mapNodesDesa
+  const nodeTopoData = useMemo(() => {
+    const undirectedAdj = {};
+    const nodeMap = new Map();
+    nodes.forEach((n) => {
+      undirectedAdj[n.id] = [];
+      nodeMap.set(n.id, n);
+    });
+    edges.forEach((e) => {
+      const from = e.from_node ?? e.from;
+      const to = e.to_node ?? e.to;
+      if (undirectedAdj[from] && undirectedAdj[to]) {
+        undirectedAdj[from].push(to);
+        undirectedAdj[to].push(from);
+      }
+    });
+
+    const directedAdj = {};
+    nodes.forEach((n) => (directedAdj[n.id] = []));
+
+    const visitedBFS = new Set();
+    const queue = [];
+
+    nodes
+      .filter((n) => n.type === "olt")
+      .forEach((n) => {
+        visitedBFS.add(n.id);
+        queue.push(n.id);
+      });
+
+    const processQueue = () => {
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        for (const neighbor of undirectedAdj[curr]) {
+          if (!visitedBFS.has(neighbor)) {
+            visitedBFS.add(neighbor);
+            directedAdj[curr].push(neighbor);
+            queue.push(neighbor);
+          }
+        }
+      }
+    };
+
+    processQueue();
+    nodes
+      .filter((n) => n.type === "odc" && !visitedBFS.has(n.id))
+      .forEach((n) => {
+        visitedBFS.add(n.id);
+        queue.push(n.id);
+      });
+    processQueue();
+    nodes
+      .filter(
+        (n) => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id),
+      )
+      .forEach((n) => {
+        visitedBFS.add(n.id);
+        queue.push(n.id);
+      });
+    processQueue();
+
+    const counts = {};
+    const visiting = new Set();
+
+    const getCounts = (id) => {
+      if (counts[id]) return counts[id];
+      if (visiting.has(id)) return { l2tp: 0, pppoe: 0 };
+      visiting.add(id);
+
+      const res = { l2tp: 0, pppoe: 0 };
+      const node = nodeMap.get(id);
+      if (node && (node.type === "client" || node.type === "pppoe-client")) {
+        let isPPPoE =
+          node.linked_interface?.toLowerCase().includes("pppoe") ||
+          node.type === "pppoe-client";
+        if (!isPPPoE && node.linked_interface) {
+          const m = mappings.find(
+            (map) =>
+              map.prefix &&
+              map.prefix.toLowerCase() === node.linked_interface.toLowerCase(),
+          );
+          if (m && m.connection_type === "PPPOE") isPPPoE = true;
+        }
+        if (isPPPoE) res.pppoe++;
+        else res.l2tp++;
+      }
+
+      for (const child of directedAdj[id] || []) {
+        const childCounts = getCounts(child);
+        res.l2tp += childCounts.l2tp;
+        res.pppoe += childCounts.pppoe;
+      }
+
+      counts[id] = res;
+      visiting.delete(id);
+      return res;
+    };
+
+    nodes.forEach((n) => getCounts(n.id));
+    return { counts, nodeMap };
+  }, [nodes, edges, mappings]);
+
+  // Split mode: nodes OPD (pppoe) — infrastructure difilter berdasarkan BFS counts
+  const mapNodesOPD = useMemo(() => {
+    const { counts } = nodeTopoData;
+    return nodes
+      .filter((n) => {
+        if (n.type === "client" || n.type === "pppoe-client") {
+          let isPPPoE =
+            n.linked_interface?.toLowerCase().includes("pppoe") ||
+            n.type === "pppoe-client";
+          if (!isPPPoE && n.linked_interface) {
+            const m = mappings.find(
+              (map) =>
+                map.prefix &&
+                map.prefix.toLowerCase() === n.linked_interface.toLowerCase(),
+            );
+            if (m && m.connection_type === "PPPOE") isPPPoE = true;
+          }
+          if (!n.linked_interface && n.type === "client") return true;
+          return isPPPoE;
+        }
+        // Infrastructure: sembunyikan jika hanya melayani desa (l2tp)
+        const c = counts[n.id] || { l2tp: 0, pppoe: 0 };
+        if (c.l2tp > 0 && c.pppoe === 0) return false;
+        return true;
+      })
+      .filter((n) => {
+        if (nodeViewFilter === "client") return isClientNode(n);
+        if (nodeViewFilter === "infrastructure") return isInfrastructureNode(n);
+        return true;
+      });
+  }, [nodeTopoData, nodes, nodeViewFilter, mappings]);
+
+  // Split mode: nodes Desa (l2tp) — infrastructure difilter berdasarkan BFS counts
+  const mapNodesDesa = useMemo(() => {
+    const { counts } = nodeTopoData;
+    return nodes
+      .filter((n) => {
+        if (n.type === "client" || n.type === "pppoe-client") {
+          let isPPPoE =
+            n.linked_interface?.toLowerCase().includes("pppoe") ||
+            n.type === "pppoe-client";
+          if (!isPPPoE && n.linked_interface) {
+            const m = mappings.find(
+              (map) =>
+                map.prefix &&
+                map.prefix.toLowerCase() === n.linked_interface.toLowerCase(),
+            );
+            if (m && m.connection_type === "PPPOE") isPPPoE = true;
+          }
+          if (!n.linked_interface && n.type === "client") return true;
+          return !isPPPoE;
+        }
+        // Infrastructure: sembunyikan jika hanya melayani OPD (pppoe)
+        const c = counts[n.id] || { l2tp: 0, pppoe: 0 };
+        if (c.pppoe > 0 && c.l2tp === 0) return false;
+        return true;
+      })
+      .filter((n) => {
+        if (nodeViewFilter === "client") return isClientNode(n);
+        if (nodeViewFilter === "infrastructure") return isInfrastructureNode(n);
+        return true;
+      });
+  }, [nodeTopoData, nodes, nodeViewFilter, mappings]);
+
+  const mapNodeIdsOPD = useMemo(
+    () => new Set(mapNodesOPD.map((n) => n.id)),
+    [mapNodesOPD],
+  );
+  const mapNodeIdsDesa = useMemo(
+    () => new Set(mapNodesDesa.map((n) => n.id)),
+    [mapNodesDesa],
+  );
+
+  const mapEdgesOPD = useMemo(() => {
+    return edges.filter((e) => {
+      const fromId = e.from_node ?? e.from;
+      const toId = e.to_node ?? e.to;
+      return mapNodeIdsOPD.has(fromId) && mapNodeIdsOPD.has(toId);
+    });
+  }, [edges, mapNodeIdsOPD]);
+
+  const mapEdgesDesa = useMemo(() => {
+    return edges.filter((e) => {
+      const fromId = e.from_node ?? e.from;
+      const toId = e.to_node ?? e.to;
+      return mapNodeIdsDesa.has(fromId) && mapNodeIdsDesa.has(toId);
+    });
+  }, [edges, mapNodeIdsDesa]);
+
   const mapNodeIds = useMemo(
     () => new Set(mapNodes.map((n) => n.id)),
     [mapNodes],
@@ -1127,21 +1321,58 @@ function TopologyContent() {
     });
   }, [edges, mapNodeIds]);
 
+  const activeVisibleNodeIds = useMemo(() => {
+    if (splitMode) {
+      return new Set([...mapNodeIdsOPD, ...mapNodeIdsDesa]);
+    }
+    return mapNodeIds;
+  }, [splitMode, mapNodeIdsOPD, mapNodeIdsDesa, mapNodeIds]);
+
+  const activeVisibleEdgeIds = useMemo(() => {
+    if (splitMode) {
+      const allEdges = [...mapEdgesOPD, ...mapEdgesDesa];
+      return new Set(allEdges.map((e) => e.id));
+    }
+    return new Set(mapEdges.map((e) => e.id));
+  }, [splitMode, mapEdgesOPD, mapEdgesDesa, mapEdges]);
+
   useEffect(() => {
-    if (selectedNode && !mapNodeIds.has(selectedNode.id)) {
+    if (selectedNode && !activeVisibleNodeIds.has(selectedNode.id)) {
       setSelectedNode(null);
       setNodeDetail(null);
     }
-    if (selectedEdge) {
-      const fromId = selectedEdge.from_node ?? selectedEdge.from;
-      const toId = selectedEdge.to_node ?? selectedEdge.to;
-      if (!mapNodeIds.has(fromId) || !mapNodeIds.has(toId)) {
-        setSelectedEdge(null);
-      }
+    if (selectedEdge && !activeVisibleEdgeIds.has(selectedEdge.id)) {
+      setSelectedEdge(null);
     }
-  }, [nodeViewFilter, mapNodeIds, selectedNode, selectedEdge]);
+  }, [nodeViewFilter, activeVisibleNodeIds, activeVisibleEdgeIds, selectedNode, selectedEdge]);
 
-
+  // Auto-zoom panel OPD saat split mode diaktifkan
+  useEffect(() => {
+    if (splitMode === "horizontal") {
+      // Delay 700ms agar Leaflet map OPD sempat fully initialize
+      const timer = setTimeout(() => {
+        const validNodes = mapNodesOPD.filter(
+          (n) => !isNaN(parseFloat(n.latitude)) && !isNaN(parseFloat(n.longitude))
+        );
+        if (validNodes.length > 0) {
+          // Gunakan reduce (bukan spread) agar aman untuk array besar
+          const lats = validNodes.map((n) => parseFloat(n.latitude));
+          const lngs = validNodes.map((n) => parseFloat(n.longitude));
+          const minLat = lats.reduce((a, b) => Math.min(a, b), Infinity);
+          const maxLat = lats.reduce((a, b) => Math.max(a, b), -Infinity);
+          const minLng = lngs.reduce((a, b) => Math.min(a, b), Infinity);
+          const maxLng = lngs.reduce((a, b) => Math.max(a, b), -Infinity);
+          setFlyToTargetOPD({
+            bounds: [[minLat, minLng], [maxLat, maxLng]],
+          });
+        }
+      }, 700);
+      return () => clearTimeout(timer);
+    } else {
+      setFlyToTargetOPD(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitMode]);
 
   return (
     <div className="flex flex-col h-full min-h-0 -m-4 md:-m-6 relative overflow-hidden bg-slate-950">
@@ -1229,38 +1460,120 @@ function TopologyContent() {
             showMobileMode={showMobileMode}
             networkMode={networkMode}
             setNetworkMode={setNetworkMode}
+            setFlyToTarget={setFlyToTarget}
             mapTheme={mapTheme}
             setMapTheme={setMapTheme}
             showLabels={showLabels}
             setShowLabels={setShowLabels}
             nodeViewFilter={nodeViewFilter}
             setNodeViewFilter={setNodeViewFilter}
+            splitMode={splitMode}
+            setSplitMode={setSplitMode}
           />
 
-          <TopologyMap
-            mapTheme={mapTheme}
-            showLabels={showLabels}
-            nodes={mapNodes}
-            edges={mapEdges}
-            mappings={mappings}
-            interactionMode={interactionMode}
-            newNodeType={newNodeType}
-            selectedNode={currentSelectedNode}
-            selectedEdge={selectedEdge}
-            coreInterfaces={coreInterfaces}
-            linkStartNode={linkStartNode}
-            handleAddNode={handleAddNode}
-            handleNodeClick={handleNodeClick}
-            setNodes={setNodesFromUser}
-            setEdges={setEdgesFromUser}
-            setSelectedNode={setSelectedNode}
-            setSelectedEdge={setSelectedEdge}
-            setLinkStartNode={setLinkStartNode}
-            flyToTarget={flyToTarget}
-            onFlyToComplete={() => setFlyToTarget(null)}
-            onEdgeDelete={markEdgeDeleted}
-            readOnly={readOnly}
-          />
+          {splitMode ? (
+            // Split View: Desa (kiri) | OPD (kanan)
+            <div className="flex-1 min-h-0 flex flex-row">
+              {/* Panel Desa (L2TP) */}
+              <div className="flex-1 min-h-0 min-w-0 relative">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[900] pointer-events-none">
+                  <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-blue-600 text-white shadow-lg backdrop-blur-sm tracking-wide">
+                    Jaringan Desa
+                  </span>
+                </div>
+                <TopologyMap
+                  center={[-7.065, 107.55]}
+                  zoom={11}
+                  mapTheme={mapTheme}
+                  showLabels={showLabels}
+                  nodes={mapNodesDesa}
+                  edges={mapEdgesDesa}
+                  mappings={mappings}
+                  interactionMode={interactionMode}
+                  newNodeType={newNodeType}
+                  selectedNode={currentSelectedNode}
+                  selectedEdge={selectedEdge}
+                  coreInterfaces={coreInterfaces}
+                  linkStartNode={linkStartNode}
+                  handleAddNode={handleAddNode}
+                  handleNodeClick={handleNodeClick}
+                  setNodes={setNodesFromUser}
+                  setEdges={setEdgesFromUser}
+                  setSelectedNode={setSelectedNode}
+                  setSelectedEdge={setSelectedEdge}
+                  setLinkStartNode={setLinkStartNode}
+                  flyToTarget={networkMode === "l2tp" ? flyToTarget : null}
+                  onFlyToComplete={() => setFlyToTarget(null)}
+                  onEdgeDelete={markEdgeDeleted}
+                  readOnly={readOnly}
+                />
+              </div>
+
+              {/* Divider vertikal */}
+              <div className="flex-shrink-0 w-0.5 bg-slate-700" />
+
+              {/* Panel OPD (PPPoE) */}
+              <div className="flex-1 min-h-0 min-w-0 relative">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[900] pointer-events-none">
+                  <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-blue-600 text-white shadow-lg backdrop-blur-sm tracking-wide">
+                    Jaringan OPD
+                  </span>
+                </div>
+                <TopologyMap
+                  center={[-7.0225, 107.527]}
+                  zoom={16}
+                  mapTheme={mapTheme}
+                  showLabels={showLabels}
+                  nodes={mapNodesOPD}
+                  edges={mapEdgesOPD}
+                  mappings={mappings}
+                  interactionMode={interactionMode}
+                  newNodeType={newNodeType}
+                  selectedNode={currentSelectedNode}
+                  selectedEdge={selectedEdge}
+                  coreInterfaces={coreInterfaces}
+                  linkStartNode={linkStartNode}
+                  handleAddNode={handleAddNode}
+                  handleNodeClick={handleNodeClick}
+                  setNodes={setNodesFromUser}
+                  setEdges={setEdgesFromUser}
+                  setSelectedNode={setSelectedNode}
+                  setSelectedEdge={setSelectedEdge}
+                  setLinkStartNode={setLinkStartNode}
+                  flyToTarget={flyToTargetOPD ?? (networkMode === "pppoe" ? flyToTarget : null)}
+                  onFlyToComplete={() => { setFlyToTargetOPD(null); setFlyToTarget(null); }}
+                  onEdgeDelete={markEdgeDeleted}
+                  readOnly={readOnly}
+                />
+              </div>
+            </div>
+          ) : (
+            // Normal single map
+            <TopologyMap
+              mapTheme={mapTheme}
+              showLabels={showLabels}
+              nodes={mapNodes}
+              edges={mapEdges}
+              mappings={mappings}
+              interactionMode={interactionMode}
+              newNodeType={newNodeType}
+              selectedNode={currentSelectedNode}
+              selectedEdge={selectedEdge}
+              coreInterfaces={coreInterfaces}
+              linkStartNode={linkStartNode}
+              handleAddNode={handleAddNode}
+              handleNodeClick={handleNodeClick}
+              setNodes={setNodesFromUser}
+              setEdges={setEdgesFromUser}
+              setSelectedNode={setSelectedNode}
+              setSelectedEdge={setSelectedEdge}
+              setLinkStartNode={setLinkStartNode}
+              flyToTarget={flyToTarget}
+              onFlyToComplete={() => setFlyToTarget(null)}
+              onEdgeDelete={markEdgeDeleted}
+              readOnly={readOnly}
+            />
+          )}
         </div>
 
         {/* Node Sidebar */}

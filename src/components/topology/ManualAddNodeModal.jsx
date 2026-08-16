@@ -242,7 +242,6 @@ export default function ManualAddNodeModal({
               <option value="client">Client (Rumah)</option>
               <option value="odp">ODP (Kotak Distribusi)</option>
               <option value="odc">ODC (Kabinet)</option>
-              <option value="pole">Tiang (Pole)</option>
               <option value="olt">OLT (Pusat)</option>
             </select>
           </div>
