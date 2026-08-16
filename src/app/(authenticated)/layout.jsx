@@ -10,6 +10,7 @@ import {
   getStoredUser,
   getRoleLabel,
   hasAccess,
+  getDefaultAccessibleRoute,
 } from "@/lib/roles";
 import axios from "axios";
 import { Network } from "lucide-react";
@@ -230,6 +231,7 @@ export default function AuthenticatedLayout({ children }) {
     }
 
     const routeToMenuKeyMap = {
+      dashboard: "dashboard",
       topology: "topology",
       "sites/desa": "sites",
       "sites/opd": "sites",
@@ -265,11 +267,16 @@ export default function AuthenticatedLayout({ children }) {
 
     if (requiredMenuKey) {
       if (!hasAccess(sessionUser, requiredMenuKey, "read")) {
-        showToast(
-          `Akses Ditolak: Anda tidak memiliki izin untuk melihat ${requiredMenuKey}`,
-          "error",
-        );
-        router.push("/dashboard");
+        const fallbackRoute = getDefaultAccessibleRoute(sessionUser);
+        const normalizedPath = pathname === "/" ? "/dashboard" : pathname;
+        if (fallbackRoute && fallbackRoute !== normalizedPath) {
+          router.replace(fallbackRoute);
+        } else {
+          showToast(
+            `Akses Ditolak: Anda tidak memiliki izin untuk melihat ${requiredMenuKey}`,
+            "error",
+          );
+        }
       }
     }
   }, [tokenChecked, sessionUser, pathname, router]);
