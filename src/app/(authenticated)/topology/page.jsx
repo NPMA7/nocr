@@ -141,8 +141,37 @@ function TopologyContent() {
   /** 'all' | 'client' | 'infrastructure' — filter tampilan untuk semua role */
   const [nodeViewFilter, setNodeViewFilter] = useState("all");
   const [activeNodeTab, setActiveNodeTab] = useState("informasi");
-  const [networkMode, setNetworkMode] = useState("l2tp");
-  const [splitMode, setSplitMode] = useState(null); // null | 'horizontal' | 'vertical'
+  const [networkMode, setNetworkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("nocr_topology_network_mode") || "l2tp";
+    }
+    return "l2tp";
+  });
+  const [splitMode, setSplitMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("nocr_topology_split_mode");
+      return saved === "horizontal" ? "horizontal" : null;
+    }
+    return null;
+  });
+
+  // Simpan preferensi mode jaringan ke localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined" && networkMode) {
+      localStorage.setItem("nocr_topology_network_mode", networkMode);
+    }
+  }, [networkMode]);
+
+  // Simpan preferensi split mode ke localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (splitMode) {
+        localStorage.setItem("nocr_topology_split_mode", splitMode);
+      } else {
+        localStorage.removeItem("nocr_topology_split_mode");
+      }
+    }
+  }, [splitMode]);
 
   const [interactionMode, setInteractionMode] = useState("select");
   const [newNodeType, setNewNodeType] = useState("odp");
@@ -1550,6 +1579,10 @@ function TopologyContent() {
           ) : (
             // Normal single map
             <TopologyMap
+              center={
+                networkMode === "pppoe" ? [-7.0225, 107.527] : [-7.065, 107.55]
+              }
+              zoom={networkMode === "pppoe" ? 16 : 11}
               mapTheme={mapTheme}
               showLabels={showLabels}
               nodes={mapNodes}
