@@ -1483,6 +1483,7 @@ function TopologyContent() {
           <CoreInterfacePanel
             coreStatus={coreStatus}
             siteAktif={siteAktif}
+            siteOffline={desaOffline + opdOffline}
             showIfacePanel={showIfacePanel}
             setShowIfacePanel={setShowIfacePanel}
             liveLogs={liveLogs}

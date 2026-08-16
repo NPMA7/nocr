@@ -16,6 +16,7 @@ function SplitHIcon({ size = 12 }) {
 export default function CoreInterfacePanel({
   coreStatus,
   siteAktif,
+  siteOffline,
   showIfacePanel,
   setShowIfacePanel,
   liveLogs,
@@ -34,88 +35,8 @@ export default function CoreInterfacePanel({
 }) {
   return (
     <>
-      {/* Left Panel — MikroTik Core Live Status */}
-      <div className="hidden md:flex absolute top-3 left-3 z-[1000] w-56 flex-col gap-2 pointer-events-none">
-        {/* Core Status Card */}
-        {coreStatus && (
-          <div
-            className={`rounded-xl border p-3.5 shadow-xl backdrop-blur-sm pointer-events-auto ${
-              coreStatus.connected
-                ? "bg-slate-900/95 border-emerald-500/30"
-                : "bg-slate-900/95 border-red-500/30"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    coreStatus.connected
-                      ? "bg-emerald-400 animate-pulse"
-                      : "bg-red-400"
-                  }`}
-                />
-                <span className="text-xs font-bold text-slate-200">
-                  {coreStatus.device_name || "MikroTik Pusat"}
-                </span>
-              </div>
-              <StatusBadge online={coreStatus.connected} />
-            </div>
-            {coreStatus.connected ? (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div className="bg-slate-800/80 rounded-lg p-2 flex items-center gap-2 min-w-0">
-                  <Cpu size={13} className="text-blue-400 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] text-slate-500">CPU</p>
-                    <p className="text-xs font-bold text-slate-200">
-                      {coreStatus.cpu}%
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-slate-800/80 rounded-lg p-2 flex items-center gap-2 min-w-0">
-                  <Network
-                    size={13}
-                    className="text-emerald-400 flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] text-slate-500">Site Aktif</p>
-                    <p className="text-xs font-bold text-emerald-400">
-                      {siteAktif}
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-slate-800/80 rounded-lg p-2 flex items-center gap-2 min-w-0">
-                  <Clock
-                    size={13}
-                    className="text-amber-400 flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] text-slate-500">Uptime</p>
-                    <p className="text-xs font-bold text-slate-200 truncate">
-                      {coreStatus.uptime}
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-slate-800/80 rounded-lg p-2 flex items-center gap-2 min-w-0">
-                  <RefreshCw
-                    size={13}
-                    className="text-purple-400 flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] text-slate-500">Board</p>
-                    <p className="text-xs font-bold text-slate-200 truncate">
-                      {coreStatus.board}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-red-400 mt-1">
-                {coreStatus.error}
-              </p>
-            )}
-          </div>
-        )}
-
+      {/* Left Panel — Live Status Card */}
+      <div className="hidden md:flex absolute top-3 left-3 z-[1000] w-64 flex-col gap-2 pointer-events-none">
         {/* Live Online/Offline Log Card */}
         <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto">
           <button
@@ -123,14 +44,28 @@ export default function CoreInterfacePanel({
             className="cursor-pointer w-full p-3 flex items-center justify-between"
           >
             <div className="flex items-center gap-2">
-              <Network size={13} className="text-blue-400" />
+              <Network size={14} className="text-blue-400" />
               <span className="text-xs font-bold text-slate-200">
                 Status
               </span>
-              <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-                LIVE
-              </span>
+
+              {/* Badges Aktif (Biru) & Offline (Merah) */}
+              <div className="flex items-center gap-1.5 ml-1">
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded font-bold bg-blue-600 text-white flex items-center gap-1 shadow-sm"
+                  title="Site Aktif / Online"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse inline-block" />
+                  {siteAktif ?? 0}
+                </span>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded font-bold bg-red-600 text-white flex items-center gap-1 shadow-sm"
+                  title="Site Offline"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white inline-block" />
+                  {siteOffline ?? 0}
+                </span>
+              </div>
             </div>
             {showIfacePanel ? (
               <ChevronUp
@@ -145,7 +80,7 @@ export default function CoreInterfacePanel({
             )}
           </button>
           {showIfacePanel && (
-            <div className="border-t border-slate-700/50 max-h-80 flex flex-col">
+            <div className="border-t border-slate-700/50 max-h-96 flex flex-col">
               <div className="overflow-auto flex-1">
                 {liveLogs.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-500">
