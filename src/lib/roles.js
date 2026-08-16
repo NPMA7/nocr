@@ -126,3 +126,39 @@ export function getRoleLabel(role) {
   if (!role) return 'Visitor';
   return String(role).charAt(0).toUpperCase() + String(role).slice(1);
 }
+
+/** Urutan prioritas menu dari atas ke bawah */
+export const MENU_ROUTE_HIERARCHY = [
+  { menuKey: 'dashboard', path: '/dashboard' },
+  { menuKey: 'topology', path: '/topology' },
+  { menuKey: 'sites', path: '/sites/desa' },
+  { menuKey: 'monitoring-l2tp', path: '/monitoring/desa' },
+  { menuKey: 'monitoring-pppoe', path: '/monitoring/opd' },
+  { menuKey: 'devices-ruijie', path: '/device/ruijie' },
+  { menuKey: 'devices-mikrotik', path: '/device/mikrotik' },
+  { menuKey: 'devices-hsgq', path: '/device/hsgq-olt' },
+  { menuKey: 'laporan-harian', path: '/report' },
+  { menuKey: 'chat', path: '/live-chat' },
+  { menuKey: 'settings-mikrotik', path: '/settings?tab=core' },
+  { menuKey: 'settings-vpn', path: '/settings?tab=vpn' },
+  { menuKey: 'settings-health', path: '/settings?tab=health' },
+  { menuKey: 'settings-wa', path: '/settings?tab=whatsapp' },
+  { menuKey: 'settings-users', path: '/settings?tab=users' },
+  { menuKey: 'settings-roles', path: '/settings?tab=roles' },
+  { menuKey: 'settings-password', path: '/settings?tab=password' },
+  { menuKey: 'settings-system', path: '/settings?tab=system' },
+];
+
+/** Dapatkan URL halaman pertama/teratas yang boleh diakses user */
+export function getDefaultAccessibleRoute(user) {
+  if (!user) return '/dashboard';
+  if (isLegacyAdmin(user)) return '/dashboard';
+
+  for (const item of MENU_ROUTE_HIERARCHY) {
+    if (hasAccess(user, item.menuKey, 'read')) {
+      return item.path;
+    }
+  }
+
+  return '/dashboard';
+}

@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { fetchTopologyCached } from "@/lib/globalCache";
 import { API_URL, socket, useAppState } from "@/App";
-import { getStoredUser, hasAccess } from "@/lib/roles";
+import { getStoredUser, hasAccess, getDefaultAccessibleRoute } from "@/lib/roles";
 import dynamic from "next/dynamic";
 import CoreResourceCard from "@/components/dashboard/CoreResourceCard";
 import StatCard from "@/components/dashboard/StatCard";
@@ -38,7 +38,7 @@ const POLL_INTERVAL_MS = 300000; // Ditingkatkan ke 5m (Realtime ditangani oleh 
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isConnected, setLastSyncTime } = useAppState();
+  const { isConnected, setLastSyncTime, sessionUser } = useAppState();
 
   const [coreStatus, setCoreStatus] = useState(null);
   const [coreInterfaces, setCoreInterfaces] = useState([]);
@@ -54,11 +54,19 @@ export default function Dashboard() {
   const [hasReadAccess, setHasReadAccess] = useState(true);
 
   useEffect(() => {
-    const user = getStoredUser();
-    if (user && user.role && !hasAccess(user, "dashboard", "read")) {
-      setHasReadAccess(false);
+    const user = sessionUser?.role ? sessionUser : getStoredUser();
+    if (user && user.role) {
+      if (!hasAccess(user, "dashboard", "read")) {
+        setHasReadAccess(false);
+        const target = getDefaultAccessibleRoute(user);
+        if (target && target !== "/dashboard") {
+          router.replace(target);
+        }
+      } else {
+        setHasReadAccess(true);
+      }
     }
-  }, []);
+  }, [sessionUser, router]);
 
   const getLogStyle = (msg) => {
     if (!msg)
@@ -333,8 +341,8 @@ export default function Dashboard() {
   if (!hasReadAccess) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
-        <AlertTriangle size={48} className="text-red-500/50" />
-        <p>Akses Ditolak: Anda tidak memiliki izin (Read) ke Dashboard.</p>
+        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+        <p className="text-xs text-slate-400">Mengarahkan ke halaman yang diizinkan...</p>
       </div>
     );
   }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Lock, User, ShieldAlert, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { API_URL, socket } from "@/App";
-import { applySessionUser } from "@/lib/roles";
+import { applySessionUser, getDefaultAccessibleRoute, getStoredUser } from "@/lib/roles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,7 +21,8 @@ export default function LoginPage() {
     // Check if user already has a valid token
     const token = localStorage.getItem("nocr_token");
     if (token) {
-      router.push("/dashboard");
+      const user = getStoredUser();
+      router.push(getDefaultAccessibleRoute(user));
       return;
     }
 
@@ -61,13 +62,15 @@ export default function LoginPage() {
 
       if (res.data.token) {
         localStorage.setItem("nocr_token", res.data.token);
-        if (res.data.user) {
-          applySessionUser(res.data.user);
+        let userObj = res.data.user;
+        if (userObj) {
+          userObj = applySessionUser(userObj);
         }
         if (socket.disconnected) {
           socket.connect();
         }
-        router.push("/dashboard");
+        const targetRoute = getDefaultAccessibleRoute(userObj);
+        router.push(targetRoute);
       }
     } catch (err) {
       setError(
