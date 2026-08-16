@@ -1105,7 +1105,7 @@ app.prepare().then(() => {
 
                 const prevStatus = previousMappingsStatus[ap.mac_address];
                 if (prevStatus && prevStatus !== finalStatus) {
-                    addActivityLog(`Status pelanggan ${prefixName} berubah menjadi ${finalStatus}`);
+                    addActivityLog(`Status ${prefixName} berubah menjadi ${finalStatus}`);
                     updateDailyReportRealtime(ap.mac_address, prefixName, finalStatus).catch(console.error);
                 }
                 previousMappingsStatus[ap.mac_address] = finalStatus;
