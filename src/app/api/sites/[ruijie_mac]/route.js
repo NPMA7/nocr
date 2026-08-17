@@ -12,8 +12,19 @@ function decodeMac(raw) {
   }
 }
 
-export async function GET(_req, { params }) {
+export async function GET(req, { params }) {
   try {
+    let user;
+    try {
+      user = await resolveAuth(req);
+    } catch (e) {
+      return NextResponse.json({ error: e.message || 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!hasAccess(user, 'sites', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin melihat data site' }, { status: 403 });
+    }
+
     const resolvedParams = await params;
     const ruijie_mac = decodeMac(resolvedParams.ruijie_mac);
     if (!ruijie_mac) {

@@ -81,6 +81,32 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
     const server = express();
     const httpServer = http.createServer(server);
+
+    // Trust proxy for reverse proxies (Cloudflare, Nginx)
+    server.set('trust proxy', 1);
+
+    // HTTPS Redirect & Security Headers Middleware
+    server.use((req, res, next) => {
+        // Enforce HTTPS when behind proxy
+        const proto = req.headers['x-forwarded-proto'];
+        if (proto === 'http') {
+            const host = req.headers.host || req.hostname;
+            return res.redirect(301, `https://${host}${req.url}`);
+        }
+
+        // Standard Security Headers
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+        res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+        res.setHeader(
+            'Content-Security-Policy',
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https: *.openstreetmap.org *.tile.openstreetmap.org; font-src 'self' data: https:; connect-src 'self' ws: wss: http: https:; frame-ancestors 'self';"
+        );
+
+        next();
+    });
     
     // Pengaturan Socket.io
     const io = new Server(httpServer, {
@@ -108,6 +134,7 @@ app.prepare().then(() => {
 
     // Jalankan pembersihan awal log flapping (<10m) di database
     cleanupFlappingActivityLogs();
+    setInterval(cleanupFlappingActivityLogs, 60000);
 
     let previousTidakSinkronCount = -1;
 
@@ -519,26 +546,29 @@ app.prepare().then(() => {
         clients.add(socket.id);
 
         // Mengambil log awal langsung dari database secara asinkron saat client connect
-        db
-            .from('activity_logs')
-            .select('time, message')
-            .ilike('message', '%berubah menjadi%')
-            .order('time', { ascending: false })
-            .limit(20)
-            .then(({ data }) => {
-                if (data) socket.emit('initial_logs', data);
-            });
+        const sendCleanInitialLogs = async () => {
+            try {
+                const { data } = await db
+                    .from('activity_logs')
+                    .select('*')
+                    .ilike('message', '%berubah menjadi%')
+                    .order('time', { ascending: false })
+                    .limit(100);
+                if (data) {
+                    const { cleanLogs, flappingIds } = filterFlappingLogs(data);
+                    if (flappingIds && flappingIds.length > 0) {
+                        db.from('activity_logs').delete().in('id', flappingIds).catch(() => {});
+                    }
+                    socket.emit('initial_logs', cleanLogs.slice(0, 20));
+                }
+            } catch (e) {
+                console.error('Gagal memuat initial_logs:', e.message);
+            }
+        };
 
+        sendCleanInitialLogs();
 
-        socket.on('request_initial_logs', async () => {
-            const { data } = await db
-                .from('activity_logs')
-                .select('time, message')
-                .ilike('message', '%berubah menjadi%')
-                .order('time', { ascending: false })
-                .limit(20);
-            if (data) socket.emit('initial_logs', data);
-        });
+        socket.on('request_initial_logs', sendCleanInitialLogs);
 
         socket.on('subscribe_monitor', (deviceId) => {
             activeMonitors.add(deviceId);
@@ -1162,27 +1192,55 @@ app.prepare().then(() => {
     }, 5000);
     scheduleAtIntervalBoundary(syncDeviceMappings, 'mappings', 5);
 
+    // Helper Otentikasi Rute Express
+    function extractExpressToken(req) {
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            return authHeader.split(' ')[1].trim();
+        }
+        if (req.headers.cookie) {
+            const match = req.headers.cookie.match(/(?:^|;\s*)nocr_token=([^;]+)/);
+            if (match) return decodeURIComponent(match[1]);
+        }
+        return null;
+    }
+
+    function authenticateExpressRequest(req, res) {
+        const token = extractExpressToken(req);
+        if (!token) {
+            res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan' });
+            return null;
+        }
+        try {
+            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+            return decoded;
+        } catch (e) {
+            res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa' });
+            return null;
+        }
+    }
+
     // Rute Express WhatsApp Gateway
     server.use('/api/whatsapp', express.json());
 
     server.get('/api/whatsapp/status', (req, res) => {
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
         res.json(whatsapp.getStatus());
     });
 
     server.post('/api/whatsapp/action', async (req, res) => {
-        // Otentikasi dan otorisasi
-        const authHeader = req.headers['authorization'];
-        if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
+
         try {
-            const token = authHeader.split(' ')[1];
-            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-            const userInfo = await getUserInfo(decoded.id);
+            const userInfo = await getUserInfo(user.id);
             const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'settings-wa', 'update', 'system.settings');
             if (!isAuthorized) {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
             }
         } catch (e) {
-            return res.status(401).json({ error: 'Token tidak valid' });
+            return res.status(500).json({ error: 'Gagal memverifikasi hak akses' });
         }
 
         const { action, settings } = req.body;
@@ -1204,33 +1262,51 @@ app.prepare().then(() => {
     });
 
     server.get('/api/whatsapp/chat', async (req, res) => {
-        const chats = await whatsapp.getChats();
-        res.json(chats);
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
+
+        try {
+            const userInfo = await getUserInfo(user.id);
+            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'read', 'chat.live');
+            if (!isAuthorized) {
+                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
+            }
+            const chats = await whatsapp.getChats();
+            res.json(chats);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
     });
 
     server.get('/api/whatsapp/chat/:id', async (req, res) => {
-        const messages = await whatsapp.getChatMessages(req.params.id);
-        res.json(messages);
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
+
+        try {
+            const userInfo = await getUserInfo(user.id);
+            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'read', 'chat.live');
+            if (!isAuthorized) {
+                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
+            }
+            const messages = await whatsapp.getChatMessages(req.params.id);
+            res.json(messages);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
     });
 
     server.post('/api/whatsapp/chat/send', async (req, res) => {
-        // Otentikasi dan otorisasi
-        const authHeader = req.headers['authorization'];
-        if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
+
         try {
-            const token = authHeader.split(' ')[1];
-            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-            console.log("DEBUG SEND: decoded =", decoded);
-            const userInfo = await getUserInfo(decoded.id);
-            console.log("DEBUG SEND: userInfo =", userInfo);
+            const userInfo = await getUserInfo(user.id);
             const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'create', 'chat.live');
-            console.log("DEBUG SEND: isAuthorized =", isAuthorized);
             if (!isAuthorized) {
                 return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
             }
         } catch (e) {
-            console.error("DEBUG SEND error:", e);
-            return res.status(401).json({ error: 'Token tidak valid' });
+            return res.status(500).json({ error: 'Gagal memverifikasi hak akses' });
         }
 
         try {
@@ -1242,16 +1318,16 @@ app.prepare().then(() => {
     });
 
     server.get('/api/whatsapp/chat/media/:msgId', async (req, res) => {
-        const authHeader = req.headers['authorization'];
-        if (!authHeader) return res.status(401).json({ error: 'Akses ditolak: Token tidak ada' });
-        try {
-            const token = authHeader.split(' ')[1];
-            require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-        } catch (e) {
-            return res.status(401).json({ error: 'Token tidak valid' });
-        }
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
 
         try {
+            const userInfo = await getUserInfo(user.id);
+            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'read', 'chat.live');
+            if (!isAuthorized) {
+                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
+            }
+
             const media = await whatsapp.getMessageMedia(req.params.msgId);
             if (!media) return res.status(404).json({ error: 'Media tidak ditemukan atau kedaluwarsa' });
             res.json({ success: true, media: media.data, mimetype: media.mimetype, filename: media.filename });

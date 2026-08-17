@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import { filterFlappingLogs } from '@/lib/logUtils';
+import { verifyAuth } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req) {
   try {
+    verifyAuth(req);
     // Mengambil data dari tabel activity_logs
     // Mengurutkan berdasarkan kolom 'time' dari yang paling baru (descending)
     const { data: logs, error } = await db

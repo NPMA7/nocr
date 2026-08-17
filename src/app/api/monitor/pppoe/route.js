@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
+import { verifyAuth } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req) {
   try {
+    verifyAuth(req);
     const device = await getCoreDevice();
 
     // Ambil PPPoE ruijie devices
