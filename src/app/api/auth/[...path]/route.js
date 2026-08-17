@@ -4,11 +4,15 @@ import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
 import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole, hasAccess } from '@/lib/auth';
 
-// Helper untuk respon error
+// Helper untuk respon error (mencegah error message information leakage)
 const sendError = (err, defaultStatus = 500) => {
+    const status = err.status || defaultStatus;
+    const message = (status < 500 && err.message) 
+        ? err.message 
+        : 'Terjadi kesalahan pada server. Silakan coba lagi.';
     return NextResponse.json(
-        { error: err.message || 'Kesalahan Server Internal' },
-        { status: err.status || defaultStatus }
+        { error: message },
+        { status }
     );
 };
 
@@ -229,12 +233,20 @@ export async function POST(req, { params }) {
                 );
             }
 
-            const body = await req.json();
-            const { username, password } = body;
-
-            if (!username || !password) {
-                return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
+            let body;
+            try {
+                body = await req.json();
+            } catch (e) {
+                return NextResponse.json({ error: 'Format data tidak valid' }, { status: 400 });
             }
+
+            const { username, password } = body || {};
+
+            if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
+                return NextResponse.json({ error: 'Format data tidak valid: username dan password wajib diisi dengan teks' }, { status: 400 });
+            }
+
+            const cleanUsername = username.trim();
 
             const { count } = await db.from('users').select('*', { count: 'exact', head: true });
             if (count > 0) {
@@ -246,7 +258,7 @@ export async function POST(req, { params }) {
 
             const { data, error } = await db
                 .from('users')
-                .insert([{ username, password_hash, role: 'admin' }])
+                .insert([{ username: cleanUsername, password_hash, role: 'admin' }])
                 .select();
 
             if (error) throw error;
@@ -278,15 +290,23 @@ export async function POST(req, { params }) {
                 );
             }
 
-            const body = await req.json();
-            const { username, password } = body;
-
-            if (!username || !password) {
-                return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
+            let body;
+            try {
+                body = await req.json();
+            } catch (e) {
+                return NextResponse.json({ error: 'Format data tidak valid' }, { status: 400 });
             }
 
+            const { username, password } = body || {};
+
+            if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
+                return NextResponse.json({ error: 'Format data tidak valid: username dan password wajib diisi dengan teks' }, { status: 400 });
+            }
+
+            const cleanUsername = username.trim();
+
             // Check Account Lockout per Username (prevents botnet / IP rotation attacks)
-            const userLock = checkUserLockout(username);
+            const userLock = checkUserLockout(cleanUsername);
             if (userLock.locked) {
                 return NextResponse.json(
                     { error: `Akun ini terkunci sementara karena terlalu banyak percobaan gagal. Silakan coba lagi dalam ${userLock.retryAfter} detik.` },
@@ -300,11 +320,11 @@ export async function POST(req, { params }) {
             const { data, error } = await db
                 .from('users')
                 .select('*')
-                .eq('username', username)
+                .eq('username', cleanUsername)
                 .single();
 
             if (error || !data) {
-                recordFailedLogin(username);
+                recordFailedLogin(cleanUsername);
                 // Dummy compare to prevent timing attack enumeration
                 await bcrypt.compare(password, '$2a$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopq');
                 return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
@@ -312,12 +332,12 @@ export async function POST(req, { params }) {
 
             const isValid = await bcrypt.compare(password, data.password_hash);
             if (!isValid) {
-                recordFailedLogin(username);
+                recordFailedLogin(cleanUsername);
                 return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
             }
 
             // Successful login: reset failed login attempts for this user
-            resetFailedLogin(username);
+            resetFailedLogin(cleanUsername);
 
             const userRole = data.role || 'visitor';
 
