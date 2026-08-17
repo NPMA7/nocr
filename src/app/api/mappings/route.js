@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { resolveAuth, enforceRoleForMutation } from '@/lib/auth';
+import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
 
 let cachedData = null;
 let lastFetchTime = 0;
@@ -8,6 +8,8 @@ const CACHE_TTL = 15000; // 15 seconds
 
 export async function GET(req) {
   try {
+    verifyAuth(req);
+
     const { searchParams } = new URL(req.url);
     const force = searchParams.get('force') === 'true';
     const now = Date.now();

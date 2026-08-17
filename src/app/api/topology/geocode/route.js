@@ -55,7 +55,15 @@ async function expandGoogleMapsUrl(url) {
   return null;
 }
 
+import { verifyAuth } from '@/lib/auth';
+
 export async function GET(request) {
+  try {
+    verifyAuth(request);
+  } catch (e) {
+    return NextResponse.json({ error: e.message || 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = (searchParams.get("q") || "").trim();
 

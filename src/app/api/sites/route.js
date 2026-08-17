@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import { mergeMappingWithSite } from '@/lib/sitesApi';
+import { resolveAuth } from '@/lib/auth';
+import { hasAccess } from '@/lib/roles';
 
-export async function GET() {
+export async function GET(req) {
   try {
+    let user;
+    try {
+      user = await resolveAuth(req);
+    } catch (e) {
+      return NextResponse.json({ error: e.message || 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!hasAccess(user, 'sites', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin melihat data sites' }, { status: 403 });
+    }
     // --- L2TP: dari device_mappings (sumber utama) ---
     const { data: mappings, error } = await db.from('device_mappings').select('*');
     if (error) throw error;

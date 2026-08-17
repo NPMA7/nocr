@@ -29,6 +29,23 @@
   --color-brand-purple-notion: #AD6DED;
 }
 
+/* Baseline Root Variables (Default: Blue NOCR Dark) */
+:root {
+  --color-app-bg: #0F172A;
+  --color-card-bg: #1E293B;
+  --color-header-bg: #1E293B;
+  --color-border-main: #334155;
+  --color-text-main: #F8FAFC;
+  --color-text-muted: #94A3B8;
+  --color-primary: #3B82F6;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-purple: #8B5CF6;
+  --color-tag-opd: #A855F7;
+  --color-tag-desa: #3B82F6;
+}
+
 /* ==========================================================================
    DYNAMIC CUSTOM THEME & NOTION LIGHT SYSTEM OVERRIDES
    ========================================================================== */

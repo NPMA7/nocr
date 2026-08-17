@@ -27,7 +27,11 @@ function getFlappingThresholdMs() {
  */
 function getStatusLogInfo(message) {
   if (!message || typeof message !== 'string') return null;
-  const match = message.match(/^Status\s+(?:pelanggan|perangkat)\s+(.+?)\s+berubah menjadi\s+(Online|Offline)$/i);
+  // Match formats:
+  // "Status DAMKAR-COMAND_CENTER berubah menjadi Offline"
+  // "Status pelanggan FO-123 berubah menjadi Online"
+  // "Status perangkat Core-SW berubah menjadi Offline"
+  const match = message.match(/^Status\s+(?:(?:pelanggan|perangkat)\s+)?(.+?)\s+berubah menjadi\s+(Online|Offline)$/i);
   if (!match) return null;
   return {
     targetName: match[1].trim().toUpperCase(),
@@ -80,22 +84,19 @@ function filterFlappingLogs(logs, thresholdMs) {
     // Urutkan secara kronologis dari yang terlama ke terbaru (ascending time)
     group.sort((a, b) => a._timeMs - b._timeMs);
 
-    let lastStable = null;
     for (let i = 0; i < group.length; i++) {
-      const current = group[i];
-      if (lastStable) {
-        const diff = current._timeMs - lastStable._timeMs;
-        if (diff < thresholdMs) {
-          // Terdeteksi flapping (< threshold)
-          if (lastStable.id != null) flappingIds.add(lastStable.id);
-          if (current.id != null) flappingIds.add(current.id);
-          current._flapping = true;
-          lastStable._flapping = true;
-          lastStable = null;
-          continue;
+      const prev = i > 0 ? group[i - 1] : null;
+      const next = i < group.length - 1 ? group[i + 1] : null;
+
+      const isFlappingWithPrev = prev && (group[i]._timeMs - prev._timeMs < thresholdMs);
+      const isFlappingWithNext = next && (next._timeMs - group[i]._timeMs < thresholdMs);
+
+      if (isFlappingWithPrev || isFlappingWithNext) {
+        group[i]._flapping = true;
+        if (group[i].id != null) {
+          flappingIds.add(group[i].id);
         }
       }
-      lastStable = current;
     }
   });
 

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
+import { verifyAuth } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req) {
   try {
+    verifyAuth(req);
     const [secretsResult, activeResult] = await Promise.all([
       db.from('pppoe_secrets').select('name, service, disabled'),
       db.from('pppoe_active').select('name, address, uptime')

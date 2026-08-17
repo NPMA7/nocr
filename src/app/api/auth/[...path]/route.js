@@ -12,6 +12,62 @@ const sendError = (err, defaultStatus = 500) => {
     );
 };
 
+// Rate limiter per IP for auth endpoints (5 attempts per minute)
+const loginAttempts = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_LOGIN_ATTEMPTS = 5;
+
+function getClientIp(req) {
+    const forwarded = req.headers?.get?.('x-forwarded-for') || req.headers?.['x-forwarded-for'];
+    if (forwarded) {
+        return String(forwarded).split(',')[0].trim();
+    }
+    const realIp = req.headers?.get?.('x-real-ip') || req.headers?.['x-real-ip'];
+    if (realIp) return String(realIp).trim();
+    return '127.0.0.1';
+}
+
+function checkAuthRateLimit(ip) {
+    const now = Date.now();
+    const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    if (attempts.length >= MAX_LOGIN_ATTEMPTS) {
+        const retryAfter = Math.ceil((attempts[0] + RATE_LIMIT_WINDOW_MS - now) / 1000);
+        return { limited: true, retryAfter: Math.max(1, retryAfter) };
+    }
+    attempts.push(now);
+    loginAttempts.set(ip, attempts);
+    return { limited: false };
+}
+
+const COOKIE_NAME = 'nocr_token';
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
+
+function setAuthCookie(response, token) {
+    response.cookies.set({
+        name: COOKIE_NAME,
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: COOKIE_MAX_AGE
+    });
+    return response;
+}
+
+function clearAuthCookie(response) {
+    response.cookies.set({
+        name: COOKIE_NAME,
+        value: '',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0
+    });
+    return response;
+}
+
 export async function GET(req, { params }) {
     const { path } = await params;
     
@@ -28,6 +84,20 @@ export async function GET(req, { params }) {
                 throw error;
             }
             return NextResponse.json({ initialized: count > 0 });
+        }
+
+        if (path[0] === 'check-setup') {
+            const { count, error } = await db
+                .from('users')
+                .select('*', { count: 'exact', head: true });
+
+            if (error) {
+                if (error.code === '42P01') {
+                    return NextResponse.json({ isSetup: true, error: 'TABEL_TIDAK_DITEMUKAN' });
+                }
+                throw error;
+            }
+            return NextResponse.json({ isSetup: count === 0 });
         }
 
         if (path[0] === 'me') {
@@ -61,7 +131,24 @@ export async function POST(req, { params }) {
     const { path } = await params;
     
     try {
+        if (path[0] === 'logout') {
+            const response = NextResponse.json({ message: 'Logout berhasil' });
+            return clearAuthCookie(response);
+        }
+
         if (path[0] === 'setup') {
+            const ip = getClientIp(req);
+            const rateCheck = checkAuthRateLimit(ip);
+            if (rateCheck.limited) {
+                return NextResponse.json(
+                    { error: `Terlalu banyak percobaan. Silakan coba lagi dalam ${rateCheck.retryAfter} detik.` },
+                    { 
+                        status: 429, 
+                        headers: { 'Retry-After': String(rateCheck.retryAfter) } 
+                    }
+                );
+            }
+
             const body = await req.json();
             const { username, password } = body;
 
@@ -90,14 +177,27 @@ export async function POST(req, { params }) {
                 { expiresIn: '7d' }
             );
 
-            return NextResponse.json({
+            const response = NextResponse.json({
                 message: 'Setup berhasil!',
                 token,
                 user: { id: data[0].id, username: data[0].username, role: normalizeRole(data[0].role) || 'admin' }
             });
+            return setAuthCookie(response, token);
         }
 
         if (path[0] === 'login') {
+            const ip = getClientIp(req);
+            const rateCheck = checkAuthRateLimit(ip);
+            if (rateCheck.limited) {
+                return NextResponse.json(
+                    { error: `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${rateCheck.retryAfter} detik.` },
+                    { 
+                        status: 429, 
+                        headers: { 'Retry-After': String(rateCheck.retryAfter) } 
+                    }
+                );
+            }
+
             const body = await req.json();
             const { username, password } = body;
 
@@ -138,11 +238,12 @@ export async function POST(req, { params }) {
                 { expiresIn: '7d' }
             );
 
-            return NextResponse.json({
+            const response = NextResponse.json({
                 message: 'Login berhasil',
                 token,
                 user: { id: data.id, username: data.username, role: userRole, permissions }
             });
+            return setAuthCookie(response, token);
         }
 
         if (path[0] === 'users') {

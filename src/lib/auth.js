@@ -10,18 +10,58 @@ export function isValidRole(role) {
     return !!normalizeRole(role);
 }
 
+export function extractToken(req) {
+    if (!req) return null;
+
+    // 1. Authorization header (Bearer token)
+    let authHeader = null;
+    if (typeof req.headers?.get === 'function') {
+        authHeader = req.headers.get('authorization');
+    } else if (req.headers && req.headers['authorization']) {
+        authHeader = req.headers['authorization'];
+    }
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.split(' ')[1].trim();
+    }
+
+    // 2. Next.js Request cookies object
+    if (req.cookies) {
+        if (typeof req.cookies.get === 'function') {
+            const cookieVal = req.cookies.get('nocr_token')?.value;
+            if (cookieVal) return cookieVal;
+        } else if (typeof req.cookies === 'object' && req.cookies.nocr_token) {
+            return req.cookies.nocr_token;
+        }
+    }
+
+    // 3. Raw cookie header
+    let cookieHeader = null;
+    if (typeof req.headers?.get === 'function') {
+        cookieHeader = req.headers.get('cookie');
+    } else if (req.headers && req.headers['cookie']) {
+        cookieHeader = req.headers['cookie'];
+    }
+
+    if (cookieHeader) {
+        const match = cookieHeader.match(/(?:^|;\s*)nocr_token=([^;]+)/);
+        if (match) return decodeURIComponent(match[1]);
+    }
+
+    return null;
+}
+
 export function verifyAuth(req) {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = extractToken(req);
+    if (!token) {
         throw Object.assign(new Error('Akses Ditolak: Token tidak ditemukan'), { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         return decoded;
     } catch (err) {
-        throw Object.assign(new Error('Token tidak valid atau sudah kedaluwarsa'), { status: 403 });
+        throw Object.assign(new Error('Token tidak valid atau sudah kedaluwarsa'), { status: 401 });
     }
 }
 

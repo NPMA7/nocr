@@ -136,7 +136,10 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
     router.push(`/topology?focus=${node.id}`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await axios.post("/api/auth/logout");
+    } catch (e) {}
     localStorage.removeItem("nocr_token");
     localStorage.removeItem("nocr_user");
     window.location.href = "/login";
