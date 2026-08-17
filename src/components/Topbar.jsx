@@ -15,7 +15,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { API_URL, useAppState } from "@/App";
+import { API_URL, socket, useAppState } from "@/App";
 import { normalizeRole, getRoleLabel, getStoredUser } from "@/lib/roles";
 import { PRESET_THEMES, applyThemeConfig, getStoredThemeConfig } from "@/lib/themeEngine";
 
@@ -142,6 +142,10 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
     } catch (e) {}
     localStorage.removeItem("nocr_token");
     localStorage.removeItem("nocr_user");
+    if (socket) {
+      socket.auth = { token: null };
+      socket.disconnect();
+    }
     window.location.href = "/login";
   };
 

@@ -79,6 +79,12 @@ export default function AuthenticatedLayout({ children }) {
       router.push("/login");
       return;
     }
+    if (socket) {
+      socket.auth = { token };
+      if (socket.disconnected) {
+        socket.connect();
+      }
+    }
     setTokenChecked(true);
   }, [router]);
 

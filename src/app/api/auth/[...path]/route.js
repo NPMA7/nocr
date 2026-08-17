@@ -13,18 +13,94 @@ const sendError = (err, defaultStatus = 500) => {
 };
 
 // Rate limiter per IP for auth endpoints (5 attempts per minute)
-const loginAttempts = new Map();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const MAX_LOGIN_ATTEMPTS = 5;
+const loginAttemptsByIp = new Map();
+const IP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_IP_ATTEMPTS = 5;
+
+// Account Lockout per Username (5 failed attempts locks account for 5 minutes)
+const failedAttemptsByUser = new Map();
+const USER_LOCKOUT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_USER_FAILED_ATTEMPTS = 5;
+
+function checkIpRateLimit(ip) {
+    const now = Date.now();
+    const attempts = (loginAttemptsByIp.get(ip) || []).filter(t => now - t < IP_RATE_LIMIT_WINDOW_MS);
+    if (attempts.length >= MAX_IP_ATTEMPTS) {
+        const retryAfter = Math.ceil((attempts[0] + IP_RATE_LIMIT_WINDOW_MS - now) / 1000);
+        return { limited: true, retryAfter: Math.max(1, retryAfter) };
+    }
+    attempts.push(now);
+    loginAttemptsByIp.set(ip, attempts);
+    return { limited: false };
+}
+
+function checkUserLockout(username) {
+    if (!username) return { locked: false };
+    const key = String(username).trim().toLowerCase();
+    const record = failedAttemptsByUser.get(key);
+    if (!record) return { locked: false };
+
+    const now = Date.now();
+    const recentFailures = (record.attempts || []).filter(t => now - t < USER_LOCKOUT_WINDOW_MS);
+    if (recentFailures.length >= MAX_USER_FAILED_ATTEMPTS) {
+        const retryAfter = Math.ceil((recentFailures[0] + USER_LOCKOUT_WINDOW_MS - now) / 1000);
+        return { locked: true, retryAfter: Math.max(1, retryAfter) };
+    }
+    return { locked: false };
+}
+
+function recordFailedLogin(username) {
+    if (!username) return;
+    const key = String(username).trim().toLowerCase();
+    const now = Date.now();
+    const record = failedAttemptsByUser.get(key) || { attempts: [] };
+    const recent = record.attempts.filter(t => now - t < USER_LOCKOUT_WINDOW_MS);
+    recent.push(now);
+    failedAttemptsByUser.set(key, { attempts: recent });
+}
+
+function resetFailedLogin(username) {
+    if (!username) return;
+    const key = String(username).trim().toLowerCase();
+    failedAttemptsByUser.delete(key);
+}
 
 function getClientIp(req) {
-    const forwarded = req.headers?.get?.('x-forwarded-for') || req.headers?.['x-forwarded-for'];
-    if (forwarded) {
-        return String(forwarded).split(',')[0].trim();
+    const getHeader = (name) => {
+        if (typeof req.headers?.get === 'function') {
+            return req.headers.get(name);
+        }
+        return req.headers?.[name] || req.headers?.[name.toLowerCase()];
+    };
+
+    // 1. Cloudflare connecting IP (unspoofable when behind Cloudflare proxy)
+    const cfConnectingIp = getHeader('cf-connecting-ip');
+    if (cfConnectingIp) {
+        return String(cfConnectingIp).trim();
     }
-    const realIp = req.headers?.get?.('x-real-ip') || req.headers?.['x-real-ip'];
-    if (realIp) return String(realIp).trim();
-    return '127.0.0.1';
+
+    // 2. True-Client-IP (Cloudflare Enterprise / Akamai)
+    const trueClientIp = getHeader('true-client-ip');
+    if (trueClientIp) {
+        return String(trueClientIp).trim();
+    }
+
+    // 3. X-Real-IP (Direct reverse proxy like Nginx)
+    const xRealIp = getHeader('x-real-ip');
+    if (xRealIp) {
+        return String(xRealIp).trim();
+    }
+
+    // 4. X-Forwarded-For: In direct reverse proxy setups, take the first valid IP
+    const forwarded = getHeader('x-forwarded-for');
+    if (forwarded) {
+        const ips = String(forwarded).split(',').map(s => s.trim()).filter(Boolean);
+        if (ips.length > 0) {
+            return ips[0];
+        }
+    }
+
+    return req.ip || req.socket?.remoteAddress || '127.0.0.1';
 }
 
 function checkAuthRateLimit(ip) {
@@ -93,11 +169,15 @@ export async function GET(req, { params }) {
 
             if (error) {
                 if (error.code === '42P01') {
-                    return NextResponse.json({ isSetup: true, error: 'TABEL_TIDAK_DITEMUKAN' });
+                    return NextResponse.json({ isSetup: true, needsSetup: true, initialized: false, error: 'TABEL_TIDAK_DITEMUKAN' });
                 }
                 throw error;
             }
-            return NextResponse.json({ isSetup: count === 0 });
+            return NextResponse.json({ 
+                isSetup: count === 0, 
+                needsSetup: count === 0, 
+                initialized: count > 0 
+            });
         }
 
         if (path[0] === 'me') {
@@ -138,7 +218,7 @@ export async function POST(req, { params }) {
 
         if (path[0] === 'setup') {
             const ip = getClientIp(req);
-            const rateCheck = checkAuthRateLimit(ip);
+            const rateCheck = checkIpRateLimit(ip);
             if (rateCheck.limited) {
                 return NextResponse.json(
                     { error: `Terlalu banyak percobaan. Silakan coba lagi dalam ${rateCheck.retryAfter} detik.` },
@@ -187,13 +267,13 @@ export async function POST(req, { params }) {
 
         if (path[0] === 'login') {
             const ip = getClientIp(req);
-            const rateCheck = checkAuthRateLimit(ip);
-            if (rateCheck.limited) {
+            const ipCheck = checkIpRateLimit(ip);
+            if (ipCheck.limited) {
                 return NextResponse.json(
-                    { error: `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${rateCheck.retryAfter} detik.` },
+                    { error: `Terlalu banyak percobaan login dari IP ini. Silakan coba lagi dalam ${ipCheck.retryAfter} detik.` },
                     { 
                         status: 429, 
-                        headers: { 'Retry-After': String(rateCheck.retryAfter) } 
+                        headers: { 'Retry-After': String(ipCheck.retryAfter) } 
                     }
                 );
             }
@@ -205,6 +285,18 @@ export async function POST(req, { params }) {
                 return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
             }
 
+            // Check Account Lockout per Username (prevents botnet / IP rotation attacks)
+            const userLock = checkUserLockout(username);
+            if (userLock.locked) {
+                return NextResponse.json(
+                    { error: `Akun ini terkunci sementara karena terlalu banyak percobaan gagal. Silakan coba lagi dalam ${userLock.retryAfter} detik.` },
+                    { 
+                        status: 429, 
+                        headers: { 'Retry-After': String(userLock.retryAfter) } 
+                    }
+                );
+            }
+
             const { data, error } = await db
                 .from('users')
                 .select('*')
@@ -212,13 +304,20 @@ export async function POST(req, { params }) {
                 .single();
 
             if (error || !data) {
+                recordFailedLogin(username);
+                // Dummy compare to prevent timing attack enumeration
+                await bcrypt.compare(password, '$2a$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopq');
                 return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
             }
 
             const isValid = await bcrypt.compare(password, data.password_hash);
             if (!isValid) {
+                recordFailedLogin(username);
                 return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
             }
+
+            // Successful login: reset failed login attempts for this user
+            resetFailedLogin(username);
 
             const userRole = data.role || 'visitor';
 

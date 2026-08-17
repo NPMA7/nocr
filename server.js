@@ -1,7 +1,9 @@
 const express = require('express');
 const next = require('next');
 const http = require('http');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 const ping = require('ping');
 const fs = require('fs');
 const path = require('path');
@@ -102,17 +104,84 @@ app.prepare().then(() => {
         res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
         res.setHeader(
             'Content-Security-Policy',
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https: *.openstreetmap.org *.tile.openstreetmap.org; font-src 'self' data: https:; connect-src 'self' ws: wss: http: https:; frame-ancestors 'self';"
+            "default-src 'self'; script-src 'self' 'unsafe-inline' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https: *.openstreetmap.org *.tile.openstreetmap.org; font-src 'self' data: https:; connect-src 'self' ws: wss: http: https:; frame-ancestors 'self';"
         );
 
         next();
     });
     
+    // Helper Otentikasi Socket.io
+    function extractSocketToken(socket) {
+        const auth = socket.handshake.auth || {};
+        const query = socket.handshake.query || {};
+        const headers = socket.handshake.headers || {};
+        
+        let token = auth.token;
+
+        if (!token && headers.authorization) {
+            const parts = headers.authorization.split(' ');
+            if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+                token = parts[1].trim();
+            }
+        }
+
+        if (!token && headers.cookie) {
+            const match = headers.cookie.match(/(?:^|;\s*)nocr_token=([^;]+)/);
+            if (match) {
+                try {
+                    token = decodeURIComponent(match[1]);
+                } catch (e) {
+                    token = match[1];
+                }
+            }
+        }
+
+        if (!token && query.token) {
+            token = query.token;
+        }
+
+        return token || null;
+    }
+
+    function authenticateSocket(socket, next) {
+        try {
+            const token = extractSocketToken(socket);
+            if (!token) {
+                const err = new Error('Authentication required: Token tidak ditemukan');
+                err.data = { code: 'AUTH_REQUIRED' };
+                return next(err);
+            }
+
+            const jwtSecret = process.env.JWT_SECRET;
+            if (!jwtSecret) {
+                console.error('JWT_SECRET belum dikonfigurasi!');
+                const err = new Error('Internal configuration error');
+                err.data = { code: 'CONFIG_ERROR' };
+                return next(err);
+            }
+
+            const decoded = jwt.verify(token, jwtSecret);
+            socket.user = decoded;
+            return next();
+        } catch (err) {
+            const error = new Error('Authentication failed: Token tidak valid atau sudah kedaluwarsa');
+            error.data = { code: 'AUTH_INVALID' };
+            return next(error);
+        }
+    }
+
     // Pengaturan Socket.io
     const io = new Server(httpServer, {
         cors: { origin: '*' }
     });
     global.io = io;
+
+    // Wajibkan autentikasi JWT pada namespace root dan seluruh dynamic namespace
+    io.use(authenticateSocket);
+    io.of(/.*/).use(authenticateSocket);
+    io.on('new_namespace', (nsp) => {
+        nsp.use(authenticateSocket);
+    });
 
     const activeMonitors = new Set();
     const clients = new Set();
@@ -1339,6 +1408,8 @@ app.prepare().then(() => {
     whatsapp.start(); // Mulai otomatis saat server booting.
 
     server.post('/api/mappings/sync-notify', (req, res) => {
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
         triggerSyncDeviceMappingsDebounced();
         res.json({ success: true, message: 'Sync triggered' });
     });

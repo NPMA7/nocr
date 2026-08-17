@@ -73,8 +73,11 @@ export default function LoginPage() {
         if (userObj) {
           userObj = applySessionUser(userObj);
         }
-        if (socket.disconnected) {
-          socket.connect();
+        if (socket) {
+          socket.auth = { token: res.data.token };
+          if (socket.disconnected) {
+            socket.connect();
+          }
         }
         const targetRoute = getDefaultAccessibleRoute(userObj);
         router.push(targetRoute);
