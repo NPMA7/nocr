@@ -5,10 +5,32 @@ import axios from 'axios';
 
 export const API_URL = '/api';
 
-// Create socket instance only in client environment
+// Create socket instance only in client environment with dynamic auth token
 export const socket = typeof window !== 'undefined' 
-  ? io('/', { path: '/socket.io' }) 
+  ? io('/', { 
+      path: '/socket.io',
+      autoConnect: false,
+      auth: (cb) => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('nocr_token') : null;
+        cb({ token });
+      }
+    }) 
   : null;
+
+// Connect only if authenticated and not on login page
+if (typeof window !== 'undefined' && socket) {
+  const token = localStorage.getItem('nocr_token');
+  if (token && window.location.pathname !== '/login') {
+    socket.auth = { token };
+    socket.connect();
+  }
+
+  socket.on('connect_error', (err) => {
+    if (window.location.pathname !== '/login') {
+      console.warn('Socket connection error:', err?.message || err);
+    }
+  });
+}
 
 // Configure Axios Interceptors client-side
 if (typeof window !== 'undefined') {
@@ -27,6 +49,10 @@ if (typeof window !== 'undefined') {
         if (window.location.pathname !== '/login') {
           localStorage.removeItem('nocr_token');
           localStorage.removeItem('nocr_user');
+          if (socket) {
+            socket.auth = { token: null };
+            socket.disconnect();
+          }
           window.location.href = '/login';
         }
       }
