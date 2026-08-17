@@ -84,11 +84,16 @@ app.prepare().then(() => {
     const server = express();
     const httpServer = http.createServer(server);
 
+    // Disable X-Powered-By header (Information Disclosure mitigation)
+    server.disable('x-powered-by');
+
     // Trust proxy for reverse proxies (Cloudflare, Nginx)
     server.set('trust proxy', 1);
 
     // HTTPS Redirect & Security Headers Middleware
     server.use((req, res, next) => {
+        res.removeHeader('X-Powered-By');
+
         // Enforce HTTPS when behind proxy
         const proto = req.headers['x-forwarded-proto'];
         if (proto === 'http') {

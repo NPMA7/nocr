@@ -31,6 +31,7 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  poweredByHeader: false,
   serverExternalPackages: ['node-routeros'],
   async headers() {
     return [
