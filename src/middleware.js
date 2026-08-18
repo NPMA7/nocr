@@ -90,15 +90,7 @@ export function middleware(request) {
     }
   }
 
-  // If trying to access /login while already having a valid token
-  if (pathname === '/login') {
-    if (isTokenValid) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    return NextResponse.next();
-  }
-
-  // If public route, allow
+  // If public route (including /login), allow immediately
   if (isPublic) {
     return NextResponse.next();
   }

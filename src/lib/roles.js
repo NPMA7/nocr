@@ -149,6 +149,41 @@ export const MENU_ROUTE_HIERARCHY = [
   { menuKey: 'settings-system', path: '/settings?tab=system' },
 ];
 
+/** Validasi struktur dan masa berlaku JWT di sisi client */
+export function isClientTokenValid(token) {
+  if (!token || typeof token !== 'string') return false;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (!payload || !payload.exp) return false;
+    // Expired check (10s margin)
+    if (payload.exp * 1000 < Date.now() + 10000) {
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Bersihkan seluruh residu data autentikasi di browser client */
+export function clearClientAuth() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem('nocr_token');
+    localStorage.removeItem('nocr_user');
+    document.cookie = 'nocr_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  } catch (e) {}
+}
+
 /** Dapatkan URL halaman pertama/teratas yang boleh diakses user */
 export function getDefaultAccessibleRoute(user) {
   if (!user) return '/dashboard';

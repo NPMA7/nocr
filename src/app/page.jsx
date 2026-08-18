@@ -2,14 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getStoredUser, getDefaultAccessibleRoute } from "@/lib/roles";
+import { getStoredUser, getDefaultAccessibleRoute, isClientTokenValid, clearClientAuth } from "@/lib/roles";
 
 export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("nocr_token");
-    if (!token) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("nocr_token") : null;
+    if (!token || !isClientTokenValid(token)) {
+      clearClientAuth();
       router.replace("/login");
       return;
     }
