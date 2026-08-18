@@ -1,6 +1,7 @@
 "use client";
 
-import { Cpu, Network, Clock, RefreshCw, ChevronUp, ChevronDown, Wifi, Users, Server } from "lucide-react";
+import { useState } from "react";
+import { Cpu, Network, Clock, RefreshCw, ChevronUp, ChevronDown, Wifi, Users, Server, Layers } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 
 // Inline SVG icon for split view
@@ -33,6 +34,8 @@ export default function CoreInterfacePanel({
   splitMode,
   setSplitMode,
 }) {
+  const [showModePanel, setShowModePanel] = useState(true);
+
   return (
     <>
       {/* Left Panel — Live Status Card */}
@@ -40,6 +43,7 @@ export default function CoreInterfacePanel({
         {/* Live Online/Offline Log Card */}
         <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto">
           <button
+            type="button"
             onClick={() => setShowIfacePanel((v) => !v)}
             className="cursor-pointer w-full p-3 flex items-center justify-between"
           >
@@ -127,123 +131,148 @@ export default function CoreInterfacePanel({
       <div
         className={`${
           showMobileMode ? "flex" : "hidden"
-        } w-42 md:flex absolute bottom-8 left-3 md:bottom-auto md:top-3 md:left-auto md:right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}
+        } w-44 md:flex absolute bottom-8 left-3 md:bottom-auto md:top-3 md:left-auto md:right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}
       >
         {/* Mode Panel */}
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto p-3">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-            Mode
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {/* Tombol Jaringan: hanya tampil saat split TIDAK aktif */}
-            {!splitMode && (
+        <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setShowModePanel((v) => !v)}
+            className="cursor-pointer w-full p-3 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <Layers size={14} className="text-blue-400" />
+              <span className="text-xs font-bold text-slate-200">
+                Mode
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-800 text-slate-300 border border-slate-700/60 ml-0.5">
+                {splitMode ? "Split" : (networkMode === "pppoe" ? "OPD" : "Desa")}
+              </span>
+            </div>
+            {showModePanel ? (
+              <ChevronUp
+                size={14}
+                className="cursor-pointer text-slate-400"
+              />
+            ) : (
+              <ChevronDown
+                size={14}
+                className="cursor-pointer text-slate-400"
+              />
+            )}
+          </button>
+
+          {showModePanel && (
+            <div className="border-t border-slate-700/50 p-3 flex flex-col gap-1.5">
+              {/* Tombol Jaringan: hanya tampil saat split TIDAK aktif */}
+              {!splitMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMode = networkMode === "pppoe" ? "l2tp" : "pppoe";
+                    setNetworkMode(nextMode);
+                    if (setFlyToTarget) {
+                      if (nextMode === "pppoe") {
+                        setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
+                      } else {
+                        setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 });
+                      }
+                    }
+                  }}
+                  className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-blue-500/10 text-blue-500 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30"
+                >
+                  <Wifi size={12} />
+                  Jaringan: {networkMode === "pppoe" ? "OPD" : "Desa"}
+                </button>
+              )}
+
+              {/* Tombol Split View — selalu tampil, letakkan di bawah Jaringan */}
               <button
                 type="button"
-                onClick={() => {
-                  const nextMode = networkMode === "pppoe" ? "l2tp" : "pppoe";
-                  setNetworkMode(nextMode);
-                  if (setFlyToTarget) {
-                    if (nextMode === "pppoe") {
-                      setFlyToTarget({ lat: -7.0225, lng: 107.527, zoom: 16.5 });
-                    } else {
-                      setFlyToTarget({ lat: -7.065, lng: 107.55, zoom: 11 });
-                    }
-                  }
-                }}
-                className="cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 bg-blue-500/10 text-blue-500 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30"
+                onClick={() =>
+                  setSplitMode((prev) => (prev === "horizontal" ? null : "horizontal"))
+                }
+                className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                  splitMode === "horizontal"
+                    ? "bg-blue-600 text-white ring-1 ring-violet-400/50"
+                    : "bg-slate-800 text-slate-400 hover:text-white"
+                }`}
+                title="Split View: OPD (kiri) | Desa (kanan)"
               >
-                <Wifi size={12} />
-                Jaringan: {networkMode === "pppoe" ? "OPD" : "Desa"}
+                <SplitHIcon size={12} />
+                {splitMode === "horizontal" ? "Keluar Split View" : "Split View"}
               </button>
-            )}
 
-            {/* Tombol Split View — selalu tampil, letakkan di bawah Jaringan */}
-            <button
-              type="button"
-              onClick={() =>
-                setSplitMode((prev) => (prev === "horizontal" ? null : "horizontal"))
-              }
-              className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
-                splitMode === "horizontal"
-                  ? "bg-blue-600 text-white ring-1 ring-violet-400/50"
-                  : "bg-slate-800 text-slate-400 hover:text-white"
-              }`}
-              title="Split View: OPD (kiri) | Desa (kanan)"
-            >
-              <SplitHIcon size={12} />
-              {splitMode === "horizontal" ? "Keluar Split View" : "Split View"}
-            </button>
-
-            <div className="h-px bg-slate-700/50 w-full my-1" />
-            <button
-              type="button"
-              onClick={() =>
-                setMapTheme(mapTheme === "dark" ? "colored" : "dark")
-              }
-              className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
-                mapTheme === "dark"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-white"
-              }`}
-              title="Toggle Tema Peta"
-            >
-              <span
-                className={`fa ${
-                  mapTheme === "dark" ? "fa-moon" : "fa-sun"
-                } text-[10px]`}
-              />
-              Tema Peta
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowLabels(!showLabels)}
-              className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
-                showLabels
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-white"
-              }`}
-            >
-              <span
-                className={`fa ${
-                  showLabels ? "fa-eye" : "fa-eye-slash"
-                } text-[9px]`}
-              />
-              Label Node
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setNodeViewFilter((f) => (f === "client" ? "all" : "client"))
-              }
-              className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
-                nodeViewFilter === "client"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-white"
-              }`}
-            >
-              <Users size={12} />
-              Hanya Client
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setNodeViewFilter((f) =>
-                  f === "infrastructure" ? "all" : "infrastructure",
-                )
-              }
-              className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
-                nodeViewFilter === "infrastructure"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-white"
-              }`}
-            >
-              <Server size={12} />
-              Hanya Infrastruktur
-            </button>
-          </div>
+              <div className="h-px bg-slate-700/50 w-full my-1" />
+              <button
+                type="button"
+                onClick={() =>
+                  setMapTheme(mapTheme === "dark" ? "colored" : "dark")
+                }
+                className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                  mapTheme === "dark"
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-800 text-slate-400 hover:text-white"
+                }`}
+                title="Toggle Tema Peta"
+              >
+                <span
+                  className={`fa ${
+                    mapTheme === "dark" ? "fa-moon" : "fa-sun"
+                  } text-[10px]`}
+                />
+                Tema Peta
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLabels(!showLabels)}
+                className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                  showLabels
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-800 text-slate-400 hover:text-white"
+                }`}
+              >
+                <span
+                  className={`fa ${
+                    showLabels ? "fa-eye" : "fa-eye-slash"
+                  } text-[9px]`}
+                />
+                Label Node
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setNodeViewFilter((f) => (f === "client" ? "all" : "client"))
+                }
+                className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                  nodeViewFilter === "client"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-slate-800 text-slate-400 hover:text-white"
+                }`}
+              >
+                <Users size={12} />
+                Hanya Client
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setNodeViewFilter((f) =>
+                    f === "infrastructure" ? "all" : "infrastructure",
+                  )
+                }
+                className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                  nodeViewFilter === "infrastructure"
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-800 text-slate-400 hover:text-white"
+                }`}
+              >
+                <Server size={12} />
+                Hanya Infrastruktur
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
     </>
   );
 }
