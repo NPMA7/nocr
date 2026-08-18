@@ -1373,6 +1373,26 @@ function SystemConfigSettings({ canUpdate = true }) {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-400">
+                    Interval Sinkronisasi HSGQ OLT (Detik)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    readOnly={!canUpdate}
+                    value={settings.sync_hsgq_interval_seconds || 60}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        sync_hsgq_interval_seconds: parseInt(e.target.value) || 60,
+                      })
+                    }
+                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">
                     Delay Alarm Offline (ms)
                   </label>
                   <input

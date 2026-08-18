@@ -100,6 +100,29 @@ export default function HsgqOltPage() {
   useEffect(() => {
     if (!socket) return;
 
+    const handleOltUpdate = (payload) => {
+      if (!payload || !payload.data) return;
+      const isRelevant =
+        (activeTab === "Authenticate List" && (payload.type === "Authenticate List" || payload.endpoint === "/ontinfo_table")) ||
+        (activeTab === "Version Information" && (payload.type === "Version Information" || payload.endpoint === "/ontversion_table")) ||
+        (activeTab === "Bind Profile Info" && (payload.type === "Bind Profile Info" || payload.endpoint === "/ontprofile_table")) ||
+        (activeTab === "WLAN" && (payload.type === "WLAN" || payload.endpoint === "/ontwificonfig_table"));
+
+      if (isRelevant) {
+        let tableData = payload.data;
+        if (!Array.isArray(tableData) && tableData.data && Array.isArray(tableData.data)) {
+          tableData = tableData.data;
+        } else if (!Array.isArray(tableData)) {
+          return;
+        }
+        setData(tableData);
+        setLoading(false);
+        if (setLastSyncTime) {
+          setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
+        }
+      }
+    };
+
     const handleWifiUpdate = (payload) => {
       if (activeTab !== "WLAN") return;
       setData((prevData) =>
@@ -119,11 +142,13 @@ export default function HsgqOltPage() {
       );
     };
 
+    socket.on("hsgq_olt_update", handleOltUpdate);
     socket.on("hsgq_wifi_update", handleWifiUpdate);
     return () => {
+      socket.off("hsgq_olt_update", handleOltUpdate);
       socket.off("hsgq_wifi_update", handleWifiUpdate);
     };
-  }, [activeTab, socket]);
+  }, [activeTab, socket, setLastSyncTime]);
 
   const fetchData = async (silent = false) => {
     try {
@@ -947,7 +972,10 @@ export default function HsgqOltPage() {
 
               <div className="flex items-center gap-2 ml-4">
                 <button
-                  onClick={fetchData}
+                  onClick={() => {
+                    fetchData();
+                    if (socket) socket.emit("force_sync_hsgq");
+                  }}
                   className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
                 >
                   <RefreshCw size={14} /> Refresh

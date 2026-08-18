@@ -29,7 +29,8 @@ function getSystemSettings() {
         core_broadcast_interval_seconds: 10,
         sync_ruijie_interval_seconds: 60,
         sync_mikrotik_interval_seconds: 60,
-        sync_mappings_interval_seconds: 60
+        sync_mappings_interval_seconds: 60,
+        sync_hsgq_interval_seconds: 60
     };
 }
 
@@ -838,6 +839,10 @@ app.prepare().then(() => {
             syncDeviceMappings();
         });
 
+        socket.on('force_sync_hsgq', () => {
+            broadcastHsgqOltData();
+        });
+
         // Node presence: client mengunci node saat mulai edit
         socket.on('node_lock', ({ nodeId, userId, username }) => {
             if (!nodeId) return;
@@ -1089,6 +1094,7 @@ app.prepare().then(() => {
             if (intervalKey === 'ruijie') intervalSeconds = settings.sync_ruijie_interval_seconds || 60;
             else if (intervalKey === 'mikrotik') intervalSeconds = settings.sync_mikrotik_interval_seconds || 60;
             else if (intervalKey === 'mappings') intervalSeconds = settings.sync_mappings_interval_seconds || 60;
+            else if (intervalKey === 'hsgq') intervalSeconds = settings.sync_hsgq_interval_seconds || 60;
             
             setTimeout(runLoop, intervalSeconds * 1000);
         };
@@ -1103,6 +1109,7 @@ app.prepare().then(() => {
             if (intervalKey === 'ruijie') intervalSeconds = settings.sync_ruijie_interval_seconds || 60;
             else if (intervalKey === 'mikrotik') intervalSeconds = settings.sync_mikrotik_interval_seconds || 60;
             else if (intervalKey === 'mappings') intervalSeconds = settings.sync_mappings_interval_seconds || 60;
+            else if (intervalKey === 'hsgq') intervalSeconds = settings.sync_hsgq_interval_seconds || 60;
 
             let msToNextTarget = ((intervalSeconds - (currentSeconds % intervalSeconds) + offsetSeconds) * 1000 - currentMs) % (intervalSeconds * 1000);
             if (msToNextTarget <= 0) msToNextTarget += intervalSeconds * 1000;
@@ -1112,6 +1119,67 @@ app.prepare().then(() => {
 
         checkAndSchedule();
     }
+
+    // Global HSGQ OLT Data Cache
+    global.hsgqDataCache = global.hsgqDataCache || {
+        ontinfo: null,
+        timestamp: 0
+    };
+
+    // Jalankan background sync dan broadcast HSGQ OLT secara berkala
+    async function broadcastHsgqOltData() {
+        const url = process.env.HSGQ_OLT_URL;
+        if (!url) return;
+
+        try {
+            await keepHsgqOltSessionAlive();
+            const token = global.hsgqTokenCache || process.env.HSGQ_OLT_TOKEN || '';
+            const axios = require('axios');
+
+            const res = await axios.get(`${url}/ontinfo_table?_t=${Date.now()}`, {
+                headers: { ...(token ? { 'x-token': token } : {}) },
+                timeout: 10000
+            });
+
+            if (res.data) {
+                let data = res.data;
+                // Apply pending name updates if any
+                if (data && data.data && global.pendingNameUpdates) {
+                    const now = Date.now();
+                    for (const key in global.pendingNameUpdates) {
+                        if (now - global.pendingNameUpdates[key].timestamp > 65000) {
+                            delete global.pendingNameUpdates[key];
+                        }
+                    }
+                    data.data = data.data.map(row => {
+                        const key = `${row.identifier}`;
+                        if (global.pendingNameUpdates[key]) {
+                            row.name = global.pendingNameUpdates[key].ont_name;
+                            row.ont_name = global.pendingNameUpdates[key].ont_name;
+                            row.ont_description = global.pendingNameUpdates[key].ont_description;
+                        }
+                        return row;
+                    });
+                }
+
+                global.hsgqDataCache.ontinfo = data;
+                global.hsgqDataCache.timestamp = Date.now();
+
+                // Broadcast ke semua client yang sedang terhubung
+                io.emit('hsgq_olt_update', {
+                    endpoint: '/ontinfo_table',
+                    type: 'Authenticate List',
+                    data: data,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        } catch (err) {
+            console.error('[HSGQ OLT Sync] Gagal sinkronisasi data OLT:', err.message);
+        }
+    }
+
+    broadcastHsgqOltData();
+    scheduleAtIntervalBoundary(broadcastHsgqOltData, 'hsgq', 0);
 
     // Jalankan broadcast Ruijie secara otomatis
     async function broadcastRuijieDevices() {
