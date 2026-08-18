@@ -61,6 +61,10 @@ export async function GET(request) {
     if (type === 'Version Information') endpoint = '/ontversion_table';
     else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
     else if (type === 'WLAN') endpoint = '/ontwificonfig_table';
+    if (endpoint === '/ontinfo_table' && global.hsgqDataCache && global.hsgqDataCache.ontinfo && (Date.now() - global.hsgqDataCache.timestamp < 15000)) {
+      return NextResponse.json(global.hsgqDataCache.ontinfo);
+    }
+
     const doRequest = async (token, ep = endpoint) => {
       return await axios.get(`${url}${ep}?_t=${Date.now()}`, {
         headers: { ...(token ? { 'x-token': token } : {}) },
