@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { resolveAuth } from '@/lib/auth';
+import { resolveAuth, sendApiError } from '@/lib/auth';
 import { hasAccess } from '@/lib/roles';
 
 // groupId mapping berdasarkan connection_type (sesuai CONFIG di ruijie-scrape/src/server.js)
@@ -64,7 +64,6 @@ export async function POST(request) {
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[traffic/site] Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }

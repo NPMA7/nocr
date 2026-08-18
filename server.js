@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const ping = require('ping');
 const fs = require('fs');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');
 const whatsapp = require('./src/lib/whatsapp');
@@ -114,6 +115,72 @@ app.prepare().then(() => {
 
         next();
     });
+
+    // Helper Otentikasi Rute Express
+    function extractExpressToken(req) {
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            return authHeader.split(' ')[1].trim();
+        }
+        if (req.headers.cookie) {
+            const match = req.headers.cookie.match(/(?:^|;\s*)nocr_token=([^;]+)/);
+            if (match) return decodeURIComponent(match[1]);
+        }
+        return null;
+    }
+
+    const getRateLimitKey = (req) => {
+        const token = extractExpressToken(req);
+        if (token) {
+            try {
+                const decoded = jwt.decode(token);
+                if (decoded && decoded.id) return `user_${decoded.id}`;
+            } catch (e) {}
+        }
+        const forwarded = req.headers['x-forwarded-for'];
+        if (forwarded) {
+            const ips = String(forwarded).split(',').map(s => s.trim()).filter(Boolean);
+            if (ips.length > 0) return ips[0];
+        }
+        return req.ip || req.socket?.remoteAddress || '127.0.0.1';
+    };
+
+    // Rate Limiting khusus Login / Brute-force prevention (15 requests/menit per IP)
+    const loginLimiter = rateLimit({
+        windowMs: 60 * 1000,
+        max: 15,
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: (req) => {
+            const forwarded = req.headers['x-forwarded-for'];
+            if (forwarded) {
+                const ips = String(forwarded).split(',').map(s => s.trim()).filter(Boolean);
+                if (ips.length > 0) return ips[0];
+            }
+            return req.ip || req.socket?.remoteAddress || '127.0.0.1';
+        },
+        message: { error: 'Terlalu banyak percobaan login. Silakan coba lagi setelah beberapa saat.' },
+        handler: (req, res, next, options) => {
+            res.status(429).json(options.message);
+        }
+    });
+
+    // Unified Rate Limiting pada seluruh endpoint /api/ (120 requests/menit per user/IP)
+    // Cukup longgar untuk SPA dashboard polling & initial load, namun tetap mencegah scraping & abuse
+    const apiLimiter = rateLimit({
+        windowMs: 60 * 1000,
+        max: 120,
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: getRateLimitKey,
+        message: { error: 'Terlalu banyak request. Silakan coba lagi nanti.' },
+        handler: (req, res, next, options) => {
+            res.status(429).json(options.message);
+        }
+    });
+
+    server.use('/api/auth/login', loginLimiter);
+    server.use('/api/', apiLimiter);
     
     // Helper Otentikasi Socket.io
     function extractSocketToken(socket) {
@@ -148,7 +215,7 @@ app.prepare().then(() => {
         return token || null;
     }
 
-    function authenticateSocket(socket, next) {
+    async function authenticateSocket(socket, next) {
         try {
             const token = extractSocketToken(socket);
             if (!token) {
@@ -166,7 +233,13 @@ app.prepare().then(() => {
             }
 
             const decoded = jwt.verify(token, jwtSecret);
-            socket.user = decoded;
+            const userInfo = await getUserInfo(decoded.id);
+            socket.user = {
+                id: decoded.id,
+                username: decoded.username || userInfo.username,
+                role: userInfo.role || decoded.role || 'visitor',
+                permissions: userInfo.permissions || {}
+            };
             return next();
         } catch (err) {
             const error = new Error('Authentication failed: Token tidak valid atau sudah kedaluwarsa');
@@ -175,17 +248,125 @@ app.prepare().then(() => {
         }
     }
 
+    function authorizeSocketNamespace(socket, next) {
+        const user = socket.user;
+        if (!user) {
+            const err = new Error('Unauthorized: User tidak terautentikasi');
+            err.data = { code: 'UNAUTHORIZED' };
+            return next(err);
+        }
+
+        const nsp = socket.nsp.name;
+
+        // Admin role has full access to all namespaces
+        if (user.role === 'admin') {
+            return next();
+        }
+
+        // Demo / readonly user: strictly blocked from admin, monitoring, devices, chat, alerts, logs, realtime, nocr
+        if (user.role === 'demo') {
+            if (nsp !== '/' && nsp !== '/dashboard') {
+                const err = new Error(`Unauthorized: Akses ke namespace '${nsp}' tidak diizinkan untuk akun demo`);
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        }
+
+        // Check namespace-specific permissions
+        if (nsp === '/admin' || nsp.startsWith('/admin/')) {
+            return next(new Error('Unauthorized: Admin access required'));
+        } else if (nsp === '/dashboard' || nsp.startsWith('/dashboard/')) {
+            if (!hasServerAccess(user.permissions, 'dashboard', 'read', 'dashboard')) {
+                const err = new Error('Unauthorized: Dashboard access required');
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        } else if (nsp === '/monitoring' || nsp.startsWith('/monitoring/')) {
+            const hasMonAccess = hasServerAccess(user.permissions, 'monitoring-pppoe', 'read', 'monitoring') ||
+                                 hasServerAccess(user.permissions, 'monitoring-l2tp', 'read', 'monitoring');
+            if (!hasMonAccess) {
+                const err = new Error('Unauthorized: Monitoring access required');
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        } else if (nsp === '/devices' || nsp.startsWith('/devices/')) {
+            const hasDevAccess = hasServerAccess(user.permissions, 'devices-mikrotik', 'read', 'devices') ||
+                                 hasServerAccess(user.permissions, 'devices-ruijie', 'read', 'devices') ||
+                                 hasServerAccess(user.permissions, 'devices-hsgq', 'read', 'devices');
+            if (!hasDevAccess) {
+                const err = new Error('Unauthorized: Devices access required');
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        } else if (nsp === '/chat' || nsp.startsWith('/chat/')) {
+            if (!hasServerAccess(user.permissions, 'chat', 'read', 'chat.live')) {
+                const err = new Error('Unauthorized: Chat access required');
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        } else if (nsp === '/logs' || nsp === '/alerts' || nsp.startsWith('/logs/') || nsp.startsWith('/alerts/')) {
+            const hasLogAccess = hasServerAccess(user.permissions, 'settings-health', 'read', 'system.settings');
+            if (!hasLogAccess) {
+                const err = new Error('Unauthorized: Logs and Alerts access required');
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        } else if (nsp === '/topology' || nsp.startsWith('/topology/')) {
+            if (!hasServerAccess(user.permissions, 'topology', 'read', 'topology')) {
+                const err = new Error('Unauthorized: Topology access required');
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        } else if (nsp === '/sites' || nsp.startsWith('/sites/')) {
+            if (!hasServerAccess(user.permissions, 'sites', 'read', 'sites')) {
+                const err = new Error('Unauthorized: Sites access required');
+                err.data = { code: 'FORBIDDEN' };
+                return next(err);
+            }
+        } else if (nsp !== '/' && nsp !== '/realtime' && nsp !== '/nocr') {
+            // Unknown or unsupported namespace
+            const err = new Error(`Unauthorized: Akses ke namespace '${nsp}' tidak diizinkan`);
+            err.data = { code: 'FORBIDDEN' };
+            return next(err);
+        }
+
+        return next();
+    }
+
     // Pengaturan Socket.io
     const io = new Server(httpServer, {
         cors: { origin: '*' }
     });
     global.io = io;
 
-    // Wajibkan autentikasi JWT pada namespace root dan seluruh dynamic namespace
+    // Explicitly enforce authorization on all 10 socket.io namespaces
+    const PROTECTED_NAMESPACES = [
+        '/',
+        '/admin',
+        '/monitoring',
+        '/devices',
+        '/alerts',
+        '/logs',
+        '/realtime',
+        '/dashboard',
+        '/chat',
+        '/nocr'
+    ];
+
+    PROTECTED_NAMESPACES.forEach((nspName) => {
+        const nsp = io.of(nspName);
+        nsp.use(authenticateSocket);
+        nsp.use(authorizeSocketNamespace);
+    });
+
+    // Wajibkan autentikasi JWT dan otorisasi RBAC pada namespace root dan seluruh dynamic namespace
     io.use(authenticateSocket);
+    io.use(authorizeSocketNamespace);
     io.of(/.*/).use(authenticateSocket);
+    io.of(/.*/).use(authorizeSocketNamespace);
     io.on('new_namespace', (nsp) => {
         nsp.use(authenticateSocket);
+        nsp.use(authorizeSocketNamespace);
     });
 
     const activeMonitors = new Set();
@@ -1266,19 +1447,6 @@ app.prepare().then(() => {
     }, 5000);
     scheduleAtIntervalBoundary(syncDeviceMappings, 'mappings', 5);
 
-    // Helper Otentikasi Rute Express
-    function extractExpressToken(req) {
-        const authHeader = req.headers['authorization'];
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            return authHeader.split(' ')[1].trim();
-        }
-        if (req.headers.cookie) {
-            const match = req.headers.cookie.match(/(?:^|;\s*)nocr_token=([^;]+)/);
-            if (match) return decodeURIComponent(match[1]);
-        }
-        return null;
-    }
-
     function authenticateExpressRequest(req, res) {
         const token = extractExpressToken(req);
         if (!token) {
@@ -1417,6 +1585,19 @@ app.prepare().then(() => {
         if (!user) return;
         triggerSyncDeviceMappingsDebounced();
         res.json({ success: true, message: 'Sync triggered' });
+    });
+
+    // Global Express Error Handler (prevents PostgreSQL error message leakage)
+    server.use((err, req, res, next) => {
+        console.error('Express Internal Error:', err);
+        const errMsg = String(err?.message || '');
+        if (err.code === '22P02' || errMsg.toLowerCase().includes('invalid input syntax')) {
+            return res.status(400).json({ error: 'Format data tidak valid' });
+        }
+        const status = err.status || 500;
+        res.status(status).json({
+            error: status < 500 ? (err.message || 'Format data tidak valid') : 'Terjadi kesalahan pada server. Silakan coba lagi.'
+        });
     });
 
     // Default Next.js Handler

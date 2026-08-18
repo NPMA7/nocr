@@ -28,6 +28,31 @@ function isPublicPath(pathname) {
   return PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path + '/'));
 }
 
+// In-Memory Rate Limiter has been centralized in server.js via express-rate-limit
+
+function getClientIp(req) {
+  const getHeader = (name) => {
+    return req.headers.get(name) || req.headers.get(name.toLowerCase());
+  };
+
+  const cfConnectingIp = getHeader('cf-connecting-ip');
+  if (cfConnectingIp) return String(cfConnectingIp).trim();
+
+  const trueClientIp = getHeader('true-client-ip');
+  if (trueClientIp) return String(trueClientIp).trim();
+
+  const xRealIp = getHeader('x-real-ip');
+  if (xRealIp) return String(xRealIp).trim();
+
+  const forwarded = getHeader('x-forwarded-for');
+  if (forwarded) {
+    const ips = String(forwarded).split(',').map(s => s.trim()).filter(Boolean);
+    if (ips.length > 0) return ips[0];
+  }
+
+  return req.ip || '127.0.0.1';
+}
+
 export function middleware(request) {
   const { pathname } = request.nextUrl;
 
@@ -47,18 +72,28 @@ export function middleware(request) {
 
   const isPublic = isPublicPath(pathname);
 
+  // Decode payload if token exists
+  let tokenPayload = null;
+  let isTokenValid = false;
+  if (token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        tokenPayload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+        if (tokenPayload.exp && tokenPayload.exp * 1000 > Date.now()) {
+          isTokenValid = true;
+        }
+      }
+    } catch (e) {
+      isTokenValid = false;
+      tokenPayload = null;
+    }
+  }
+
   // If trying to access /login while already having a valid token
   if (pathname === '/login') {
-    if (token) {
-      try {
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-          if (payload.exp && payload.exp * 1000 > Date.now()) {
-            return NextResponse.redirect(new URL('/dashboard', request.url));
-          }
-        }
-      } catch (e) {}
+    if (isTokenValid) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     return NextResponse.next();
   }
@@ -69,21 +104,6 @@ export function middleware(request) {
   }
 
   // If no token on protected page or protected API route
-  let isTokenValid = false;
-  if (token) {
-    try {
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-        if (payload.exp && payload.exp * 1000 > Date.now()) {
-          isTokenValid = true;
-        }
-      }
-    } catch (e) {
-      isTokenValid = false;
-    }
-  }
-
   if (!isTokenValid) {
     // If it's an API route, return 401 JSON
     if (pathname.startsWith('/api/')) {
@@ -110,3 +130,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
+

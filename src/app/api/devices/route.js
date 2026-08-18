@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess } from '@/lib/auth';
-
-const sendError = (err, defaultStatus = 500) => {
-    return NextResponse.json(
-        { error: err.message || 'Kesalahan Server Internal' },
-        { status: err.status || defaultStatus }
-    );
-};
+import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess, sendApiError } from '@/lib/auth';
 
 export async function GET(req) {
     try {
@@ -39,7 +32,7 @@ export async function GET(req) {
 
         return NextResponse.json([...(devicesData || []), ...mappedNodes]);
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -74,6 +67,6 @@ export async function POST(req) {
 
         return NextResponse.json({ id: data[0].id, message: 'Device added successfully' });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }

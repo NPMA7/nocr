@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { resolveAuth } from "@/lib/auth";
+import { resolveAuth, sendApiError } from "@/lib/auth";
 import { hasAccess } from "@/lib/roles";
 import db from "@/lib/dbClient";
 
@@ -52,7 +52,7 @@ export async function GET(request) {
 
     return NextResponse.json(settingsData);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
 
@@ -101,6 +101,6 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true, data: settingsToSave, renamed_count: totalRenamedCount });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }

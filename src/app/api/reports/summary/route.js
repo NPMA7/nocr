@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { resolveAuth } from '@/lib/auth';
+import { resolveAuth, sendApiError } from '@/lib/auth';
 import { hasAccess } from '@/lib/roles';
 
 export async function GET(request) {
@@ -271,6 +271,6 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }

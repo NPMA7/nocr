@@ -2,19 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
-import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole, hasAccess } from '@/lib/auth';
-
-// Helper untuk respon error (mencegah error message information leakage)
-const sendError = (err, defaultStatus = 500) => {
-    const status = err.status || defaultStatus;
-    const message = (status < 500 && err.message) 
-        ? err.message 
-        : 'Terjadi kesalahan pada server. Silakan coba lagi.';
-    return NextResponse.json(
-        { error: message },
-        { status }
-    );
-};
+import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole, hasAccess, sendApiError } from '@/lib/auth';
 
 // Rate limiter per IP for auth endpoints (5 attempts per minute)
 const loginAttemptsByIp = new Map();
@@ -207,7 +195,7 @@ export async function GET(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -411,7 +399,7 @@ export async function POST(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -553,7 +541,7 @@ export async function PATCH(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -608,6 +596,6 @@ export async function DELETE(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }

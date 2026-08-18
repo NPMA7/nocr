@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import { filterFlappingLogs } from '@/lib/logUtils';
-import { verifyAuth } from '@/lib/auth';
+import { verifyAuth, sendApiError } from '@/lib/auth';
 
 export async function GET(req) {
   try {
@@ -15,8 +15,7 @@ export async function GET(req) {
       .limit(100);
 
     if (error) {
-      console.error('Supabase error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return sendApiError(error);
     }
 
     const { cleanLogs, flappingIds } = filterFlappingLogs(logs || []);
@@ -33,10 +32,6 @@ export async function GET(req) {
 
     return NextResponse.json(cleanLogs);
   } catch (error) {
-    console.error('Gagal mengambil data log dari database:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' }, 
-      { status: 500 }
-    );
+    return sendApiError(error);
   }
 }

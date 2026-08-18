@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth } from '@/lib/auth';
-
-const sendError = (err, defaultStatus = 500) => {
-    return NextResponse.json(
-        { error: err.message || 'Kesalahan Server Internal' },
-        { status: err.status || defaultStatus }
-    );
-};
+import { verifyAuth, sendApiError } from '@/lib/auth';
 
 export async function GET(req, { params }) {
     const { id } = await params;
@@ -81,6 +74,6 @@ export async function GET(req, { params }) {
             });
         }
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }

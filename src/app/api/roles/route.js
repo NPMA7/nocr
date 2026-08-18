@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { resolveAuth, enforceAdmin, hasAccess } from '@/lib/auth';
-
-const sendError = (err, defaultStatus = 500) => {
-    return NextResponse.json(
-        { error: err.message || 'Kesalahan Server Internal' },
-        { status: err.status || defaultStatus }
-    );
-};
+import { resolveAuth, enforceAdmin, hasAccess, sendApiError } from '@/lib/auth';
 
 export async function GET(req) {
     try {
@@ -21,7 +14,7 @@ export async function GET(req) {
         
         return NextResponse.json(data || []);
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -59,6 +52,6 @@ export async function POST(req) {
 
         return NextResponse.json(data[0]);
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
