@@ -11,6 +11,8 @@ import {
   getRoleLabel,
   hasAccess,
   getDefaultAccessibleRoute,
+  isClientTokenValid,
+  clearClientAuth,
 } from "@/lib/roles";
 import axios from "axios";
 import { Network } from "lucide-react";
@@ -74,8 +76,9 @@ export default function AuthenticatedLayout({ children }) {
       applyThemeConfig(config);
     }
     // Auth check
-    const token = localStorage.getItem("nocr_token");
-    if (!token) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("nocr_token") : null;
+    if (!token || !isClientTokenValid(token)) {
+      clearClientAuth();
       router.push("/login");
       return;
     }

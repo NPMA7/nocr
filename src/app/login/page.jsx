@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Lock, User, ShieldAlert, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { API_URL, socket } from "@/App";
-import { applySessionUser, getDefaultAccessibleRoute, getStoredUser } from "@/lib/roles";
+import { applySessionUser, getDefaultAccessibleRoute, getStoredUser, isClientTokenValid, clearClientAuth } from "@/lib/roles";
 import { getStoredThemeConfig, applyThemeConfig } from "@/lib/themeEngine";
 
 export default function LoginPage() {
@@ -25,34 +25,55 @@ export default function LoginPage() {
       applyThemeConfig(config);
     }
 
-    // Check if user already has a valid token
-    const token = localStorage.getItem("nocr_token");
-    if (token) {
-      const user = getStoredUser();
-      router.push(getDefaultAccessibleRoute(user));
-      return;
-    }
+    const initLogin = async () => {
+      try {
+        // Check if user already has a valid token in localStorage
+        const token = typeof window !== "undefined" ? localStorage.getItem("nocr_token") : null;
+        if (token && isClientTokenValid(token)) {
+          try {
+            const res = await axios.get(`${API_URL}/auth/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: 3000
+            });
+            if (res.data?.user) {
+              const userObj = applySessionUser(res.data.user);
+              router.push(getDefaultAccessibleRoute(userObj));
+              return;
+            }
+          } catch (e) {
+            // Token is rejected by server (expired, revoked, secret changed)
+            clearClientAuth();
+          }
+        } else if (token) {
+          // Token is malformed or expired
+          clearClientAuth();
+        }
 
-    // Check if system needs setup (no admin users in DB)
-    axios
-      .get(`${API_URL}/auth/check-setup`)
-      .then((res) => {
-        if (res.data?.isSetup) {
-          setIsSetup(true);
+        // Check if system needs setup (no admin users in DB)
+        try {
+          const res = await axios.get(`${API_URL}/auth/check-setup`, { timeout: 3000 });
+          if (res.data?.isSetup) {
+            setIsSetup(true);
+          }
+        } catch (err) {
+          if (
+            err.response?.data?.message?.includes("relation") ||
+            err.response?.data?.message?.includes("does not exist")
+          ) {
+            setError(
+              "Tabel users tidak ditemukan di database Supabase. Silakan jalankan perintah SQL Setup."
+            );
+            setIsSetup(true);
+          }
         }
-      })
-      .catch((err) => {
-        if (
-          err.response?.data?.message?.includes("relation") ||
-          err.response?.data?.message?.includes("does not exist")
-        ) {
-          setError(
-            "Tabel users tidak ditemukan di database Supabase. Silakan jalankan perintah SQL Setup."
-          );
-          setIsSetup(true);
-        }
-      })
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error("Login initialization error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initLogin();
   }, [router]);
 
   const handleSubmit = async (e) => {

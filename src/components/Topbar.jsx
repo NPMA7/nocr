@@ -16,7 +16,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { API_URL, socket, useAppState } from "@/App";
-import { normalizeRole, getRoleLabel, getStoredUser } from "@/lib/roles";
+import { normalizeRole, getRoleLabel, getStoredUser, clearClientAuth } from "@/lib/roles";
 import { PRESET_THEMES, applyThemeConfig, getStoredThemeConfig } from "@/lib/themeEngine";
 
 export default function Topbar({ onMenuClick, isSidebarOpen }) {
@@ -140,8 +140,7 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
     try {
       await axios.post("/api/auth/logout");
     } catch (e) {}
-    localStorage.removeItem("nocr_token");
-    localStorage.removeItem("nocr_user");
+    clearClientAuth();
     if (socket) {
       socket.auth = { token: null };
       socket.disconnect();

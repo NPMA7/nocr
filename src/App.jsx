@@ -2,6 +2,7 @@
 import { createContext, useContext } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
+import { clearClientAuth } from '@/lib/roles';
 
 export const API_URL = '/api';
 
@@ -47,8 +48,7 @@ if (typeof window !== 'undefined') {
     error => {
       if (error.response && (error.response.status === 401)) {
         if (window.location.pathname !== '/login') {
-          localStorage.removeItem('nocr_token');
-          localStorage.removeItem('nocr_user');
+          clearClientAuth();
           if (socket) {
             socket.auth = { token: null };
             socket.disconnect();
