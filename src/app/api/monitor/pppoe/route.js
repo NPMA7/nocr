@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth } from '@/lib/auth';
+import { verifyAuth, sendApiError } from '@/lib/auth';
 
 export async function GET(req) {
   try {
@@ -100,7 +100,7 @@ export async function GET(req) {
 
     return NextResponse.json(mappings);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
 

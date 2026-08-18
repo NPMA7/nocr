@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, resolveAuth, enforceRoleForMutation } from '@/lib/auth';
+import { verifyAuth, resolveAuth, enforceRoleForMutation, sendApiError } from '@/lib/auth';
 
 let cachedData = null;
 let lastFetchTime = 0;
@@ -55,7 +55,7 @@ export async function GET(req) {
 
     return NextResponse.json(enrichedData);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
 
@@ -86,7 +86,7 @@ export async function POST(req) {
     lastFetchTime = 0; // invalidate cache
     return NextResponse.json(data[0]);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
 
@@ -112,6 +112,6 @@ export async function DELETE(req) {
     lastFetchTime = 0; // invalidate cache
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }

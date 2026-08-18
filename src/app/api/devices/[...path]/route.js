@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import mikrotik from '@/lib/mikrotik';
-import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess } from '@/lib/auth';
-
-const sendError = (err, defaultStatus = 500) => {
-    return NextResponse.json(
-        { error: err.message || 'Kesalahan Server Internal', detail: err.detail },
-        { status: err.status || defaultStatus }
-    );
-};
+import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess, sendApiError } from '@/lib/auth';
 
 // Pembantu: cari perangkat inti MikroTik
 async function getCoreDevice() {
@@ -311,7 +304,7 @@ export async function GET(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -382,7 +375,7 @@ export async function POST(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -474,7 +467,7 @@ export async function PUT(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }
 
@@ -587,6 +580,6 @@ export async function DELETE(req, { params }) {
 
         return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     } catch (err) {
-        return sendError(err);
+        return sendApiError(err);
     }
 }

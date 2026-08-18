@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
 import { autoLinkTopologyNode } from '@/lib/topologySiteLink';
-import { resolveAuth, enforceTopologyMutation } from '@/lib/auth';
+import { resolveAuth, enforceTopologyMutation, sendApiError } from '@/lib/auth';
 
 export async function PATCH(req) {
   try {
@@ -53,7 +53,6 @@ export async function PATCH(req) {
 
     return NextResponse.json({ success: true, new_prefix });
   } catch (error) {
-    console.error('Prefix Update Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }

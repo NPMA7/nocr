@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import { verifyAuth } from '@/lib/auth';
+import { verifyAuth, sendApiError } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -97,10 +97,6 @@ export async function GET(request) {
     return NextResponse.json(data);
     
   } catch (error) {
-    console.error('Error fetching ONT details:', error?.message);
-    if (error.response) {
-       console.error('Data:', error.response.data);
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }

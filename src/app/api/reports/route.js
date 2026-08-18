@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { resolveAuth } from '@/lib/auth';
+import { resolveAuth, sendApiError } from '@/lib/auth';
 import { hasAccess } from '@/lib/roles';
 import fs from 'fs';
 import path from 'path';
@@ -107,7 +107,7 @@ export async function GET(request) {
 
     return NextResponse.json(contextualReports);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
 
@@ -130,7 +130,7 @@ export async function PUT(request) {
     if (error) throw error;
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
 
@@ -149,7 +149,7 @@ export async function DELETE(request) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
 
@@ -332,6 +332,6 @@ export async function POST(request) {
     
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return sendApiError(error);
   }
 }
