@@ -615,15 +615,58 @@ function TopologyContent() {
         .catch(console.error);
     };
 
+    const fetchLiveLogs = () => {
+      axios
+        .get(`${API_URL}/activity-logs`)
+        .then((res) => {
+          if (Array.isArray(res.data)) {
+            const filtered = res.data
+              .filter((l) =>
+                (l.message || "").toLowerCase().includes("berubah menjadi"),
+              )
+              .slice(0, 30)
+              .map((l) => ({ id: l.id, time: new Date(l.time), msg: l.message }));
+            setLiveLogs(filtered);
+          }
+        })
+        .catch(() => {});
+    };
+
     const handleActivityLog = (data) => {
+      if (!data) return;
+
+      if (data.action === "delete" || data.action === "cleanup") {
+        setLiveLogs((prev) => {
+          let updated = prev;
+          if (data.id) {
+            updated = updated.filter((item) => item.id !== data.id);
+          }
+          if (data.deletedIds && Array.isArray(data.deletedIds)) {
+            const idSet = new Set(data.deletedIds);
+            updated = updated.filter((item) => !idSet.has(item.id));
+          }
+          if (data.targetName) {
+            const upperTarget = data.targetName.toUpperCase();
+            updated = updated.filter((item) => {
+              const msgUpper = (item.msg || "").toUpperCase();
+              return !msgUpper.includes(upperTarget);
+            });
+          }
+          return updated;
+        });
+        fetchLiveLogs();
+        return;
+      }
+
       const msg = data?.message || data?.msg || "";
       if (msg.toLowerCase().includes("berubah menjadi")) {
-        setLiveLogs((prev) =>
-          [
-            { time: data.time ? new Date(data.time) : new Date(), msg },
+        setLiveLogs((prev) => {
+          if (data.id && prev.some((l) => l.id === data.id)) return prev;
+          return [
+            { id: data.id, time: data.time ? new Date(data.time) : new Date(), msg },
             ...prev,
-          ].slice(0, 30),
-        );
+          ].slice(0, 30);
+        });
       }
     };
 
@@ -639,20 +682,7 @@ function TopologyContent() {
       });
     }
     // Load initial logs
-    axios
-      .get(`${API_URL}/activity-logs`)
-      .then((res) => {
-        if (Array.isArray(res.data)) {
-          const filtered = res.data
-            .filter((l) =>
-              (l.message || "").toLowerCase().includes("berubah menjadi"),
-            )
-            .slice(0, 30)
-            .map((l) => ({ time: new Date(l.time), msg: l.message }));
-          setLiveLogs(filtered);
-        }
-      })
-      .catch(() => {});
+    fetchLiveLogs();
 
     return () => {
       if (socket) {

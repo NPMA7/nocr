@@ -322,6 +322,31 @@ export default function AuthenticatedLayout({ children }) {
       const handleDisconnect = () => setIsConnected(false);
 
       const handleStatus = (data) => {
+        if (!data) return;
+
+        if (data.action === "delete" || data.action === "cleanup") {
+          setAlerts((prev) => {
+            let updated = prev;
+            if (data.id) {
+              updated = updated.filter((a) => a.id !== data.id);
+            }
+            if (data.deletedIds && Array.isArray(data.deletedIds)) {
+              const idSet = new Set(data.deletedIds);
+              updated = updated.filter((a) => !idSet.has(a.id));
+            }
+            if (data.targetName) {
+              const upperTarget = data.targetName.toUpperCase();
+              updated = updated.filter((a) => {
+                const msgUpper = (a.msg || "").toUpperCase();
+                return !msgUpper.includes(upperTarget);
+              });
+            }
+            return updated;
+          });
+          if (socket) socket.emit("request_initial_logs");
+          return;
+        }
+
         const msg = data.message || data.msg || "";
         const lower = msg.toLowerCase();
         if (!lower.includes("berubah menjadi")) {
@@ -329,12 +354,13 @@ export default function AuthenticatedLayout({ children }) {
         }
         // Only show OFFLINE events in notification bell
         if (lower.includes("offline")) {
-          setAlerts((prev) =>
-            [
-              { time: data.time ? new Date(data.time) : new Date(), msg, isRead: false },
+          setAlerts((prev) => {
+            if (data.id && prev.some((a) => a.id === data.id)) return prev;
+            return [
+              { id: data.id, time: data.time ? new Date(data.time) : new Date(), msg, isRead: false },
               ...prev,
-            ].slice(0, 20),
-          );
+            ].slice(0, 20);
+          });
           // Trigger alarm
           if (alarmEnabled) {
             clearTimeout(alarmTimerRef.current);
@@ -354,7 +380,7 @@ export default function AuthenticatedLayout({ children }) {
               const lower = msg.toLowerCase();
               return lower.includes("berubah menjadi") && lower.includes("offline");
             })
-            .map((log) => ({ time: new Date(log.time), msg: log.message, isRead: true }))
+            .map((log) => ({ id: log.id, time: new Date(log.time), msg: log.message, isRead: true }))
             .slice(0, 20);
           setAlerts(filtered);
         }

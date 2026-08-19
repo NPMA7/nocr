@@ -524,7 +524,7 @@ app.prepare().then(() => {
             if (flappingIds && flappingIds.length > 0) {
                 console.info(`Memangkas ${flappingIds.length} log flapping (<10m) dari database...`);
                 await db.from('activity_logs').delete().in('id', flappingIds);
-                io.emit('activity_log_updated', { action: 'cleanup' });
+                io.emit('activity_log_updated', { action: 'cleanup', deletedIds: flappingIds });
             }
         } catch (err) {
             console.error('Gagal membersihkan log flapping di DB:', err.message);
@@ -559,7 +559,12 @@ app.prepare().then(() => {
                         // Hapus log status sebelumnya dari DB dan abaikan penyimpan log baru
                         console.info(`Log flapping terdeteksi untuk ${statusInfo.targetName}. Menghapus log sebelumnya (ID: ${prev.id}) dan mengabaikan log baru.`);
                         await db.from('activity_logs').delete().eq('id', prev.id);
-                        io.emit('activity_log_updated', { action: 'delete', id: prev.id });
+                        io.emit('activity_log_updated', {
+                            action: 'delete',
+                            id: prev.id,
+                            targetName: statusInfo.targetName,
+                            message: prev.message
+                        });
                         return;
                     }
                 }
@@ -792,6 +797,9 @@ app.prepare().then(() => {
             }
             if (payload.table === 'activity_logs' && payload.eventType === 'INSERT') {
                 io.emit('activity_log_updated', payload.new);
+            }
+            if (payload.table === 'activity_logs' && payload.eventType === 'DELETE') {
+                io.emit('activity_log_updated', { action: 'delete', id: payload.old?.id });
             }
 
             io.emit('db_change', payload);
