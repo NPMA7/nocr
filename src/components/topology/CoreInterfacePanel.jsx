@@ -225,19 +225,41 @@ export default function CoreInterfacePanel({
               </button>
               <button
                 type="button"
-                onClick={() => setShowLabels(!showLabels)}
+                onClick={() =>
+                  setShowLabels(
+                    showLabels === "all" || showLabels === true ? false : "all",
+                  )
+                }
                 className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
-                  showLabels
+                  showLabels === "all" || showLabels === true
                     ? "bg-blue-600 text-white"
                     : "bg-slate-800 text-slate-400 hover:text-white"
                 }`}
+                title="Tampilkan semua label node"
               >
                 <span
                   className={`fa ${
-                    showLabels ? "fa-eye" : "fa-eye-slash"
+                    showLabels === "all" || showLabels === true
+                      ? "fa-eye"
+                      : "fa-eye-slash"
                   } text-[9px]`}
                 />
                 Label Node
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setShowLabels(showLabels === "offline" ? false : "offline")
+                }
+                className={`cursor-pointer w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                  showLabels === "offline"
+                    ? "bg-red-600 text-white shadow-sm ring-1 ring-red-400/50"
+                    : "bg-slate-800 text-slate-400 hover:text-white"
+                }`}
+                title="Tampilkan label untuk node yang offline/merah saja"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block animate-pulse" />
+                Label Offline
               </button>
               <button
                 type="button"
