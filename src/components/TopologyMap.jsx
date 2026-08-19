@@ -155,31 +155,39 @@ const getStaticMarkerIcon = (
   isDisabled,
   isUp,
   currentZoom,
-  labelsVisible,
+  showLabels,
 ) => {
   let colorClass = "bg-blue-500 border-blue-200";
   const t = node.type?.toLowerCase() || "";
   const isInfrastructure = ["olt", "odc", "odp", "core"].includes(t);
+  let isOffline = false;
 
   if (isDisabled) colorClass = "bg-slate-500 border-slate-300";
   else if (isUp)
     colorClass = isInfrastructure
       ? "bg-blue-500 border-blue-300 ring-2 ring-blue-500/50"
       : "bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50";
-  else if (isDown)
+  else if (isDown) {
     colorClass = "bg-red-500 border-red-300 ring-2 ring-red-500/50";
-  else {
+    isOffline = true;
+  } else {
     if (node.status === "online")
       colorClass = isInfrastructure
         ? "bg-blue-500 border-blue-300 ring-2 ring-blue-500/50"
         : "bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50";
-    else if (node.status === "offline")
+    else if (node.status === "offline") {
       colorClass = "bg-red-500 border-red-300 ring-2 ring-red-500/50";
-    else if (t === "core" || t === "olt")
+      isOffline = true;
+    } else if (t === "core" || t === "olt")
       colorClass = "bg-blue-600 border-blue-300";
     else if (t === "client") colorClass = "bg-purple-500 border-purple-200";
     else colorClass = "bg-slate-500 border-slate-300";
   }
+
+  const isLabelActive =
+    showLabels === true ||
+    showLabels === "all" ||
+    (showLabels === "offline" && isOffline);
 
   let scaleClass = "scale-60 hover:scale-[1.0]";
   let labelScale = "scale-60 mt-3";
@@ -213,7 +221,7 @@ const getStaticMarkerIcon = (
     className: "custom-leaflet-icon",
     html: `<div class="node-marker-wrapper relative transition-transform duration-200 flex flex-col items-center justify-center ${isSelected ? "scale-100 z-50" : scaleClass}">
         ${html}
-        <div class="node-label absolute top-full whitespace-nowrap text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-700/50 pointer-events-none shadow-md mt-0.5 ${labelsVisible || isSelected ? "opacity-100" : "opacity-0"} transition-opacity duration-200">${node.label || "Tanpa Label"}</div>
+        <div class="node-label absolute top-full whitespace-nowrap text-[9px] font-bold ${isOffline ? "text-red-200 bg-red-950/90 border-red-500/50" : "text-slate-200 bg-slate-900/80 border-slate-700/50"} px-1.5 py-0.5 rounded border pointer-events-none shadow-md mt-0.5 ${isLabelActive || isSelected ? "opacity-100" : "opacity-0"} transition-opacity duration-200">${node.label || "Tanpa Label"}</div>
       </div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
