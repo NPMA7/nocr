@@ -1151,6 +1151,21 @@ app.prepare().then(() => {
             if (!token) token = global.hsgqTokenCache || process.env.HSGQ_OLT_TOKEN || '';
             const axios = require('axios');
 
+            // Trigger HSGQ OLT native hardware refresh across all PON ports so live states are continuously updated
+            try {
+                await Promise.all([
+                    axios.get(`${url}/system?form=refreshtab`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/board?info=pon`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/board?info=system`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/gponmgmt?form=gpon_setting`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/gponont_mgmt?form=auth&port_id=0`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/gponont_mgmt?form=auth&port_id=1`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/gponont_mgmt?form=auth&port_id=2`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/gponont_mgmt?form=auth&port_id=3`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+                    axios.get(`${url}/system?form=hostname`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {})
+                ]);
+            } catch (e) {}
+
             let res = await axios.get(`${url}/ontinfo_table?_t=${Date.now()}`, {
                 headers: { ...(token ? { 'x-token': token } : {}) },
                 timeout: 10000
