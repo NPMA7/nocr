@@ -1020,7 +1020,9 @@ app.prepare().then(() => {
     runCoreStatusLoop();
 
     // Keep OLT Session Alive and fresh
-    async function keepHsgqOltSessionAlive() {
+    global.hsgqTokenTimestamp = global.hsgqTokenTimestamp || 0;
+
+    async function keepHsgqOltSessionAlive(force = false) {
         const url = process.env.HSGQ_OLT_URL;
         const username = process.env.HSGQ_OLT_USERNAME;
         const key = process.env.HSGQ_OLT_KEY;
@@ -1028,7 +1030,7 @@ app.prepare().then(() => {
         const defaultToken = process.env.HSGQ_OLT_TOKEN || '';
 
         if (!url) {
-            return;
+            return null;
         }
 
         const axios = require('axios');
@@ -1036,6 +1038,7 @@ app.prepare().then(() => {
         const login = async () => {
             if (!username || !key || !value) {
                 global.hsgqTokenCache = defaultToken;
+                global.hsgqTokenTimestamp = Date.now();
                 return defaultToken;
             }
             try {
@@ -1049,6 +1052,7 @@ app.prepare().then(() => {
                 });
                 if (res.data && res.data.code === 1 && res.headers['x-token']) {
                     global.hsgqTokenCache = res.headers['x-token'];
+                    global.hsgqTokenTimestamp = Date.now();
                     console.info(`[OLT Session] Login sukses, token baru didapatkan.`);
                     return global.hsgqTokenCache;
                 }
@@ -1056,15 +1060,16 @@ app.prepare().then(() => {
                 console.error(`[OLT Session] Gagal login ke OLT:`, e.message);
             }
             global.hsgqTokenCache = defaultToken;
+            global.hsgqTokenTimestamp = Date.now();
             return defaultToken;
         };
 
-        let token = global.hsgqTokenCache;
-        if (!token) {
-            console.info(`[OLT Session] Token tidak ditemukan di cache. Melakukan login awal...`);
-            await login();
-            return;
+        const isExpired = !global.hsgqTokenCache || (Date.now() - (global.hsgqTokenTimestamp || 0) > 120000);
+        if (force || isExpired) {
+            return await login();
         }
+
+        let token = global.hsgqTokenCache;
 
         // Test if the current token is still valid
         try {
@@ -1072,26 +1077,28 @@ app.prepare().then(() => {
                 headers: { 'x-token': token },
                 timeout: 10000
             });
-            if (res.data && res.data.code === 0 && res.data.message === 'Token Check Failed') {
-                console.warn(`[OLT Session] Token kedaluwarsa (Token Check Failed). Melakukan login ulang...`);
-                await login();
+            const isInvalid = !res.data || res.data.code !== 1 || (res.data.message && /token|timeout|login/i.test(res.data.message));
+            if (isInvalid) {
+                console.warn(`[OLT Session] Token kedaluwarsa (${res.data?.message || 'code 0'}). Melakukan login ulang otomatis...`);
+                return await login();
             } else {
-                console.info(`[OLT Session] Sesi OLT aktif dan valid.`);
+                return token;
             }
         } catch (err) {
             console.error(`[OLT Session] Gagal memverifikasi sesi OLT (network/timeout):`, err.message);
             if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-                await login();
+                return await login();
             }
+            return token;
         }
     }
 
-    // Jalankan pengecekan dan keep-alive sesi HSGQ OLT berkala setiap 2 menit
+    // Jalankan pengecekan dan keep-alive sesi HSGQ OLT berkala setiap 1 menit
     const runHsgqOltKeepAliveLoop = async () => {
         await keepHsgqOltSessionAlive();
-        setTimeout(runHsgqOltKeepAliveLoop, 2 * 60 * 1000); // 2 menit
+        setTimeout(runHsgqOltKeepAliveLoop, 60 * 1000); // 1 menit
     };
-    setTimeout(runHsgqOltKeepAliveLoop, 5000);
+    setTimeout(runHsgqOltKeepAliveLoop, 3000);
 
     // Fungsi penjadwalan agar task berjalan tepat di awal pergantian interval secara dinamis
     function scheduleAtIntervalBoundary(callback, intervalKey, offsetSeconds = 0) {
@@ -1140,16 +1147,25 @@ app.prepare().then(() => {
         if (!url) return;
 
         try {
-            await keepHsgqOltSessionAlive();
-            const token = global.hsgqTokenCache || process.env.HSGQ_OLT_TOKEN || '';
+            let token = await keepHsgqOltSessionAlive();
+            if (!token) token = global.hsgqTokenCache || process.env.HSGQ_OLT_TOKEN || '';
             const axios = require('axios');
 
-            const res = await axios.get(`${url}/ontinfo_table?_t=${Date.now()}`, {
+            let res = await axios.get(`${url}/ontinfo_table?_t=${Date.now()}`, {
                 headers: { ...(token ? { 'x-token': token } : {}) },
                 timeout: 10000
             });
 
-            if (res.data) {
+            // If token expired during fetch, re-login and retry immediately
+            if (!res.data || res.data.code !== 1 || (res.data.message && /token|timeout|login/i.test(res.data.message))) {
+                token = await keepHsgqOltSessionAlive(true);
+                res = await axios.get(`${url}/ontinfo_table?_t=${Date.now()}`, {
+                    headers: { ...(token ? { 'x-token': token } : {}) },
+                    timeout: 10000
+                });
+            }
+
+            if (res.data && (res.data.code === 1 || Array.isArray(res.data.data))) {
                 let data = res.data;
                 // Apply pending name updates if any
                 if (data && data.data && global.pendingNameUpdates) {
@@ -1172,6 +1188,11 @@ app.prepare().then(() => {
 
                 global.hsgqDataCache.ontinfo = data;
                 global.hsgqDataCache.timestamp = Date.now();
+
+                const ontList = Array.isArray(data.data) ? data.data : [];
+                const onlineCount = ontList.filter(x => x.rstate === 1).length;
+                const offlineCount = ontList.filter(x => x.rstate !== 1 && x.rstate !== 0).length;
+                console.info(`[HSGQ OLT Sync] Sync sukses (${ontList.length} ONT, Online: ${onlineCount}, Offline: ${offlineCount})`);
 
                 // Broadcast ke semua client yang sedang terhubung
                 io.emit('hsgq_olt_update', {

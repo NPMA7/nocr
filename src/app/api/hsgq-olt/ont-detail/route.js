@@ -8,9 +8,11 @@ export const revalidate = 0;
 if (!global.hsgqTokenCache) {
   global.hsgqTokenCache = null;
 }
+global.hsgqTokenTimestamp = global.hsgqTokenTimestamp || 0;
 
 async function getHsgqToken(forceRefresh = false) {
-  if (!forceRefresh && global.hsgqTokenCache) return global.hsgqTokenCache;
+  const isExpired = !global.hsgqTokenCache || (Date.now() - (global.hsgqTokenTimestamp || 0) > 120000);
+  if (!forceRefresh && !isExpired && global.hsgqTokenCache) return global.hsgqTokenCache;
   
   const url = process.env.HSGQ_OLT_URL;
   const username = process.env.HSGQ_OLT_USERNAME;
@@ -18,7 +20,9 @@ async function getHsgqToken(forceRefresh = false) {
   const value = process.env.HSGQ_OLT_VALUE;
   
   if (!username || !key || !value) {
-    return process.env.HSGQ_OLT_TOKEN || '';
+    global.hsgqTokenCache = process.env.HSGQ_OLT_TOKEN || '';
+    global.hsgqTokenTimestamp = Date.now();
+    return global.hsgqTokenCache;
   }
   
   try {
@@ -32,13 +36,28 @@ async function getHsgqToken(forceRefresh = false) {
     });
     if (res.data && res.data.code === 1 && res.headers['x-token']) {
       global.hsgqTokenCache = res.headers['x-token'];
+      global.hsgqTokenTimestamp = Date.now();
       return global.hsgqTokenCache;
     }
   } catch (e) {
     // Silently handle
   }
   
-  return process.env.HSGQ_OLT_TOKEN || '';
+  global.hsgqTokenCache = process.env.HSGQ_OLT_TOKEN || '';
+  global.hsgqTokenTimestamp = Date.now();
+  return global.hsgqTokenCache;
+}
+
+function isTokenError(resData) {
+  if (!resData) return true;
+  if (resData.code !== 1) {
+    if (!resData.data) return true;
+    const msg = (resData.message || '').toLowerCase();
+    if (msg.includes('token') || msg.includes('timeout') || msg.includes('login') || msg.includes('failed') || msg.includes('expired')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export async function GET(request) {
@@ -78,7 +97,7 @@ export async function GET(request) {
     let data = await doRequests(token);
     
     // Check if token expired on the first request (base)
-    if (data.base && data.base.code === 0 && data.base.message === 'Token Check Failed') {
+    if (!data.base || isTokenError(data.base)) {
        token = await getHsgqToken(true);
        data = await doRequests(token);
     }

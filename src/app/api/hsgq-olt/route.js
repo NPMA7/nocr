@@ -15,9 +15,11 @@ if (!global.pendingNameUpdates) {
 if (!global.hsgqTokenCache) {
   global.hsgqTokenCache = null;
 }
+global.hsgqTokenTimestamp = global.hsgqTokenTimestamp || 0;
 
 async function getHsgqToken(forceRefresh = false) {
-  if (!forceRefresh && global.hsgqTokenCache) return global.hsgqTokenCache;
+  const isExpired = !global.hsgqTokenCache || (Date.now() - (global.hsgqTokenTimestamp || 0) > 120000);
+  if (!forceRefresh && !isExpired && global.hsgqTokenCache) return global.hsgqTokenCache;
   
   const url = process.env.HSGQ_OLT_URL;
   const username = process.env.HSGQ_OLT_USERNAME;
@@ -25,7 +27,9 @@ async function getHsgqToken(forceRefresh = false) {
   const value = process.env.HSGQ_OLT_VALUE;
   
   if (!username || !key || !value) {
-    return process.env.HSGQ_OLT_TOKEN || '';
+    global.hsgqTokenCache = process.env.HSGQ_OLT_TOKEN || '';
+    global.hsgqTokenTimestamp = Date.now();
+    return global.hsgqTokenCache;
   }
   
   try {
@@ -39,12 +43,27 @@ async function getHsgqToken(forceRefresh = false) {
     });
     if (res.data && res.data.code === 1 && res.headers['x-token']) {
       global.hsgqTokenCache = res.headers['x-token'];
+      global.hsgqTokenTimestamp = Date.now();
       return global.hsgqTokenCache;
     }
   } catch (e) {
   }
   
-  return process.env.HSGQ_OLT_TOKEN || '';
+  global.hsgqTokenCache = process.env.HSGQ_OLT_TOKEN || '';
+  global.hsgqTokenTimestamp = Date.now();
+  return global.hsgqTokenCache;
+}
+
+function isTokenError(resData) {
+  if (!resData) return true;
+  if (resData.code !== 1) {
+    if (!resData.data) return true;
+    const msg = (resData.message || '').toLowerCase();
+    if (msg.includes('token') || msg.includes('timeout') || msg.includes('login') || msg.includes('failed') || msg.includes('expired')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export async function GET(request) {
@@ -62,7 +81,9 @@ export async function GET(request) {
     else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
     else if (type === 'WLAN') endpoint = '/ontwificonfig_table';
     if (endpoint === '/ontinfo_table' && global.hsgqDataCache && global.hsgqDataCache.ontinfo && (Date.now() - global.hsgqDataCache.timestamp < 15000)) {
-      return NextResponse.json(global.hsgqDataCache.ontinfo);
+      if (global.hsgqDataCache.ontinfo.code === 1 || Array.isArray(global.hsgqDataCache.ontinfo.data)) {
+        return NextResponse.json(global.hsgqDataCache.ontinfo);
+      }
     }
 
     const doRequest = async (token, ep = endpoint) => {
@@ -85,7 +106,7 @@ export async function GET(request) {
       }
     }
     
-    if (response.data && response.data.code === 0) {
+    if (isTokenError(response?.data)) {
        token = await getHsgqToken(true);
        try {
          response = await doRequest(token);
@@ -187,7 +208,7 @@ export async function POST(request) {
       let token = await getHsgqToken();
       let response = await doPost(token);
       
-      if (response.data && response.data.code === 0 && response.data.message === 'Token Check Failed') {
+      if (isTokenError(response?.data)) {
           token = await getHsgqToken(true);
           response = await doPost(token);
       }
@@ -249,7 +270,7 @@ export async function POST(request) {
       let token = await getHsgqToken();
       let response = await doPost(token);
       
-      if (response.data && response.data.code === 0 && response.data.message === 'Token Check Failed') {
+      if (isTokenError(response?.data)) {
           token = await getHsgqToken(true);
           response = await doPost(token);
       }
