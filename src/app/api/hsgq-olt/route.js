@@ -80,13 +80,31 @@ export async function GET(request) {
     if (type === 'Version Information') endpoint = '/ontversion_table';
     else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
     else if (type === 'WLAN') endpoint = '/ontwificonfig_table';
-    if (endpoint === '/ontinfo_table' && global.hsgqDataCache && global.hsgqDataCache.ontinfo && (Date.now() - global.hsgqDataCache.timestamp < 15000)) {
+    const isExplicitRefresh = searchParams.has('_t') || searchParams.get('force') === 'true';
+    if (!isExplicitRefresh && endpoint === '/ontinfo_table' && global.hsgqDataCache && global.hsgqDataCache.ontinfo && (Date.now() - global.hsgqDataCache.timestamp < 15000)) {
       if (global.hsgqDataCache.ontinfo.code === 1 || Array.isArray(global.hsgqDataCache.ontinfo.data)) {
         return NextResponse.json(global.hsgqDataCache.ontinfo);
       }
     }
 
     const doRequest = async (token, ep = endpoint) => {
+      // Trigger HSGQ OLT native hardware refresh across all PON ports
+      if (ep === '/ontinfo_table') {
+        try {
+          await Promise.all([
+            axios.get(`${url}/system?form=refreshtab`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/board?info=pon`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/board?info=system`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/gponmgmt?form=gpon_setting`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/gponont_mgmt?form=auth&port_id=0`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/gponont_mgmt?form=auth&port_id=1`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/gponont_mgmt?form=auth&port_id=2`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/gponont_mgmt?form=auth&port_id=3`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {}),
+            axios.get(`${url}/system?form=hostname`, { headers: { 'x-token': token }, timeout: 3000 }).catch(() => {})
+          ]);
+        } catch (e) {}
+      }
+
       return await axios.get(`${url}${ep}?_t=${Date.now()}`, {
         headers: { ...(token ? { 'x-token': token } : {}) },
         timeout: 10000

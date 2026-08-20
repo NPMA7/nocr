@@ -566,14 +566,15 @@ export default function HsgqOltPage() {
     }).length,
     online: filteredByPortData.filter((item) => {
       const isArray = Array.isArray(item);
+      const stateVal = isArray ? item[3] : item.state;
       const rstateVal = isArray ? item[4] : item.rstate;
-      return rstateVal === 1;
+      return stateVal === 1 && rstateVal === 1;
     }).length,
     offline: filteredByPortData.filter((item) => {
       const isArray = Array.isArray(item);
+      const stateVal = isArray ? item[3] : item.state;
       const rstateVal = isArray ? item[4] : item.rstate;
-      // Asumsi: 1 = online, 0 = initial, 2 (atau lainnya) = offline
-      return rstateVal !== 1 && rstateVal !== 0;
+      return stateVal === 1 && rstateVal !== 1;
     }).length,
   };
 
@@ -630,8 +631,22 @@ export default function HsgqOltPage() {
       fieldVal = String(isArray ? "" : wifi?.wifiname || "");
     } else if (displayType === "Running state") {
       const rstateVal = isArray ? row[4] : row.rstate;
+      const stateVal = isArray ? row[3] : row.state;
+      if (displayValue.toLowerCase() === "offline") {
+        return stateVal === 1 && rstateVal !== 1;
+      }
+      if (displayValue.toLowerCase() === "online") {
+        return stateVal === 1 && rstateVal === 1;
+      }
+      if (displayValue.toLowerCase() === "initial") {
+        return stateVal === 0;
+      }
       fieldVal =
-        rstateVal === 1 ? "online" : rstateVal === 0 ? "initial" : "offline";
+        stateVal === 1
+          ? rstateVal === 1
+            ? "online"
+            : "offline"
+          : "initial";
       return fieldVal.toLowerCase() === displayValue.toLowerCase();
     }
     return fieldVal.toLowerCase().includes(displayValue.toLowerCase());
@@ -1414,11 +1429,11 @@ export default function HsgqOltPage() {
                             ? "Inactive"
                             : "Unknown";
                       const runningState =
-                        rstateVal === 1
-                          ? "online"
-                          : rstateVal === 0
-                            ? "initial"
-                            : "offline";
+                        stateVal === 1
+                          ? rstateVal === 1
+                            ? "online"
+                            : "offline"
+                          : "initial";
                       const configState =
                         cstateVal === 1
                           ? "normal"
