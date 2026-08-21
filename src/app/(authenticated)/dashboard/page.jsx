@@ -4,16 +4,11 @@ import {
   Router,
   ArrowUpRight,
   AlertTriangle,
-  Users,
   Map as MapIcon,
   Cpu,
   Clock,
   HardDrive,
   Server,
-  CheckCircle2,
-  AlertCircle,
-  Info,
-  Settings,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -67,45 +62,6 @@ export default function Dashboard() {
       }
     }
   }, [sessionUser, router]);
-
-  const getLogStyle = (msg) => {
-    if (!msg)
-      return {
-        bgColor: "bg-blue-950/10 border-blue-500/20 text-slate-300",
-        icon: "info",
-      };
-    const lowercaseMsg = msg.toLowerCase();
-    if (lowercaseMsg.includes("berhasil") || lowercaseMsg.includes("online")) {
-      return {
-        bgColor: "bg-emerald-950/10 border-emerald-500/20 text-slate-300",
-        icon: "check",
-      };
-    }
-    if (
-      lowercaseMsg.includes("gagal") ||
-      lowercaseMsg.includes("offline") ||
-      lowercaseMsg.includes("dihapus")
-    ) {
-      return {
-        bgColor: "bg-rose-950/10 border-rose-500/20 text-slate-300",
-        icon: "alert",
-      };
-    }
-    if (
-      lowercaseMsg.includes("simpan") ||
-      lowercaseMsg.includes("diperbarui") ||
-      lowercaseMsg.includes("ditambahkan")
-    ) {
-      return {
-        bgColor: "bg-amber-950/10 border-amber-500/20 text-slate-300",
-        icon: "settings",
-      };
-    }
-    return {
-      bgColor: "bg-blue-950/10 border-blue-500/20 text-slate-300",
-      icon: "info",
-    };
-  };
 
   const fetchCoreStatus = useCallback(async () => {
     try {
@@ -284,13 +240,6 @@ export default function Dashboard() {
     fetchMappings,
   ]);
 
-  const totalNodes = topologyNodes.length;
-  const oltCount = topologyNodes.filter((n) => n.type === "olt").length;
-  const odcCount = topologyNodes.filter((n) => n.type === "odc").length;
-  const odpCount = topologyNodes.filter((n) => n.type === "odp").length;
-  const infrasCount = oltCount + odcCount + odpCount;
-  const clientCount = topologyNodes.filter((n) => n.type === "client").length;
-
   const totalL2tpRuijie = ruijieDevices.length;
   const offlineL2tpRuijie = ruijieDevices.filter(
     (d) => d.status === "OFF" && d.connection_type === "L2TP",
@@ -303,41 +252,6 @@ export default function Dashboard() {
     0,
   );
 
-  const offlineCount = useMemo(() => {
-    return topologyNodes.filter((node) => {
-      if (node.type?.toLowerCase() === "core") return false;
-
-      let isDown = false;
-      let isDisabled = false;
-
-      if (node.linked_interface) {
-        const matchedIface = coreInterfaces.find(
-          (i) =>
-            i.name &&
-            i.name.toLowerCase() === node.linked_interface.toLowerCase(),
-        );
-        if (matchedIface) {
-          if (matchedIface.disabled === "true") isDisabled = true;
-          else if (matchedIface.running !== "true") isDown = true;
-        }
-      } else {
-        const connectedEdges = edges.filter(
-          (e) =>
-            e.from_node === node.id ||
-            e.to_node === node.id ||
-            e.from === node.id ||
-            e.to === node.id,
-        );
-        if (connectedEdges.length === 0) isDisabled = true;
-      }
-
-      if (isDisabled) return false;
-      if (isDown) return true;
-      if (node.status === "offline") return true;
-      return false;
-    }).length;
-  }, [topologyNodes, edges, coreInterfaces]);
-
   if (!hasReadAccess) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
@@ -348,16 +262,16 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-3 md:gap-4 overflow-y-auto lg:overflow-hidden p-1">
-      <div className="flex-shrink-0 flex flex-wrap items-start justify-between gap-3">
+    <div className="h-full min-h-0 flex flex-col gap-2.5 md:gap-3 overflow-y-auto lg:overflow-hidden p-1">
+      <div className="flex-shrink-0 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Dashboard Utama</h1>
-          <p className="text-xs text-slate-400">
+          <h1 className="text-lg font-bold text-slate-100">Dashboard Utama</h1>
+          <p className="text-[11px] text-slate-400">
             Ringkasan status jaringan & resource MikroTik Pusat
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold bg-slate-800/80 border border-slate-700/50 px-2.5 py-1.5 rounded-full select-none">
+          <span className="flex items-center gap-1.5 text-[9px] font-semibold bg-slate-800/80 border border-slate-700/50 px-2.5 py-1 rounded-full select-none">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 isConnected
@@ -373,7 +287,7 @@ export default function Dashboard() {
       </div>
 
       {/* Core Router Resources */}
-      <div className="flex-shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-2.5">
         <CoreResourceCard
           icon={Cpu}
           iconColorClass="text-blue-500"
@@ -407,32 +321,7 @@ export default function Dashboard() {
       </div>
 
       {/* Network Metrics Cards */}
-      <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 md:gap-3">
-        <StatCard
-          icon={Router}
-          iconColorClass="text-blue-500"
-          title="Total Interfaces"
-          value={totalNodes}
-        />
-        <StatCard
-          icon={Users}
-          iconColorClass="text-amber-500"
-          title="Node Client Terpasang"
-          value={clientCount}
-        />
-        <StatCard
-          icon={Server}
-          iconColorClass="text-purple-500"
-          title="Infrastruktur (OLT,ODC,ODP)"
-          value={infrasCount}
-        />
-        <StatCard
-          icon={AlertTriangle}
-          iconColorClass="text-red-500"
-          title="Mikrotik Offline"
-          value={offlineCount}
-          isAlert={true}
-        />
+      <div className="flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-2.5">
         <StatCard
           icon={Router}
           iconColorClass="text-cyan-500"
@@ -461,32 +350,32 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
-        <div className="lg:col-span-2 bg-slate-800 border border-slate-700/50 rounded-xl p-4 md:p-5 flex flex-col min-h-[300px] lg:min-h-0 relative overflow-hidden group">
-          <h3 className="flex-shrink-0 text-sm font-semibold border-b border-slate-700/30 pb-3 mb-3 text-slate-200 flex justify-between items-center gap-2">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-2.5 md:gap-3">
+        <div className="lg:col-span-2 bg-slate-800 border border-slate-700/50 rounded-xl p-3 md:p-3.5 flex flex-col min-h-[300px] lg:min-h-0 relative overflow-hidden group">
+          <h3 className="flex-shrink-0 text-xs md:text-sm font-semibold border-b border-slate-700/30 pb-2.5 mb-2.5 text-slate-200 flex justify-between items-center gap-2">
             Pratinjau Jaringan
             <div className="flex items-center gap-2 z-10">
               <button
                 onClick={() =>
                   setMapTheme((t) => (t === "dark" ? "colored" : "dark"))
                 }
-                className="cursor-pointer text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded flex items-center gap-1 transition"
+                className="cursor-pointer text-[11px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1 rounded flex items-center gap-1 transition"
               >
                 {mapTheme === "dark" ? (
                   <>
-                    <span className="fa fa-sun" /> Mode Terang
+                    <span className="fa fa-sun text-[10px]" /> Mode Terang
                   </>
                 ) : (
                   <>
-                    <span className="fa fa-moon" /> Mode Gelap
+                    <span className="fa fa-moon text-[10px]" /> Mode Gelap
                   </>
                 )}
               </button>
               <button
                 onClick={() => router.push("/topology")}
-                className="cursor-pointer text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded flex items-center gap-1 transition"
+                className="cursor-pointer text-[11px] bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded flex items-center gap-1 transition"
               >
-                <MapIcon size={12} /> Buka Peta Lengkap
+                <MapIcon size={11} /> Buka Peta Lengkap
               </button>
             </div>
           </h3>
