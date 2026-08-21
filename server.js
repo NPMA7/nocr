@@ -1840,20 +1840,14 @@ app.prepare().then(() => {
     // Template & Diagnostic Error Page untuk ONT Proxy
     const { renderOntUnreachableHtml } = require('./src/lib/ontUnreachable');
 
-    // Reverse Proxy Universal untuk Web Management ONT (Mendukung Custom Port 8080 Desa & Standar 80 OPD)
+    // Reverse Proxy Web Management ONT OPD (Khusus Port 80 Standar PPPoE)
     async function handleOntProxy(req, res, targetRaw, targetPath) {
-        if (!targetRaw || !/^[0-9a-zA-Z.:-]+$/.test(targetRaw)) {
-            return res.status(400).send('Format IP target ONT tidak valid');
+        if (!targetRaw || !/^[0-9a-zA-Z.-]+$/.test(targetRaw) || targetRaw.includes(':')) {
+            return res.status(400).send('Akses Web ONT khusus Desa (port custom) telah dinonaktifkan. Hanya mendukung IP ONT OPD (Port 80).');
         }
-        const cleanHost = String(targetRaw || '').trim();
-        let targetIp = cleanHost;
-        let targetPort = 80;
-        if (cleanHost.includes(':')) {
-            const parts = cleanHost.split(':');
-            targetIp = parts[0];
-            targetPort = parseInt(parts[1], 10) || 80;
-        }
-        const targetKey = targetPort === 80 ? targetIp : `${targetIp}:${targetPort}`;
+        const targetIp = String(targetRaw || '').trim();
+        const targetPort = 80;
+        const targetKey = targetIp;
 
         // Normalisasi path target
         let cleanPath = targetPath ? (targetPath.startsWith('/') ? targetPath : `/${targetPath}`) : '/';
