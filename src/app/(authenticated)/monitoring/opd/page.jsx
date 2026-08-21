@@ -63,6 +63,11 @@ export default function MonitorOpd() {
   const [canTelnet, setCanTelnet] = useState(false);
   const { showToast, ToastComponent } = useToast();
 
+  const handleOpenOntWeb = (d) => {
+    if (!d?.remote_address) return;
+    window.open(`/ont-proxy/${encodeURIComponent(d.remote_address)}/`, "_blank", "noopener,noreferrer");
+  };
+
   const fetchData = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     if (!isBackground) setError(null);
@@ -609,7 +614,7 @@ export default function MonitorOpd() {
                             <Activity size={11} /> Ping
                           </button>
                           <button
-                            onClick={() => setOntWebDevice(d)}
+                            onClick={() => handleOpenOntWeb(d)}
                             disabled={!d.remote_address}
                             className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
                               d.remote_address
@@ -618,7 +623,7 @@ export default function MonitorOpd() {
                             }`}
                             title={
                               d.remote_address
-                                ? `Buka Web Management ONT (${d.remote_address})`
+                                ? `Buka Web Management ONT di Tab Baru (${d.remote_address})`
                                 : "IP ONT tidak tersedia"
                             }
                           >
@@ -762,7 +767,7 @@ export default function MonitorOpd() {
                                 <Activity size={11} /> Ping
                               </button>
                               <button
-                                onClick={() => setOntWebDevice(d)}
+                                onClick={() => handleOpenOntWeb(d)}
                                 disabled={!d.remote_address}
                                 className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
                                   d.remote_address
@@ -771,7 +776,7 @@ export default function MonitorOpd() {
                                 }`}
                                 title={
                                   d.remote_address
-                                    ? `Buka Web Management ONT (${d.remote_address})`
+                                    ? `Buka Web Management ONT di Tab Baru (${d.remote_address})`
                                     : "IP ONT tidak tersedia"
                                 }
                               >

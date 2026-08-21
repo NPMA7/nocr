@@ -1809,94 +1809,493 @@ app.prepare().then(() => {
         res.json({ success: true, message: 'Sync triggered' });
     });
 
-    // Reverse Proxy untuk Web Management ONT (PPPoE OPD)
+    // Reverse Proxy Universal untuk Web Management ONT (Mendukung HTTP/0.9, HTTP/1.0, HTTP/1.1 & XP80DB/ZimmLink)
     function handleOntProxy(req, res, targetIp, targetPath) {
         if (!targetIp || !/^[0-9a-zA-Z.:-]+$/.test(targetIp)) {
             return res.status(400).send('Format IP target ONT tidak valid');
         }
 
         const queryStr = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
-        const fullPath = (targetPath.startsWith('/') ? targetPath : '/' + targetPath) + queryStr;
+        let cleanPath = targetPath.startsWith('/') ? targetPath : '/' + targetPath;
+        if (!cleanPath) cleanPath = '/';
+        const fullPath = cleanPath + queryStr;
 
-        const forwardHeaders = { ...req.headers };
-        forwardHeaders['host'] = targetIp;
-        delete forwardHeaders['accept-encoding'];
-        delete forwardHeaders['if-none-match'];
-        delete forwardHeaders['if-modified-since'];
+        // Tangani Logout ONT secara langsung (hapus sesi cookie dan reload frame ONT kembali ke halaman login)
+        const isLogoutReq = cleanPath.toLowerCase().includes('logout') || 
+                            cleanPath.toLowerCase().includes('logoff') ||
+                            (req.query && ('logout' in req.query || 'logoff' in req.query)) ||
+                            (typeof req.body === 'string' && (req.body.includes('logout=') || req.body.includes('logoff='))) ||
+                            (req.body && typeof req.body === 'object' && ('logout' in req.body || 'logoff' in req.body));
 
-        const proxyReq = http.request({
-            hostname: targetIp,
-            port: 80,
-            path: fullPath,
-            method: req.method,
-            headers: forwardHeaders,
-            timeout: 10000,
-        }, (proxyRes) => {
-            const contentType = String(proxyRes.headers['content-type'] || '').toLowerCase();
-            const isTextOrHtml = contentType.includes('text/html') || contentType.includes('application/xhtml') || contentType.includes('javascript') || contentType.includes('text/plain');
+        if (isLogoutReq) {
+            const expiredCookies = [
+                `UID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+                `PSW=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+                `SESSIONID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+                `LoginTimes=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+                `_lang=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+                `ont_proxy_ip=${targetIp}; Path=/; SameSite=Lax`
+            ];
+            res.setHeader('Set-Cookie', expiredCookies);
+            return res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Logging out...</title>
+                    <script>
+                        try {
+                            if (window.top && window.top !== window && window.top.location.pathname.includes('/ont-proxy/')) {
+                                window.top.location.href = '/ont-proxy/${targetIp}/';
+                            } else if (window.parent && window.parent !== window && window.parent.location.pathname.includes('/ont-proxy/')) {
+                                window.parent.location.href = '/ont-proxy/${targetIp}/';
+                            } else {
+                                window.location.href = '/ont-proxy/${targetIp}/';
+                            }
+                        } catch(e) {
+                            window.location.href = '/ont-proxy/${targetIp}/';
+                        }
+                    </script>
+                </head>
+                <body style="background:#0f172a;color:#94a3b8;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+                    <p style="font-size:14px;">Memproses Logout ONT...</p>
+                </body>
+                </html>
+            `);
+        }
 
-            // Forward headers except framing/csp restrictions
-            Object.keys(proxyRes.headers).forEach((h) => {
-                if (h !== 'content-length' && h !== 'content-encoding' && h !== 'x-frame-options' && h !== 'content-security-policy') {
-                    res.setHeader(h, proxyRes.headers[h]);
+        const socket = net.createConnection({ host: targetIp, port: 80, timeout: 3500 });
+        const chunks = [];
+        let isDone = false;
+
+        function finish() {
+            if (isDone || res.headersSent) return;
+            isDone = true;
+            try { socket.destroy(); } catch(e) {}
+
+            const fullBuffer = Buffer.concat(chunks);
+            const headerEndIdx = fullBuffer.indexOf('\r\n\r\n');
+            const headerEndIdxLf = fullBuffer.indexOf('\n\n');
+
+            let statusCode = 200;
+            let headers = {};
+            let bodyBuffer;
+
+            if (headerEndIdx !== -1 && fullBuffer.slice(0, 10).toString('latin1').startsWith('HTTP/')) {
+                const headerText = fullBuffer.slice(0, headerEndIdx).toString('latin1');
+                bodyBuffer = fullBuffer.slice(headerEndIdx + 4);
+
+                const headerLines = headerText.split(/\r?\n/);
+                const statusLine = headerLines[0] || 'HTTP/1.0 200 OK';
+                const statusMatch = statusLine.match(/HTTP\/\d\.\d\s+(\d+)/);
+                if (statusMatch) statusCode = parseInt(statusMatch[1], 10);
+
+                for (let i = 1; i < headerLines.length; i++) {
+                    const colonIdx = headerLines[i].indexOf(':');
+                    if (colonIdx !== -1) {
+                        const name = headerLines[i].slice(0, colonIdx).trim().toLowerCase();
+                        let val = headerLines[i].slice(colonIdx + 1).trim();
+                        if (name === 'set-cookie') {
+                            if (!headers['set-cookie']) headers['set-cookie'] = [];
+                            headers['set-cookie'].push(val);
+                        } else if (name === 'location') {
+                            if (val.startsWith('/') && !val.startsWith('/ont-proxy/')) {
+                                val = `/ont-proxy/${targetIp}${val}`;
+                            }
+                            headers['location'] = val;
+                        } else {
+                            headers[name] = val;
+                        }
+                    }
                 }
-            });
-
-            res.setHeader('Set-Cookie', `ont_proxy_ip=${targetIp}; Path=/; SameSite=Lax`);
-            res.status(proxyRes.statusCode);
-
-            if (isTextOrHtml) {
-                let chunks = [];
-                proxyRes.on('data', (chunk) => chunks.push(chunk));
-                proxyRes.on('end', () => {
-                    let body = Buffer.concat(chunks).toString('latin1');
-
-                    // Prevent frame breakout
-                    body = body.replace(/top\.window\.location/g, 'window.location');
-                    body = body.replace(/top\.location/g, 'window.location');
-                    body = body.replace(/parent\.window\.location/g, 'window.location');
-                    body = body.replace(/parent\.location/g, 'window.location');
-
-                    // Rewrite root-relative links to proxy prefix
-                    const prefix = `/ont-proxy/${targetIp}`;
-                    body = body.replace(/(action|src|href)=["']\/(cgi-bin|JS|js|img|images|css|goform|boaform|menu\.asp|content\.asp|index2\.asp|login\.asp)/gi, `$1="${prefix}/$2`);
-                    body = body.replace(/url\(\/(img|images|css)/gi, `url(${prefix}/$1`);
-                    body = body.replace(/top\.location\.replace\(\s*["']\/cgi-bin\//gi, `window.location.replace("${prefix}/cgi-bin/`);
-                    body = body.replace(/window\.location\.href\s*=\s*["']\/cgi-bin\//gi, `window.location.href = "${prefix}/cgi-bin/`);
-
-                    res.send(Buffer.from(body, 'latin1'));
-                });
+            } else if (headerEndIdxLf !== -1 && fullBuffer.slice(0, 10).toString('latin1').startsWith('HTTP/')) {
+                const headerText = fullBuffer.slice(0, headerEndIdxLf).toString('latin1');
+                bodyBuffer = fullBuffer.slice(headerEndIdxLf + 2);
+                const headerLines = headerText.split('\n');
+                const statusMatch = (headerLines[0] || '').match(/HTTP\/\d\.\d\s+(\d+)/);
+                if (statusMatch) statusCode = parseInt(statusMatch[1], 10);
             } else {
-                proxyRes.pipe(res);
+                bodyBuffer = fullBuffer;
+                headers['content-type'] = 'text/html; charset=gb2312';
+            }
+
+            // Koreksi otomatis MIME Type untuk ONT
+            const lowerPath = cleanPath.toLowerCase();
+            const bodyStrSample = bodyBuffer ? bodyBuffer.slice(0, 20).toString().trim() : '';
+            if (lowerPath.endsWith('.json') || bodyStrSample.startsWith('{')) {
+                headers['content-type'] = 'application/json; charset=utf-8';
+            } else if (lowerPath.endsWith('.js') || lowerPath.includes('/js/')) {
+                headers['content-type'] = 'application/javascript; charset=utf-8';
+            } else if (lowerPath.endsWith('.css') || lowerPath.includes('/css/')) {
+                headers['content-type'] = 'text/css; charset=utf-8';
+            } else if (lowerPath.endsWith('.png')) {
+                headers['content-type'] = 'image/png';
+            } else if (lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg')) {
+                headers['content-type'] = 'image/jpeg';
+            } else if (lowerPath.endsWith('.gif')) {
+                headers['content-type'] = 'image/gif';
+            } else if (lowerPath.endsWith('.cgi') || lowerPath.endsWith('.asp') || lowerPath.endsWith('.htm') || lowerPath.endsWith('.html') || lowerPath.endsWith('.ghtml') || (bodyBuffer && bodyBuffer.slice(0, 50).toString().toLowerCase().includes('<html'))) {
+                headers['content-type'] = headers['content-type'] || 'text/html; charset=gb2312';
+                headers['content-disposition'] = 'inline';
+            }
+
+            // Location redirect rewrite (mencegah duplicate /ont-proxy prefix)
+            if (headers['location'] && headers['location'].startsWith('/') && !headers['location'].startsWith('/ont-proxy/')) {
+                headers['location'] = `/ont-proxy/${targetIp}${headers['location']}`;
+            }
+
+            // Gabungkan cookie ONT dengan ont_proxy_ip
+            const rawCookies = Array.isArray(headers['set-cookie'])
+                ? headers['set-cookie']
+                : (headers['set-cookie'] ? [headers['set-cookie']] : []);
+            const outCookies = [...rawCookies, `ont_proxy_ip=${targetIp}; Path=/; SameSite=Lax`];
+            if (cleanPath.includes('index2.asp') || cleanPath.includes('login.asp') || cleanPath === '/') {
+                outCookies.push(`LoginTimes=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`);
+            }
+            res.setHeader('Set-Cookie', outCookies);
+
+            res.removeHeader('X-Content-Type-Options');
+            res.removeHeader('X-Frame-Options');
+            res.removeHeader('x-frame-options');
+            res.removeHeader('Content-Security-Policy');
+            res.removeHeader('content-security-policy');
+
+            for (const [k, v] of Object.entries(headers)) {
+                const lk = k.toLowerCase();
+                if (lk !== 'set-cookie' && lk !== 'content-length' && lk !== 'content-encoding' && lk !== 'x-frame-options' && lk !== 'content-security-policy' && lk !== 'x-content-type-options') {
+                    res.setHeader(k, v);
+                }
+            }
+
+            const contentType = String(headers['content-type'] || '').toLowerCase();
+            const isJson = contentType.includes('application/json') || lowerPath.endsWith('.json') || bodyStrSample.startsWith('{');
+            const isJs = contentType.includes('application/javascript') || lowerPath.endsWith('.js');
+            const isTextOrHtml = !isJson && (contentType.includes('text/html') || contentType.includes('application/xhtml') || (bodyBuffer && bodyBuffer.slice(0, 50).toString().toLowerCase().includes('<html')));
+
+            res.status(statusCode);
+
+            if (isJson && bodyBuffer) {
+                res.send(bodyBuffer);
+            } else if (isJs && bodyBuffer) {
+                let jsBody = bodyBuffer.toString('utf-8');
+                const prefix = `/ont-proxy/${targetIp}`;
+                jsBody = jsBody.replace(/["'](\/(?:cgi-bin|goform|boaform|JS|js)\/[^"']+)["']/gi, `"${prefix}$1"`);
+                res.send(Buffer.from(jsBody, 'utf-8'));
+            } else if (isTextOrHtml && bodyBuffer) {
+                let body = bodyBuffer.toString('latin1');
+
+                // Jika halaman root hanya berisi script redirect bawaan ONT, langsung kirim HTTP 302 redirect
+                const matchRedirect = body.match(/(?:location\.replace|location\.href\s*=)\s*["'](\/cgi-bin\/[^"']+)["']/i);
+                if ((cleanPath === '/' || cleanPath === '') && matchRedirect) {
+                    return res.redirect(302, `/ont-proxy/${targetIp}${matchRedirect[1]}`);
+                }
+
+                body = body.replace(/top\.window\.location/gi, 'window.location');
+                body = body.replace(/top\.location/gi, 'window.location');
+                body = body.replace(/parent\.window\.location/gi, 'window.location');
+                body = body.replace(/parent\.location/gi, 'window.location');
+
+                const prefix = `/ont-proxy/${targetIp}`;
+                body = body.replace(/action=["']\/["']/gi, `action="${prefix}/"`);
+                body = body.replace(/target=["']_top["']/gi, `target="_self"`);
+                body = body.replace(/target=["']_parent["']/gi, `target="_self"`);
+                body = body.replace(/(action|src|href)=(["'])\/(?!ont-proxy\/)([^"'\s>]+)/gi, `$1=$2${prefix}/$3`);
+                body = body.replace(/url\(\/(img|images|css)/gi, `url(${prefix}/$1`);
+                body = body.replace(/location\.replace\(\s*(["'])\/(?!ont-proxy\/)([^"'\s\)]+)/gi, `location.replace($1${prefix}/$2`);
+                body = body.replace(/location\.href\s*=\s*(["'])\/(?!ont-proxy\/)([^"'\s;]+)/gi, `location.href = $1${prefix}/$2`);
+                body = body.replace(/location\.assign\(\s*(["'])\/(?!ont-proxy\/)([^"'\s\)]+)/gi, `location.assign($1${prefix}/$2`);
+
+                res.send(Buffer.from(body, 'latin1'));
+            } else {
+                res.send(bodyBuffer || Buffer.alloc(0));
+            }
+        }
+
+        socket.on('connect', () => {
+            const headers = { ...req.headers };
+            headers['host'] = targetIp;
+            headers['connection'] = 'close';
+            headers['referer'] = `http://${targetIp}${fullPath}`;
+            headers['origin'] = `http://${targetIp}`;
+            delete headers['accept-encoding'];
+            delete headers['if-none-match'];
+            delete headers['if-modified-since'];
+
+            let bodyBuf = null;
+            if (req.body) {
+                if (Buffer.isBuffer(req.body)) {
+                    bodyBuf = req.body;
+                } else if (typeof req.body === 'string') {
+                    bodyBuf = Buffer.from(req.body);
+                } else if (typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+                    const querystring = require('querystring');
+                    if (req.headers['content-type']?.includes('application/json')) {
+                        bodyBuf = Buffer.from(JSON.stringify(req.body));
+                    } else {
+                        bodyBuf = Buffer.from(querystring.stringify(req.body));
+                    }
+                }
+            }
+
+            if (bodyBuf) {
+                headers['content-length'] = bodyBuf.length;
+            }
+
+            let rawReq = `${req.method} ${fullPath} HTTP/1.0\r\n`;
+            for (const [k, v] of Object.entries(headers)) {
+                if (k.toLowerCase() === 'set-cookie') continue;
+                if (Array.isArray(v)) {
+                    v.forEach((val) => { rawReq += `${k}: ${val}\r\n`; });
+                } else if (v !== undefined) {
+                    rawReq += `${k}: ${v}\r\n`;
+                }
+            }
+            rawReq += '\r\n';
+            socket.write(rawReq);
+
+            if (bodyBuf) {
+                socket.write(bodyBuf);
+            } else if (req.method === 'POST' || req.method === 'PUT') {
+                req.pipe(socket);
             }
         });
 
-        proxyReq.on('error', (err) => {
+        let htmlFinishTimer = null;
+        socket.on('data', (chunk) => {
+            chunks.push(chunk);
+            const full = Buffer.concat(chunks);
+            const str = full.toString('latin1');
+
+            // 1. Selesaikan instan jika Content-Length telah tercapai
+            const headerEnd = full.indexOf('\r\n\r\n');
+            if (headerEnd !== -1) {
+                const headerText = full.slice(0, headerEnd).toString('latin1');
+                const matchCl = headerText.match(/content-length:\s*(\d+)/i);
+                if (matchCl) {
+                    const cl = parseInt(matchCl[1], 10);
+                    if (full.length - (headerEnd + 4) >= cl) {
+                        if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
+                        finish();
+                        return;
+                    }
+                }
+
+                // 2. Selesaikan instan jika respon berbentuk JSON auth/status
+                const bodyStr = full.slice(headerEnd + 4).toString('latin1').trim();
+                if (bodyStr.startsWith('{') && bodyStr.endsWith('}')) {
+                    if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
+                    finish();
+                    return;
+                }
+            }
+
+            // 3. Jika tag penutup HTML telah tiba, beri jeda pendek (50ms) untuk menampung script lanjutan lalu selesaikan
+            if (str.includes('</html>') || str.includes('</HTML>')) {
+                if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
+                htmlFinishTimer = setTimeout(finish, 50);
+            } else {
+                if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
+                htmlFinishTimer = setTimeout(finish, 75);
+            }
+        });
+
+        function renderOntUnreachableHtml(ip, detail) {
+            return `<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Akses Web ONT Tidak Tersedia - ${ip}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            max-width: 540px;
+            width: 100%;
+            padding: 36px 32px;
+            text-align: center;
+            backdrop-filter: blur(12px);
+        }
+        .icon-wrap {
+            width: 68px;
+            height: 68px;
+            margin: 0 auto 20px;
+            border-radius: 20px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #f87171;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #fca5a5;
+            margin-bottom: 16px;
+            letter-spacing: 0.02em;
+        }
+        h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+        .desc {
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .info-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #64748b; font-weight: 500; }
+        .info-val { color: #cbd5e1; font-weight: 600; font-family: monospace; }
+        .tips {
+            font-size: 11.5px;
+            color: #94a3b8;
+            text-align: left;
+            margin-top: 12px;
+            line-height: 1.5;
+            padding-top: 10px;
+            border-top: 1px dashed rgba(51, 65, 85, 0.6);
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: #ffffff;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary {
+            background: rgba(51, 65, 85, 0.6);
+            color: #cbd5e1;
+            border: 1px solid rgba(71, 85, 105, 0.6);
+        }
+        .btn-secondary:hover { background: rgba(71, 85, 105, 0.8); color: #ffffff; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon-wrap">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            </svg>
+        </div>
+        <div class="badge">REMOTE ACCESS BLOCKED / UNAVAILABLE</div>
+        <h1>Akses Web Management ONT Tidak Tersedia</h1>
+        <p class="desc">
+            Perangkat ONT pada IP ini tidak merespons koneksi Web (Port 80 HTTP). Fitur <b>WAN / Remote Web Management</b> kemungkinan belum diaktifkan pada konfigurasi ONT, atau port akses ditutup oleh sistem firewall ONT.
+        </p>
+        
+        <div class="info-box">
+            <div class="info-row">
+                <span class="info-label">Target IP ONT</span>
+                <span class="info-val">${ip}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Status Port 80 HTTP</span>
+                <span class="info-val" style="color:#f87171;">Tidak Merespons (Timeout)</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Diagnosa Sistem</span>
+                <span class="info-val" style="color:#fbbf24;">WAN Remote Web Management Nonaktif</span>
+            </div>
+            <div class="tips">
+                💡 <b>Petunjuk:</b> Untuk mengaktifkan remote management pada ONT tipe ini, hubungkan laptop langsung ke port LAN ONT di lokasi, buka IP gateway lokal (192.168.1.1), lalu aktifkan opsi <i>WAN Access / Remote HTTP Management</i> di menu <i>Security / ACL</i>.
+            </div>
+        </div>
+
+        <div class="actions">
+            <button onclick="window.location.reload()" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                Coba Lagi
+            </button>
+            <a href="/monitoring/opd" class="btn btn-primary">
+                Kembali ke Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+
+        socket.on('timeout', () => {
+            socket.destroy();
             if (!res.headersSent) {
-                res.status(502).send(`
-                    <div style="font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#0f172a;color:#f87171;border-radius:10px;margin:20px;border:1px solid rgba(239,68,68,0.3);">
-                        <h3 style="margin-top:0;font-size:16px;">Gagal Terhubung ke Web Management ONT (${targetIp})</h3>
-                        <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Detail: ${err.message}</p>
-                        <p style="font-size:12px;color:#64748b;">Pastikan perangkat ONT sedang aktif (Online) dan port 80 dapat dijangkau.</p>
-                    </div>
-                `);
+                res.status(200).send(renderOntUnreachableHtml(targetIp, 'Timeout (Port 80 tidak merespons)'));
             }
         });
 
-        proxyReq.on('timeout', () => {
-            proxyReq.destroy();
+        socket.on('error', (err) => {
             if (!res.headersSent) {
-                res.status(504).send(`
-                    <div style="font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#0f172a;color:#f87171;border-radius:10px;margin:20px;border:1px solid rgba(239,68,68,0.3);">
-                        <h3 style="margin-top:0;font-size:16px;">Koneksi ke ONT Timeout (${targetIp})</h3>
-                        <p style="font-size:13px;color:#94a3b8;">Perangkat ONT tidak merespons dalam 10 detik.</p>
-                    </div>
-                `);
+                res.status(200).send(renderOntUnreachableHtml(targetIp, err.message));
             }
         });
-
-        req.pipe(proxyReq);
     }
+
+    server.all('/ont-proxy/:ip/ont-proxy/:ip2/*', (req, res) => {
+        const targetIp = req.params.ip2 || req.params.ip;
+        const targetPath = req.params[0] || '';
+        return res.redirect(302, `/ont-proxy/${targetIp}/${targetPath}`);
+    });
 
     server.all('/ont-proxy/:ip/*', (req, res) => {
         const user = authenticateExpressRequest(req, res);
@@ -1914,12 +2313,13 @@ app.prepare().then(() => {
     });
 
     // Fallback handler untuk asset ONT yang lepas dari prefix
-    server.all(['/cgi-bin/*', '/JS/*', '/js/*', '/img/*', '/images/*', '/css/*', '/goform/*', '/boaform/*'], (req, res, next) => {
+    server.all(['/ont-proxy/img/*', '/ont-proxy/images/*', '/ont-proxy/css/*', '/ont-proxy/js/*', '/ont-proxy/JS/*', '/cgi-bin/*', '/JS/*', '/js/*', '/img/*', '/images/*', '/css/*', '/goform/*', '/boaform/*'], (req, res, next) => {
         const cookieHeader = req.headers.cookie || '';
         const match = cookieHeader.match(/(?:^|;\s*)ont_proxy_ip=([^;]+)/);
         if (match) {
             const targetIp = decodeURIComponent(match[1]);
-            return handleOntProxy(req, res, targetIp, req.path);
+            const pathClean = req.path.replace(/^\/ont-proxy/, '');
+            return handleOntProxy(req, res, targetIp, pathClean);
         }
         next();
     });

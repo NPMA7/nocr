@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Globe,
   X,
@@ -21,6 +21,15 @@ export default function OntWebModal({ device, onClose }) {
 
   const ip = device?.remote_address;
   const proxyUrl = ip ? `/ont-proxy/${encodeURIComponent(ip)}/` : "";
+
+  // Auto-dismiss loading indicator maksimal 1.5 detik jika onLoad event iframe tertahan
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [iframeKey, proxyUrl]);
 
   const handleCopyIp = () => {
     if (!ip) return;
@@ -133,17 +142,19 @@ export default function OntWebModal({ device, onClose }) {
 
         {/* Modal Iframe Content */}
         <div className="relative flex-1 w-full bg-slate-950 overflow-hidden">
-          {isLoading && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm gap-3">
-              <div className="w-9 h-9 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-slate-300 font-medium">
-                Memuat Web Management ONT ({ip})...
-              </p>
-              <p className="text-[11px] text-slate-500">
-                Menghubungkan lewat reverse proxy server internal
-              </p>
-            </div>
-          )}
+          <div
+            className={`absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm gap-3 transition-opacity duration-300 pointer-events-none ${
+              isLoading ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div className="w-9 h-9 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-slate-300 font-medium">
+              Memuat Web Management ONT ({ip})...
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Menghubungkan lewat reverse proxy server internal
+            </p>
+          </div>
 
           {ip ? (
             <iframe
@@ -153,7 +164,6 @@ export default function OntWebModal({ device, onClose }) {
               onLoad={() => setIsLoading(false)}
               className="w-full h-full border-0 bg-white"
               title={`ONT Management ${ip}`}
-              sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals"
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-500 p-6 text-center">
