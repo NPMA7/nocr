@@ -1,6 +1,7 @@
 const express = require('express');
 const next = require('next');
 const http = require('http');
+const net = require('net');
 const crypto = require('crypto');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -886,7 +887,116 @@ app.prepare().then(() => {
             }
         });
 
+        // Telnet session state per socket connection
+        let activeTelnetSocket = null;
+
+        socket.on('telnet_connect', ({ ip, port = 23 }) => {
+            const user = socket.user;
+            const isAllowed = user && (
+                user.role === 'admin' ||
+                hasServerAccess(user.permissions, 'monitoring-l2tp', 'update') ||
+                hasServerAccess(user.permissions, 'monitoring-pppoe', 'update') ||
+                hasServerAccess(user.permissions, 'devices-mikrotik', 'update')
+            );
+            if (!isAllowed) {
+                socket.emit('telnet_data', '\r\n\x1b[31m[AKSES DITOLAK] Anda tidak memiliki izin role untuk mengakses Telnet router ini.\x1b[0m\r\n');
+                socket.emit('telnet_status', { connected: false, error: 'Akses ditolak: Izin tidak mencukupi' });
+                return;
+            }
+
+            if (!ip || !/^[0-9a-zA-Z.:-]+$/.test(String(ip).trim())) {
+                socket.emit('telnet_data', '\r\n\x1b[31m[ERROR] Format IP target tidak valid.\x1b[0m\r\n');
+                socket.emit('telnet_status', { connected: false, error: 'IP tidak valid' });
+                return;
+            }
+
+            if (activeTelnetSocket) {
+                try { activeTelnetSocket.destroy(); } catch (e) {}
+                activeTelnetSocket = null;
+            }
+
+            const targetHost = String(ip).trim();
+            const targetPort = parseInt(port, 10) || 23;
+
+            socket.emit('telnet_status', { connected: false, connecting: true, message: `Menghubungkan ke ${targetHost}:${targetPort}...` });
+            socket.emit('telnet_data', `\x1b[36m>>> Menghubungkan ke Telnet ${targetHost}:${targetPort}...\x1b[0m\r\n`);
+
+            try {
+                const client = net.createConnection({ host: targetHost, port: targetPort }, () => {
+                    client.setKeepAlive(true, 10000);
+                    client.setNoDelay(true);
+                    socket.emit('telnet_status', { connected: true, connecting: false });
+                    socket.emit('telnet_data', `\x1b[32m>>> Terhubung ke MikroTik ${targetHost}:${targetPort}\x1b[0m\r\n\r\n`);
+                });
+
+                activeTelnetSocket = client;
+
+                client.on('data', (chunk) => {
+                    // Telnet IAC (0xFF) Option Negotiation
+                    let i = 0;
+                    const out = [];
+                    while (i < chunk.length) {
+                        if (chunk[i] === 255) {
+                            const command = chunk[i + 1];
+                            const option = chunk[i + 2];
+                            if (command === 253) { // DO -> reply WONT
+                                client.write(Buffer.from([255, 252, option]));
+                                i += 3;
+                            } else if (command === 251) { // WILL -> reply DONT
+                                client.write(Buffer.from([255, 254, option]));
+                                i += 3;
+                            } else if (command === 254 || command === 252) { // DONT / WONT
+                                i += 3;
+                            } else {
+                                i += 2;
+                            }
+                        } else {
+                            out.push(chunk[i]);
+                            i++;
+                        }
+                    }
+                    if (out.length > 0) {
+                        socket.emit('telnet_data', Buffer.from(out).toString('utf-8'));
+                    }
+                });
+
+                client.on('error', (err) => {
+                    socket.emit('telnet_data', `\r\n\x1b[31m[Telnet Error] ${err.message}\x1b[0m\r\n`);
+                    socket.emit('telnet_status', { connected: false, connecting: false, error: err.message });
+                });
+
+                client.on('close', () => {
+                    activeTelnetSocket = null;
+                    socket.emit('telnet_status', { connected: false, connecting: false });
+                    socket.emit('telnet_data', '\r\n\x1b[33m>>> [Koneksi Telnet ditutup]\x1b[0m\r\n');
+                });
+            } catch (err) {
+                socket.emit('telnet_data', `\r\n\x1b[31m[Gagal Membuat Koneksi] ${err.message}\x1b[0m\r\n`);
+                socket.emit('telnet_status', { connected: false, error: err.message });
+            }
+        });
+
+        socket.on('telnet_input', (input) => {
+            if (activeTelnetSocket && !activeTelnetSocket.destroyed) {
+                try {
+                    activeTelnetSocket.write(input);
+                } catch (e) {}
+            }
+        });
+
+        socket.on('telnet_disconnect', () => {
+            if (activeTelnetSocket) {
+                try { activeTelnetSocket.destroy(); } catch (e) {}
+                activeTelnetSocket = null;
+            }
+            socket.emit('telnet_status', { connected: false, connecting: false });
+        });
+
         socket.on('disconnect', () => {
+            if (activeTelnetSocket) {
+                try { activeTelnetSocket.destroy(); } catch (e) {}
+                activeTelnetSocket = null;
+            }
             clients.delete(socket.id);
             if (clients.size === 0) activeMonitors.clear();
             // Lepas semua lock milik socket ini

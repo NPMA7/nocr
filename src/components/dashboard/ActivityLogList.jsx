@@ -53,10 +53,10 @@ export default function ActivityLogList({ logs = [], isConnected = false }) {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-4 md:p-5 flex flex-col h-full min-h-[300px] lg:min-h-0">
-      <h3 className="flex-shrink-0 text-sm font-bold border-b border-slate-200 dark:border-slate-700/30 pb-3 mb-3 text-slate-900 dark:text-slate-200 flex justify-between items-center">
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3 md:p-3.5 flex flex-col h-full min-h-[300px] lg:min-h-0">
+      <h3 className="flex-shrink-0 text-xs md:text-sm font-bold border-b border-slate-200 dark:border-slate-700/30 pb-2.5 mb-2.5 text-slate-900 dark:text-slate-200 flex justify-between items-center">
         <span>Log Aktivitas</span>
-        <span className="flex items-center gap-1.5 text-[10px] font-semibold bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 px-2 py-0.5 rounded-full select-none">
+        <span className="flex items-center gap-1.5 text-[9px] font-semibold bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 px-2 py-0.5 rounded-full select-none">
           <span
             className={`w-1.5 h-1.5 rounded-full ${
               isConnected
@@ -70,34 +70,34 @@ export default function ActivityLogList({ logs = [], isConnected = false }) {
         </span>
       </h3>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2.5 custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
         {logs && logs.length > 0 ? (
           logs.map((a, i) => {
             const style = getLogStyle(a.message || a.msg);
             return (
               <div
                 key={i}
-                className={`flex gap-3 p-3 rounded-lg border text-xs transition duration-200 hover:translate-x-0.5 ${style.bgColor}`}
+                className={`flex gap-2.5 p-2 md:p-2.5 rounded-lg border text-[11px] transition duration-200 hover:translate-x-0.5 ${style.bgColor}`}
               >
                 <div className="flex-shrink-0 mt-0.5">
                   {style.iconType === "check" && (
-                    <CheckCircle2 size={14} className={style.iconColor} />
+                    <CheckCircle2 size={13} className={style.iconColor} />
                   )}
                   {style.iconType === "alert" && (
-                    <AlertCircle size={14} className={style.iconColor} />
+                    <AlertCircle size={13} className={style.iconColor} />
                   )}
                   {style.iconType === "settings" && (
-                    <Settings size={14} className={style.iconColor} />
+                    <Settings size={13} className={style.iconColor} />
                   )}
                   {style.iconType === "info" && (
-                    <Info size={14} className={style.iconColor} />
+                    <Info size={13} className={style.iconColor} />
                   )}
                 </div>
-                <div className="flex-1 flex flex-col gap-1 min-w-0">
-                  <span className="font-medium leading-relaxed break-words">
+                <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+                  <span className="font-medium leading-snug break-words">
                     {a.message || a.msg}
                   </span>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono self-start uppercase">
+                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-mono self-start uppercase">
                     {new Date(a.time).toLocaleDateString("id-ID", {
                       day: "2-digit",
                       month: "short",
@@ -113,9 +113,9 @@ export default function ActivityLogList({ logs = [], isConnected = false }) {
             );
           })
         ) : (
-          <div className="flex flex-col items-center justify-center flex-1 py-12 text-slate-400 dark:text-slate-500 gap-2">
-            <Info size={24} className="animate-pulse" />
-            <span className="text-xs">Belum ada aktivitas</span>
+          <div className="flex flex-col items-center justify-center flex-1 py-10 text-slate-400 dark:text-slate-500 gap-1.5">
+            <Info size={20} className="animate-pulse" />
+            <span className="text-[11px]">Belum ada aktivitas</span>
           </div>
         )}
       </div>
