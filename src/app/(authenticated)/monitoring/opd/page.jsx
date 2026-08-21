@@ -29,6 +29,7 @@ import {
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import UptimeTimer from "@/components/UptimeTimer";
 import { useToast } from "@/hooks/useToast";
+import OntWebModal from "@/components/OntWebModal";
 
 export default function MonitorOpd() {
   const [mappings, setMappings] = useState([]);
@@ -53,6 +54,9 @@ export default function MonitorOpd() {
   const [pingModalDevice, setPingModalDevice] = useState(null);
   const [isPinging, setIsPinging] = useState(false);
   const [pingResult, setPingResult] = useState(null);
+
+  // Status Modal Web ONT (Reverse Proxy)
+  const [ontWebDevice, setOntWebDevice] = useState(null);
 
   // Role permissions
   const [canUpdate, setCanUpdate] = useState(false);
@@ -604,25 +608,22 @@ export default function MonitorOpd() {
                           >
                             <Activity size={11} /> Ping
                           </button>
-                          {d.remote_address ? (
-                            <a
-                              href={`http://${d.remote_address}/`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 rounded border border-purple-500/20 transition"
-                              title={`Buka Web GUI ONT (http://${d.remote_address}/)`}
-                            >
-                              <Globe size={11} /> Web ONT
-                            </a>
-                          ) : (
-                            <button
-                              disabled
-                              className="cursor-not-allowed inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-500 bg-slate-800/40 rounded border border-slate-700/30 opacity-50"
-                              title="IP ONT tidak tersedia"
-                            >
-                              <Globe size={11} /> Web ONT
-                            </button>
-                          )}
+                          <button
+                            onClick={() => setOntWebDevice(d)}
+                            disabled={!d.remote_address}
+                            className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
+                              d.remote_address
+                                ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
+                                : "text-slate-500 bg-slate-800/40 border-slate-700/30 cursor-not-allowed opacity-50"
+                            }`}
+                            title={
+                              d.remote_address
+                                ? `Buka Web Management ONT (${d.remote_address})`
+                                : "IP ONT tidak tersedia"
+                            }
+                          >
+                            <Globe size={11} /> Web ONT
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -760,25 +761,22 @@ export default function MonitorOpd() {
                               >
                                 <Activity size={11} /> Ping
                               </button>
-                              {d.remote_address ? (
-                                <a
-                                  href={`http://${d.remote_address}/`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 rounded border border-purple-500/20 transition"
-                                  title={`Buka Web GUI ONT (http://${d.remote_address}/)`}
-                                >
-                                  <Globe size={11} /> Web ONT
-                                </a>
-                              ) : (
-                                <button
-                                  disabled
-                                  className="cursor-not-allowed inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-500 bg-slate-800/40 rounded border border-slate-700/30 opacity-50"
-                                  title="IP ONT tidak tersedia"
-                                >
-                                  <Globe size={11} /> Web ONT
-                                </button>
-                              )}
+                              <button
+                                onClick={() => setOntWebDevice(d)}
+                                disabled={!d.remote_address}
+                                className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
+                                  d.remote_address
+                                    ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
+                                    : "text-slate-500 bg-slate-800/40 border-slate-700/30 cursor-not-allowed opacity-50"
+                                }`}
+                                title={
+                                  d.remote_address
+                                    ? `Buka Web Management ONT (${d.remote_address})`
+                                    : "IP ONT tidak tersedia"
+                                }
+                              >
+                                <Globe size={11} /> Web ONT
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -827,7 +825,7 @@ export default function MonitorOpd() {
 
       {/* Modal Edit Prefix & Tautan Manual OPD */}
       {editingDevice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-3.5 border-b border-slate-700 flex items-center justify-between bg-slate-800/90">
               <h3 className="font-bold text-slate-100 text-xs md:text-sm flex items-center gap-2">
@@ -960,7 +958,7 @@ export default function MonitorOpd() {
 
       {/* Modal Ping MikroTik OPD */}
       {pingModalDevice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
             <div className="p-3.5 border-b border-slate-700 flex items-center justify-between bg-slate-800/90">
               <h3 className="font-bold text-slate-100 text-xs md:text-sm flex items-center gap-2">
@@ -1084,6 +1082,14 @@ export default function MonitorOpd() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Web Management ONT (Reverse Proxy) */}
+      {ontWebDevice && (
+        <OntWebModal
+          device={ontWebDevice}
+          onClose={() => setOntWebDevice(null)}
+        />
       )}
     </div>
   );

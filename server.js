@@ -1809,6 +1809,121 @@ app.prepare().then(() => {
         res.json({ success: true, message: 'Sync triggered' });
     });
 
+    // Reverse Proxy untuk Web Management ONT (PPPoE OPD)
+    function handleOntProxy(req, res, targetIp, targetPath) {
+        if (!targetIp || !/^[0-9a-zA-Z.:-]+$/.test(targetIp)) {
+            return res.status(400).send('Format IP target ONT tidak valid');
+        }
+
+        const queryStr = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+        const fullPath = (targetPath.startsWith('/') ? targetPath : '/' + targetPath) + queryStr;
+
+        const forwardHeaders = { ...req.headers };
+        forwardHeaders['host'] = targetIp;
+        delete forwardHeaders['accept-encoding'];
+        delete forwardHeaders['if-none-match'];
+        delete forwardHeaders['if-modified-since'];
+
+        const proxyReq = http.request({
+            hostname: targetIp,
+            port: 80,
+            path: fullPath,
+            method: req.method,
+            headers: forwardHeaders,
+            timeout: 10000,
+        }, (proxyRes) => {
+            const contentType = String(proxyRes.headers['content-type'] || '').toLowerCase();
+            const isTextOrHtml = contentType.includes('text/html') || contentType.includes('application/xhtml') || contentType.includes('javascript') || contentType.includes('text/plain');
+
+            // Forward headers except framing/csp restrictions
+            Object.keys(proxyRes.headers).forEach((h) => {
+                if (h !== 'content-length' && h !== 'content-encoding' && h !== 'x-frame-options' && h !== 'content-security-policy') {
+                    res.setHeader(h, proxyRes.headers[h]);
+                }
+            });
+
+            res.setHeader('Set-Cookie', `ont_proxy_ip=${targetIp}; Path=/; SameSite=Lax`);
+            res.status(proxyRes.statusCode);
+
+            if (isTextOrHtml) {
+                let chunks = [];
+                proxyRes.on('data', (chunk) => chunks.push(chunk));
+                proxyRes.on('end', () => {
+                    let body = Buffer.concat(chunks).toString('latin1');
+
+                    // Prevent frame breakout
+                    body = body.replace(/top\.window\.location/g, 'window.location');
+                    body = body.replace(/top\.location/g, 'window.location');
+                    body = body.replace(/parent\.window\.location/g, 'window.location');
+                    body = body.replace(/parent\.location/g, 'window.location');
+
+                    // Rewrite root-relative links to proxy prefix
+                    const prefix = `/ont-proxy/${targetIp}`;
+                    body = body.replace(/(action|src|href)=["']\/(cgi-bin|JS|js|img|images|css|goform|boaform|menu\.asp|content\.asp|index2\.asp|login\.asp)/gi, `$1="${prefix}/$2`);
+                    body = body.replace(/url\(\/(img|images|css)/gi, `url(${prefix}/$1`);
+                    body = body.replace(/top\.location\.replace\(\s*["']\/cgi-bin\//gi, `window.location.replace("${prefix}/cgi-bin/`);
+                    body = body.replace(/window\.location\.href\s*=\s*["']\/cgi-bin\//gi, `window.location.href = "${prefix}/cgi-bin/`);
+
+                    res.send(Buffer.from(body, 'latin1'));
+                });
+            } else {
+                proxyRes.pipe(res);
+            }
+        });
+
+        proxyReq.on('error', (err) => {
+            if (!res.headersSent) {
+                res.status(502).send(`
+                    <div style="font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#0f172a;color:#f87171;border-radius:10px;margin:20px;border:1px solid rgba(239,68,68,0.3);">
+                        <h3 style="margin-top:0;font-size:16px;">Gagal Terhubung ke Web Management ONT (${targetIp})</h3>
+                        <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Detail: ${err.message}</p>
+                        <p style="font-size:12px;color:#64748b;">Pastikan perangkat ONT sedang aktif (Online) dan port 80 dapat dijangkau.</p>
+                    </div>
+                `);
+            }
+        });
+
+        proxyReq.on('timeout', () => {
+            proxyReq.destroy();
+            if (!res.headersSent) {
+                res.status(504).send(`
+                    <div style="font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#0f172a;color:#f87171;border-radius:10px;margin:20px;border:1px solid rgba(239,68,68,0.3);">
+                        <h3 style="margin-top:0;font-size:16px;">Koneksi ke ONT Timeout (${targetIp})</h3>
+                        <p style="font-size:13px;color:#94a3b8;">Perangkat ONT tidak merespons dalam 10 detik.</p>
+                    </div>
+                `);
+            }
+        });
+
+        req.pipe(proxyReq);
+    }
+
+    server.all('/ont-proxy/:ip/*', (req, res) => {
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
+        const targetIp = req.params.ip;
+        const targetPath = req.params[0] || '';
+        handleOntProxy(req, res, targetIp, targetPath);
+    });
+
+    server.all('/ont-proxy/:ip', (req, res) => {
+        const user = authenticateExpressRequest(req, res);
+        if (!user) return;
+        const targetIp = req.params.ip;
+        handleOntProxy(req, res, targetIp, '');
+    });
+
+    // Fallback handler untuk asset ONT yang lepas dari prefix
+    server.all(['/cgi-bin/*', '/JS/*', '/js/*', '/img/*', '/images/*', '/css/*', '/goform/*', '/boaform/*'], (req, res, next) => {
+        const cookieHeader = req.headers.cookie || '';
+        const match = cookieHeader.match(/(?:^|;\s*)ont_proxy_ip=([^;]+)/);
+        if (match) {
+            const targetIp = decodeURIComponent(match[1]);
+            return handleOntProxy(req, res, targetIp, req.path);
+        }
+        next();
+    });
+
     // Global Express Error Handler (prevents PostgreSQL error message leakage)
     server.use((err, req, res, next) => {
         console.error('Express Internal Error:', err);

@@ -182,7 +182,7 @@ export default function TelnetModal({ device, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-2 sm:p-4">
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/80 backdrop-blur-xs p-2 sm:p-4">
       <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-xl w-full max-w-5xl h-[85vh] max-h-[720px] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
         {/* Terminal Header */}
