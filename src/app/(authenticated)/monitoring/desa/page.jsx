@@ -837,7 +837,7 @@ export default function MonitorDevice() {
 
       {/* Modal Edit Prefix & Tautan Manual */}
       {editingDevice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-3.5 border-b border-slate-700 flex items-center justify-between bg-slate-800/90">
               <h3 className="font-bold text-slate-100 text-xs md:text-sm flex items-center gap-2">
@@ -970,7 +970,7 @@ export default function MonitorDevice() {
 
       {/* Modal Ping MikroTik */}
       {pingModalDevice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
             <div className="p-3.5 border-b border-slate-700 flex items-center justify-between bg-slate-800/90">
               <h3 className="font-bold text-slate-100 text-xs md:text-sm flex items-center gap-2">
