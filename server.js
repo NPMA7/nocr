@@ -2242,7 +2242,7 @@ app.prepare().then(() => {
         <div class="badge">REMOTE ACCESS BLOCKED / UNAVAILABLE</div>
         <h1>Akses Web Management ONT Tidak Tersedia</h1>
         <p class="desc">
-            Perangkat ONT pada IP ini tidak merespons koneksi Web (Port 80 HTTP). Fitur <b>WAN / Remote Web Management</b> kemungkinan belum diaktifkan pada konfigurasi ONT, atau port akses ditutup oleh sistem firewall ONT.
+            Perangkat ONT pada IP ini tidak merespons koneksi Web (Port 80 HTTP). Fitur <b>WAN / Remote Web Management</b> kemungkinan belum diaktifkan, atau port akses ditutup oleh sistem firewall.
         </p>
         
         <div class="info-box">
@@ -2258,9 +2258,6 @@ app.prepare().then(() => {
                 <span class="info-label">Diagnosa Sistem</span>
                 <span class="info-val" style="color:#fbbf24;">WAN Remote Web Management Nonaktif</span>
             </div>
-            <div class="tips">
-                💡 <b>Petunjuk:</b> Untuk mengaktifkan remote management pada ONT tipe ini, hubungkan laptop langsung ke port LAN ONT di lokasi, buka IP gateway lokal (192.168.1.1), lalu aktifkan opsi <i>WAN Access / Remote HTTP Management</i> di menu <i>Security / ACL</i>.
-            </div>
         </div>
 
         <div class="actions">
@@ -2268,7 +2265,7 @@ app.prepare().then(() => {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                 Coba Lagi
             </button>
-            <a href="/monitoring/opd" class="btn btn-primary">
+            <a href="/" class="btn btn-primary">
                 Kembali ke Dashboard
             </a>
         </div>

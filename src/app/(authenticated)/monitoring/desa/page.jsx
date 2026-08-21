@@ -65,7 +65,7 @@ export default function MonitorDevice() {
 
   const handleOpenOntWeb = (d) => {
     if (!d?.remote_address) return;
-    window.open(`/ont-proxy/${encodeURIComponent(d.remote_address)}/`, "_blank", "noopener,noreferrer");
+    window.open(`/ont-proxy/${encodeURIComponent(d.remote_address)}:8080/`, "_blank", "noopener,noreferrer");
   };
 
   const fetchData = async (isBackground = false) => {
