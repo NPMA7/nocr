@@ -2049,7 +2049,10 @@ app.prepare().then(() => {
                 body = body.replace(/target=["']_top["']/gi, `target="_self"`);
                 body = body.replace(/target=["']_parent["']/gi, `target="_self"`);
                 body = body.replace(/(src|href)=(["'])(?!https?:\/\/|\/\/|#|data:|javascript:|mailto:|tel:|\/ont-proxy\/)\/?([^"'\s>]+)\2/gi, `$1=$2${prefix}/$3$2`);
-                body = body.replace(/url\(\s*(["']?)\/?(img|images|css|Cuscss|resource|custom)\/([^"')\s]+)\1\s*\)/gi, `url($1${prefix}/$2/$3$1)`);
+                body = body.replace(/top\.window\.location\.href\s*=\s*(["'])(?!\/ont-proxy\/|https?:\/\/)\/?([^"'\s;]+)\1/gi, `window.location.href = $1${prefix}/$2$1`);
+                body = body.replace(/top\.location\.href\s*=\s*(["'])(?!\/ont-proxy\/|https?:\/\/)\/?([^"'\s;]+)\1/gi, `window.location.href = $1${prefix}/$2$1`);
+                body = body.replace(/top\.location\s*=\s*(["'])(?!\/ont-proxy\/|https?:\/\/)\/?([^"'\s;]+)\1/gi, `window.location = $1${prefix}/$2$1`);
+                body = body.replace(/parent\.location\.href\s*=\s*(["'])(?!\/ont-proxy\/|https?:\/\/)\/?([^"'\s;]+)\1/gi, `window.location = $1${prefix}/$2$1`);
                 body = body.replace(/location\.replace\(\s*(["'])(?!\/ont-proxy\/|https?:\/\/)\/?([^"'\s\)]+)\1\s*\)/gi, `location.replace($1${prefix}/$2$1)`);
                 body = body.replace(/location\.href\s*=\s*(["'])(?!\/ont-proxy\/|https?:\/\/)\/?([^"'\s;]+)\1/gi, `location.href = $1${prefix}/$2$1`);
                 body = body.replace(/location\.assign\(\s*(["'])(?!\/ont-proxy\/|https?:\/\/)\/?([^"'\s\)]+)\1\s*\)/gi, `location.assign($1${prefix}/$2$1)`);
@@ -2117,16 +2120,11 @@ app.prepare().then(() => {
 
             let rawReq = `${req.method} ${fullPath} HTTP/1.0\r\n`;
             for (const [k, v] of Object.entries(headers)) {
-                if (k.toLowerCase() === 'set-cookie') continue;
-                if (Array.isArray(v)) {
-                    v.forEach((val) => { rawReq += `${k}: ${val}\r\n`; });
-                } else if (v !== undefined) {
-                    rawReq += `${k}: ${v}\r\n`;
-                }
+                if (v !== undefined) rawReq += `${k}: ${v}\r\n`;
             }
             rawReq += '\r\n';
-            socket.write(rawReq);
 
+            socket.write(rawReq);
             if (bodyBuf) {
                 socket.write(bodyBuf);
             } else if (req.method === 'POST' || req.method === 'PUT') {
@@ -2154,23 +2152,34 @@ app.prepare().then(() => {
                     }
                 }
 
-                // 2. Selesaikan instan jika respon berbentuk JSON auth/status
+                // 2. Selesaikan instan jika respon berbentuk JSON auth/status lengkap
                 const bodyStr = full.slice(headerEnd + 4).toString('latin1').trim();
-                if (bodyStr.startsWith('{') && bodyStr.endsWith('}')) {
+                if (bodyStr.startsWith('{') && bodyStr.endsWith('}') && (bodyStr.includes('"status"') || bodyStr.includes('"result"') || bodyStr.includes('"error"'))) {
                     if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
                     finish();
                     return;
                 }
             }
 
-            // 3. Jika tag penutup HTML telah tiba, beri jeda pendek (35ms) untuk menampung script lanjutan lalu selesaikan
+            // 3. Jika tag penutup HTML telah tiba, beri jeda pendek untuk menampung script lanjutan lalu selesaikan
             if (str.includes('</html>') || str.includes('</HTML>')) {
                 if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
-                htmlFinishTimer = setTimeout(finish, 35);
+                htmlFinishTimer = setTimeout(finish, 80);
             } else {
+                // Untuk respon streaming / non-HTML (JS/CSS) / belum selesai, beri jeda wajar (800ms) atau tunggu 'end'
                 if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
-                htmlFinishTimer = setTimeout(finish, 45);
+                htmlFinishTimer = setTimeout(finish, 800);
             }
+        });
+
+        socket.on('end', () => {
+            if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
+            finish();
+        });
+
+        socket.on('close', () => {
+            if (htmlFinishTimer) clearTimeout(htmlFinishTimer);
+            finish();
         });
 
         socket.on('timeout', () => {

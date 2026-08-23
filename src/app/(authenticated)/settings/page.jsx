@@ -1505,8 +1505,41 @@ function Settings({ activeTab: activeTabProp }) {
       systemUpdate: hasAccess(userData, "settings-system", "update"),
     });
   };
+
   const searchParams = useSearchParams();
-  const activeTab = activeTabProp || searchParams.get("tab") || "mikrotik-gateway";
+  const pathname = usePathname();
+
+  const resolveActiveTab = () => {
+    if (activeTabProp) return activeTabProp;
+    if (pathname) {
+      const segs = pathname.replace(/^\//, "").split("/");
+      if (segs[0] === "settings" && segs[1]) {
+        return segs[1] === "core" ? "mikrotik-gateway" : segs[1];
+      }
+    }
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      return tabParam === "core" ? "mikrotik-gateway" : tabParam;
+    }
+    const userData = sessionUser?.role ? sessionUser : getStoredUser();
+    const candidateTabs = [
+      { tab: "mikrotik-gateway", menu: "settings-mikrotik" },
+      { tab: "vpn", menu: "settings-vpn" },
+      { tab: "health", menu: "settings-health" },
+      { tab: "whatsapp", menu: "settings-wa" },
+      { tab: "users", menu: "settings-users" },
+      { tab: "roles", menu: "settings-roles" },
+      { tab: "password", menu: "settings-password" },
+      { tab: "system", menu: "settings-system" },
+      { tab: "design", menu: null },
+    ];
+    const match = candidateTabs.find(
+      (t) => !t.menu || hasAccess(userData, t.menu, "read")
+    );
+    return match ? match.tab : "mikrotik-gateway";
+  };
+
+  const activeTab = resolveActiveTab();
 
   const [coreDevice, setCoreDevice] = useState({
     name: "MikroTik Gateway",

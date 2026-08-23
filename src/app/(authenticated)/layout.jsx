@@ -259,10 +259,14 @@ export default function AuthenticatedLayout({ children }) {
 
     // Handle settings sub-tabs separately
     if (firstSegment === "settings") {
+      const parts = currentPath.split("/");
+      const subPath = parts.length > 1 ? parts[1] : null;
       const urlParams = new URLSearchParams(window.location.search);
-      const tab = urlParams.get("tab") || "core";
+      const rawTab = subPath || urlParams.get("tab");
+
       const tabToMenuKeyMap = {
         core: "settings-mikrotik",
+        "mikrotik-gateway": "settings-mikrotik",
         vpn: "settings-vpn",
         health: "settings-health",
         whatsapp: "settings-wa",
@@ -271,7 +275,34 @@ export default function AuthenticatedLayout({ children }) {
         password: "settings-password",
         system: "settings-system",
       };
-      requiredMenuKey = tabToMenuKeyMap[tab];
+
+      if (rawTab && tabToMenuKeyMap[rawTab]) {
+        requiredMenuKey = tabToMenuKeyMap[rawTab];
+      } else if (rawTab === "design") {
+        requiredMenuKey = null; // Desain & Warna bebas diakses
+      } else {
+        // Akses langsung ke bare "/settings" tanpa tab -> arahkan ke tab pertama yang user punya izin
+        const availableTabs = [
+          { path: "/settings/mikrotik-gateway", menu: "settings-mikrotik" },
+          { path: "/settings/vpn", menu: "settings-vpn" },
+          { path: "/settings/health", menu: "settings-health" },
+          { path: "/settings/whatsapp", menu: "settings-wa" },
+          { path: "/settings/users", menu: "settings-users" },
+          { path: "/settings/roles", menu: "settings-roles" },
+          { path: "/settings/password", menu: "settings-password" },
+          { path: "/settings/system", menu: "settings-system" },
+          { path: "/settings/design", menu: null },
+        ];
+        const firstAccessible = availableTabs.find(
+          (t) => !t.menu || hasAccess(sessionUser, t.menu, "read")
+        );
+        if (firstAccessible) {
+          router.replace(firstAccessible.path);
+          return;
+        } else {
+          requiredMenuKey = "settings-mikrotik";
+        }
+      }
     }
 
     if (requiredMenuKey) {
