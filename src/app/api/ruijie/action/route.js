@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAuth, resolveAuth, hasAccess } from '@/lib/auth';
+import db from '@/lib/dbClient';
 import axios from 'axios';
 
 // Backend ruijie-scraper API URL from environment variables

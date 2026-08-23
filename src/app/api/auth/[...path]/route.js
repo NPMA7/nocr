@@ -525,17 +525,6 @@ export async function PATCH(req, { params }) {
                 });
             }
 
-            // Write to Activity Logs
-            if (global.addActivityLog) {
-                if (updateData.role && previousRole !== updateData.role) {
-                    global.addActivityLog(`Hak akses (Role) pengguna ${updated.username} diubah menjadi ${updateData.role.toUpperCase()}`);
-                }
-                if (updateData.password_hash) {
-                    const actorLabel = isSelf ? 'Pengguna' : 'Administrator';
-                    global.addActivityLog(`${actorLabel} memperbarui password untuk pengguna ${updated.username}`);
-                }
-            }
-
             return NextResponse.json(updated);
         }
 

@@ -53,6 +53,20 @@ export default function Ruijie() {
   // Menyimpan alias yg sudah direname optimistic tapi belum tersinkron oleh scraper
   const pendingRenames = useRef({}); // { [sn]: newAlias }
 
+  const applyOptimisticState = (list) => {
+    return (list || []).map((d) => {
+      let item = { ...d };
+      if (pendingRenames.current[item.sn]) {
+        if (item.alias === pendingRenames.current[item.sn]) {
+          delete pendingRenames.current[item.sn];
+        } else {
+          item.alias = pendingRenames.current[item.sn];
+        }
+      }
+      return item;
+    });
+  };
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
 
@@ -71,7 +85,7 @@ export default function Ruijie() {
     setError(null);
     try {
       const res = await axios.get(`${API_URL}/ruijie`);
-      setDevices(res.data || []);
+      setDevices(applyOptimisticState(res.data || []));
       setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
     } catch (e) {
       setError(e.message || "Gagal mengambil data Ruijie");
@@ -85,22 +99,7 @@ export default function Ruijie() {
 
     if (socket) {
       const handleUpdate = (data) => {
-        const incoming = data || [];
-        // Terapkan pending renames ke data yang masuk dari socket
-        // agar alias baru tetap tampil sampai scraper menyinkronnya
-        const merged = incoming.map(d => {
-          if (pendingRenames.current[d.sn]) {
-            if (d.alias === pendingRenames.current[d.sn]) {
-              // Scraper sudah sinkron, hapus dari pending
-              delete pendingRenames.current[d.sn];
-            } else {
-              // Scraper belum sinkron, pertahankan alias optimistic
-              return { ...d, alias: pendingRenames.current[d.sn] };
-            }
-          }
-          return d;
-        });
-        setDevices(merged);
+        setDevices(applyOptimisticState(data || []));
         setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
       };
 
@@ -189,10 +188,10 @@ export default function Ruijie() {
     if (!device) return;
     const sn = device.sn;
     const type = (device.connection_type || "l2tp").toLowerCase();
-    setRebootConfirmDevice(null);
     setActionLoading(prev => ({ ...prev, [sn]: { ...prev[sn], reboot: true } }));
     try {
       await axios.post(`${API_URL}/ruijie/action`, { action: 'reboot', sn, type });
+      setRebootConfirmDevice(null);
       showToast(`Perintah reboot berhasil dikirim untuk ${device.alias || sn}`, "success");
     } catch (err) {
       showToast(err.response?.data?.error || err.message || "Gagal melakukan reboot", "error");
@@ -791,6 +790,7 @@ export default function Ruijie() {
         rebootConfirmDevice={rebootConfirmDevice}
         setRebootConfirmDevice={setRebootConfirmDevice}
         confirmReboot={confirmReboot}
+        isLoading={Boolean(rebootConfirmDevice && actionLoading[rebootConfirmDevice.sn]?.reboot)}
       />
     </div>
   );

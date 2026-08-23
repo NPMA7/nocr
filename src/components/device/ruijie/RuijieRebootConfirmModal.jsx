@@ -1,11 +1,12 @@
 "use client";
 
-import { Power, X } from "lucide-react";
+import { Power, X, Loader2 } from "lucide-react";
 
 export default function RuijieRebootConfirmModal({
   rebootConfirmDevice,
   setRebootConfirmDevice,
   confirmReboot,
+  isLoading = false,
 }) {
   if (!rebootConfirmDevice) return null;
 
@@ -18,8 +19,9 @@ export default function RuijieRebootConfirmModal({
             Konfirmasi Reboot
           </h3>
           <button
-            onClick={() => setRebootConfirmDevice(null)}
-            className="cursor-pointer text-slate-400 hover:text-slate-200 transition"
+            onClick={() => !isLoading && setRebootConfirmDevice(null)}
+            disabled={isLoading}
+            className="cursor-pointer text-slate-400 hover:text-slate-200 transition disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -39,17 +41,28 @@ export default function RuijieRebootConfirmModal({
             <button
               type="button"
               onClick={() => setRebootConfirmDevice(null)}
-              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer"
+              disabled={isLoading}
+              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer disabled:opacity-50"
             >
               Batal
             </button>
             <button
               type="button"
               onClick={confirmReboot}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 border border-red-500 text-xs text-white font-semibold transition shadow-lg shadow-red-500/10 cursor-pointer"
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 border border-red-500 text-xs text-white font-semibold transition shadow-lg shadow-red-500/10 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Power size={13} />
-              Ya, Reboot
+              {isLoading ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  Mengirim ke Cloud...
+                </>
+              ) : (
+                <>
+                  <Power size={13} />
+                  Ya, Reboot
+                </>
+              )}
             </button>
           </div>
         </div>
