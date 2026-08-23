@@ -8,7 +8,7 @@ const GROUP_ID_MAP = {
   PPPOE: '7904031',
 };
 
-const RUIJIE_SERVER_URL = process.env.RUIJIE_SCRAPE_URL || 'http://127.0.0.1:5000';
+const RUIJIE_SERVER_URL = process.env.RUIJIE_SCRAPE_URL || (process.env.SCRAPER_API_URL ? process.env.SCRAPER_API_URL.replace(/\/api\/?$/, '') : 'http://ruijie_scraper:5000');
 
 export async function POST(request) {
   try {
