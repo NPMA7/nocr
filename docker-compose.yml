@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     networks:
@@ -31,7 +31,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${PORT:-9371}:9371"
+      - "127.0.0.1:${PORT:-9371}:9371"
     volumes:
       - ./data:/app/data
       - ./.wwebjs_auth:/app/.wwebjs_auth
