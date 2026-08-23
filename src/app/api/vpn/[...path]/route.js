@@ -61,36 +61,18 @@ export async function POST(req, { params }) {
 
         if (routePath[0] === 'connect') {
             try {
-                if (global.addActivityLog) {
-                    global.addActivityLog('Menghubungkan koneksi VPN Auto-Dial...');
-                }
                 const stdout = await connectVpn(config);
-                if (global.addActivityLog) {
-                    global.addActivityLog('Koneksi VPN Auto-Dial berhasil terhubung');
-                }
                 return NextResponse.json({ success: true, message: 'VPN Berhasil Terhubung', detail: stdout });
             } catch (error) {
-                if (global.addActivityLog) {
-                    global.addActivityLog(`Gagal menghubungkan VPN: ${error.message}`);
-                }
                 return NextResponse.json({ error: 'Gagal terhubung ke VPN', detail: error.message }, { status: 500 });
             }
         }
 
         if (routePath[0] === 'disconnect') {
             try {
-                if (global.addActivityLog) {
-                    global.addActivityLog('Memutuskan koneksi VPN Auto-Dial...');
-                }
                 const stdout = await disconnectVpn(config);
-                if (global.addActivityLog) {
-                    global.addActivityLog('Koneksi VPN Auto-Dial berhasil diputuskan');
-                }
                 return NextResponse.json({ success: true, message: 'VPN Berhasil Diputus', detail: stdout });
             } catch (error) {
-                if (global.addActivityLog) {
-                    global.addActivityLog(`Gagal memutuskan VPN: ${error.message}`);
-                }
                 return NextResponse.json({ error: 'Gagal memutuskan VPN', detail: error.message }, { status: 500 });
             }
         }
@@ -131,11 +113,6 @@ export async function POST(req, { params }) {
             if (dbErr) {
                 console.error('Failed to save VPN settings to database:', dbErr.message);
                 return NextResponse.json({ error: `Gagal menyimpan konfigurasi ke database: ${dbErr.message}` }, { status: 400 });
-            }
-
-            if (global.addActivityLog) {
-                const platformName = selectedPlatform === 'linux' ? 'Linux' : 'Windows';
-                global.addActivityLog(`Pengaturan VPN Auto-Dial disimpan ke database (${platformName})`);
             }
 
             return NextResponse.json({ success: true, message: 'Konfigurasi VPN berhasil diperbarui di database' });
