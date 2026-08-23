@@ -48,9 +48,9 @@ export async function GET(req) {
     const mem = process.memoryUsage();
     const load = os.loadavg();
 
-    // Service 1: NOCR App (Dashboard & WhatsApp Gateway)
+    // Service 1: NOCR App
     services.push({
-      name: "nocr_app (Dashboard & WhatsApp)",
+      name: "nocr_app",
       status: "online",
       memory: mem.rss || 0,
       cpu: Math.min(100, Math.round(load[0] * 15)),
@@ -59,7 +59,7 @@ export async function GET(req) {
       port: "9371",
     });
 
-    // Service 2: Ruijie Scraper & Daemon
+    // Service 2: Ruijie Scraper
     let ruijieStatus = "offline";
     let ruijieInfo = "Offline";
     try {
@@ -78,7 +78,7 @@ export async function GET(req) {
     }
 
     services.push({
-      name: "ruijie_scraper (Auto Scraper & API)",
+      name: "ruijie_scraper",
       status: ruijieStatus,
       memory: ruijieStatus === "online" ? 145 * 1024 * 1024 : 0,
       cpu: ruijieStatus === "online" ? 1.5 : 0,
@@ -87,10 +87,10 @@ export async function GET(req) {
       port: "5000",
     });
 
-    // Service 3: PostgreSQL 18 Database
+    // Service 3: PostgreSQL Database
     const isDbOnline = !dbStats.error;
     services.push({
-      name: "nocr_postgres (PostgreSQL 18)",
+      name: "nocr_postgres",
       status: isDbOnline ? "online" : "offline",
       memory: isDbOnline ? 64 * 1024 * 1024 : 0,
       cpu: isDbOnline ? 0.8 : 0,
