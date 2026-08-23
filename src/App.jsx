@@ -6,23 +6,18 @@ import { clearClientAuth } from '@/lib/roles';
 
 export const API_URL = '/api';
 
-// Create socket instance only in client environment with dynamic auth token
+// Create socket instance in client environment using same-origin HttpOnly cookie session
 export const socket = typeof window !== 'undefined' 
   ? io('/', { 
       path: '/socket.io',
+      withCredentials: true,
       autoConnect: false,
-      auth: (cb) => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('nocr_token') : null;
-        cb({ token });
-      }
     }) 
   : null;
 
 // Connect only if authenticated and not on login page
 if (typeof window !== 'undefined' && socket) {
-  const token = localStorage.getItem('nocr_token');
-  if (token && window.location.pathname !== '/login') {
-    socket.auth = { token };
+  if (window.location.pathname !== '/login') {
     socket.connect();
   }
 
@@ -33,24 +28,17 @@ if (typeof window !== 'undefined' && socket) {
   });
 }
 
-// Configure Axios Interceptors client-side
+// Configure Axios client-side (cookies are sent automatically with same-origin requests)
 if (typeof window !== 'undefined') {
-  axios.interceptors.request.use(config => {
-    const token = localStorage.getItem('nocr_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
+  axios.defaults.withCredentials = true;
 
   axios.interceptors.response.use(
     response => response,
     error => {
-      if (error.response && (error.response.status === 401)) {
+      if (error.response && error.response.status === 401) {
         if (window.location.pathname !== '/login') {
           clearClientAuth();
           if (socket) {
-            socket.auth = { token: null };
             socket.disconnect();
           }
           window.location.href = '/login';

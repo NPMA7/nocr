@@ -2,21 +2,27 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getStoredUser, getDefaultAccessibleRoute, isClientTokenValid, clearClientAuth } from "@/lib/roles";
+import axios from "axios";
+import { getDefaultAccessibleRoute, applySessionUser, clearClientAuth } from "@/lib/roles";
 
 export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("nocr_token") : null;
-    if (!token || !isClientTokenValid(token)) {
-      clearClientAuth();
-      router.replace("/login");
-      return;
-    }
-    const user = getStoredUser();
-    const target = getDefaultAccessibleRoute(user);
-    router.replace(target || "/dashboard");
+    axios.get("/api/auth/me")
+      .then((res) => {
+        if (res.data?.user) {
+          const userObj = applySessionUser(res.data.user);
+          router.replace(getDefaultAccessibleRoute(userObj));
+        } else {
+          clearClientAuth();
+          router.replace("/login");
+        }
+      })
+      .catch(() => {
+        clearClientAuth();
+        router.replace("/login");
+      });
   }, [router]);
 
   return (

@@ -269,7 +269,6 @@ export async function POST(req, { params }) {
 
             const response = NextResponse.json({
                 message: 'Setup berhasil!',
-                token,
                 user: { id: data[0].id, username: data[0].username, role: normalizeRole(data[0].role) || 'admin' }
             });
             return setAuthCookie(response, token, req);
@@ -357,7 +356,6 @@ export async function POST(req, { params }) {
 
             const response = NextResponse.json({
                 message: 'Login berhasil',
-                token,
                 user: { id: data.id, username: data.username, role: userRole, permissions }
             });
             return setAuthCookie(response, token, req);

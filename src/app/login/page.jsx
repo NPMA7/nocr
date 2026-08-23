@@ -27,25 +27,15 @@ export default function LoginPage() {
 
     const initLogin = async () => {
       try {
-        // Check if user already has a valid token in localStorage
-        const token = typeof window !== "undefined" ? localStorage.getItem("nocr_token") : null;
-        if (token && isClientTokenValid(token)) {
-          try {
-            const res = await axios.get(`${API_URL}/auth/me`, {
-              headers: { Authorization: `Bearer ${token}` },
-              timeout: 3000
-            });
-            if (res.data?.user) {
-              const userObj = applySessionUser(res.data.user);
-              router.push(getDefaultAccessibleRoute(userObj));
-              return;
-            }
-          } catch (e) {
-            // Token is rejected by server (expired, revoked, secret changed)
-            clearClientAuth();
+        // Check if user already has an active session via HttpOnly cookie
+        try {
+          const res = await axios.get(`${API_URL}/auth/me`, { timeout: 3000 });
+          if (res.data?.user) {
+            const userObj = applySessionUser(res.data.user);
+            router.push(getDefaultAccessibleRoute(userObj));
+            return;
           }
-        } else if (token) {
-          // Token is malformed or expired
+        } catch (e) {
           clearClientAuth();
         }
 
@@ -88,18 +78,10 @@ export default function LoginPage() {
         password,
       });
 
-      if (res.data.token) {
-        localStorage.setItem("nocr_token", res.data.token);
-        document.cookie = `nocr_token=${res.data.token}; path=/; max-age=604800; SameSite=Lax; Secure`;
-        let userObj = res.data.user;
-        if (userObj) {
-          userObj = applySessionUser(userObj);
-        }
-        if (socket) {
-          socket.auth = { token: res.data.token };
-          if (socket.disconnected) {
-            socket.connect();
-          }
+      if (res.data?.user) {
+        const userObj = applySessionUser(res.data.user);
+        if (socket && socket.disconnected) {
+          socket.connect();
         }
         const targetRoute = getDefaultAccessibleRoute(userObj);
         window.location.href = targetRoute;

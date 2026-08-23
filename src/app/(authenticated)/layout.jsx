@@ -75,20 +75,25 @@ export default function AuthenticatedLayout({ children }) {
       const config = getStoredThemeConfig();
       applyThemeConfig(config);
     }
-    // Auth check
-    const token = typeof window !== "undefined" ? localStorage.getItem("nocr_token") : null;
-    if (!token || !isClientTokenValid(token)) {
-      clearClientAuth();
-      router.push("/login");
-      return;
-    }
-    if (socket) {
-      socket.auth = { token };
-      if (socket.disconnected) {
-        socket.connect();
-      }
-    }
-    setTokenChecked(true);
+    // Auth check via /api/auth/me (HttpOnly cookie sent automatically)
+    axios.get(`${API_URL}/auth/me`)
+      .then((res) => {
+        if (res.data?.user) {
+          const next = applySessionUser(res.data.user);
+          setSessionUser(next);
+          if (socket && socket.disconnected) {
+            socket.connect();
+          }
+          setTokenChecked(true);
+        } else {
+          clearClientAuth();
+          router.push("/login");
+        }
+      })
+      .catch(() => {
+        clearClientAuth();
+        router.push("/login");
+      });
   }, [router]);
 
   // Load sidebar collapsed state on mount
