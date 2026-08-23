@@ -110,12 +110,11 @@ function isSecureRequest(req) {
 }
 
 function setAuthCookie(response, token, req) {
-    const isSecure = isSecureRequest(req);
     response.cookies.set({
         name: COOKIE_NAME,
         value: token,
         httpOnly: true,
-        secure: isSecure,
+        secure: true,
         sameSite: 'lax',
         path: '/',
         maxAge: COOKIE_MAX_AGE
@@ -124,12 +123,11 @@ function setAuthCookie(response, token, req) {
 }
 
 function clearAuthCookie(response, req) {
-    const isSecure = isSecureRequest(req);
     response.cookies.set({
         name: COOKIE_NAME,
         value: '',
         httpOnly: true,
-        secure: isSecure,
+        secure: true,
         sameSite: 'lax',
         path: '/',
         maxAge: 0

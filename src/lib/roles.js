@@ -180,8 +180,7 @@ export function clearClientAuth() {
   try {
     localStorage.removeItem('nocr_token');
     localStorage.removeItem('nocr_user');
-    const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
-    document.cookie = `nocr_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+    document.cookie = 'nocr_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure';
   } catch (e) {}
 }
 
