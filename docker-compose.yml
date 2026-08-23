@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-nocr}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-@pasha937110}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:

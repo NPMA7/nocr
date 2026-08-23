@@ -769,12 +769,12 @@ function SystemHealth({ isAdmin }) {
         </div>
       </div>
 
-      {/* PM2 Stats */}
+      {/* Docker Containers & Background Services Stats */}
       <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg">
         <div className="flex items-center justify-between mb-4 border-b border-slate-700/50 pb-3">
           <div className="flex items-center gap-2 text-base font-bold text-slate-100">
-            <Terminal size={20} className="text-blue-500 dark:text-blue-400" /> Layanan Latar
-            Belakang (PM2)
+            <Terminal size={20} className="text-blue-500 dark:text-blue-400" /> Layanan Kontainer
+            (Docker)
           </div>
           <button
             onClick={() => fetchHealth(true)}
@@ -790,7 +790,7 @@ function SystemHealth({ isAdmin }) {
             <thead className="bg-slate-800/80 text-slate-300 dark:text-slate-200">
               <tr className="border-b border-slate-700/60">
                 <th className="px-4 py-3 text-xs font-bold uppercase">
-                  Aplikasi / Scraper
+                  Layanan / Kontainer
                 </th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
                   Status
@@ -802,7 +802,7 @@ function SystemHealth({ isAdmin }) {
                   Memori & CPU
                 </th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
-                  Restart
+                  Port
                 </th>
                 {isAdmin && (
                   <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase text-right">
@@ -839,12 +839,13 @@ function SystemHealth({ isAdmin }) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-0.5 text-xs text-slate-400 font-mono">
-                        <span>RAM: {formatBytes(app.memory)}</span>
-                        <span>CPU: {app.cpu}%</span>
+                        {app.memory > 0 && <span>RAM: {formatBytes(app.memory)}</span>}
+                        {app.cpu > 0 && <span>CPU: {app.cpu}%</span>}
+                        {app.memory === 0 && app.cpu === 0 && <span>Active</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-300 font-mono">
-                      {app.restarts}x
+                      {app.port || "-"}
                     </td>
                     {isAdmin && (
                       <td className="px-4 py-3 text-right">
@@ -852,7 +853,7 @@ function SystemHealth({ isAdmin }) {
                           onClick={() => handleRestart(app.name)}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow transition cursor-pointer"
                         >
-                          <RotateCw size={12} /> Restart
+                          <RotateCw size={12} /> Sync / Refresh
                         </button>
                       </td>
                     )}
@@ -864,7 +865,7 @@ function SystemHealth({ isAdmin }) {
                     colSpan="6"
                     className="px-4 py-3 text-center text-xs text-slate-500"
                   >
-                    Data PM2 tidak tersedia.
+                    Data layanan Docker tidak tersedia.
                   </td>
                 </tr>
               )}
