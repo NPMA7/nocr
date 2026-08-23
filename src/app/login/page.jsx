@@ -90,6 +90,7 @@ export default function LoginPage() {
 
       if (res.data.token) {
         localStorage.setItem("nocr_token", res.data.token);
+        document.cookie = `nocr_token=${res.data.token}; path=/; max-age=604800; SameSite=Lax`;
         let userObj = res.data.user;
         if (userObj) {
           userObj = applySessionUser(userObj);
@@ -101,7 +102,7 @@ export default function LoginPage() {
           }
         }
         const targetRoute = getDefaultAccessibleRoute(userObj);
-        router.push(targetRoute);
+        window.location.href = targetRoute;
       }
     } catch (err) {
       setError(

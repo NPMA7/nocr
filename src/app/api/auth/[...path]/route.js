@@ -4,15 +4,15 @@ import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
 import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole, hasAccess, sendApiError } from '@/lib/auth';
 
-// Rate limiter per IP for auth endpoints (5 attempts per minute)
+// Rate limiter per IP for auth endpoints (60 attempts per minute)
 const loginAttemptsByIp = new Map();
 const IP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const MAX_IP_ATTEMPTS = 5;
+const MAX_IP_ATTEMPTS = 60;
 
-// Account Lockout per Username (5 failed attempts locks account for 5 minutes)
+// Account Lockout per Username (30 failed attempts)
 const failedAttemptsByUser = new Map();
 const USER_LOCKOUT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_USER_FAILED_ATTEMPTS = 5;
+const MAX_USER_FAILED_ATTEMPTS = 30;
 
 function checkIpRateLimit(ip) {
     const now = Date.now();
@@ -115,7 +115,7 @@ function setAuthCookie(response, token) {
         name: COOKIE_NAME,
         value: token,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.COOKIE_SECURE === 'true',
         sameSite: 'lax',
         path: '/',
         maxAge: COOKIE_MAX_AGE
@@ -128,7 +128,7 @@ function clearAuthCookie(response) {
         name: COOKIE_NAME,
         value: '',
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.COOKIE_SECURE === 'true',
         sameSite: 'lax',
         path: '/',
         maxAge: 0
