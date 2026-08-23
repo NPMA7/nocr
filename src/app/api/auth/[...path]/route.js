@@ -4,15 +4,15 @@ import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
 import { JWT_SECRET, verifyAuth, resolveAuth, enforceAdmin, normalizeRole, hasAccess, sendApiError } from '@/lib/auth';
 
-// Rate limiter per IP for auth endpoints (60 attempts per minute)
+// Rate limiter per IP for auth endpoints (5 attempts per minute)
 const loginAttemptsByIp = new Map();
 const IP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const MAX_IP_ATTEMPTS = 60;
+const MAX_IP_ATTEMPTS = 5;
 
-// Account Lockout per Username (30 failed attempts)
+// Account Lockout per Username (5 failed attempts)
 const failedAttemptsByUser = new Map();
 const USER_LOCKOUT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_USER_FAILED_ATTEMPTS = 30;
+const MAX_USER_FAILED_ATTEMPTS = 5;
 
 function checkIpRateLimit(ip) {
     const now = Date.now();
@@ -95,27 +95,27 @@ function getClientIp(req) {
     return req.ip || req.socket?.remoteAddress || '127.0.0.1';
 }
 
-function checkAuthRateLimit(ip) {
-    const now = Date.now();
-    const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-    if (attempts.length >= MAX_LOGIN_ATTEMPTS) {
-        const retryAfter = Math.ceil((attempts[0] + RATE_LIMIT_WINDOW_MS - now) / 1000);
-        return { limited: true, retryAfter: Math.max(1, retryAfter) };
-    }
-    attempts.push(now);
-    loginAttempts.set(ip, attempts);
-    return { limited: false };
-}
-
 const COOKIE_NAME = 'nocr_token';
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
 
-function setAuthCookie(response, token) {
+function isSecureRequest(req) {
+    if (process.env.COOKIE_SECURE === 'true') return true;
+    if (process.env.NODE_ENV === 'production') return true;
+    if (req) {
+        const getHeader = (name) => (typeof req.headers?.get === 'function' ? req.headers.get(name) : req.headers?.[name]);
+        const proto = getHeader('x-forwarded-proto');
+        if (proto === 'https') return true;
+    }
+    return false;
+}
+
+function setAuthCookie(response, token, req) {
+    const isSecure = isSecureRequest(req);
     response.cookies.set({
         name: COOKIE_NAME,
         value: token,
         httpOnly: true,
-        secure: process.env.COOKIE_SECURE === 'true',
+        secure: isSecure,
         sameSite: 'lax',
         path: '/',
         maxAge: COOKIE_MAX_AGE
@@ -123,12 +123,13 @@ function setAuthCookie(response, token) {
     return response;
 }
 
-function clearAuthCookie(response) {
+function clearAuthCookie(response, req) {
+    const isSecure = isSecureRequest(req);
     response.cookies.set({
         name: COOKIE_NAME,
         value: '',
         httpOnly: true,
-        secure: process.env.COOKIE_SECURE === 'true',
+        secure: isSecure,
         sameSite: 'lax',
         path: '/',
         maxAge: 0
@@ -216,7 +217,7 @@ export async function POST(req, { params }) {
     try {
         if (path[0] === 'logout') {
             const response = NextResponse.json({ message: 'Logout berhasil' });
-            return clearAuthCookie(response);
+            return clearAuthCookie(response, req);
         }
 
         if (path[0] === 'setup') {
@@ -273,7 +274,7 @@ export async function POST(req, { params }) {
                 token,
                 user: { id: data[0].id, username: data[0].username, role: normalizeRole(data[0].role) || 'admin' }
             });
-            return setAuthCookie(response, token);
+            return setAuthCookie(response, token, req);
         }
 
         if (path[0] === 'login') {
@@ -361,7 +362,7 @@ export async function POST(req, { params }) {
                 token,
                 user: { id: data.id, username: data.username, role: userRole, permissions }
             });
-            return setAuthCookie(response, token);
+            return setAuthCookie(response, token, req);
         }
 
         if (path[0] === 'users') {

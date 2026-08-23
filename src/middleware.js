@@ -109,7 +109,16 @@ export function middleware(request) {
     const loginUrl = new URL('/login', request.url);
     const response = NextResponse.redirect(loginUrl);
     if (token) {
-      response.cookies.set('nocr_token', '', { path: '/', maxAge: 0 });
+      const isHttps = request.headers.get('x-forwarded-proto') === 'https' || request.nextUrl.protocol === 'https:' || process.env.NODE_ENV === 'production';
+      response.cookies.set({
+        name: 'nocr_token',
+        value: '',
+        path: '/',
+        maxAge: 0,
+        httpOnly: true,
+        secure: isHttps,
+        sameSite: 'lax'
+      });
     }
     return response;
   }

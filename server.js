@@ -147,10 +147,10 @@ app.prepare().then(() => {
         return req.ip || req.socket?.remoteAddress || '127.0.0.1';
     };
 
-    // Rate Limiting khusus Login / Brute-force prevention (15 requests/menit per IP)
+    // Rate Limiting khusus Login / Brute-force prevention (5 requests/menit per IP)
     const loginLimiter = rateLimit({
         windowMs: 60 * 1000,
-        max: 15,
+        max: 5,
         standardHeaders: true,
         legacyHeaders: false,
         keyGenerator: (req) => {

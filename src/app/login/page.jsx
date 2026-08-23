@@ -90,7 +90,8 @@ export default function LoginPage() {
 
       if (res.data.token) {
         localStorage.setItem("nocr_token", res.data.token);
-        document.cookie = `nocr_token=${res.data.token}; path=/; max-age=604800; SameSite=Lax`;
+        const isSecure = typeof window !== "undefined" && (window.location.protocol === "https:" || window.location.hostname !== "localhost");
+        document.cookie = `nocr_token=${res.data.token}; path=/; max-age=604800; SameSite=Lax${isSecure ? "; Secure" : ""}`;
         let userObj = res.data.user;
         if (userObj) {
           userObj = applySessionUser(userObj);
