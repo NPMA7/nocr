@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Trash2, Pencil, Shield, Plus, X, Save } from "lucide-react";
-import { MENUS, ACTIONS } from "@/lib/roles";
+import { MENUS, ACTIONS, getStoredUser } from "@/lib/roles";
 
 export default function RoleSettings({ showToast, canCreate = true, canUpdate = true, canDelete = true }) {
+  const currentUser = getStoredUser();
+  const requestorRole = (currentUser?.role || "").toLowerCase().trim();
+  const isCallerAdmin = requestorRole === "admin";
+
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -47,9 +51,17 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
   };
 
   const openEdit = (r) => {
-    if (r.name === "admin") {
+    const rName = (r.name || "").toLowerCase().trim();
+    if (rName === "admin") {
       showToast(
         "Role Admin bawaan tidak bisa diedit. Harap gunakan role lain.",
+        "error",
+      );
+      return;
+    }
+    if (!isCallerAdmin && rName === requestorRole) {
+      showToast(
+        "Anda tidak dapat mengedit hak akses role Anda sendiri.",
         "error",
       );
       return;
@@ -109,8 +121,12 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
   };
 
   const deleteRole = async (r) => {
-    if (["admin", "editor", "visitor"].includes(r.name)) {
+    const rName = (r.name || "").toLowerCase().trim();
+    if (["admin", "editor", "visitor"].includes(rName)) {
       return showToast("Role bawaan sistem tidak bisa dihapus", "error");
+    }
+    if (rName === requestorRole) {
+      return showToast("Anda tidak dapat menghapus role Anda sendiri yang sedang aktif", "error");
     }
     if (!confirm(`Hapus role ${r.name}?`)) return;
     try {
@@ -171,7 +187,9 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                 </td>
               </tr>
             ) : (
-              roles.map((r) => {
+              roles
+                .filter((r) => isCallerAdmin || (r.name || "").toLowerCase().trim() !== "admin")
+                .map((r) => {
                 let perms = {};
                 try {
                   let parsed =
@@ -191,13 +209,16 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                   (k) => perms[k] && perms[k].length > 0,
                 ).length;
 
+                const rName = (r.name || "").toLowerCase().trim();
+                const isOwnRole = rName === requestorRole;
+
                 return (
                   <tr
                     key={r.id}
                     className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors"
                   >
                     <td className="py-4 font-semibold text-slate-200 capitalize">
-                      {r.name === "admin" ? (
+                      {rName === "admin" ? (
                         <span className="text-blue-400 flex items-center gap-1.5">
                           <Shield size={14} /> {r.name}
                         </span>
@@ -210,7 +231,7 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                     </td>
                     <td className="py-4">
                       <div className="flex flex-wrap gap-1.5">
-                        {r.name === "admin" ? (
+                        {rName === "admin" ? (
                           <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-600">
                             All Access
                           </span>
@@ -230,8 +251,19 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                         {canUpdate && (
                           <button
                             onClick={() => openEdit(r)}
-                            disabled={r.name === "admin"}
-                            className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${r.name === "admin" ? "text-slate-600 cursor-not-allowed" : "bg-slate-700/50 text-slate-300 hover:text-blue-400 hover:bg-slate-700"}`}
+                            disabled={rName === "admin" || (!isCallerAdmin && isOwnRole)}
+                            title={
+                              rName === "admin"
+                                ? "Role Admin tidak dapat diedit"
+                                : !isCallerAdmin && isOwnRole
+                                ? "Tidak dapat mengedit role Anda sendiri"
+                                : "Edit Role"
+                            }
+                            className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${
+                              rName === "admin" || (!isCallerAdmin && isOwnRole)
+                                ? "text-slate-600 cursor-not-allowed"
+                                : "bg-slate-700/50 text-slate-300 hover:text-blue-400 hover:bg-slate-700"
+                            }`}
                           >
                             <Pencil size={16} />
                           </button>
@@ -239,10 +271,21 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                         {canDelete && (
                           <button
                             onClick={() => deleteRole(r)}
-                            disabled={["admin", "editor", "visitor"].includes(
-                              r.name,
-                            )}
-                            className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${["admin", "editor", "visitor"].includes(r.name) ? "text-slate-600 cursor-not-allowed" : "bg-slate-700/50 text-slate-300 hover:text-red-400 hover:bg-slate-700"}`}
+                            disabled={
+                              ["admin", "editor", "visitor"].includes(rName) ||
+                              isOwnRole
+                            }
+                            title={
+                              isOwnRole
+                                ? "Tidak dapat menghapus role Anda sendiri"
+                                : "Hapus Role"
+                            }
+                            className={`cursor-pointer p-1.5 rounded-lg transition duration-200 ${
+                              ["admin", "editor", "visitor"].includes(rName) ||
+                              isOwnRole
+                                ? "text-slate-600 cursor-not-allowed"
+                                : "bg-slate-700/50 text-slate-300 hover:text-red-400 hover:bg-slate-700"
+                            }`}
                           >
                             <Trash2 size={16} />
                           </button>

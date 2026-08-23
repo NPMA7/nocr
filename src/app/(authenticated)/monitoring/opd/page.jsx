@@ -64,6 +64,10 @@ export default function MonitorOpd() {
   const { showToast, ToastComponent } = useToast();
 
   const handleOpenOntWeb = (d) => {
+    if (!canUpdate) {
+      showToast("Anda tidak memiliki izin (Update) untuk mengakses Web ONT", "error");
+      return;
+    }
     if (!d?.remote_address) return;
     window.open(`/ont-proxy/${encodeURIComponent(d.remote_address)}/`, "_blank", "noopener,noreferrer");
   };
@@ -613,22 +617,24 @@ export default function MonitorOpd() {
                           >
                             <Activity size={11} /> Ping
                           </button>
-                          <button
-                            onClick={() => handleOpenOntWeb(d)}
-                            disabled={!d.remote_address}
-                            className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
-                              d.remote_address
-                                ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
-                                : "text-slate-500 bg-slate-800/40 border-slate-700/30 cursor-not-allowed opacity-50"
-                            }`}
-                            title={
-                              d.remote_address
-                                ? `Buka Web Management ONT di Tab Baru (${d.remote_address})`
-                                : "IP ONT tidak tersedia"
-                            }
-                          >
-                            <Globe size={11} /> Web ONT
-                          </button>
+                          {canUpdate && (
+                            <button
+                              onClick={() => handleOpenOntWeb(d)}
+                              disabled={!d.remote_address}
+                              className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
+                                d.remote_address
+                                  ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
+                                  : "text-slate-500 bg-slate-800/40 border-slate-700/30 cursor-not-allowed opacity-50"
+                              }`}
+                              title={
+                                d.remote_address
+                                  ? `Buka Web Management ONT di Tab Baru (${d.remote_address})`
+                                  : "IP ONT tidak tersedia"
+                              }
+                            >
+                              <Globe size={11} /> Web ONT
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -766,22 +772,24 @@ export default function MonitorOpd() {
                               >
                                 <Activity size={11} /> Ping
                               </button>
-                              <button
-                                onClick={() => handleOpenOntWeb(d)}
-                                disabled={!d.remote_address}
-                                className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
-                                  d.remote_address
-                                    ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
-                                    : "text-slate-500 bg-slate-800/40 border-slate-700/30 cursor-not-allowed opacity-50"
-                                }`}
-                                title={
-                                  d.remote_address
-                                    ? `Buka Web Management ONT di Tab Baru (${d.remote_address})`
-                                    : "IP ONT tidak tersedia"
-                                }
-                              >
-                                <Globe size={11} /> Web ONT
-                              </button>
+                              {canUpdate && (
+                                <button
+                                  onClick={() => handleOpenOntWeb(d)}
+                                  disabled={!d.remote_address}
+                                  className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition ${
+                                    d.remote_address
+                                      ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
+                                      : "text-slate-500 bg-slate-800/40 border-slate-700/30 cursor-not-allowed opacity-50"
+                                  }`}
+                                  title={
+                                    d.remote_address
+                                      ? `Buka Web Management ONT di Tab Baru (${d.remote_address})`
+                                      : "IP ONT tidak tersedia"
+                                  }
+                                >
+                                  <Globe size={11} /> Web ONT
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

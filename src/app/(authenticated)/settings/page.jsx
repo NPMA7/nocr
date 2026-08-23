@@ -289,7 +289,9 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50">
-            {users.map((u) => {
+            {users
+              .filter((u) => isRequestorAdmin || (u.role || "").toLowerCase() !== "admin")
+              .map((u) => {
               const editRole = roleEdits[u.id] ?? u.role;
               const roleDirty = editRole !== u.role;
               return (
@@ -309,14 +311,19 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                       ) : (
                         <select
                           value={editRole}
-                          disabled={!canUpdate}
+                          disabled={!canUpdate || (!isRequestorAdmin && (u.id === currentUser?.id || u.username === currentUser?.username))}
+                          title={!isRequestorAdmin && (u.id === currentUser?.id || u.username === currentUser?.username) ? "Tidak dapat mengubah role akun Anda sendiri" : ""}
                           onChange={(e) =>
                             setRoleEdits((prev) => ({
                               ...prev,
                               [u.id]: e.target.value,
                             }))
                           }
-                          className="cursor-pointer bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize disabled:opacity-50"
+                          className={`bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize ${
+                            !isRequestorAdmin && (u.id === currentUser?.id || u.username === currentUser?.username)
+                              ? "opacity-60 cursor-not-allowed"
+                              : "cursor-pointer disabled:opacity-50"
+                          }`}
                         >
                           {(() => {
                             // Build options from availableRoles, or fallback to unique roles from users list

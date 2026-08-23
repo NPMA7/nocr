@@ -185,11 +185,22 @@ export async function GET(req, { params }) {
             
             const { data, error } = await db.from('users').select('id, username, role, created_at');
             if (error) throw error;
+
+            const isCallerAdmin = normalizeRole(user.role) === 'admin';
+
             return NextResponse.json(
-                (data || []).map((u) => ({
-                    ...u,
-                    role: normalizeRole(u.role) || 'visitor'
-                }))
+                (data || [])
+                    .filter((u) => {
+                        // Role selain admin tidak dapat melihat akun ber-role admin
+                        if (!isCallerAdmin && normalizeRole(u.role) === 'admin') {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .map((u) => ({
+                        ...u,
+                        role: normalizeRole(u.role) || 'visitor'
+                    }))
             );
         }
 
@@ -446,8 +457,14 @@ export async function PATCH(req, { params }) {
 
             const updateData = {};
 
-            // 1. Role Update (Admin only)
+            // 1. Role Update
             if (body.role !== undefined) {
+                if (isSelf && requestorRole !== 'admin') {
+                    return NextResponse.json(
+                        { error: 'Akses ditolak: Anda tidak dapat mengubah role akun Anda sendiri.' },
+                        { status: 403 }
+                    );
+                }
                 const normalizedRole = normalizeRole(body.role);
                 if (!normalizedRole) {
                     return NextResponse.json(

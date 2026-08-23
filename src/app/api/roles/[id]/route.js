@@ -22,13 +22,25 @@ export async function PATCH(req, { params }) {
             return NextResponse.json({ error: 'Tidak ada data yang diubah' }, { status: 400 });
         }
 
-        // Prevent modifying admin role permissions to lock it out
+        // Prevent modifying admin role permissions or modifying one's own active role
         const roleQuery = await db.from('access_roles').select('*').eq('id', id).single();
         if (roleQuery.error || !roleQuery.data) {
             return NextResponse.json({ error: 'Role tidak ditemukan' }, { status: 404 });
         }
 
-        if (roleQuery.data.name === 'admin' && updateData.name && updateData.name !== 'admin') {
+        const targetRoleName = (roleQuery.data.name || '').toLowerCase().trim();
+        const requestorRole = (user?.role || '').toLowerCase().trim();
+        const isCallerAdmin = requestorRole === 'admin';
+
+        if (targetRoleName === 'admin' && !isCallerAdmin) {
+            return NextResponse.json({ error: 'Akses ditolak: Hanya Administrator yang dapat mengubah role Admin' }, { status: 403 });
+        }
+
+        if (!isCallerAdmin && targetRoleName === requestorRole) {
+            return NextResponse.json({ error: 'Akses ditolak: Anda tidak dapat mengubah hak akses untuk role Anda sendiri yang sedang aktif' }, { status: 403 });
+        }
+
+        if (targetRoleName === 'admin' && updateData.name && updateData.name !== 'admin') {
             return NextResponse.json({ error: 'Tidak bisa mengubah nama role admin bawaan' }, { status: 403 });
         }
 
@@ -52,8 +64,6 @@ export async function PATCH(req, { params }) {
             throw error;
         }
 
-
-
         return NextResponse.json(data[0]);
     } catch (err) {
         return sendApiError(err);
@@ -74,7 +84,14 @@ export async function DELETE(req, { params }) {
             return NextResponse.json({ error: 'Role tidak ditemukan' }, { status: 404 });
         }
 
-        if (['admin', 'editor', 'visitor'].includes(roleQuery.data.name)) {
+        const targetRoleName = (roleQuery.data.name || '').toLowerCase().trim();
+        const requestorRole = (user?.role || '').toLowerCase().trim();
+
+        if (targetRoleName === requestorRole) {
+            return NextResponse.json({ error: 'Akses ditolak: Anda tidak dapat menghapus role Anda sendiri yang sedang aktif' }, { status: 403 });
+        }
+
+        if (['admin', 'editor', 'visitor'].includes(targetRoleName)) {
             return NextResponse.json({ error: `Tidak bisa menghapus role bawaan sistem (${roleQuery.data.name})` }, { status: 403 });
         }
 

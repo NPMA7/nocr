@@ -12,7 +12,15 @@ export async function GET(req) {
         const { data, error } = await db.from('access_roles').select('*').order('created_at', { ascending: true });
         if (error) throw error;
         
-        return NextResponse.json(data || []);
+        const isCallerAdmin = (user?.role || '').toLowerCase().trim() === 'admin';
+        const filteredRoles = (data || []).filter((r) => {
+            if (!isCallerAdmin && (r.name || '').toLowerCase().trim() === 'admin') {
+                return false;
+            }
+            return true;
+        });
+
+        return NextResponse.json(filteredRoles);
     } catch (err) {
         return sendApiError(err);
     }
