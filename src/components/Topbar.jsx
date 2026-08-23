@@ -332,15 +332,7 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
               <span className="text-xs font-bold text-slate-200 uppercase">
                 {username}
               </span>
-              <span
-                className={`text-[10px] font-bold uppercase px-1.5 rounded ${
-                  role === "admin"
-                    ? "bg-blue-500/20 text-blue-400"
-                    : role === "editor"
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-slate-700 text-slate-400"
-                }`}
-              >
+             <span className="text-[10px] font-bold text-slate-200 uppercase bg-slate-600/20">
                 {getRoleLabel(role)}
               </span>
             </div>

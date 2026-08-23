@@ -6,7 +6,7 @@ import { MENUS, ACTIONS, getStoredUser } from "@/lib/roles";
 export default function RoleSettings({ showToast, canCreate = true, canUpdate = true, canDelete = true }) {
   const currentUser = getStoredUser();
   const requestorRole = (currentUser?.role || "").toLowerCase().trim();
-  const isCallerAdmin = requestorRole === "admin";
+  const isCallerAdmin = requestorRole === "superadmin" || requestorRole === "admin";
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,9 +52,9 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
 
   const openEdit = (r) => {
     const rName = (r.name || "").toLowerCase().trim();
-    if (rName === "admin") {
+    if (rName === "superadmin") {
       showToast(
-        "Role Admin bawaan tidak bisa diedit. Harap gunakan role lain.",
+        "Role Super Admin bawaan tidak bisa diedit.",
         "error",
       );
       return;
@@ -122,7 +122,7 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
 
   const deleteRole = async (r) => {
     const rName = (r.name || "").toLowerCase().trim();
-    if (["admin", "editor", "visitor"].includes(rName)) {
+    if (["superadmin", "editor", "visitor"].includes(rName)) {
       return showToast("Role bawaan sistem tidak bisa dihapus", "error");
     }
     if (rName === requestorRole) {
@@ -188,7 +188,7 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
               </tr>
             ) : (
               roles
-                .filter((r) => isCallerAdmin || (r.name || "").toLowerCase().trim() !== "admin")
+                .filter((r) => isCallerAdmin || (r.name || "").toLowerCase().trim() !== "superadmin")
                 .map((r) => {
                 let perms = {};
                 try {
@@ -218,9 +218,9 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                     className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors"
                   >
                     <td className="py-4 font-semibold text-slate-200 capitalize">
-                      {rName === "admin" ? (
-                        <span className="text-blue-400 flex items-center gap-1.5">
-                          <Shield size={14} /> {r.name}
+                      {rName === "superadmin" ? (
+                        <span className="text-amber-400 font-bold flex items-center gap-1.5">
+                          <Shield size={14} className="text-amber-400" /> Super Admin
                         </span>
                       ) : (
                         r.name
@@ -231,9 +231,9 @@ export default function RoleSettings({ showToast, canCreate = true, canUpdate = 
                     </td>
                     <td className="py-4">
                       <div className="flex flex-wrap gap-1.5">
-                        {rName === "admin" ? (
-                          <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-600">
-                            All Access
+                        {rName === "superadmin" ? (
+                          <span className="text-xs bg-amber-950/80 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-semibold">
+                            Master All Access
                           </span>
                         ) : configuredMenus === 0 ? (
                           <span className="text-xs text-slate-500 italic">

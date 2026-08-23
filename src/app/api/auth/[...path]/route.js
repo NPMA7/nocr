@@ -382,10 +382,10 @@ export async function POST(req, { params }) {
                 );
             }
 
-            const requestorRole = normalizeRole(user.role);
-            if (normalizedRole === 'admin' && requestorRole !== 'admin') {
+            const requestorIsSuperAdmin = user.role === 'superadmin' || user.role === 'admin';
+            if (normalizedRole === 'superadmin' && !requestorIsSuperAdmin) {
                 return NextResponse.json(
-                    { error: 'Akses ditolak: Hanya administrator yang dapat membuat pengguna dengan role admin.' },
+                    { error: 'Akses ditolak: Hanya Super Admin yang dapat membuat pengguna dengan role Super Admin.' },
                     { status: 403 }
                 );
             }
@@ -441,13 +441,13 @@ export async function PATCH(req, { params }) {
                 );
             }
 
-            const requestorRole = normalizeRole(user.role);
-            const isTargetAdmin = previousRole === 'admin';
-            const isSettingToAdmin = body.role !== undefined && normalizeRole(body.role) === 'admin';
+            const requestorIsSuperAdmin = user.role === 'superadmin' || user.role === 'admin';
+            const isTargetSuperAdmin = previousRole === 'superadmin' || previousRole === 'admin';
+            const isSettingToSuperAdmin = body.role !== undefined && (normalizeRole(body.role) === 'superadmin' || normalizeRole(body.role) === 'admin');
 
-            if ((isTargetAdmin || isSettingToAdmin) && requestorRole !== 'admin') {
+            if ((isTargetSuperAdmin || isSettingToSuperAdmin) && !requestorIsSuperAdmin) {
                 return NextResponse.json(
-                    { error: 'Akses ditolak: Hanya administrator yang dapat memodifikasi akun administrator atau menunjuk role admin.' },
+                    { error: 'Akses ditolak: Hanya Super Admin yang dapat memodifikasi akun Super Admin atau menunjuk role Super Admin.' },
                     { status: 403 }
                 );
             }
@@ -456,7 +456,7 @@ export async function PATCH(req, { params }) {
 
             // 1. Role Update
             if (body.role !== undefined) {
-                if (isSelf && requestorRole !== 'admin') {
+                if (isSelf && !requestorIsSuperAdmin) {
                     return NextResponse.json(
                         { error: 'Akses ditolak: Anda tidak dapat mengubah role akun Anda sendiri.' },
                         { status: 403 }
@@ -499,18 +499,15 @@ export async function PATCH(req, { params }) {
                 );
             }
 
-            // Ambil detail pengguna saat ini dari DB
-            // (pembacaan dipindah ke awal handler PATCH)
-
-            // Cek keamanan: Tidak bisa menurunkan jabatan admin terakhir yang tersisa
-            if (updateData.role && updateData.role !== 'admin' && previousRole === 'admin') {
+            // Cek keamanan: Tidak bisa menurunkan jabatan superadmin terakhir yang tersisa
+            if (updateData.role && updateData.role !== 'superadmin' && updateData.role !== 'admin' && isTargetSuperAdmin) {
                 const { data: allUsers } = await db.from('users').select('id, role');
-                const adminCount = (allUsers || []).filter(
-                    (u) => normalizeRole(u.role) === 'admin'
+                const superAdminCount = (allUsers || []).filter(
+                    (u) => normalizeRole(u.role) === 'superadmin' || normalizeRole(u.role) === 'admin'
                 ).length;
-                if (adminCount <= 1) {
+                if (superAdminCount <= 1) {
                     return NextResponse.json(
-                        { error: 'Tidak dapat mengubah role: minimal harus ada satu Administrator.' },
+                        { error: 'Tidak dapat mengubah role: minimal harus ada satu Super Admin.' },
                         { status: 400 }
                     );
                 }
@@ -570,22 +567,22 @@ export async function DELETE(req, { params }) {
 
             const targetRole = normalizeRole(targetUser.data.role);
 
-            if (targetRole === 'admin') {
-                const requestorRole = normalizeRole(user.role);
-                if (requestorRole !== 'admin') {
+            if (targetRole === 'superadmin' || targetRole === 'admin') {
+                const requestorIsSuperAdmin = user.role === 'superadmin' || user.role === 'admin';
+                if (!requestorIsSuperAdmin) {
                     return NextResponse.json(
-                        { error: 'Akses ditolak: Hanya administrator yang dapat menghapus akun administrator.' },
+                        { error: 'Akses ditolak: Hanya Super Admin yang dapat menghapus akun Super Admin.' },
                         { status: 403 }
                     );
                 }
 
                 const { data: allUsers } = await db.from('users').select('id, role');
-                const adminCount = (allUsers || []).filter(
-                    (u) => normalizeRole(u.role) === 'admin'
+                const superAdminCount = (allUsers || []).filter(
+                    (u) => normalizeRole(u.role) === 'superadmin' || normalizeRole(u.role) === 'admin'
                 ).length;
-                if (adminCount <= 1) {
+                if (superAdminCount <= 1) {
                     return NextResponse.json(
-                        { error: 'Tidak dapat menghapus pengguna: minimal harus ada satu Administrator.' },
+                        { error: 'Tidak dapat menghapus: minimal harus ada satu Super Admin tersisa di sistem.' },
                         { status: 400 }
                     );
                 }

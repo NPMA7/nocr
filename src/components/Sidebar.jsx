@@ -20,6 +20,7 @@ import {
   User,
   Activity,
   Palette,
+  Building2,
 } from "lucide-react";
 
 import { useAppState } from "@/App";
@@ -34,10 +35,28 @@ export default function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = pathname.startsWith("/settings")
-    ? pathname.split("/")[2] || "mikrotik-gateway"
+    ? pathname.split("/")[2] || searchParams.get("tab") || "company"
     : null;
   const { sessionUser } = useAppState();
   const [currentUser, setCurrentUser] = useState(null);
+  const [companyInfo, setCompanyInfo] = useState({
+    name: "PT Milenial Inti Telekomunikasi",
+    region: "Kabupaten Bandung",
+  });
+
+  useEffect(() => {
+    fetch("/api/settings/company")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.name) {
+          setCompanyInfo({
+            name: data.name,
+            region: data.region || "Kabupaten Bandung",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [expandedMenus, setExpandedMenus] = useState({
     monitoring: false,
@@ -626,6 +645,21 @@ export default function Sidebar({
                   <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-700/30 mb-1 sticky top-0 bg-slate-900 z-10">
                     Pengaturan
                   </div>
+                  {hasAccess(currentUser, "settings-company", "read") && (
+                    <Link
+                      href="/settings/company"
+                      onClick={onNavigate}
+                      scroll={false}
+                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                        currentTab === "company" || currentTab === "profile"
+                          ? "text-cyan-400 bg-cyan-500/10"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <Building2 size={14} className="flex-shrink-0" />
+                      <span>Profil Perusahaan</span>
+                    </Link>
+                  )}
                   {hasAccess(currentUser, "settings-mikrotik", "read") && (
                     <Link
                       href="/settings/mikrotik-gateway"
@@ -765,6 +799,21 @@ export default function Sidebar({
 
             {!isCollapsed && expandedMenus.settings && (
               <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+                {hasAccess(currentUser, "settings-company", "read") && (
+                  <Link
+                    href="/settings/company"
+                    onClick={onNavigate}
+                    scroll={false}
+                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                      currentTab === "company" || currentTab === "profile"
+                        ? "text-cyan-400 bg-cyan-500/10"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <Building2 size={14} className="flex-shrink-0" />
+                    <span>Profil Perusahaan</span>
+                  </Link>
+                )}
                 {hasAccess(currentUser, "settings-mikrotik", "read") && (
                   <Link
                     href="/settings/mikrotik-gateway"
@@ -904,10 +953,29 @@ export default function Sidebar({
         )}
       </nav>
 
+      {/* Footer Area */}
       <div
-        className={`p-5 border-t border-slate-700/50 text-xs text-slate-400 transition-all duration-300 ${isCollapsed ? "flex justify-center p-4" : ""}`}
+        className={`p-3 border-t border-slate-700/50 flex flex-col gap-2.5 transition-all duration-300 ${isCollapsed ? "items-center px-2 py-3" : "px-3 py-3"}`}
       >
-        <div className="flex items-center gap-2">
+       
+        
+          <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0 group-hover:scale-105 transition">
+            <Building2 size={16} />
+          </div>
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <div className="text-xs font-bold text-slate-100 truncate">
+                {companyInfo.name}
+              </div>
+              <div className="text-[11px] font-medium text-cyan-400 flex items-center gap-1 mt-0.5 truncate">
+                <Network size={11} className="shrink-0 text-cyan-400" />
+                <span className="truncate">{companyInfo.region}</span>
+              </div>
+            </div>
+          )}
+
+        {/* Server Status */}
+        <div className={`flex items-center gap-2 text-xs text-slate-400 ${isCollapsed ? "justify-center" : "px-1"}`}>
           <span
             className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isConnected ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-500"}`}
           ></span>

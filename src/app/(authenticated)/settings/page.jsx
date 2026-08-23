@@ -34,6 +34,7 @@ import {
 import { hasAccess, getStoredUser, getRoleLabel } from "@/lib/roles";
 import RoleSettings from "@/components/RoleSettings";
 import WhatsAppGateway from "@/components/WhatsAppGateway";
+import CompanyProfileSettings from "@/components/CompanyProfileSettings";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -64,7 +65,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
   const { showToast } = useAppState();
   const currentUser = getStoredUser();
   const requestorRole = (currentUser?.role || "").toLowerCase().trim();
-  const isRequestorAdmin = requestorRole === "admin";
+  const isRequestorSuperAdmin = requestorRole === "superadmin" || requestorRole === "admin";
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -249,17 +250,17 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
             >
               {availableRoles.length > 0 ? (
                 availableRoles
-                  .filter((r) => isRequestorAdmin || r.name !== "admin")
+                  .filter((r) => isRequestorSuperAdmin || r.name !== "superadmin")
                   .map((r) => (
-                    <option key={r.id} value={r.name}>
-                      {r.name}
+                    <option key={r.id} value={r.name} className="capitalize">
+                      {r.name === "superadmin" ? "Super Admin" : r.name}
                     </option>
                   ))
               ) : (
                 <>
                   <option value="visitor">Visitor</option>
                   <option value="editor">Editor</option>
-                  {isRequestorAdmin && <option value="admin">Admin</option>}
+                  {isRequestorSuperAdmin && <option value="superadmin">Super Admin</option>}
                 </>
               )}
             </select>
@@ -290,29 +291,37 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
           </thead>
           <tbody className="divide-y divide-slate-700/50">
             {users
-              .filter((u) => isRequestorAdmin || (u.role || "").toLowerCase() !== "admin")
+              .filter((u) => isRequestorSuperAdmin || (u.role || "").toLowerCase() !== "superadmin")
               .map((u) => {
               const editRole = roleEdits[u.id] ?? u.role;
               const roleDirty = editRole !== u.role;
+              const isUserSuperAdmin = (u.role || "").toLowerCase() === "superadmin";
               return (
                 <tr
                   key={u.id}
                   className="hover:bg-slate-700/20 transition-colors"
                 >
                   <td className="px-4 py-3 text-xs font-semibold text-slate-200">
-                    {u.username}
+                    <div className="flex items-center gap-2">
+                      <span>{u.username}</span>
+                      {isUserSuperAdmin && (
+                        <span className="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded font-mono font-bold">
+                          SUPERADMIN
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {u.role === "admin" && !isRequestorAdmin ? (
-                        <span className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-400 rounded-lg capitalize">
-                          Admin
+                      {isUserSuperAdmin && !isRequestorSuperAdmin ? (
+                        <span className="bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-amber-400 font-semibold rounded-lg capitalize">
+                          Super Admin
                         </span>
                       ) : (
                         <select
                           value={editRole}
-                          disabled={!canUpdate || (!isRequestorAdmin && (u.id === currentUser?.id || u.username === currentUser?.username))}
-                          title={!isRequestorAdmin && (u.id === currentUser?.id || u.username === currentUser?.username) ? "Tidak dapat mengubah role akun Anda sendiri" : ""}
+                          disabled={!canUpdate || (!isRequestorSuperAdmin && (u.id === currentUser?.id || u.username === currentUser?.username))}
+                          title={!isRequestorSuperAdmin && (u.id === currentUser?.id || u.username === currentUser?.username) ? "Tidak dapat mengubah role akun Anda sendiri" : ""}
                           onChange={(e) =>
                             setRoleEdits((prev) => ({
                               ...prev,
@@ -320,7 +329,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                             }))
                           }
                           className={`bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 rounded-lg outline-none focus:border-blue-500 capitalize ${
-                            !isRequestorAdmin && (u.id === currentUser?.id || u.username === currentUser?.username)
+                            !isRequestorSuperAdmin && (u.id === currentUser?.id || u.username === currentUser?.username)
                               ? "opacity-60 cursor-not-allowed"
                               : "cursor-pointer disabled:opacity-50"
                           }`}
@@ -332,9 +341,9 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                               : [...new Set(users.map((usr) => usr.role))]
                                   .map((name) => ({ id: name, name }));
 
-                            // Filter out admin option for non-admins
-                            if (!isRequestorAdmin) {
-                              roleOptions = roleOptions.filter((r) => r.name !== "admin");
+                            // Filter out superadmin option for non-superadmins
+                            if (!isRequestorSuperAdmin) {
+                              roleOptions = roleOptions.filter((r) => r.name !== "superadmin");
                             }
 
                             // Always ensure current editRole is in the list
@@ -344,7 +353,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
 
                             return roleOptions.map((r) => (
                               <option key={r.id} value={r.name} className="capitalize">
-                                {r.name}
+                                {r.name === "superadmin" ? "Super Admin" : r.name}
                               </option>
                             ));
                           })()}
@@ -365,7 +374,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end items-center gap-2">
-                      {canUpdate && (isRequestorAdmin || u.role !== "admin") && (
+                      {canUpdate && (isRequestorSuperAdmin || !isUserSuperAdmin) && (
                         <button
                           title="Ubah Password"
                           onClick={() => setSelectedUserForPassword(u)}
@@ -374,7 +383,7 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
                           <Key size={16} />
                         </button>
                       )}
-                      {canDelete && (isRequestorAdmin || u.role !== "admin") && (
+                      {canDelete && (isRequestorSuperAdmin || !isUserSuperAdmin) && (
                         <button
                           title="Hapus"
                           onClick={() => handleDelete(u.id)}
@@ -1472,7 +1481,7 @@ export default function SettingsWrapper(props) {
 
   useEffect(() => {
     if (pathname === "/settings") {
-      router.replace("/settings/mikrotik-gateway");
+      router.replace("/settings/company");
     }
   }, [pathname, router]);
 
@@ -1492,6 +1501,8 @@ function Settings({ activeTab: activeTabProp }) {
   const syncRoleFlags = () => {
     const userData = sessionUser?.role ? sessionUser : getStoredUser();
     setPerms({
+      companyRead: hasAccess(userData, "settings-company", "read"),
+      companyUpdate: hasAccess(userData, "settings-company", "update"),
       mikrotikUpdate: hasAccess(userData, "settings-mikrotik", "update"),
       vpnUpdate: hasAccess(userData, "settings-vpn", "update"),
       healthUpdate: hasAccess(userData, "settings-health", "update"),
@@ -1521,15 +1532,20 @@ function Settings({ activeTab: activeTabProp }) {
     if (pathname) {
       const segs = pathname.replace(/^\//, "").split("/");
       if (segs[0] === "settings" && segs[1]) {
-        return segs[1] === "core" ? "mikrotik-gateway" : segs[1];
+        if (segs[1] === "core") return "mikrotik-gateway";
+        if (segs[1] === "company" || segs[1] === "profile") return "company";
+        return segs[1];
       }
     }
     const tabParam = searchParams.get("tab");
     if (tabParam) {
-      return tabParam === "core" ? "mikrotik-gateway" : tabParam;
+      if (tabParam === "core") return "mikrotik-gateway";
+      if (tabParam === "company" || tabParam === "profile") return "company";
+      return tabParam;
     }
     const userData = sessionUser?.role ? sessionUser : getStoredUser();
     const candidateTabs = [
+      { tab: "company", menu: "settings-company" },
       { tab: "mikrotik-gateway", menu: "settings-mikrotik" },
       { tab: "vpn", menu: "settings-vpn" },
       { tab: "health", menu: "settings-health" },
@@ -1543,7 +1559,7 @@ function Settings({ activeTab: activeTabProp }) {
     const match = candidateTabs.find(
       (t) => !t.menu || hasAccess(userData, t.menu, "read")
     );
-    return match ? match.tab : "mikrotik-gateway";
+    return match ? match.tab : "company";
   };
 
   const activeTab = resolveActiveTab();
@@ -1719,6 +1735,10 @@ function Settings({ activeTab: activeTabProp }) {
       <div>
         {/* Content Settings - full width, tab driven by URL */}
         <div>
+          {(activeTab === "company" || activeTab === "profile") && perms.companyRead && (
+            <CompanyProfileSettings canUpdate={perms.companyUpdate} />
+          )}
+
           {activeTab === "mikrotik-gateway" && (
             <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
               <div className="p-5 border-b border-slate-700/50">

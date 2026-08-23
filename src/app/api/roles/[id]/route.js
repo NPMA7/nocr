@@ -29,19 +29,18 @@ export async function PATCH(req, { params }) {
         }
 
         const targetRoleName = (roleQuery.data.name || '').toLowerCase().trim();
-        const requestorRole = (user?.role || '').toLowerCase().trim();
-        const isCallerAdmin = requestorRole === 'admin';
+        const isCallerSuperAdmin = user?.role === 'superadmin' || user?.role === 'admin';
 
-        if (targetRoleName === 'admin' && !isCallerAdmin) {
-            return NextResponse.json({ error: 'Akses ditolak: Hanya Administrator yang dapat mengubah role Admin' }, { status: 403 });
+        if (targetRoleName === 'superadmin' && !isCallerSuperAdmin) {
+            return NextResponse.json({ error: 'Akses ditolak: Hanya Super Admin yang dapat mengubah role Super Admin' }, { status: 403 });
         }
 
-        if (!isCallerAdmin && targetRoleName === requestorRole) {
+        if (!isCallerSuperAdmin && targetRoleName === (user?.role || '').toLowerCase().trim()) {
             return NextResponse.json({ error: 'Akses ditolak: Anda tidak dapat mengubah hak akses untuk role Anda sendiri yang sedang aktif' }, { status: 403 });
         }
 
-        if (targetRoleName === 'admin' && updateData.name && updateData.name !== 'admin') {
-            return NextResponse.json({ error: 'Tidak bisa mengubah nama role admin bawaan' }, { status: 403 });
+        if (targetRoleName === 'superadmin' && updateData.name && updateData.name !== 'superadmin') {
+            return NextResponse.json({ error: 'Tidak bisa mengubah nama role Super Admin bawaan' }, { status: 403 });
         }
 
         const { data, error } = await db.from('access_roles')
@@ -91,7 +90,7 @@ export async function DELETE(req, { params }) {
             return NextResponse.json({ error: 'Akses ditolak: Anda tidak dapat menghapus role Anda sendiri yang sedang aktif' }, { status: 403 });
         }
 
-        if (['admin', 'editor', 'visitor'].includes(targetRoleName)) {
+        if (['superadmin', 'admin', 'editor', 'visitor'].includes(targetRoleName)) {
             return NextResponse.json({ error: `Tidak bisa menghapus role bawaan sistem (${roleQuery.data.name})` }, { status: 403 });
         }
 

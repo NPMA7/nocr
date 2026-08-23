@@ -18,6 +18,7 @@ export const MENUS = {
   'devices-hsgq': 'HSGQ OLT',
   
   // Pengaturan Sistem
+  'settings-company': 'Pengaturan - Profil Perusahaan',
   'settings-mikrotik': 'Pengaturan - MikroTik Gateway',
   'settings-vpn': 'Pengaturan - VPN Connection',
   'settings-health': 'Pengaturan - Kesehatan Sistem & DB',
@@ -35,9 +36,13 @@ export function normalizeRole(role) {
   return role.toLowerCase().trim();
 }
 
-// Backward compatibility or absolute admin check
+export function isSuperAdmin(user) {
+  const r = normalizeRole(user?.role);
+  return r === 'superadmin' || r === 'admin';
+}
+
 export function isLegacyAdmin(user) {
-    return user?.role === 'admin' || (user?.role === 'admin' && (!user.permissions || user.permissions.length === 0));
+  return isSuperAdmin(user);
 }
 
 // New robust access check
@@ -124,6 +129,8 @@ export function applySessionUser(user) {
 
 export function getRoleLabel(role) {
   if (!role) return 'Visitor';
+  if (role.toLowerCase() === 'superadmin') return 'Super Admin';
+  if (role.toLowerCase() === 'admin') return 'Admin';
   return String(role).charAt(0).toUpperCase() + String(role).slice(1);
 }
 
@@ -139,6 +146,7 @@ export const MENU_ROUTE_HIERARCHY = [
   { menuKey: 'devices-hsgq', path: '/device/hsgq-olt' },
   { menuKey: 'laporan-harian', path: '/report' },
   { menuKey: 'chat', path: '/live-chat' },
+  { menuKey: 'settings-company', path: '/settings/company' },
   { menuKey: 'settings-mikrotik', path: '/settings?tab=core' },
   { menuKey: 'settings-vpn', path: '/settings?tab=vpn' },
   { menuKey: 'settings-health', path: '/settings?tab=health' },

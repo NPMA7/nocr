@@ -270,6 +270,8 @@ export default function AuthenticatedLayout({ children }) {
       const rawTab = subPath || urlParams.get("tab");
 
       const tabToMenuKeyMap = {
+        company: "settings-company",
+        profile: "settings-company",
         core: "settings-mikrotik",
         "mikrotik-gateway": "settings-mikrotik",
         vpn: "settings-vpn",
@@ -288,6 +290,7 @@ export default function AuthenticatedLayout({ children }) {
       } else {
         // Akses langsung ke bare "/settings" tanpa tab -> arahkan ke tab pertama yang user punya izin
         const availableTabs = [
+          { path: "/settings/company", menu: "settings-company" },
           { path: "/settings/mikrotik-gateway", menu: "settings-mikrotik" },
           { path: "/settings/vpn", menu: "settings-vpn" },
           { path: "/settings/health", menu: "settings-health" },
