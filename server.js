@@ -1800,7 +1800,7 @@ app.prepare().then(() => {
         }
     });
 
-    whatsapp.start(); // Mulai otomatis saat server booting.
+    // whatsapp.start(); // Dinonaktifkan sementara agar tidak memakan RAM/Chromium saat tidak digunakan.
 
     server.post('/api/mappings/sync-notify', (req, res) => {
         const user = authenticateExpressRequest(req, res);

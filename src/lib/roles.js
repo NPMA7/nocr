@@ -6,7 +6,7 @@ export const MENUS = {
   topology: 'Peta Topologi',
   sites: 'Data Wilayah',
   'laporan-harian': 'Laporan Harian',
-  chat: 'Live Chat Omni',
+  // chat: 'Live Chat Omni',
   
   // Monitoring
   'monitoring-l2tp': 'Monitor L2TP',
@@ -22,7 +22,7 @@ export const MENUS = {
   'settings-mikrotik': 'Pengaturan - MikroTik Gateway',
   'settings-vpn': 'Pengaturan - VPN Connection',
   'settings-health': 'Pengaturan - Kesehatan Sistem & DB',
-  'settings-wa': 'Pengaturan - WhatsApp Gateway',
+  // 'settings-wa': 'Pengaturan - WhatsApp Gateway',
   'settings-users': 'Pengaturan - Manajemen Pengguna',
   'settings-roles': 'Pengaturan - Manajemen Role',
   'settings-password': 'Pengaturan - Ubah Password',

@@ -1549,7 +1549,7 @@ function Settings({ activeTab: activeTabProp }) {
       { tab: "mikrotik-gateway", menu: "settings-mikrotik" },
       { tab: "vpn", menu: "settings-vpn" },
       { tab: "health", menu: "settings-health" },
-      { tab: "whatsapp", menu: "settings-wa" },
+      // { tab: "whatsapp", menu: "settings-wa" },
       { tab: "users", menu: "settings-users" },
       { tab: "roles", menu: "settings-roles" },
       { tab: "password", menu: "settings-password" },
@@ -2144,6 +2144,7 @@ function Settings({ activeTab: activeTabProp }) {
             <SystemHealth isAdmin={perms.healthUpdate} />
           )}
 
+          {/* WhatsApp Gateway temporarily hidden
           {activeTab === "whatsapp" && perms.waRead && (
             <WhatsAppGateway
               canCreate={perms.waCreate}
@@ -2151,6 +2152,7 @@ function Settings({ activeTab: activeTabProp }) {
               canDelete={perms.waDelete}
             />
           )}
+          */}
 
           {activeTab === "system" && perms.systemRead && (
             <SystemConfigSettings

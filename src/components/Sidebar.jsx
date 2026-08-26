@@ -177,6 +177,7 @@ export default function Sidebar({
             {!isCollapsed && <span>Peta Topologi</span>}
           </Link>
         )}
+        {/* WhatsApp / Live Chat temporarily hidden from UI
         {hasAccess(currentUser, "chat", "read") && (
           <Link
             href="/live-chat"
@@ -189,6 +190,7 @@ export default function Sidebar({
             {!isCollapsed && <span>Live Chat Omni</span>}
           </Link>
         )}
+        */}
         {["monitoring-l2tp", "monitoring-pppoe"].some((k) =>
           hasAccess(currentUser, k, "read"),
         ) && (
@@ -705,6 +707,7 @@ export default function Sidebar({
                       <span>Kesehatan Sistem & DB</span>
                     </Link>
                   )}
+                  {/* WhatsApp Gateway temporarily hidden from UI
                   {hasAccess(currentUser, "settings-wa", "read") && (
                     <Link
                       href="/settings/whatsapp"
@@ -720,6 +723,7 @@ export default function Sidebar({
                       <span>WhatsApp Gateway</span>
                     </Link>
                   )}
+                  */}
                   {hasAccess(currentUser, "settings-users", "read") && (
                     <Link
                       href="/settings/users"
@@ -859,6 +863,7 @@ export default function Sidebar({
                     <span>Kesehatan Sistem & DB</span>
                   </Link>
                 )}
+                {/* WhatsApp Gateway temporarily hidden from UI
                 {hasAccess(currentUser, "settings-wa", "read") && (
                   <Link
                     href="/settings/whatsapp"
@@ -874,6 +879,7 @@ export default function Sidebar({
                     <span>WhatsApp Gateway</span>
                   </Link>
                 )}
+                */}
                 {hasAccess(currentUser, "settings-users", "read") && (
                   <Link
                     href="/settings/users"
