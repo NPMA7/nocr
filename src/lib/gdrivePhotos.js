@@ -160,7 +160,14 @@ export async function uploadPhotoToDrive({ buffer, sitePrefix, deviceType, origi
   const targetFolderId = await getOrCreateSiteFolder(sitePrefix, token);
 
   const ext = path.extname(originalFilename).toLowerCase() || '.jpg';
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const now = new Date();
+  const jakartaDate = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).format(now).replace(' ', '_').replace(/:/g, '-');
+  const timestamp = jakartaDate; // e.g. 2026-08-29_23-48-45
   const targetFileName = `${deviceType.toUpperCase()}_${timestamp}${ext}`;
 
   let mimeType = 'image/jpeg';

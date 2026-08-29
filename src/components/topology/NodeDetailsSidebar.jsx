@@ -76,7 +76,9 @@ export default function NodeDetailsSidebar({
     };
   }, [mac, currentSelectedNode?.id]);
 
-  const siteCategory = (currentSelectedNode.linked_interface || currentSelectedNode.label || "")
+  if (!currentSelectedNode) return null;
+
+  const siteCategory = (currentSelectedNode?.linked_interface || currentSelectedNode?.label || "")
     .toUpperCase()
     .includes("OPD")
     ? "opd"
@@ -96,7 +98,7 @@ export default function NodeDetailsSidebar({
         { key: "panel", label: "Panel / Lokasi", subtitle: "Tampak Site", icon: Box, color: "amber" },
       ];
 
-  const photos = liveEvidencePhotos || currentSelectedNode.site?.evidence_photos || {};
+  const photos = liveEvidencePhotos || currentSelectedNode?.site?.evidence_photos || {};
   const photoKeys = Object.keys(photos).filter(
     (k) => slots.some((s) => s.key === k) && (photos[k]?.url || photos[k]?.drive_id || photos[k]?.preview_url),
   );
