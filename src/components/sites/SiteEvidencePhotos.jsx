@@ -361,25 +361,7 @@ export default function SiteEvidencePhotos({
                       </button>
                     )}
                   </>
-                ) : hasPhoto ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveLightbox({
-                        photo,
-                        deviceLabel: slot.label,
-                        slotKey: slot.key,
-                      })
-                    }
-                    className="cursor-pointer w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs transition"
-                  >
-                    <Eye size={13} /> Lihat Foto
-                  </button>
-                ) : (
-                  <span className="text-[11px] text-slate-500 py-1 text-center w-full">
-                    Read-only
-                  </span>
-                )}
+                ) : null}
               </div>
             </div>
           );
