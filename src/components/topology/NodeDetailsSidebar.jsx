@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   MapPin,
   X,
@@ -26,7 +27,7 @@ const SLOTS = [
   { key: "ap", label: "Access Point (AP)", subtitle: "Ruijie / Reyee", icon: Wifi, color: "blue" },
   { key: "mikrotik", label: "Router MikroTik", subtitle: "Routerboard", icon: Cpu, color: "purple" },
   { key: "ont", label: "Modem ONT", subtitle: "PON/LOS & Fiber", icon: Radio, color: "emerald" },
-  { key: "panel", label: "Box Panel / Lokasi", subtitle: "Tampak Site", icon: Box, color: "amber" },
+  { key: "panel", label: "Panel / Lokasi", subtitle: "Tampak Site", icon: Box, color: "amber" },
 ];
 
 export default function NodeDetailsSidebar({
@@ -52,19 +53,44 @@ export default function NodeDetailsSidebar({
 }) {
   const [activeTab, setActiveTab] = useState("status"); // "status" | "evidence"
   const [activeLightbox, setActiveLightbox] = useState(null);
+  const [liveEvidencePhotos, setLiveEvidencePhotos] = useState(null);
+
+  const linkedMap = (mappings || []).find(
+    (m) => m.prefix === currentSelectedNode?.linked_interface,
+  );
+  const mac = currentSelectedNode?.site?.ruijie_mac || linkedMap?.ruijie_mac;
+
+  useEffect(() => {
+    if (!mac) {
+      setLiveEvidencePhotos(null);
+      return;
+    }
+    if (currentSelectedNode?.site?.evidence_photos) {
+      setLiveEvidencePhotos(currentSelectedNode.site.evidence_photos);
+    }
+    let isMounted = true;
+    axios
+      .get(`/api/sites/${encodeURIComponent(mac)}/evidence`)
+      .then((res) => {
+        if (isMounted && res.data?.evidence_photos) {
+          setLiveEvidencePhotos(res.data.evidence_photos);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mac, currentSelectedNode?.id]);
 
   if (!currentSelectedNode) return null;
 
-  const linkedMap = (mappings || []).find(
-    (m) => m.prefix === currentSelectedNode.linked_interface,
-  );
-  const mac = currentSelectedNode.site?.ruijie_mac || linkedMap?.ruijie_mac;
   const siteCategory = (currentSelectedNode.linked_interface || "")
     .toUpperCase()
     .includes("OPD")
     ? "opd"
     : "desa";
-  const photos = currentSelectedNode.site?.evidence_photos || {};
+  const photos = liveEvidencePhotos || currentSelectedNode.site?.evidence_photos || {};
   const photoKeys = Object.keys(photos).filter(
     (k) => photos[k]?.url || photos[k]?.drive_id || photos[k]?.preview_url,
   );
@@ -706,23 +732,6 @@ export default function NodeDetailsSidebar({
               );
             })}
           </div>
-
-          {/* Manage Photos Button */}
-          {mac && (
-            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-col gap-2 mt-2">
-              <span className="text-xs text-blue-200">
-                Ingin mengunggah, mengganti, atau menghapus foto?
-              </span>
-              <a
-                href={`/sites/${siteCategory}/${encodeURIComponent(mac)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cursor-pointer w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow"
-              >
-                Kelola Foto di Detail Site <ExternalLink size={13} />
-              </a>
-            </div>
-          )}
         </div>
       )}
 
