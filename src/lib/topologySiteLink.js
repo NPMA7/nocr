@@ -279,6 +279,8 @@ export async function enrichTopologyNodeWithSite(db, node) {
         activation_date: site.activation_date,
         topology_node_id: site.topology_node_id,
         evidence_photos: site.evidence_photos || {},
+        category: site.category || null,
+        site_type: site.site_type || null,
         pics: pics.map((p) => ({ id: p.id, name: p.name, phone: p.phone, sort_order: p.sort_order })),
       },
     };
@@ -404,6 +406,8 @@ export async function enrichTopologyNodesBatch(db, nodes) {
         activation_date: site.activation_date,
         topology_node_id: site.topology_node_id,
         evidence_photos: site.evidence_photos || {},
+        category: site.category || null,
+        site_type: site.site_type || null,
         pics: pics.map((p) => ({ id: p.id, name: p.name, phone: p.phone, sort_order: p.sort_order })),
       },
     };
