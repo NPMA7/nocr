@@ -21,6 +21,7 @@ function mapSiteRow(site, pics = []) {
     longitude: site.longitude,
     coords_from_topology: site.coords_from_topology === true,
     topology_node_id: site.topology_node_id,
+    evidence_photos: site.evidence_photos || {},
     pics: (pics || [])
       .filter((p) => p.site_id === site.id)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -125,6 +126,7 @@ export async function upsertSiteProfile(db, ruijie_mac, payload) {
     full_address,
     pics = [],
     connection_type = 'l2tp',
+    evidence_photos,
   } = payload;
 
   const { data: mapping, error: mapCheck } = await db
@@ -159,6 +161,10 @@ export async function upsertSiteProfile(db, ruijie_mac, payload) {
     full_address: full_address?.trim() || null,
     updated_at: new Date().toISOString(),
   };
+
+  if (evidence_photos !== undefined) {
+    siteRow.evidence_photos = evidence_photos;
+  }
 
   const { data: existing } = await db
     .from('sites')

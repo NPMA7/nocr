@@ -1,6 +1,8 @@
 "use client";
 
-import { MapPin, X, Clock, Trash2, ExternalLink, Users } from "lucide-react";
+import { useState } from "react";
+import { MapPin, X, Clock, Trash2, ExternalLink, Users, Camera, Eye, Image as ImageIcon } from "lucide-react";
+import EvidenceLightboxModal from "@/components/sites/EvidenceLightboxModal";
 
 export default function NodeDetailsSidebar({
   currentSelectedNode,
@@ -23,6 +25,8 @@ export default function NodeDetailsSidebar({
   markNodeDeleted,
   nodes,
 }) {
+  const [activeLightbox, setActiveLightbox] = useState(null);
+
   if (!currentSelectedNode) return null;
 
   return (
@@ -466,19 +470,93 @@ export default function NodeDetailsSidebar({
             .includes("OPD")
             ? "opd"
             : "desa";
+          const photos = currentSelectedNode.site?.evidence_photos || {};
+          const photoKeys = Object.keys(photos).filter(
+            (k) => photos[k]?.url || photos[k]?.drive_id || photos[k]?.preview_url
+          );
+
           return (
-            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-between text-xs text-blue-300">
-              <span className="text-[11px] text-blue-200">
-                Kelola detail site ini di Halaman Site
-              </span>
-              <a
-                href={`/sites/${siteCategory}/${encodeURIComponent(mac)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 shrink-0 cursor-pointer"
-              >
-                Detail Site <ExternalLink size={12} />
-              </a>
+            <div className="flex flex-col gap-2">
+              {/* Evidence Foto Perangkat Preview */}
+              <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-900/60 border border-slate-700/60">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <Camera size={13} className="text-blue-400" /> Evidence Foto ({photoKeys.length}/4)
+                  </span>
+                  <span className="text-[10px] text-slate-400">Google Drive</span>
+                </div>
+
+                {photoKeys.length > 0 ? (
+                  <div className="grid grid-cols-4 gap-1.5 mt-1">
+                    {["ap", "mikrotik", "ont", "panel"].map((k) => {
+                      const p = photos[k];
+                      if (!p) {
+                        return (
+                          <div
+                            key={k}
+                            className="h-14 rounded-lg bg-slate-800/40 border border-dashed border-slate-700/60 flex flex-col items-center justify-center text-[9px] text-slate-500 uppercase font-mono"
+                          >
+                            {k}
+                          </div>
+                        );
+                      }
+                      const src =
+                        p.preview_url ||
+                        p.url ||
+                        p.thumbnail_url ||
+                        (p.drive_id ? `/api/drive/image/${p.drive_id}` : "");
+
+                      return (
+                        <div
+                          key={k}
+                          onClick={() =>
+                            setActiveLightbox({
+                              photo: p,
+                              deviceLabel: k.toUpperCase(),
+                            })
+                          }
+                          className="relative h-14 rounded-lg overflow-hidden border border-slate-700 hover:border-blue-500 cursor-pointer group shadow"
+                        >
+                          <img
+                            src={src}
+                            alt={k}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                            onError={(e) => {
+                              if (p.drive_id && !e.target.src.includes("/api/drive/image")) {
+                                e.target.src = `/api/drive/image/${p.drive_id}`;
+                              }
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye size={12} className="text-white" />
+                          </div>
+                          <span className="absolute bottom-0 left-0 right-0 bg-black/70 text-[8px] font-bold text-center text-slate-200 uppercase py-0.5">
+                            {k}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic">
+                    Belum ada foto perangkat diunggah
+                  </p>
+                )}
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-between text-xs text-blue-300">
+                <span className="text-[11px] text-blue-200">
+                  Kelola detail site ini di Halaman Site
+                </span>
+                <a
+                  href={`/sites/${siteCategory}/${encodeURIComponent(mac)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 shrink-0 cursor-pointer"
+                >
+                  Detail Site <ExternalLink size={12} />
+                </a>
+              </div>
             </div>
           );
         })()}
@@ -507,6 +585,17 @@ export default function NodeDetailsSidebar({
           </button>
         )}
       </div>
+
+      {activeLightbox && (
+        <EvidenceLightboxModal
+          isOpen={Boolean(activeLightbox)}
+          onClose={() => setActiveLightbox(null)}
+          photo={activeLightbox.photo}
+          deviceLabel={activeLightbox.deviceLabel}
+          sitePrefix={currentSelectedNode.label || currentSelectedNode.linked_interface || "Site"}
+          canEdit={false}
+        />
+      )}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import { useAppState } from "@/App";
 import ImportSiteModal from "@/components/sites/ImportSiteModal";
+import SiteEvidencePhotos from "@/components/sites/SiteEvidencePhotos";
 
 const SiteCoordinateMap = dynamic(
   () => import("@/components/SiteCoordinateMap"),
@@ -59,6 +60,7 @@ export default function SiteDetailPage() {
   const [longitude, setLongitude] = useState("");
   const [coordsFromTopology, setCoordsFromTopology] = useState(false);
   const [pics, setPics] = useState([emptyPic()]);
+  const [evidencePhotos, setEvidencePhotos] = useState({});
 
   const [canEdit, setCanEdit] = useState(false);
 
@@ -71,6 +73,7 @@ export default function SiteDetailPage() {
     setLatitude(site?.latitude != null ? String(site.latitude) : "");
     setLongitude(site?.longitude != null ? String(site.longitude) : "");
     setCoordsFromTopology(!!site?.coords_from_topology);
+    setEvidencePhotos(site?.evidence_photos || {});
     setPics(
       site?.pics?.length
         ? site.pics.map((p) => ({ name: p.name || "", phone: p.phone || "" }))
@@ -453,6 +456,16 @@ export default function SiteDetailPage() {
             </div>
           </section>
         </div>
+
+        {/* Evidence Foto Perangkat (AP, MikroTik, ONT, Panel) */}
+        <SiteEvidencePhotos
+          ruijieMac={mac}
+          sitePrefix={data?.prefix || data?.ruijie_alias || mac}
+          evidencePhotos={evidencePhotos}
+          onPhotosUpdated={(newPhotos) => setEvidencePhotos(newPhotos)}
+          canEdit={canEdit}
+          showToast={showToast}
+        />
 
         {/* Alamat & peta (koordinat hanya dari Topologi) */}
         <section className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5">
