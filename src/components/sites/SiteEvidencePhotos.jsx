@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import EvidenceLightboxModal from "./EvidenceLightboxModal";
 
-const SLOTS = [
+const ALL_SLOTS = [
   {
     key: "ap",
     label: "Access Point (AP)",
@@ -54,11 +54,16 @@ const SLOTS = [
 export default function SiteEvidencePhotos({
   ruijieMac,
   sitePrefix,
+  category = "desa",
+  isOpd = false,
   evidencePhotos = {},
   onPhotosUpdated,
   canEdit = true,
   showToast,
 }) {
+  const checkIsOpd = isOpd || category === "opd" || (sitePrefix || "").toUpperCase().includes("OPD");
+  const slots = checkIsOpd ? ALL_SLOTS.filter((s) => s.key !== "mikrotik") : ALL_SLOTS;
+
   const [photos, setPhotos] = useState(evidencePhotos || {});
   const [uploadingSlot, setUploadingSlot] = useState(null);
   const [activeLightbox, setActiveLightbox] = useState(null); // { photo, deviceLabel, slotKey }
@@ -179,19 +184,19 @@ export default function SiteEvidencePhotos({
             <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
               Evidence Foto Perangkat
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/80 text-slate-300 font-normal">
-                {uploadedCount} / {SLOTS.length} Terpasang
+                {uploadedCount} / {slots.length} Terpasang
               </span>
             </h2>
             <p className="text-[11px] text-slate-400">
-              Dokumentasi visual fisik perangkat di lokasi (AP, MikroTik, ONT, Panel)
+              Dokumentasi visual fisik perangkat di lokasi ({checkIsOpd ? "AP, ONT, Panel" : "AP, MikroTik, ONT, Panel"})
             </p>
           </div>
         </div>
       </div>
 
-      {/* Grid 4 Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {SLOTS.map((slot) => {
+      {/* Grid Cards */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${checkIsOpd ? "lg:grid-cols-3" : "lg:grid-cols-4"} gap-4`}>
+        {slots.map((slot) => {
           const photo = photos?.[slot.key];
           const hasPhoto = Boolean(photo && (photo.url || photo.drive_id || photo.preview_url));
           const isUploading = uploadingSlot === slot.key;

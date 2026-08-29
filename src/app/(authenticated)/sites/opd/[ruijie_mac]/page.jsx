@@ -457,10 +457,12 @@ export default function SiteDetailPage() {
           </section>
         </div>
 
-        {/* Evidence Foto Perangkat (AP, MikroTik, ONT, Panel) */}
+        {/* Evidence Foto Perangkat (AP, ONT, Panel) */}
         <SiteEvidencePhotos
           ruijieMac={mac}
           sitePrefix={data?.prefix || data?.ruijie_alias || mac}
+          category="opd"
+          isOpd={true}
           evidencePhotos={evidencePhotos}
           onPhotosUpdated={(newPhotos) => setEvidencePhotos(newPhotos)}
           canEdit={canEdit}

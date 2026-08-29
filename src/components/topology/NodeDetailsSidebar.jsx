@@ -23,13 +23,6 @@ import {
 } from "lucide-react";
 import EvidenceLightboxModal from "@/components/sites/EvidenceLightboxModal";
 
-const SLOTS = [
-  { key: "ap", label: "Access Point (AP)", subtitle: "Ruijie / Reyee", icon: Wifi, color: "blue" },
-  { key: "mikrotik", label: "Router MikroTik", subtitle: "Routerboard", icon: Cpu, color: "purple" },
-  { key: "ont", label: "Modem ONT", subtitle: "PON/LOS & Fiber", icon: Radio, color: "emerald" },
-  { key: "panel", label: "Panel / Lokasi", subtitle: "Tampak Site", icon: Box, color: "amber" },
-];
-
 export default function NodeDetailsSidebar({
   currentSelectedNode,
   setSelectedNode,
@@ -83,16 +76,29 @@ export default function NodeDetailsSidebar({
     };
   }, [mac, currentSelectedNode?.id]);
 
-  if (!currentSelectedNode) return null;
-
-  const siteCategory = (currentSelectedNode.linked_interface || "")
+  const siteCategory = (currentSelectedNode.linked_interface || currentSelectedNode.label || "")
     .toUpperCase()
     .includes("OPD")
     ? "opd"
     : "desa";
+  const isOpd = siteCategory === "opd";
+
+  const slots = isOpd
+    ? [
+        { key: "ap", label: "Access Point (AP)", subtitle: "Ruijie / Reyee", icon: Wifi, color: "blue" },
+        { key: "ont", label: "Modem ONT", subtitle: "PON/LOS & Fiber", icon: Radio, color: "emerald" },
+        { key: "panel", label: "Panel / Lokasi", subtitle: "Tampak Site", icon: Box, color: "amber" },
+      ]
+    : [
+        { key: "ap", label: "Access Point (AP)", subtitle: "Ruijie / Reyee", icon: Wifi, color: "blue" },
+        { key: "mikrotik", label: "Router MikroTik", subtitle: "Routerboard", icon: Cpu, color: "purple" },
+        { key: "ont", label: "Modem ONT", subtitle: "PON/LOS & Fiber", icon: Radio, color: "emerald" },
+        { key: "panel", label: "Panel / Lokasi", subtitle: "Tampak Site", icon: Box, color: "amber" },
+      ];
+
   const photos = liveEvidencePhotos || currentSelectedNode.site?.evidence_photos || {};
   const photoKeys = Object.keys(photos).filter(
-    (k) => photos[k]?.url || photos[k]?.drive_id || photos[k]?.preview_url,
+    (k) => slots.some((s) => s.key === k) && (photos[k]?.url || photos[k]?.drive_id || photos[k]?.preview_url),
   );
 
   return (
@@ -157,7 +163,7 @@ export default function NodeDetailsSidebar({
           }`}
         >
           <Camera size={13} />
-          <span>Evidence ({photoKeys.length}/4)</span>
+          <span>Evidence ({photoKeys.length}/{slots.length})</span>
         </button>
       </div>
 
@@ -595,9 +601,9 @@ export default function NodeDetailsSidebar({
       {/* TAB 2: EVIDENCE FOTO */}
       {activeTab === "evidence" && (
         <div className="p-4 flex-1 overflow-auto flex flex-col gap-3.5 animate-fadeIn">
-          {/* 4 Cards Grid */}
+          {/* Cards Grid */}
           <div className="grid grid-cols-1 gap-3">
-            {SLOTS.map((slot) => {
+            {slots.map((slot) => {
               const photo = photos?.[slot.key];
               const hasPhoto = Boolean(photo && (photo.url || photo.drive_id || photo.preview_url));
               const IconComponent = slot.icon;
