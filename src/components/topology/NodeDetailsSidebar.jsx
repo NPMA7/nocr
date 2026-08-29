@@ -595,23 +595,6 @@ export default function NodeDetailsSidebar({
       {/* TAB 2: EVIDENCE FOTO */}
       {activeTab === "evidence" && (
         <div className="p-4 flex-1 overflow-auto flex flex-col gap-3.5 animate-fadeIn">
-          {/* Header Info */}
-          <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-700/60">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-md bg-blue-500/20 text-blue-400">
-                <Camera size={15} />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-100">
-                  Dokumentasi Foto
-                </h4>
-                <p className="text-[10px] text-slate-400">
-                  {photoKeys.length} dari {SLOTS.length} Perangkat Terpasang
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* 4 Cards Grid */}
           <div className="grid grid-cols-1 gap-3">
             {SLOTS.map((slot) => {
@@ -707,27 +690,6 @@ export default function NodeDetailsSidebar({
                       </div>
                     )}
                   </div>
-
-                  {/* Card Action Footer */}
-                  {hasPhoto && (
-                    <div className="px-3 py-1.5 bg-slate-850 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-                      <span className="truncate max-w-[170px]">
-                        {photo.file_name || "Foto Perangkat"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveLightbox({
-                            photo,
-                            deviceLabel: slot.label,
-                          })
-                        }
-                        className="cursor-pointer font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                      >
-                        <Eye size={11} /> Buka HD
-                      </button>
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -748,4 +710,4 @@ export default function NodeDetailsSidebar({
       )}
     </div>
   );
-}
+};

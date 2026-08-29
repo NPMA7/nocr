@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   ZoomIn,
@@ -25,12 +26,17 @@ export default function EvidenceLightboxModal({
   onDelete,
   canEdit = false,
 }) {
+  const [mounted, setMounted] = useState(false);
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const viewportRef = useRef(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const resetTransform = useCallback(() => {
     setScale(1);
@@ -150,9 +156,11 @@ export default function EvidenceLightboxModal({
       })
     : "—";
 
-  return (
+  if (!isOpen || !photo || !mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex flex-col bg-black/95 backdrop-blur-md transition-opacity duration-200 animate-fadeIn select-none overflow-hidden"
+      className="fixed inset-0 z-[99999] flex flex-col bg-black/95 backdrop-blur-md transition-opacity duration-200 animate-fadeIn select-none overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
@@ -318,6 +326,7 @@ export default function EvidenceLightboxModal({
           <span>Pos: ({Math.round(position.x)}, {Math.round(position.y)})</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
