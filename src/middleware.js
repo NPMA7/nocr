@@ -21,7 +21,7 @@ const STATIC_PREFIXES = [
 
 function isStaticPath(pathname) {
   return STATIC_PREFIXES.some(prefix => pathname.startsWith(prefix)) || 
-         pathname.match(/\.(png|jpg|jpeg|svg|gif|ico|css|js|map|woff|woff2|ttf)$/i);
+         pathname.match(/\.(png|jpg|jpeg|svg|gif|ico|css|js|map|woff|woff2|ttf|json)$/i);
 }
 
 function isPublicPath(pathname) {
@@ -97,10 +97,27 @@ export function middleware(request) {
 
   // If no token on protected page or protected API route
   if (!isTokenValid) {
-    // If it's an API route, return 401 JSON
+    // Check if API Key header or query param exists for /api/ routes
     if (pathname.startsWith('/api/')) {
+      const hasApiKey = request.headers.get('x-api-key') ||
+                        request.headers.get('x-api-token') ||
+                        request.nextUrl.searchParams.get('api_key') ||
+                        request.nextUrl.searchParams.get('apiKey') ||
+                        request.headers.get('authorization')?.startsWith('Bearer nocr_');
+
+      if (hasApiKey) {
+        // Enforce STRICT Read-Only (GET / HEAD only) for API Keys
+        if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
+          return NextResponse.json(
+            { error: 'Akses Ditolak: API Key bersifat Read-Only (Hanya HTTP GET).' },
+            { status: 403 }
+          );
+        }
+        return NextResponse.next();
+      }
+
       return NextResponse.json(
-        { error: 'Akses Ditolak: Token tidak ditemukan atau kedaluwarsa' },
+        { error: 'Akses Ditolak: Token atau API Key tidak ditemukan atau kedaluwarsa' },
         { status: 401 }
       );
     }

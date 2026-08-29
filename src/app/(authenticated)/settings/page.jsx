@@ -35,6 +35,7 @@ import { hasAccess, getStoredUser, getRoleLabel } from "@/lib/roles";
 import RoleSettings from "@/components/RoleSettings";
 import WhatsAppGateway from "@/components/WhatsAppGateway";
 import CompanyProfileSettings from "@/components/CompanyProfileSettings";
+import ApiKeySettings from "@/components/ApiKeySettings";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -536,7 +537,7 @@ function PasswordChangeSettings({ canUpdate = true }) {
   return (
     <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg p-5">
       <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 mb-4">
-        <Key size={20} className="text-blue-500" /> Ubah Password Saya
+        <Eye size={20} className="text-blue-500" /> Ubah Password Saya
       </h2>
       <p className="text-xs text-slate-400 mb-6">
         Gunakan form di bawah ini untuk memperbarui kata sandi akun Anda.
@@ -820,11 +821,6 @@ function SystemHealth({ isAdmin }) {
                 <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
                   Port
                 </th>
-                {isAdmin && (
-                  <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase text-right">
-                    Aksi
-                  </th>
-                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
@@ -863,22 +859,12 @@ function SystemHealth({ isAdmin }) {
                     <td className="px-4 py-3 text-xs text-slate-300 font-mono">
                       {app.port || "-"}
                     </td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleRestart(app.name)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow transition cursor-pointer"
-                        >
-                          <RotateCw size={12} /> Sync / Refresh
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="5"
                     className="px-4 py-3 text-center text-xs text-slate-500"
                   >
                     Data layanan Docker tidak tersedia.
@@ -935,13 +921,32 @@ function SystemHealth({ isAdmin }) {
   );
 }
 
-function SystemConfigSettings({ canUpdate = true }) {
+function SystemConfigSettings({
+  canUpdate = true,
+  perms = {},
+  coreDevice = {},
+  setCoreDevice,
+  showCorePassword,
+  setShowCorePassword,
+  handleSaveCore,
+  vpnConfig = {},
+  setVpnConfig,
+  showVpnPassword,
+  setShowVpnPassword,
+  handleSaveVpn,
+  testVpnConnect,
+  testVpnDisconnect,
+  vpnConnecting = false,
+  vpnMsg = "",
+  existingId = null,
+  initialSubTab = "gateway",
+}) {
   const { showToast } = useAppState();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newIssue, setNewIssue] = useState("");
-  const [activeSubTab, setActiveSubTab] = useState("report");
+  const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
 
   const [editingIssue, setEditingIssue] = useState(null);
   const [renamedIssues, setRenamedIssues] = useState([]);
@@ -962,6 +967,12 @@ function SystemConfigSettings({ canUpdate = true }) {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -1062,415 +1073,845 @@ function SystemConfigSettings({ canUpdate = true }) {
     <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
       <div className="p-5 border-b border-slate-700/50">
         <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-          <SettingsIcon size={20} /> Konfigurasi Server / Project
+          <SettingsIcon size={20} className="text-blue-400" /> Konfigurasi Server / Project
         </h2>
         <p className="text-xs text-slate-400 mt-1">
-          Atur parameter operasional sistem NOCR tanpa perlu mengubah kode sumber.
+          Atur konektivitas gateway MikroTik & VPN, serta parameter operasional sistem NOCR.
         </p>
       </div>
 
       {/* Sub Tabs Navigation */}
-      <div className="flex border-b border-slate-700/50 bg-slate-800/40 px-5 gap-6">
+      <div className="flex border-b border-slate-700/50 bg-slate-800/40 px-5 gap-6 overflow-x-auto">
         <button
           type="button"
-          onClick={() => setActiveSubTab("report")}
-          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none ${
-            activeSubTab === "report"
-              ? "border-blue-500 text-blue-500 dark:text-blue-400"
+          onClick={() => setActiveSubTab("gateway")}
+          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none whitespace-nowrap ${
+            activeSubTab === "gateway"
+              ? "border-blue-500 text-blue-400"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
-          1. PARAMETER LAPORAN
+          1. MIKROTIK & VPN GATEWAY
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("report")}
+          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none whitespace-nowrap ${
+            activeSubTab === "report"
+              ? "border-blue-500 text-blue-400"
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          2. PARAMETER LAPORAN
         </button>
         <button
           type="button"
           onClick={() => setActiveSubTab("sync")}
-          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none ${
+          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none whitespace-nowrap ${
             activeSubTab === "sync"
-              ? "border-blue-500 text-blue-500 dark:text-blue-400"
+              ? "border-blue-500 text-blue-400"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
-          2. PARAMETER SINKRONISASI & MONITORING
+          3. PARAMETER SINKRONISASI & MONITORING
         </button>
       </div>
 
-      <div className="p-5">
-        <form onSubmit={handleSave} className="flex flex-col gap-5">
-          {activeSubTab === "report" && (
-            <div className="flex flex-col gap-4">
-              <h3 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">
-                1. Parameter Laporan
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Minimal Durasi Offline - Laporan Harian (Menit)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    readOnly={!canUpdate}
-                    value={settings.min_offline_duration_minutes}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        min_offline_duration_minutes: parseInt(e.target.value) || 1,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                  <span className="text-[10px] text-slate-500">
-                    Perangkat offline yang kurang dari waktu ini tidak akan dimasukkan otomatis ke laporan harian.
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Batas Waktu Flapping Log Aktivitas (Menit)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    readOnly={!canUpdate}
-                    value={settings.activity_log_flapping_minutes ?? 10}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        activity_log_flapping_minutes: parseInt(e.target.value) || 1,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                  <span className="text-[10px] text-slate-500">
-                    Log pergantian status (Offline/Online) yang kurang dari waktu ini akan otomatis dihapus agar tidak mengotori Log Aktivitas.
-                  </span>
+      {/* TAB 1: MIKROTIK & VPN GATEWAY */}
+      {activeSubTab === "gateway" && (
+        <div className="p-5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+            {/* CARD 1: MIKROTIK GATEWAY */}
+            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg h-full flex flex-col">
+              <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Server size={20} className="text-blue-400" />
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100">
+                      MikroTik Gateway
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Router utama untuk monitoring PPPoE, ONT, dan interface pelanggan lainnya.
+                    </p>
+                  </div>
                 </div>
               </div>
-
-              {/* Standard Issues Management */}
-              <div className="flex flex-col gap-2 mt-2">
-                <label className="text-xs font-semibold text-slate-400">
-                  Daftar Pilihan Issue Standar (Dropdown)
-                </label>
-                
-                {canUpdate && (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newIssue}
-                      onChange={(e) => setNewIssue(e.target.value)}
-                      placeholder="Contoh: Kabel Digigit Tikus..."
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddIssue}
-                      className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
-                    >
-                      Tambah
-                    </button>
+              <div className="p-5 flex-1 flex flex-col">
+                <form onSubmit={handleSaveCore} className="flex-1 flex flex-col justify-between gap-4">
+                  <div
+                    className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!perms?.mikrotikUpdate ? "opacity-90" : ""}`}
+                  >
+                    <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
+                      <label className="text-xs font-semibold text-slate-400">
+                        Nama Router <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        readOnly={!perms?.mikrotikUpdate}
+                        value={coreDevice?.name || ""}
+                        onChange={(e) =>
+                          setCoreDevice && setCoreDevice({ ...coreDevice, name: e.target.value })
+                        }
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-400">
+                        IP Address <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        readOnly={!perms?.mikrotikUpdate}
+                        value={coreDevice?.ip_address || ""}
+                        onChange={(e) =>
+                          setCoreDevice && setCoreDevice({
+                            ...coreDevice,
+                            ip_address: e.target.value,
+                          })
+                        }
+                        placeholder="Contoh: 192.168.100.1"
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-400">
+                        Port API <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        readOnly={!perms?.mikrotikUpdate}
+                        value={coreDevice?.port || 8728}
+                        onChange={(e) =>
+                          setCoreDevice && setCoreDevice({
+                            ...coreDevice,
+                            port: parseInt(e.target.value) || 8728,
+                          })
+                        }
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-400">
+                        Username API <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        readOnly={!perms?.mikrotikUpdate}
+                        value={coreDevice?.username || ""}
+                        onChange={(e) =>
+                          setCoreDevice && setCoreDevice({
+                            ...coreDevice,
+                            username: e.target.value,
+                          })
+                        }
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-400">
+                        Password API
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCorePassword && perms?.mikrotikUpdate ? "text" : "password"}
+                          readOnly={!perms?.mikrotikUpdate}
+                          value={coreDevice?.password || ""}
+                          onChange={(e) =>
+                            setCoreDevice && setCoreDevice({
+                              ...coreDevice,
+                              password: e.target.value,
+                            })
+                          }
+                          placeholder={
+                            existingId
+                              ? "Kosongkan jika tidak diubah"
+                              : "Masukkan password"
+                          }
+                          className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
+                        />
+                        <button
+                          type="button"
+                          disabled={!perms?.mikrotikUpdate}
+                          onClick={() => perms?.mikrotikUpdate && setShowCorePassword && setShowCorePassword(!showCorePassword)}
+                          className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms?.mikrotikUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
+                          title={perms?.mikrotikUpdate ? "" : "Anda hanya memiliki akses baca"}
+                        >
+                          {showCorePassword && perms?.mikrotikUpdate ? (
+                            <EyeOff size={16} />
+                          ) : (
+                            <Eye size={16} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex flex-wrap gap-2 mt-2 p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg max-h-48 overflow-y-auto">
-                  {settings.standard_issues.map((issue) => {
-                    const isEditing = editingIssue?.oldName === issue;
-                    return (
-                      <div
-                        key={issue}
-                        className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-full"
+                  {perms?.mikrotikUpdate && (
+                    <div className="mt-auto pt-4 flex justify-end">
+                      <button
+                        type="submit"
+                        className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-blue-500/20"
                       >
-                        {isEditing ? (
-                          <div className="flex items-center gap-1">
+                        <Save size={16} /> Simpan Konfigurasi
+                      </button>
+                    </div>
+                  )}
+                </form>
+              </div>
+            </div>
+
+            {/* CARD 2: VPN CONNECTION */}
+            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg h-full flex flex-col">
+              <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Network size={20} className="text-blue-400" />
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100">
+                      VPN Connection (Windows / Linux)
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Koneksi VPN otomatis saat jaringan terputus (rasdial / pon-poff).
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-5 flex-1 flex flex-col">
+                <form onSubmit={handleSaveVpn} className="flex-1 flex flex-col justify-between gap-4">
+                  <div className="flex flex-col gap-4">
+                    {/* Platform Selector */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-semibold text-slate-400">
+                        Pilih Platform VPN
+                      </label>
+                      <div className="grid grid-cols-2 bg-slate-900/60 p-1.5 rounded-lg border border-slate-700/50 gap-1.5 max-w-md">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVpnConfig && setVpnConfig({
+                              ...vpnConfig,
+                              active_platform: "windows",
+                            })
+                          }
+                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
+                            vpnConfig?.active_platform === "windows"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          <Monitor size={14} />
+                          Windows (rasdial)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVpnConfig && setVpnConfig({
+                              ...vpnConfig,
+                              active_platform: "linux",
+                            })
+                          }
+                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
+                            vpnConfig?.active_platform === "linux"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          <Terminal size={14} />
+                          Linux (pon/poff)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-700/50 my-1"></div>
+
+                    {/* Conditional Platform Forms */}
+                    {vpnConfig?.active_platform === "windows" ? (
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-2 pb-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                          <h4 className="text-xs font-bold text-slate-200">
+                            Konfigurasi Windows
+                          </h4>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold text-slate-400">
+                            Nama Profil VPN (rasdial) <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            readOnly={!perms?.vpnUpdate}
+                            value={vpnConfig?.windows_name || ""}
+                            onChange={(e) =>
+                              setVpnConfig && setVpnConfig({
+                                ...vpnConfig,
+                                windows_name: e.target.value,
+                              })
+                            }
+                            placeholder="Contoh: VPN_DISKOMINFO_KABBDG"
+                            className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                            required={vpnConfig?.active_platform === "windows"}
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-slate-400">
+                              Username VPN (Opsional)
+                            </label>
                             <input
                               type="text"
-                              value={editingIssue.value}
+                              readOnly={!perms?.vpnUpdate}
+                              value={vpnConfig?.windows_username || ""}
                               onChange={(e) =>
-                                setEditingIssue({
-                                  ...editingIssue,
-                                  value: e.target.value,
+                                setVpnConfig && setVpnConfig({
+                                  ...vpnConfig,
+                                  windows_username: e.target.value,
                                 })
                               }
-                              className="bg-slate-900 border border-blue-500 rounded px-2 py-0.5 text-xs text-white outline-none w-48"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleSaveEditIssue(issue, editingIssue.value);
-                                }
-                                if (e.key === "Escape") {
-                                  setEditingIssue(null);
-                                }
-                              }}
+                              placeholder="Username jika diperlukan"
+                              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
                             />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleSaveEditIssue(issue, editingIssue.value)
-                              }
-                              className="text-green-400 hover:text-green-300 p-0.5 transition cursor-pointer"
-                              title="Simpan perbaikan nama issue"
-                            >
-                              <Check size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingIssue(null)}
-                              className="text-slate-400 hover:text-slate-200 p-0.5 transition cursor-pointer"
-                              title="Batal"
-                            >
-                              <X size={14} />
-                            </button>
                           </div>
-                        ) : (
-                          <>
-                            <span>{issue}</span>
-                            {canUpdate && (
-                              <div className="flex items-center gap-1 ml-1 border-l border-slate-700/60 pl-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setEditingIssue({ oldName: issue, value: issue })
-                                  }
-                                  className="text-slate-400 hover:text-blue-400 transition cursor-pointer"
-                                  title="Edit nama issue ini"
-                                >
-                                  <Pencil size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveIssue(issue)}
-                                  className="text-slate-400 hover:text-red-400 transition cursor-pointer"
-                                  title="Hapus issue"
-                                >
-                                  <Trash size={12} />
-                                </button>
-                              </div>
-                            )}
-                          </>
-                        )}
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-slate-400">
+                              Password VPN (Opsional)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showVpnPassword && perms?.vpnUpdate ? "text" : "password"}
+                                readOnly={!perms?.vpnUpdate}
+                                value={vpnConfig?.windows_password || ""}
+                                onChange={(e) =>
+                                  setVpnConfig && setVpnConfig({
+                                    ...vpnConfig,
+                                    windows_password: e.target.value,
+                                  })
+                                }
+                                placeholder="Password jika diperlukan"
+                                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
+                              />
+                              <button
+                                type="button"
+                                disabled={!perms?.vpnUpdate}
+                                onClick={() => perms?.vpnUpdate && setShowVpnPassword && setShowVpnPassword(!showVpnPassword)}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms?.vpnUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
+                                title={perms?.vpnUpdate ? "" : "Anda hanya memiliki akses baca"}
+                              >
+                                {showVpnPassword && perms?.vpnUpdate ? (
+                                  <EyeOff size={16} />
+                                ) : (
+                                  <Eye size={16} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    ) : (
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-2 pb-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                          <h4 className="text-xs font-bold text-slate-200">
+                            Konfigurasi Linux (pon/poff)
+                          </h4>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold text-slate-400">
+                            Nama Provider / Interface (pon &lt;name&gt;) <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            readOnly={!perms?.vpnUpdate}
+                            value={vpnConfig?.linux_name || ""}
+                            onChange={(e) =>
+                              setVpnConfig && setVpnConfig({
+                                ...vpnConfig,
+                                linux_name: e.target.value,
+                              })
+                            }
+                            placeholder="Contoh: vpn-provider"
+                            className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                            required={vpnConfig?.active_platform === "linux"}
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-slate-400">
+                              Username Linux PPP (Opsional)
+                            </label>
+                            <input
+                              type="text"
+                              readOnly={!perms?.vpnUpdate}
+                              value={vpnConfig?.linux_username || ""}
+                              onChange={(e) =>
+                                setVpnConfig && setVpnConfig({
+                                  ...vpnConfig,
+                                  linux_username: e.target.value,
+                                })
+                              }
+                              placeholder="Username jika diperlukan"
+                              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-slate-400">
+                              Password Linux PPP (Opsional)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showVpnPassword && perms?.vpnUpdate ? "text" : "password"}
+                                readOnly={!perms?.vpnUpdate}
+                                value={vpnConfig?.linux_password || ""}
+                                onChange={(e) =>
+                                  setVpnConfig && setVpnConfig({
+                                    ...vpnConfig,
+                                    linux_password: e.target.value,
+                                  })
+                                }
+                                placeholder="Password jika diperlukan"
+                                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
+                              />
+                              <button
+                                type="button"
+                                disabled={!perms?.vpnUpdate}
+                                onClick={() => perms?.vpnUpdate && setShowVpnPassword && setShowVpnPassword(!showVpnPassword)}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms?.vpnUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
+                                title={perms?.vpnUpdate ? "" : "Anda hanya memiliki akses baca"}
+                              >
+                                {showVpnPassword && perms?.vpnUpdate ? (
+                                  <EyeOff size={16} />
+                                ) : (
+                                  <Eye size={16} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-auto pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-700/50">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={vpnConnecting || !perms?.vpnUpdate}
+                        onClick={testVpnConnect}
+                        className="cursor-pointer bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 px-3.5 py-2 rounded-lg text-xs font-semibold transition"
+                      >
+                        {vpnConnecting ? "Memproses..." : "Tes Hubungkan"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={vpnConnecting || !perms?.vpnUpdate}
+                        onClick={testVpnDisconnect}
+                        className="cursor-pointer bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 px-3.5 py-2 rounded-lg text-xs font-semibold transition"
+                      >
+                        Putuskan
+                      </button>
+                      {vpnMsg && (
+                        <span className="text-xs text-blue-400 font-mono">
+                          {vpnMsg}
+                        </span>
+                      )}
+                    </div>
+                    {perms?.vpnUpdate && (
+                      <button
+                        type="submit"
+                        className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition shadow-lg shadow-blue-500/20"
+                      >
+                        <Save size={16} /> Simpan Pengaturan
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {activeSubTab === "sync" && (
-            <div className="flex flex-col gap-4">
-              <h3 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">
-                2. Parameter Sinkronisasi & Monitoring
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Interval Ping Perangkat (Detik)
-                  </label>
-                  <input
-                    type="number"
-                    min="2"
-                    readOnly={!canUpdate}
-                    value={settings.ping_interval_seconds}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        ping_interval_seconds: parseInt(e.target.value) || 5,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
+      {/* TAB 2 & 3: PARAMETER LAPORAN & SINKRONISASI */}
+      {(activeSubTab === "report" || activeSubTab === "sync") && (
+        <div className="p-5">
+          <form onSubmit={handleSave} className="flex flex-col gap-5">
+            {activeSubTab === "report" && (
+              <div className="flex flex-col gap-4">
+                <h3 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">
+                  2. Parameter Laporan
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Minimal Durasi Offline - Laporan Harian (Menit)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      readOnly={!canUpdate}
+                      value={settings.min_offline_duration_minutes}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          min_offline_duration_minutes: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                    <span className="text-[10px] text-slate-500">
+                      Perangkat offline yang kurang dari waktu ini tidak akan dimasukkan otomatis ke laporan harian.
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Batas Waktu Flapping Log Aktivitas (Menit)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      readOnly={!canUpdate}
+                      value={settings.activity_log_flapping_minutes ?? 10}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          activity_log_flapping_minutes: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                    <span className="text-[10px] text-slate-500">
+                      Log pergantian status (Offline/Online) yang kurang dari waktu ini akan otomatis dihapus agar tidak mengotori Log Aktivitas.
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
+                {/* Standard Issues Management */}
+                <div className="flex flex-col gap-2 mt-2">
                   <label className="text-xs font-semibold text-slate-400">
-                    Timeout Ping Perangkat (Detik)
+                    Daftar Pilihan Issue Standar (Dropdown)
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    readOnly={!canUpdate}
-                    value={settings.ping_timeout_seconds}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        ping_timeout_seconds: parseInt(e.target.value) || 15,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                </div>
+                  
+                  {canUpdate && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newIssue}
+                        onChange={(e) => setNewIssue(e.target.value)}
+                        placeholder="Contoh: Kabel Digigit Tikus..."
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddIssue}
+                        className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
+                      >
+                        Tambah
+                      </button>
+                    </div>
+                  )}
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Interval Broadcast Core (Detik)
-                  </label>
-                  <input
-                    type="number"
-                    min="2"
-                    readOnly={!canUpdate}
-                    value={settings.core_broadcast_interval_seconds || 10}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        core_broadcast_interval_seconds: parseInt(e.target.value) || 10,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Interval Sinkronisasi Ruijie (Detik)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    readOnly={!canUpdate}
-                    value={settings.sync_ruijie_interval_seconds || 60}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        sync_ruijie_interval_seconds: parseInt(e.target.value) || 60,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Interval Sinkronisasi MikroTik (Detik)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    readOnly={!canUpdate}
-                    value={settings.sync_mikrotik_interval_seconds || 60}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        sync_mikrotik_interval_seconds: parseInt(e.target.value) || 60,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Interval Sinkronisasi Mappings (Detik)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    readOnly={!canUpdate}
-                    value={settings.sync_mappings_interval_seconds || 60}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        sync_mappings_interval_seconds: parseInt(e.target.value) || 60,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Interval Sinkronisasi HSGQ OLT (Detik)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    readOnly={!canUpdate}
-                    value={settings.sync_hsgq_interval_seconds || 60}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        sync_hsgq_interval_seconds: parseInt(e.target.value) || 60,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Delay Alarm Offline (ms)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    readOnly={!canUpdate}
-                    value={settings.alarm_delay_ms ?? 1500}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        alarm_delay_ms: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  />
-                  <span className="text-[10px] text-slate-500">
-                    Delay sebelum alarm berbunyi setelah notif offline diterima. Berguna untuk menghindari false alarm akibat fluktuasi singkat.
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Jenis Suara Alarm
-                  </label>
-                  <select
-                    disabled={!canUpdate}
-                    value={settings.alarm_sound || "beep"}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        alarm_sound: e.target.value,
-                      })
-                    }
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                    required
-                  >
-                    <option value="beep">Beep (Default - Nada Kotak 4x)</option>
-                    <option value="siren">Siren (Nada Naik-Turun Sawtooth)</option>
-                    <option value="alert">Alert (3 Nada Cepat)</option>
-                    <option value="ping">Ping (Nada Sine Lembut)</option>
-                  </select>
+                  <div className="flex flex-wrap gap-2 mt-2 p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg max-h-48 overflow-y-auto">
+                    {settings.standard_issues.map((issue) => {
+                      const isEditing = editingIssue?.oldName === issue;
+                      return (
+                        <div
+                          key={issue}
+                          className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-full"
+                        >
+                          {isEditing ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={editingIssue.value}
+                                onChange={(e) =>
+                                  setEditingIssue({
+                                    ...editingIssue,
+                                    value: e.target.value,
+                                  })
+                                }
+                                className="bg-slate-900 border border-blue-500 rounded px-2 py-0.5 text-xs text-white outline-none w-48"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleSaveEditIssue(issue, editingIssue.value);
+                                  }
+                                  if (e.key === "Escape") {
+                                    setEditingIssue(null);
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleSaveEditIssue(issue, editingIssue.value)
+                                }
+                                className="text-green-400 hover:text-green-300 p-0.5 transition cursor-pointer"
+                                title="Simpan perbaikan nama issue"
+                              >
+                                <Check size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingIssue(null)}
+                                className="text-slate-400 hover:text-slate-200 p-0.5 transition cursor-pointer"
+                                title="Batal"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span>{issue}</span>
+                              {canUpdate && (
+                                <div className="flex items-center gap-1 ml-1 border-l border-slate-700/60 pl-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingIssue({ oldName: issue, value: issue })
+                                    }
+                                    className="text-slate-400 hover:text-blue-400 transition cursor-pointer"
+                                    title="Edit nama issue ini"
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveIssue(issue)}
+                                    className="text-slate-400 hover:text-red-400 transition cursor-pointer"
+                                    title="Hapus issue"
+                                  >
+                                    <Trash size={12} />
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {canUpdate && (
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-700/50">
-              <button
-                type="submit"
-                disabled={saving}
-                className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-2 px-6 rounded-lg text-xs transition"
-              >
-                {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                Simpan Konfigurasi
-              </button>
-            </div>
-          )}
-        </form>
-      </div>
+            {activeSubTab === "sync" && (
+              <div className="flex flex-col gap-4">
+                <h3 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">
+                  3. Parameter Sinkronisasi & Monitoring
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Interval Ping Perangkat (Detik)
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      readOnly={!canUpdate}
+                      value={settings.ping_interval_seconds}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          ping_interval_seconds: parseInt(e.target.value) || 5,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Timeout Ping Perangkat (Detik)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      readOnly={!canUpdate}
+                      value={settings.ping_timeout_seconds}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          ping_timeout_seconds: parseInt(e.target.value) || 15,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Interval Broadcast Core (Detik)
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      readOnly={!canUpdate}
+                      value={settings.core_broadcast_interval_seconds || 10}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          core_broadcast_interval_seconds: parseInt(e.target.value) || 10,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Interval Sinkronisasi Ruijie (Detik)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      readOnly={!canUpdate}
+                      value={settings.sync_ruijie_interval_seconds || 60}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          sync_ruijie_interval_seconds: parseInt(e.target.value) || 60,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Interval Sinkronisasi MikroTik (Detik)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      readOnly={!canUpdate}
+                      value={settings.sync_mikrotik_interval_seconds || 60}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          sync_mikrotik_interval_seconds: parseInt(e.target.value) || 60,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Interval Sinkronisasi Mappings (Detik)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      readOnly={!canUpdate}
+                      value={settings.sync_mappings_interval_seconds || 60}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          sync_mappings_interval_seconds: parseInt(e.target.value) || 60,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Interval Sinkronisasi HSGQ OLT (Detik)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      readOnly={!canUpdate}
+                      value={settings.sync_hsgq_interval_seconds || 60}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          sync_hsgq_interval_seconds: parseInt(e.target.value) || 60,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Delay Alarm Offline (ms)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      readOnly={!canUpdate}
+                      value={settings.alarm_delay_ms ?? 1500}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          alarm_delay_ms: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    />
+                    <span className="text-[10px] text-slate-500">
+                      Delay sebelum alarm berbunyi setelah notif offline diterima. Berguna untuk menghindari false alarm akibat fluktuasi singkat.
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">
+                      Jenis Suara Alarm
+                    </label>
+                    <select
+                      disabled={!canUpdate}
+                      value={settings.alarm_sound || "beep"}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          alarm_sound: e.target.value,
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
+                      required
+                    >
+                      <option value="beep">Beep (Default - Nada Kotak 4x)</option>
+                      <option value="siren">Siren (Nada Naik-Turun Sawtooth)</option>
+                      <option value="alert">Alert (3 Nada Cepat)</option>
+                      <option value="ping">Ping (Nada Sine Lembut)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {canUpdate && (
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-700/50">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-2 px-6 rounded-lg text-xs transition"
+                >
+                  {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                  Simpan Konfigurasi
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
+      )}
     </div>
   );
 }
@@ -1518,6 +1959,10 @@ function Settings({ activeTab: activeTabProp }) {
       rolesCreate: hasAccess(userData, "settings-roles", "create"),
       rolesUpdate: hasAccess(userData, "settings-roles", "update"),
       rolesDelete: hasAccess(userData, "settings-roles", "delete"),
+      apikeysRead: (userData?.role || "").toLowerCase() === "superadmin",
+      apikeysCreate: (userData?.role || "").toLowerCase() === "superadmin",
+      apikeysUpdate: (userData?.role || "").toLowerCase() === "superadmin",
+      apikeysDelete: (userData?.role || "").toLowerCase() === "superadmin",
       passwordUpdate: hasAccess(userData, "settings-password", "update"),
       systemRead: hasAccess(userData, "settings-system", "read"),
       systemUpdate: hasAccess(userData, "settings-system", "update"),
@@ -1534,6 +1979,7 @@ function Settings({ activeTab: activeTabProp }) {
       if (segs[0] === "settings" && segs[1]) {
         if (segs[1] === "core") return "mikrotik-gateway";
         if (segs[1] === "company" || segs[1] === "profile") return "company";
+        if (segs[1] === "api-keys" || segs[1] === "apikeys") return "api-keys";
         return segs[1];
       }
     }
@@ -1541,6 +1987,7 @@ function Settings({ activeTab: activeTabProp }) {
     if (tabParam) {
       if (tabParam === "core") return "mikrotik-gateway";
       if (tabParam === "company" || tabParam === "profile") return "company";
+      if (tabParam === "api-keys" || tabParam === "apikeys") return "api-keys";
       return tabParam;
     }
     const userData = sessionUser?.role ? sessionUser : getStoredUser();
@@ -1552,6 +1999,7 @@ function Settings({ activeTab: activeTabProp }) {
       // { tab: "whatsapp", menu: "settings-wa" },
       { tab: "users", menu: "settings-users" },
       { tab: "roles", menu: "settings-roles" },
+      { tab: "api-keys", menu: "settings-apikeys" },
       { tab: "password", menu: "settings-password" },
       { tab: "system", menu: "settings-system" },
       { tab: "design", menu: null },
@@ -1721,15 +2169,16 @@ function Settings({ activeTab: activeTabProp }) {
   };
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto flex flex-col gap-6 max-w-4xl mx-auto w-full pb-4">
-      <div>
-        <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-          {" "}
-          <Shield size={24} /> Pengaturan Sistem
-        </h1>
-        <p className="text-xs text-slate-400">
-          Konfigurasi pusat untuk NOCR dan Perangkat Core
-        </p>
+    <div className="h-full min-h-0 overflow-y-auto flex flex-col gap-6 w-full pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
+            <Shield size={22} className="text-blue-400" /> Pengaturan Sistem
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Konfigurasi pusat untuk NOCR dan Perangkat Core Gateway
+          </p>
+        </div>
       </div>
 
       <div>
@@ -1737,386 +2186,6 @@ function Settings({ activeTab: activeTabProp }) {
         <div>
           {(activeTab === "company" || activeTab === "profile") && perms.companyRead && (
             <CompanyProfileSettings canUpdate={perms.companyUpdate} />
-          )}
-
-          {activeTab === "mikrotik-gateway" && (
-            <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
-              <div className="p-5 border-b border-slate-700/50">
-                <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                  <Server size={20} /> MikroTik Gateway
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Router utama ini akan menjadi pusat monitoring untuk PPPoE,
-                  ONT, dan interface pelanggan lainnya.
-                </p>
-              </div>
-              <div className="p-5">
-                <form onSubmit={handleSaveCore} className="flex flex-col gap-4">
-                  <div
-                    className={`grid grid-cols-2 gap-4 ${!perms.mikrotikUpdate ? "opacity-90" : ""}`}
-                  >
-                    <div className="flex flex-col gap-1.5 col-span-2 md:col-span-1">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Nama Router
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={!perms.mikrotikUpdate}
-                        value={coreDevice.name}
-                        onChange={(e) =>
-                          setCoreDevice({ ...coreDevice, name: e.target.value })
-                        }
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5 col-span-2 md:col-span-1">
-                      <label className="text-xs font-semibold text-slate-400">
-                        IP Address
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={!perms.mikrotikUpdate}
-                        value={coreDevice.ip_address}
-                        onChange={(e) =>
-                          setCoreDevice({
-                            ...coreDevice,
-                            ip_address: e.target.value,
-                          })
-                        }
-                        placeholder="Contoh: 192.168.100.1"
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5 col-span-2 md:col-span-1">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Username API
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={!perms.mikrotikUpdate}
-                        value={coreDevice.username}
-                        onChange={(e) =>
-                          setCoreDevice({
-                            ...coreDevice,
-                            username: e.target.value,
-                          })
-                        }
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5 col-span-2 md:col-span-1">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Password API
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showCorePassword && perms.mikrotikUpdate ? "text" : "password"}
-                          readOnly={!perms.mikrotikUpdate}
-                          value={coreDevice.password}
-                          onChange={(e) =>
-                            setCoreDevice({
-                              ...coreDevice,
-                              password: e.target.value,
-                            })
-                          }
-                          placeholder={
-                            existingId
-                              ? "Kosongkan jika tidak diubah"
-                              : "Masukkan password"
-                          }
-                          className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
-                        />
-                        <button
-                          type="button"
-                          disabled={!perms.mikrotikUpdate}
-                          onClick={() => perms.mikrotikUpdate && setShowCorePassword(!showCorePassword)}
-                          className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms.mikrotikUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
-                          title={perms.mikrotikUpdate ? "" : "Anda hanya memiliki akses baca"}
-                        >
-                          {showCorePassword && perms.mikrotikUpdate ? (
-                            <EyeOff size={16} />
-                          ) : (
-                            <Eye size={16} />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5 col-span-2 md:col-span-1">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Port API
-                      </label>
-                      <input
-                        type="number"
-                        readOnly={!perms.mikrotikUpdate}
-                        value={coreDevice.port}
-                        onChange={(e) =>
-                          setCoreDevice({
-                            ...coreDevice,
-                            port: parseInt(e.target.value),
-                          })
-                        }
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {perms.mikrotikUpdate && (
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        type="submit"
-                        className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-blue-500/20"
-                      >
-                        <Save size={16} /> Simpan Konfigurasi
-                      </button>
-                    </div>
-                  )}
-                </form>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "vpn" && (
-            <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
-              <div className="p-5 border-b border-slate-700/50 flex justify-between items-start">
-                <div>
-                  <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                    <Network size={20} /> VPN Connection (Windows / Linux)
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Biarkan backend memanggil koneksi VPN secara otomatis saat
-                    jaringan terputus. Pada Windows menggunakan profil VPN
-                    Windows (rasdial), sedangkan pada Linux menggunakan
-                    PPPoE/VPN peers (pon/poff).
-                  </p>
-                </div>
-              </div>
-              <div className="p-5">
-                <form onSubmit={handleSaveVpn} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-6">
-                    {/* Platform Selector */}
-                    <div className="flex flex-col gap-2 max-w-md">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Pilih Platform VPN
-                      </label>
-                      <div className="grid grid-cols-2 bg-slate-900/60 p-1.5 rounded-lg border border-slate-700/50 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setVpnConfig({
-                              ...vpnConfig,
-                              active_platform: "windows",
-                            })
-                          }
-                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
-                            vpnConfig.active_platform === "windows"
-                              ? "bg-blue-600 text-white shadow-md"
-                              : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <Monitor size={14} />
-                          Windows (rasdial)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setVpnConfig({
-                              ...vpnConfig,
-                              active_platform: "linux",
-                            })
-                          }
-                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
-                            vpnConfig.active_platform === "linux"
-                              ? "bg-blue-600 text-white shadow-md"
-                              : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <Terminal size={14} />
-                          Linux (pon/poff)
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-slate-700/50 my-1"></div>
-
-                    {/* Conditional Platform Forms */}
-                    {vpnConfig.active_platform === "windows" ? (
-                      <div className="flex flex-col gap-4 max-w-xl transition-all duration-300">
-                        <div className="flex items-center gap-2 pb-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                          <h3 className="text-xs font-bold text-slate-200">
-                            Konfigurasi Windows
-                          </h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-1.5 col-span-2">
-                            <label className="text-xs font-semibold text-slate-400">
-                              Nama Profil VPN (rasdial)
-                            </label>
-                            <input
-                              type="text"
-                              readOnly={!perms.vpnUpdate}
-                              value={vpnConfig.windows_name}
-                              onChange={(e) =>
-                                setVpnConfig({
-                                  ...vpnConfig,
-                                  windows_name: e.target.value,
-                                })
-                              }
-                              placeholder='Contoh: "VPN_DISKOMINFO_KABBDG"'
-                              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-slate-400">
-                              Username VPN (Opsional)
-                            </label>
-                            <input
-                              type="text"
-                              readOnly={!perms.vpnUpdate}
-                              value={vpnConfig.windows_username}
-                              onChange={(e) =>
-                                setVpnConfig({
-                                  ...vpnConfig,
-                                  windows_username: e.target.value,
-                                })
-                              }
-                              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-slate-400">
-                              Password VPN (Opsional)
-                            </label>
-                            <div className="relative">
-                              <input
-                                type={showVpnPassword && perms.vpnUpdate ? "text" : "password"}
-                                value={vpnConfig.windows_password}
-                                onChange={(e) =>
-                                  setVpnConfig({
-                                    ...vpnConfig,
-                                    windows_password: e.target.value,
-                                  })
-                                }
-                                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
-                              />
-                              <button
-                                type="button"
-                                disabled={!perms.vpnUpdate}
-                                onClick={() => perms.vpnUpdate && setShowVpnPassword(!showVpnPassword)}
-                                className={`cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 ${perms.vpnUpdate ? "text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
-                                title={perms.vpnUpdate ? "" : "Anda hanya memiliki akses baca"}
-                              >
-                                {showVpnPassword && perms.vpnUpdate ? (
-                                  <EyeOff size={16} />
-                                ) : (
-                                  <Eye size={16} />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-4 max-w-xl transition-all duration-300">
-                        <div className="flex items-center gap-2 pb-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                          <h3 className="text-xs font-bold text-slate-200">
-                            Konfigurasi Linux
-                          </h3>
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold text-slate-400">
-                            Nama Peer / PPPoE (pon/poff)
-                          </label>
-                          <input
-                            type="text"
-                            value={vpnConfig.linux_name}
-                            onChange={(e) =>
-                              setVpnConfig({
-                                ...vpnConfig,
-                                linux_name: e.target.value,
-                              })
-                            }
-                            placeholder='Contoh: "diskominfo"'
-                            className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                          />
-                        </div>
-
-                        <div className="bg-slate-900/50 border border-slate-700/50 p-4 rounded-lg flex flex-col gap-2 mt-2">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-blue-500 dark:text-blue-400">
-                            <Terminal size={14} />
-                            Info Penggunaan pon/poff
-                          </div>
-                          <p className="text-xs text-slate-400 leading-relaxed">
-                            Koneksi VPN pada sistem operasi Linux tidak
-                            memerlukan input Username dan Password di sini.
-                            Sistem akan memanggil perintah{" "}
-                            <code className="bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded text-slate-200 font-mono">
-                              pon [nama]
-                            </code>{" "}
-                            dan{" "}
-                            <code className="bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded text-slate-200 font-mono">
-                              poff [nama]
-                            </code>{" "}
-                            menggunakan konfigurasi peers yang sudah ada di file{" "}
-                            <code className="bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded text-slate-200 font-mono">
-                              /etc/ppp/peers/[nama]
-                            </code>
-                            .
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between items-center mt-4">
-                    <div className="flex items-center gap-2">
-                      {perms.vpnUpdate && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={testVpnConnect}
-                            disabled={vpnConnecting}
-                            className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
-                          >
-                            Tes Hubungkan
-                          </button>
-                          <button
-                            type="button"
-                            onClick={testVpnDisconnect}
-                            disabled={vpnConnecting}
-                            className="cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-50 text-slate-200 font-semibold py-2 px-4 rounded-lg text-xs transition"
-                          >
-                            Putuskan
-                          </button>
-                        </>
-                      )}
-                    </div>
-                    {perms.vpnUpdate && (
-                      <button
-                        type="submit"
-                        className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg text-xs transition shadow-lg shadow-blue-500/20"
-                      >
-                        <Save size={16} /> Simpan Pengaturan
-                      </button>
-                    )}
-                  </div>
-                  {vpnMsg && (
-                    <div className="mt-2 text-xs bg-slate-900 border border-slate-700 p-2 rounded-md text-slate-300 font-mono break-all">
-                      {vpnMsg}
-                    </div>
-                  )}
-                </form>
-              </div>
-            </div>
           )}
 
           {activeTab === "users" && perms.usersRead && (
@@ -2133,6 +2202,14 @@ function Settings({ activeTab: activeTabProp }) {
               canCreate={perms.rolesCreate}
               canUpdate={perms.rolesUpdate}
               canDelete={perms.rolesDelete}
+            />
+          )}
+
+          {(activeTab === "api-keys" || activeTab === "apikeys") && perms.apikeysRead && (
+            <ApiKeySettings
+              canCreate={perms.apikeysCreate}
+              canUpdate={perms.apikeysUpdate}
+              canDelete={perms.apikeysDelete}
             />
           )}
 
@@ -2154,9 +2231,30 @@ function Settings({ activeTab: activeTabProp }) {
           )}
           */}
 
-          {activeTab === "system" && perms.systemRead && (
+          {(activeTab === "system" || activeTab === "server" || activeTab === "mikrotik-gateway" || activeTab === "vpn" || activeTab === "core") && (perms.systemRead || perms.mikrotikRead) && (
             <SystemConfigSettings
               canUpdate={perms.systemUpdate}
+              perms={perms}
+              coreDevice={coreDevice}
+              setCoreDevice={setCoreDevice}
+              showCorePassword={showCorePassword}
+              setShowCorePassword={setShowCorePassword}
+              handleSaveCore={handleSaveCore}
+              vpnConfig={vpnConfig}
+              setVpnConfig={setVpnConfig}
+              showVpnPassword={showVpnPassword}
+              setShowVpnPassword={setShowVpnPassword}
+              handleSaveVpn={handleSaveVpn}
+              testVpnConnect={testVpnConnect}
+              testVpnDisconnect={testVpnDisconnect}
+              vpnConnecting={vpnConnecting}
+              vpnMsg={vpnMsg}
+              existingId={existingId}
+              initialSubTab={
+                activeTab === "mikrotik-gateway" || activeTab === "vpn" || activeTab === "core"
+                  ? "gateway"
+                  : searchParams?.get("tab") || "gateway"
+              }
             />
           )}
         </div>

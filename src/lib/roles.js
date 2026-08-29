@@ -19,8 +19,6 @@ export const MENUS = {
   
   // Pengaturan Sistem
   'settings-company': 'Pengaturan - Profil Perusahaan',
-  'settings-mikrotik': 'Pengaturan - MikroTik Gateway',
-  'settings-vpn': 'Pengaturan - VPN Connection',
   'settings-health': 'Pengaturan - Kesehatan Sistem & DB',
   // 'settings-wa': 'Pengaturan - WhatsApp Gateway',
   'settings-users': 'Pengaturan - Manajemen Pengguna',
@@ -78,6 +76,11 @@ export function hasAccess(user, menuKey, action) {
   if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
     // 1. Direct exact key match (e.g. 'settings-mikrotik')
     if (Array.isArray(perms[menuKey]) && perms[menuKey].includes(action)) {
+      return true;
+    }
+    
+    // Support unified settings-mikrotik covering settings-vpn
+    if (menuKey === 'settings-vpn' && Array.isArray(perms['settings-mikrotik']) && perms['settings-mikrotik'].includes(action)) {
       return true;
     }
     
@@ -153,6 +156,7 @@ export const MENU_ROUTE_HIERARCHY = [
   { menuKey: 'settings-wa', path: '/settings?tab=whatsapp' },
   { menuKey: 'settings-users', path: '/settings?tab=users' },
   { menuKey: 'settings-roles', path: '/settings?tab=roles' },
+  { menuKey: 'settings-apikeys', path: '/settings?tab=api-keys' },
   { menuKey: 'settings-password', path: '/settings?tab=password' },
   { menuKey: 'settings-system', path: '/settings?tab=system' },
 ];

@@ -12,6 +12,46 @@ export function isValidRole(role) {
     return !!normalizeRole(role);
 }
 
+export function extractApiKey(req) {
+    if (!req) return null;
+
+    // 1. Check headers (x-api-key, x-api-token)
+    if (typeof req.headers?.get === 'function') {
+        const xKey = req.headers.get('x-api-key') || req.headers.get('x-api-token');
+        if (xKey) return xKey.trim();
+    } else if (req.headers) {
+        const xKey = req.headers['x-api-key'] || req.headers['x-api-token'];
+        if (xKey) return typeof xKey === 'string' ? xKey.trim() : xKey[0].trim();
+    }
+
+    // 2. Check Authorization header (Bearer nocr_...)
+    let authHeader = null;
+    if (typeof req.headers?.get === 'function') {
+        authHeader = req.headers.get('authorization');
+    } else if (req.headers && req.headers['authorization']) {
+        authHeader = req.headers['authorization'];
+    }
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const candidate = authHeader.split(' ')[1].trim();
+        if (candidate.startsWith('nocr_') || candidate.split('.').length !== 3) {
+            return candidate;
+        }
+    }
+
+    // 3. Check query param (?api_key= or ?apiKey=)
+    if (req.url) {
+        try {
+            const urlObj = new URL(req.url, 'http://localhost');
+            const qKey = urlObj.searchParams.get('api_key') || urlObj.searchParams.get('apiKey');
+            if (qKey) return qKey.trim();
+        } catch (e) {}
+    } else if (req.query?.api_key || req.query?.apiKey) {
+        return (req.query.api_key || req.query.apiKey).trim();
+    }
+
+    return null;
+}
+
 export function extractToken(req) {
     if (!req) return null;
 
@@ -54,9 +94,18 @@ export function extractToken(req) {
 }
 
 export function verifyAuth(req) {
+    const apiKey = extractApiKey(req);
+    if (apiKey) {
+        return { id: 'apikey', isApiKey: true, apiKey };
+    }
+
     const token = extractToken(req);
     if (!token) {
-        throw Object.assign(new Error('Akses Ditolak: Token tidak ditemukan'), { status: 401 });
+        throw Object.assign(new Error('Akses Ditolak: Token atau API Key tidak ditemukan'), { status: 401 });
+    }
+
+    if (token.startsWith('nocr_')) {
+        return { id: 'apikey', isApiKey: true, apiKey: token };
     }
 
     try {
@@ -67,8 +116,89 @@ export function verifyAuth(req) {
     }
 }
 
-/** Auth dengan role terbaru dari database (bukan hanya dari JWT). */
+/** Auth dengan role terbaru dari database (mendukung JWT & API Key). */
 export async function resolveAuth(req) {
+    // 1. Cek Autentikasi API Key
+    const apiKey = extractApiKey(req);
+    if (apiKey) {
+        const { data: keyData, error } = await db
+            .from('api_keys')
+            .select('*')
+            .eq('key', apiKey)
+            .maybeSingle();
+
+        if (error || !keyData) {
+            throw Object.assign(new Error('Akses Ditolak: API Key tidak valid'), { status: 401 });
+        }
+
+        if (keyData.is_active === false) {
+            throw Object.assign(new Error('Akses Ditolak: API Key telah dinonaktifkan'), { status: 401 });
+        }
+
+        if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {
+            throw Object.assign(new Error('Akses Ditolak: API Key telah kedaluwarsa'), { status: 401 });
+        }
+
+        // API Key bersifat Strictly READ-ONLY (Hanya HTTP GET / HEAD)
+        const reqMethod = req?.method || '';
+        if (reqMethod && reqMethod.toUpperCase() !== 'GET' && reqMethod.toUpperCase() !== 'HEAD' && reqMethod.toUpperCase() !== 'OPTIONS') {
+            throw Object.assign(
+                new Error('Akses Ditolak: API Key bersifat Read-Only (Hanya HTTP GET)'),
+                { status: 403 }
+            );
+        }
+
+        // Perbarui last_used_at secara non-blocking
+        db.from('api_keys')
+            .update({ last_used_at: new Date().toISOString() })
+            .eq('id', keyData.id)
+            .execute()
+            .catch(() => {});
+
+        let permissions = {};
+        if (keyData.permissions) {
+            try {
+                permissions = typeof keyData.permissions === 'string'
+                    ? JSON.parse(keyData.permissions)
+                    : keyData.permissions;
+            } catch (e) {}
+        }
+
+        const role = (keyData.role || 'visitor').toLowerCase().trim();
+        if (role === 'superadmin' || role === 'admin') {
+            return {
+                id: keyData.id,
+                username: `apikey:${keyData.name || 'client'}`,
+                name: keyData.name,
+                role: 'superadmin',
+                isApiKey: true,
+                apiKeyId: keyData.id,
+                permissions
+            };
+        }
+
+        const roleData = await db.from('access_roles').select('permissions').eq('name', role).maybeSingle();
+        if (roleData.data && roleData.data.permissions) {
+            try {
+                const parsed = typeof roleData.data.permissions === 'string'
+                    ? JSON.parse(roleData.data.permissions)
+                    : roleData.data.permissions;
+                permissions = { ...parsed, ...permissions };
+            } catch (e) {}
+        }
+
+        return {
+            id: keyData.id,
+            username: `apikey:${keyData.name || 'client'}`,
+            name: keyData.name,
+            role,
+            isApiKey: true,
+            apiKeyId: keyData.id,
+            permissions
+        };
+    }
+
+    // 2. Cek Autentikasi JWT Normal
     const decoded = verifyAuth(req);
     const { data, error } = await db
         .from('users')

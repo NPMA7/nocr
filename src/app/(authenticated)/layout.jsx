@@ -279,6 +279,8 @@ export default function AuthenticatedLayout({ children }) {
         whatsapp: "settings-wa",
         users: "settings-users",
         roles: "settings-roles",
+        "api-keys": "settings-apikeys",
+        apikeys: "settings-apikeys",
         password: "settings-password",
         system: "settings-system",
       };
@@ -297,6 +299,7 @@ export default function AuthenticatedLayout({ children }) {
           { path: "/settings/whatsapp", menu: "settings-wa" },
           { path: "/settings/users", menu: "settings-users" },
           { path: "/settings/roles", menu: "settings-roles" },
+          { path: "/settings/api-keys", menu: "settings-apikeys" },
           { path: "/settings/password", menu: "settings-password" },
           { path: "/settings/system", menu: "settings-system" },
           { path: "/settings/design", menu: null },

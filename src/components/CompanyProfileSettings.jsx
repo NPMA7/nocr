@@ -69,14 +69,12 @@ export default function CompanyProfileSettings({ canUpdate = true }) {
   }
 
   return (
-    <div className="bg-[#0b1322] border border-slate-800/80 rounded-2xl p-6 lg:p-8 shadow-xl max-w-4xl">
+    <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg w-full">
       {/* Header */}
-      <div className="flex items-center gap-4 pb-6 border-b border-slate-800/80 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-sm shrink-0">
-          <Building2 size={24} />
-        </div>
+      <div className="p-5 border-b border-slate-700/50 flex items-center gap-3">
+        <Building2 size={20} className="text-blue-500 dark:text-blue-400" />
         <div>
-          <h2 className="text-base lg:text-lg font-bold text-slate-100">
+          <h2 className="text-base font-bold text-slate-100">
             Identitas & Profil Perusahaan
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -86,102 +84,104 @@ export default function CompanyProfileSettings({ canUpdate = true }) {
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSave} className="space-y-5">
-        {/* Nama Perusahaan */}
-        <div className="space-y-2">
-          <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-            NAMA PERUSAHAAN / ORGANISASI <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={form.name || ""}
-            onChange={handleChange}
-            disabled={!canUpdate}
-            placeholder="PT Milenial Inti Telekomunikasi"
-            required
-            className="w-full bg-[#070c16] border border-slate-800/90 rounded-xl px-4 py-3 text-xs lg:text-sm text-slate-200 focus:border-blue-500 focus:outline-none transition disabled:opacity-60"
-          />
-        </div>
-
-        {/* 2 Cols: Singkatan & Telepon */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              SINGKATAN / KODE ORGANISASI
+      <div className="p-5">
+        <form onSubmit={handleSave} className="space-y-4">
+          {/* Nama Perusahaan */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-400">
+              Nama Perusahaan / Organisasi <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
-              name="code"
-              value={form.code || ""}
+              name="name"
+              value={form.name || ""}
               onChange={handleChange}
               disabled={!canUpdate}
-              placeholder="MIT"
-              className="w-full bg-[#070c16] border border-slate-800/90 rounded-xl px-4 py-3 text-xs lg:text-sm text-slate-200 focus:border-blue-500 focus:outline-none transition disabled:opacity-60"
+              placeholder="PT Milenial Inti Telekomunikasi"
+              required
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full disabled:opacity-60"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              NOMOR TELEPON / HOTLINE
+          {/* 2 Cols: Singkatan & Telepon */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-400">
+                Singkatan / Kode Organisasi
+              </label>
+              <input
+                type="text"
+                name="code"
+                value={form.code || ""}
+                onChange={handleChange}
+                disabled={!canUpdate}
+                placeholder="MIT"
+                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full disabled:opacity-60"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-400">
+                Nomor Telepon / Hotline
+              </label>
+              <input
+                type="text"
+                name="phone"
+                value={form.phone || ""}
+                onChange={handleChange}
+                disabled={!canUpdate}
+                placeholder="+62 881 0827 99999 / (021) 21693078"
+                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full disabled:opacity-60"
+              />
+            </div>
+          </div>
+
+          {/* Email Resmi */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-400">
+              Email Resmi
             </label>
             <input
-              type="text"
-              name="phone"
-              value={form.phone || ""}
+              type="email"
+              name="email"
+              value={form.email || ""}
               onChange={handleChange}
               disabled={!canUpdate}
-              placeholder="+62 881 0827 99999 / (021) 21693078"
-              className="w-full bg-[#070c16] border border-slate-800/90 rounded-xl px-4 py-3 text-xs lg:text-sm text-slate-200 focus:border-blue-500 focus:outline-none transition disabled:opacity-60"
+              placeholder="support@milenetwork.co.id"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full disabled:opacity-60"
             />
           </div>
-        </div>
 
-        {/* Email Resmi */}
-        <div className="space-y-2">
-          <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-            EMAIL RESMI
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={form.email || ""}
-            onChange={handleChange}
-            disabled={!canUpdate}
-            placeholder="support@milenetwork.co.id"
-            className="w-full bg-[#070c16] border border-slate-800/90 rounded-xl px-4 py-3 text-xs lg:text-sm text-slate-200 focus:border-blue-500 focus:outline-none transition disabled:opacity-60"
-          />
-        </div>
-
-        {/* Alamat Kantor / Domisili */}
-        <div className="space-y-2">
-          <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-            ALAMAT KANTOR / DOMISILI
-          </label>
-          <textarea
-            name="address"
-            rows={3}
-            value={form.address || ""}
-            onChange={handleChange}
-            disabled={!canUpdate}
-            placeholder="Jalan Biak No. 19 C RT 002 RW 005 Kel. Cideng Kec. Gambir Jakarta Pusat 10150"
-            className="w-full bg-[#070c16] border border-slate-800/90 rounded-xl p-4 text-xs lg:text-sm text-slate-200 focus:border-blue-500 focus:outline-none transition resize-none disabled:opacity-60"
-          />
-        </div>
-
-        {canUpdate && (
-          <div className="flex justify-end pt-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-blue-900/30 transition disabled:opacity-50"
-            >
-              <Save size={15} />
-              <span>{saving ? "Menyimpan..." : "Simpan Profil"}</span>
-            </button>
+          {/* Alamat Kantor / Domisili */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-400">
+              Alamat Kantor / Domisili
+            </label>
+            <textarea
+              name="address"
+              rows={3}
+              value={form.address || ""}
+              onChange={handleChange}
+              disabled={!canUpdate}
+              placeholder="Jalan Biak No. 19 C RT 002 RW 005 Kel. Cideng Kec. Gambir Jakarta Pusat 10150"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full resize-none disabled:opacity-60"
+            />
           </div>
-        )}
-      </form>
+
+          {canUpdate && (
+            <div className="flex justify-end pt-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-blue-500/20 disabled:opacity-50"
+              >
+                <Save size={16} />
+                <span>{saving ? "Menyimpan..." : "Simpan Profil"}</span>
+              </button>
+            </div>
+          )}
+        </form>
+      </div>
     </div>
   );
 }

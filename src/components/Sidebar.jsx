@@ -13,6 +13,7 @@ import {
   Wifi,
   Monitor,
   Key,
+  Eye,
   MapPin,
   ClipboardList,
   MessageCircle,
@@ -616,6 +617,7 @@ export default function Sidebar({
           "settings-wa",
           "settings-users",
           "settings-roles",
+          "settings-apikeys",
           "settings-password",
           "settings-system",
         ].some((k) => hasAccess(currentUser, k, "read")) && (
@@ -660,36 +662,6 @@ export default function Sidebar({
                     >
                       <Building2 size={14} className="flex-shrink-0" />
                       <span>Profil Perusahaan</span>
-                    </Link>
-                  )}
-                  {hasAccess(currentUser, "settings-mikrotik", "read") && (
-                    <Link
-                      href="/settings/mikrotik-gateway"
-                      onClick={onNavigate}
-                      scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "mikrotik-gateway"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
-                    >
-                      <Server size={14} className="flex-shrink-0" />
-                      <span>MikroTik Gateway</span>
-                    </Link>
-                  )}
-                  {hasAccess(currentUser, "settings-vpn", "read") && (
-                    <Link
-                      href="/settings/vpn"
-                      onClick={onNavigate}
-                      scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "vpn"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
-                    >
-                      <Network size={14} className="flex-shrink-0" />
-                      <span>VPN Connection</span>
                     </Link>
                   )}
                   {hasAccess(currentUser, "settings-health", "read") && (
@@ -754,6 +726,21 @@ export default function Sidebar({
                       <span>Manajemen Role</span>
                     </Link>
                   )}
+                  {(currentUser?.role || "").toLowerCase() === "superadmin" && (
+                    <Link
+                      href="/settings/api-keys"
+                      onClick={onNavigate}
+                      scroll={false}
+                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                        currentTab === "api-keys" || currentTab === "apikeys"
+                          ? "text-blue-400 bg-blue-500/10"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <Key size={14} className="flex-shrink-0 text-blue-400" />
+                      <span>Akses API Key</span>
+                    </Link>
+                  )}
                   {hasAccess(currentUser, "settings-password", "read") && (
                     <Link
                       href="/settings/password"
@@ -765,7 +752,7 @@ export default function Sidebar({
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
-                      <Key size={14} className="flex-shrink-0" />
+                      <Eye size={14} className="flex-shrink-0" />
                       <span>Ubah Password</span>
                     </Link>
                   )}
@@ -816,36 +803,6 @@ export default function Sidebar({
                   >
                     <Building2 size={14} className="flex-shrink-0" />
                     <span>Profil Perusahaan</span>
-                  </Link>
-                )}
-                {hasAccess(currentUser, "settings-mikrotik", "read") && (
-                  <Link
-                    href="/settings/mikrotik-gateway"
-                    onClick={onNavigate}
-                    scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "mikrotik-gateway"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Server size={14} className="flex-shrink-0" />
-                    <span>MikroTik Gateway</span>
-                  </Link>
-                )}
-                {hasAccess(currentUser, "settings-vpn", "read") && (
-                  <Link
-                    href="/settings/vpn"
-                    onClick={onNavigate}
-                    scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "vpn"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Network size={14} className="flex-shrink-0" />
-                    <span>VPN Connection</span>
                   </Link>
                 )}
                 {hasAccess(currentUser, "settings-health", "read") && (
@@ -910,6 +867,21 @@ export default function Sidebar({
                     <span>Manajemen Role</span>
                   </Link>
                 )}
+                {(currentUser?.role || "").toLowerCase() === "superadmin" && (
+                  <Link
+                    href="/settings/api-keys"
+                    onClick={onNavigate}
+                    scroll={false}
+                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                      currentTab === "api-keys" || currentTab === "apikeys"
+                        ? "text-blue-400 bg-blue-500/10"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <Key size={14} className="flex-shrink-0 text-blue-400" />
+                    <span>Akses API Key</span>
+                  </Link>
+                )}
                 {hasAccess(currentUser, "settings-password", "read") && (
                   <Link
                     href="/settings/password"
@@ -921,7 +893,7 @@ export default function Sidebar({
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
-                    <Key size={14} className="flex-shrink-0" />
+                    <Eye size={14} className="flex-shrink-0" />
                     <span>Ubah Password</span>
                   </Link>
                 )}
