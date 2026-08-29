@@ -255,7 +255,7 @@ export default function SiteEvidencePhotos({
               </div>
 
               {/* Card Image Area */}
-              <div className={`relative bg-slate-950/70 flex items-center justify-center overflow-hidden group ${canEdit ? 'h-44' : 'flex-1 min-h-44'}`}>
+              <div className="relative h-44 w-full bg-slate-950/70 flex items-center justify-center overflow-hidden group">
                 {isUploading ? (
                   <div className="flex flex-col items-center gap-2 text-blue-400">
                     <RefreshCw size={24} className="animate-spin" />

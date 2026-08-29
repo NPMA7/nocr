@@ -7,6 +7,10 @@ export async function GET(request, { params }) {
     return new NextResponse('File ID is required', { status: 400 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const isDownload = searchParams.get('download') === '1' || searchParams.has('download');
+  const filename = searchParams.get('filename') || 'evidence_photo.jpg';
+
   try {
     const buffer = await getPhotoBufferFromDrive(fileId);
 
@@ -22,13 +26,19 @@ export async function GET(request, { params }) {
       }
     }
 
+    const headers = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=86400, immutable',
+      'Content-Length': String(buffer.length),
+    };
+
+    if (isDownload) {
+      headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(filename)}"`;
+    }
+
     return new Response(buffer, {
       status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400, immutable',
-        'Content-Length': String(buffer.length),
-      },
+      headers,
     });
   } catch (err) {
     console.error('Error proxying Google Drive image:', err.message);

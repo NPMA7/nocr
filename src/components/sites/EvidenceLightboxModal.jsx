@@ -15,6 +15,7 @@ import {
   Maximize2,
   MousePointer,
   HelpCircle,
+  RefreshCw,
 } from "lucide-react";
 
 export default function EvidenceLightboxModal({
@@ -31,6 +32,7 @@ export default function EvidenceLightboxModal({
   const [rotation, setRotation] = useState(0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const viewportRef = useRef(null);
 
@@ -146,6 +148,39 @@ export default function EvidenceLightboxModal({
     });
   const handleRotate = () => setRotation((prev) => (prev + 90) % 360);
 
+  const handleDownload = async () => {
+    if (downloading) return;
+    const fileName = photo.file_name || `${(deviceLabel || "evidence").replace(/\s+/g, "_")}_${sitePrefix || "site"}.jpg`;
+
+    try {
+      setDownloading(true);
+      const downloadEndpoint = photo.drive_id
+        ? `/api/drive/image/${photo.drive_id}?download=1&filename=${encodeURIComponent(fileName)}`
+        : (imageUrl || "");
+
+      const res = await fetch(downloadEndpoint);
+      if (!res.ok) throw new Error("Fetch image failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+    } catch (err) {
+      console.warn("Direct blob download fallback:", err);
+      if (photo.drive_id) {
+        window.location.href = `/api/drive/image/${photo.drive_id}?download=1&filename=${encodeURIComponent(fileName)}`;
+      } else if (imageUrl) {
+        window.open(imageUrl, "_blank");
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const formattedDate = photo.updated_at
     ? new Date(photo.updated_at).toLocaleString("id-ID", {
         day: "2-digit",
@@ -225,18 +260,19 @@ export default function EvidenceLightboxModal({
 
           <div className="h-5 w-[1px] bg-slate-700 mx-1" />
 
-          {imageUrl && (
-            <a
-              href={imageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              download={photo.file_name || "evidence_photo.jpg"}
-              className="cursor-pointer p-2 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white transition flex items-center gap-1"
-              title="Download Gambar HD"
-            >
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="cursor-pointer p-2 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white transition flex items-center gap-1 disabled:opacity-50"
+            title="Download Gambar Langsung (HD)"
+          >
+            {downloading ? (
+              <RefreshCw size={16} className="animate-spin text-blue-400" />
+            ) : (
               <Download size={16} />
-            </a>
-          )}
+            )}
+          </button>
 
           {canEdit && onDelete && (
             <button

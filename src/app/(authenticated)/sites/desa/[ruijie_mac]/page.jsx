@@ -244,14 +244,6 @@ export default function SiteDetailPage() {
             <>
               <button
                 type="button"
-                onClick={() => setIsImportModalOpen(true)}
-                className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
-              >
-                <FileSpreadsheet size={15} className="text-emerald-400" />
-                Import Sheet
-              </button>
-              <button
-                type="button"
                 onClick={handleSave}
                 disabled={saving}
                 className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"

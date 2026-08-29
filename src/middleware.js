@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   '/api/auth/status',
   '/api/auth/check-setup',
   '/api/auth/logout',
+  '/api/drive/image',
 ];
 
 const STATIC_PREFIXES = [
