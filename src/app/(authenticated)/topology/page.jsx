@@ -22,7 +22,7 @@ import {
   Settings,
 } from "lucide-react";
 
-import { hasAccess, getStoredUser } from "@/lib/roles";
+import { hasAccess, getStoredUser, isSuperAdmin } from "@/lib/roles";
 import axios from "axios";
 import {
   fetchTopologyCached,
@@ -797,6 +797,11 @@ function TopologyContent() {
   };
 
   const handleNodeClick = (e, node) => {
+    // ODP dan ODC hanya bisa dibuka oleh superadmin
+    const infraOnlyTypes = ["odp", "odc", "olt"];
+    if (infraOnlyTypes.includes(node.type?.toLowerCase()) && !isSuperAdmin(sessionUser)) {
+      return; // diam saja, tidak buka panel
+    }
     if (readOnly) {
       setSelectedEdge(null);
       setSelectedNode(node);
@@ -1229,7 +1234,7 @@ function TopologyContent() {
     processQueue();
     nodes
       .filter(
-        (n) => (n.type === "odp" || n.type === "pole") && !visitedBFS.has(n.id),
+        (n) => (n.type === "odp") && !visitedBFS.has(n.id),
       )
       .forEach((n) => {
         visitedBFS.add(n.id);

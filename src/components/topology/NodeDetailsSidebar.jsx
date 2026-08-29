@@ -78,7 +78,13 @@ export default function NodeDetailsSidebar({
 
   if (!currentSelectedNode) return null;
 
-  const siteCategory = (currentSelectedNode?.linked_interface || currentSelectedNode?.label || "")
+  const siteCategory = (
+    currentSelectedNode?.site?.category ||
+    currentSelectedNode?.site?.site_type ||
+    currentSelectedNode?.linked_interface ||
+    currentSelectedNode?.label ||
+    ""
+  )
     .toUpperCase()
     .includes("OPD")
     ? "opd"
@@ -197,7 +203,7 @@ export default function NodeDetailsSidebar({
 
           {(() => {
             const nodeType = (currentSelectedNode.type || "").toLowerCase();
-            const isInfrastructure = ["odp", "odc", "olt", "pole"].includes(nodeType);
+            const isInfrastructure = ["odp", "odc", "olt"].includes(nodeType);
 
             if (isInfrastructure) {
               return (
