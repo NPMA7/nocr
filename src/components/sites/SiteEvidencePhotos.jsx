@@ -44,7 +44,7 @@ const SLOTS = [
   },
   {
     key: "panel",
-    label: "Box Panel / Lokasi",
+    label: "Panel / Lokasi",
     subtitle: "Tampak Keseluruhan Site",
     icon: Box,
     color: "amber",
@@ -177,7 +177,7 @@ export default function SiteEvidencePhotos({
           </div>
           <div>
             <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
-              Evidence Foto Perangkat (Google Drive)
+              Evidence Foto Perangkat
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/80 text-slate-300 font-normal">
                 {uploadedCount} / {SLOTS.length} Terpasang
               </span>
@@ -334,7 +334,7 @@ export default function SiteEvidencePhotos({
                         setLinkModalSlot(slot.key);
                         setLinkInput(photo?.raw_input || (photo?.drive_id ? `https://drive.google.com/file/d/${photo.drive_id}/view` : ""));
                       }}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                      className="cursor-pointer p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
                       title="Input Link Google Drive"
                     >
                       <LinkIcon size={13} />
@@ -349,7 +349,7 @@ export default function SiteEvidencePhotos({
                             handleDeletePhoto(slot.key);
                           }
                         }}
-                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
+                        className="cursor-pointer p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
                         title="Hapus Foto"
                       >
                         <Trash2 size={13} />
@@ -366,7 +366,7 @@ export default function SiteEvidencePhotos({
                         slotKey: slot.key,
                       })
                     }
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs transition"
+                    className="cursor-pointer w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs transition"
                   >
                     <Eye size={13} /> Lihat Foto
                   </button>
