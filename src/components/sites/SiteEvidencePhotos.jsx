@@ -255,7 +255,7 @@ export default function SiteEvidencePhotos({
               </div>
 
               {/* Card Image Area */}
-              <div className="relative h-44 w-full bg-slate-950/70 flex items-center justify-center overflow-hidden group">
+              <div className={`relative bg-slate-950/70 flex items-center justify-center overflow-hidden group ${canEdit ? 'h-44' : 'flex-1 min-h-44'}`}>
                 {isUploading ? (
                   <div className="flex flex-col items-center gap-2 text-blue-400">
                     <RefreshCw size={24} className="animate-spin" />
@@ -305,64 +305,62 @@ export default function SiteEvidencePhotos({
                 )}
               </div>
 
-              {/* Card Footer Actions */}
-              <div className="p-2.5 bg-slate-900/90 border-t border-slate-800/80 flex items-center justify-between gap-1.5">
-                <input
-                  type="file"
-                  ref={fileInputRefs[slot.key]}
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(slot.key, file);
-                  }}
-                />
+              {/* Card Footer Actions — only shown for editors */}
+              {canEdit && (
+                <div className="p-2.5 bg-slate-900/90 border-t border-slate-800/80 flex items-center justify-between gap-1.5">
+                  <input
+                    type="file"
+                    ref={fileInputRefs[slot.key]}
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(slot.key, file);
+                    }}
+                  />
 
-                {canEdit ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isUploading}
-                      onClick={() => fileInputRefs[slot.key]?.current?.click()}
-                      className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium transition disabled:opacity-50"
-                      title="Upload Foto dari Kamera / File"
-                    >
-                      <Upload size={12} />
-                      {hasPhoto ? "Ganti Foto" : "Upload Foto"}
-                    </button>
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => fileInputRefs[slot.key]?.current?.click()}
+                    className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium transition disabled:opacity-50"
+                    title="Upload Foto dari Kamera / File"
+                  >
+                    <Upload size={12} />
+                    {hasPhoto ? "Ganti Foto" : "Upload Foto"}
+                  </button>
 
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => {
+                      setLinkModalSlot(slot.key);
+                      setLinkInput(photo?.raw_input || (photo?.drive_id ? `https://drive.google.com/file/d/${photo.drive_id}/view` : ""));
+                    }}
+                    className="cursor-pointer p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                    title="Input Link Google Drive"
+                  >
+                    <LinkIcon size={13} />
+                  </button>
+
+                  {hasPhoto && (
                     <button
                       type="button"
                       disabled={isUploading}
                       onClick={() => {
-                        setLinkModalSlot(slot.key);
-                        setLinkInput(photo?.raw_input || (photo?.drive_id ? `https://drive.google.com/file/d/${photo.drive_id}/view` : ""));
+                        if (window.confirm(`Hapus foto ${slot.label}?`)) {
+                          handleDeletePhoto(slot.key);
+                        }
                       }}
-                      className="cursor-pointer p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
-                      title="Input Link Google Drive"
+                      className="cursor-pointer p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
+                      title="Hapus Foto"
                     >
-                      <LinkIcon size={13} />
+                      <Trash2 size={13} />
                     </button>
-
-                    {hasPhoto && (
-                      <button
-                        type="button"
-                        disabled={isUploading}
-                        onClick={() => {
-                          if (window.confirm(`Hapus foto ${slot.label}?`)) {
-                            handleDeletePhoto(slot.key);
-                          }
-                        }}
-                        className="cursor-pointer p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
-                        title="Hapus Foto"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </>
-                ) : null}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
