@@ -257,22 +257,48 @@ export async function deletePhotoFromDrive(driveIdOrPath) {
  * Stream photo buffer from Google Drive using Drive API v3
  */
 export async function getPhotoBufferFromDrive(driveId) {
-  const token = await getAccessToken();
-  const fetchUrl = `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media`;
+  // Strategy 1: Try authenticated Google Drive v3 API
+  try {
+    const token = await getAccessToken();
+    const fetchUrl = `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media`;
+    const response = await fetch(fetchUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.ok) {
+      const arrayBuffer = await response.arrayBuffer();
+      if (arrayBuffer.byteLength > 0) return Buffer.from(arrayBuffer);
+    }
+  } catch (_) {}
 
-  const response = await fetch(fetchUrl, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  // Strategy 2: Try public thumbnail HD lh3.googleusercontent.com
+  try {
+    const lh3Url = `https://lh3.googleusercontent.com/d/${driveId}`;
+    const lh3Resp = await fetch(lh3Url);
+    if (lh3Resp.ok) {
+      const arrayBuffer = await lh3Resp.arrayBuffer();
+      if (arrayBuffer.byteLength > 0) return Buffer.from(arrayBuffer);
+    }
+  } catch (_) {}
 
-  if (!response.ok) {
-    // Fallback: public thumbnail
+  // Strategy 3: Try Google Drive thumbnail endpoint
+  try {
     const thumbUrl = `https://drive.google.com/thumbnail?id=${driveId}&sz=w1600`;
     const thumbResp = await fetch(thumbUrl);
-    if (!thumbResp.ok) throw new Error('Gagal mengambil gambar dari Google Drive');
-    const arrayBuffer = await thumbResp.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  }
+    if (thumbResp.ok) {
+      const arrayBuffer = await thumbResp.arrayBuffer();
+      if (arrayBuffer.byteLength > 0) return Buffer.from(arrayBuffer);
+    }
+  } catch (_) {}
 
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+  // Strategy 4: Try uc export download
+  try {
+    const ucUrl = `https://drive.google.com/uc?export=download&id=${driveId}`;
+    const ucResp = await fetch(ucUrl);
+    if (ucResp.ok) {
+      const arrayBuffer = await ucResp.arrayBuffer();
+      if (arrayBuffer.byteLength > 0) return Buffer.from(arrayBuffer);
+    }
+  } catch (_) {}
+
+  throw new Error('Gagal mendownload gambar dari link Google Drive');
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveId, getDriveImageUrls } from '@/lib/gdrivePhotos';
+import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveId, getDriveImageUrls, getPhotoBufferFromDrive } from '@/lib/gdrivePhotos';
 
 export async function GET(request, { params }) {
   const { ruijie_mac } = await params;
@@ -122,7 +122,7 @@ export async function POST(request, { params }) {
       });
     }
 
-    // Handle JSON (Manual Google Drive Link / ID)
+    // Handle JSON (Manual Google Drive Link / ID / Image URL)
     const body = await request.json();
     const { device_type = 'ap', drive_url, custom_name } = body;
     const slot = device_type.toLowerCase();
@@ -132,14 +132,58 @@ export async function POST(request, { params }) {
     }
 
     const driveId = extractDriveId(drive_url);
-    if (!driveId) {
+    if (!driveId && !drive_url.startsWith('http')) {
       return NextResponse.json({ error: 'Format link Google Drive tidak valid' }, { status: 400 });
     }
 
-    const urls = getDriveImageUrls(driveId);
-    const updatedEvidence = {
-      ...currentEvidence,
-      [slot]: {
+    // 3. Download dan salin file dari link eksternal ke folder Google Drive milik user (FOTO_DEVICES/<prefix>/)
+    let uploadResult = null;
+    try {
+      let buffer = null;
+      if (driveId) {
+        buffer = await getPhotoBufferFromDrive(driveId);
+      } else {
+        const fetchResp = await fetch(drive_url);
+        if (fetchResp.ok) {
+          const arrBuf = await fetchResp.arrayBuffer();
+          buffer = Buffer.from(arrBuf);
+        }
+      }
+
+      if (buffer && buffer.length > 0) {
+        // Hapus foto lama di drive jika ada
+        if (currentEvidence[slot]?.remote_path) {
+          deletePhotoFromDrive(currentEvidence[slot].remote_path).catch(() => {});
+        }
+
+        // Upload ke folder FOTO_DEVICES milik user di Google Drive
+        uploadResult = await uploadPhotoToDrive({
+          buffer,
+          sitePrefix,
+          deviceType: slot,
+          originalFilename: custom_name || `${slot}.jpg`,
+        });
+      }
+    } catch (copyErr) {
+      console.warn('Gagal menyalin file dari link eksternal ke FOTO_DEVICES, fallback ke referensi langsung:', copyErr.message);
+    }
+
+    let updatedSlotData;
+    if (uploadResult?.driveId) {
+      updatedSlotData = {
+        drive_id: uploadResult.driveId,
+        file_name: uploadResult.fileName,
+        remote_path: uploadResult.remotePath,
+        url: uploadResult.url,
+        preview_url: uploadResult.previewUrl,
+        thumbnail_url: uploadResult.thumbnailUrl,
+        proxy_url: `/api/drive/image/${uploadResult.driveId}`,
+        raw_input: drive_url,
+        updated_at: uploadResult.updatedAt,
+      };
+    } else {
+      const urls = getDriveImageUrls(driveId);
+      updatedSlotData = {
         drive_id: driveId,
         file_name: custom_name || `${slot.toUpperCase()}_MANUAL.jpg`,
         url: urls.proxyUrl || urls.previewUrl,
@@ -148,7 +192,12 @@ export async function POST(request, { params }) {
         proxy_url: urls.proxyUrl,
         raw_input: drive_url,
         updated_at: new Date().toISOString(),
-      },
+      };
+    }
+
+    const updatedEvidence = {
+      ...currentEvidence,
+      [slot]: updatedSlotData,
     };
 
     const { error: updErr } = await db
@@ -161,9 +210,13 @@ export async function POST(request, { params }) {
 
     if (updErr) throw updErr;
 
+    const savedLocationMsg = uploadResult?.remotePath
+      ? `Foto ${slot.toUpperCase()} berhasil disalin dan disimpan ke folder Google Drive FOTO_DEVICES/${sitePrefix}`
+      : `Link Google Drive untuk ${slot.toUpperCase()} berhasil disimpan`;
+
     return NextResponse.json({
       success: true,
-      message: `Link Google Drive untuk ${slot.toUpperCase()} berhasil disimpan`,
+      message: savedLocationMsg,
       evidence_photos: updatedEvidence,
     });
 
