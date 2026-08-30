@@ -167,6 +167,12 @@ const getDraftWaypointIcon = (index) => {
   });
 };
 
+let lastMapElementClickTime = 0;
+
+export function markMapElementClicked() {
+  lastMapElementClickTime = Date.now();
+}
+
 // Komponen interaksi peta (Mendukung Pen Tool saat menggambar kabel FO)
 function MapEvents({
   interactionMode,
@@ -181,6 +187,10 @@ function MapEvents({
 }) {
   const map = useMapEvents({
     click(e) {
+      if (Date.now() - lastMapElementClickTime < 300) {
+        // Klik mengenai objek kabel atau node, jangan batalkan seleksi!
+        return;
+      }
       if (readOnly) {
         onSelectEmpty();
         return;
@@ -489,7 +499,10 @@ const DraggableMarker = React.memo(function DraggableMarker({
 
   const eventHandlers = useMemo(
     () => ({
-      click: (e) => handleNodeClick(e, nodeRef.current),
+      click: (e) => {
+        markMapElementClicked();
+        handleNodeClick(e, nodeRef.current);
+      },
       mousedown: (e) => {
         if (e.originalEvent && e.originalEvent.button === 2) {
           L.DomEvent.stopPropagation(e.originalEvent || e);
@@ -612,7 +625,10 @@ const WaypointMarker = React.memo(function WaypointMarker({
         onWaypointDrag?.(edgeId, waypointIndex, [newLatLng.lat, newLatLng.lng]);
       },
       click: (e) => {
-        L.DomEvent.stopPropagation(e.originalEvent || e);
+        markMapElementClicked();
+        if (e.originalEvent) {
+          L.DomEvent.stop(e.originalEvent);
+        }
       },
       contextmenu: (e) => {
         if (e.originalEvent) {
@@ -662,14 +678,16 @@ const MemoizedEdge = React.memo(
     const distanceIcon = useMemo(() => {
       const formatted = formatDistance(distanceMeters);
       return L.divIcon({
-        className: "custom-distance-badge-icon",
-        html: `<div style="transform: translate(-50%, -50%) rotate(${angle}deg);" class="px-2 py-0.5 rounded bg-slate-950/95 border border-cyan-400 text-cyan-300 font-mono font-bold text-xs shadow-xl whitespace-nowrap pointer-events-none select-none tracking-tight">
-          ${formatted}
+        className: "custom-selected-edge-midpoint-icon",
+        html: `<div style="display: flex; align-items: center; justify-content: center; transform: translate(-50%, -100%);">
+          <div class="flex items-center font-mono text-xs font-bold text-cyan-200 bg-slate-950/95 border-2 border-cyan-400 px-2.5 py-1 rounded-md shadow-[0_0_20px_rgba(34,211,238,0.8)] whitespace-nowrap select-none pointer-events-none tracking-wide">
+            <span>${formatted}</span>
+          </div>
         </div>`,
         iconSize: [0, 0],
         iconAnchor: [0, 0],
       });
-    }, [distanceMeters, angle]);
+    }, [distanceMeters]);
 
     const handleClick = useCallback(
       (e) => {
@@ -714,14 +732,13 @@ const MemoizedEdge = React.memo(
           }}
         >
           <Tooltip direction="top" sticky={true} opacity={0.95}>
-            <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-100 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-700">
+            <div className="flex items-center font-mono text-xs font-bold text-slate-100 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-700">
               <span>{formatDistance(distanceMeters)}</span>
-              {edge.label && <span className="text-slate-400 font-normal">({edge.label})</span>}
             </div>
           </Tooltip>
         </Polyline>
 
-        {/* Badge Jarak di tengah kabel menempel sesuai kemiringan kabel hanya saat kabel diklik/dipilih */}
+        {/* Badge Jarak di tengah kabel saat kabel diklik/dipilih */}
         {isSelected && (
           <Marker
             position={midpoint}
@@ -829,6 +846,7 @@ export default function TopologyMap({
   }, [setEdges, setSelectedEdge]);
 
   const handleEdgeClick = useCallback((e, edge) => {
+    markMapElementClicked();
     if (!readOnly && interactionMode === "delete_edge") {
       onEdgeDelete?.(edge.id);
       setEdges((prev) => prev.filter((ed) => ed.id !== edge.id));
@@ -842,8 +860,8 @@ export default function TopologyMap({
       selectedEdge && (selectedEdge.id === edge.id || String(selectedEdge.id) === String(edge.id))
     );
 
-    if (isCurrentEdgeSelected && !readOnly && interactionMode === "select") {
-      // Pen Tool: Klik pada polyline yang sudah dipilih untuk menyisipkan titik belokan baru
+    if (isCurrentEdgeSelected && !readOnly && interactionMode === "add_edge") {
+      // Pen Tool: Klik pada polyline yang sudah dipilih untuk menyisipkan titik belokan baru (hanya di mode Pen Tool / + Kabel FO)
       const clickLatLng = [e.latlng.lat, e.latlng.lng];
       const segIdx = findClosestSegmentIndex(e.latlng, edge.positions);
       const currentWaypoints = [...(edge.waypoints || [])];
@@ -1070,6 +1088,13 @@ export default function TopologyMap({
           pointer-events: none !important;
           opacity: 0.3 !important;
         }
+        path.leaflet-interactive:focus,
+        path:focus,
+        svg:focus,
+        .leaflet-container :focus,
+        *:focus {
+          outline: none !important;
+        }
         .custom-edge-distance-tooltip {
           background: transparent !important;
           border: none !important;
@@ -1122,18 +1147,39 @@ export default function TopologyMap({
         />
       ))}
 
-      {/* Draft Polyline & Waypoints saat Pen Tool aktif (Clean line without middle box) */}
-      {draftPolylinePositions && draftPolylinePositions.length >= 2 && (
-        <Polyline
-          positions={draftPolylinePositions}
-          pathOptions={{
-            color: "#f59e0b",
-            weight: 3.5,
-            dashArray: "6, 6",
-            opacity: 0.95,
-          }}
-        />
-      )}
+      {/* Draft Polyline & Waypoints saat Pen Tool aktif */}
+      {draftPolylinePositions && draftPolylinePositions.length >= 2 && (() => {
+        const dist = calculatePolylineDistance(draftPolylinePositions);
+        const cursorPosition = draftPolylinePositions[draftPolylinePositions.length - 1];
+        return (
+          <>
+            <Polyline
+              positions={draftPolylinePositions}
+              pathOptions={{
+                color: "#f59e0b",
+                weight: 3.5,
+                dashArray: "6, 6",
+                opacity: 0.95,
+              }}
+            />
+            <Marker
+              position={cursorPosition}
+              icon={L.divIcon({
+                className: "custom-draft-distance-badge-icon",
+                html: `<div style="display: flex; align-items: center; justify-content: center; transform: translate(-50%, -130%);">
+                  <div class="flex items-center font-mono text-xs font-bold text-amber-200 bg-slate-950/95 border-2 border-amber-400 px-2.5 py-1 rounded-md shadow-[0_0_20px_rgba(245,158,11,0.8)] whitespace-nowrap select-none pointer-events-none tracking-wide">
+                    <span>${formatDistance(dist)}</span>
+                  </div>
+                </div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0],
+              })}
+              zIndexOffset={40000}
+              interactive={false}
+            />
+          </>
+        );
+      })()}
       {draftWaypoints.map((pt, idx) => (
         <Marker
           key={`draft-wp-${idx}`}
@@ -1143,8 +1189,8 @@ export default function TopologyMap({
         />
       ))}
 
-      {/* Waypoint Handles untuk Edge yang sedang dipilih (Bisa digeser untuk belokan jalan) */}
-      {selectedEdge && Array.isArray(selectedEdge.waypoints) && (
+      {/* Waypoint Handles untuk Edge yang sedang dipilih (Hanya muncul jika sedang aktif di mode Pen Tool / + Kabel FO) */}
+      {interactionMode === "add_edge" && selectedEdge && Array.isArray(selectedEdge.waypoints) && (
         selectedEdge.waypoints.map((wp, idx) => (
           <WaypointMarker
             key={`wp-${selectedEdge.id}-${idx}`}

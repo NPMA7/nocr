@@ -1742,8 +1742,8 @@ function TopologyContent() {
           nodes={nodes}
         />
 
-        {/* Edge Sidebar */}
-        <EdgeDetailsSidebar
+        {/* Edge Sidebar dinonaktifkan di peta - info jarak sudah tampil langsung di kabel */}
+        {/* <EdgeDetailsSidebar
           selectedEdge={selectedEdge}
           setSelectedEdge={setSelectedEdge}
           readOnly={readOnly}
@@ -1751,7 +1751,7 @@ function TopologyContent() {
           setEdgesFromUser={setEdgesFromUser}
           coreInterfaces={coreInterfaces}
           markEdgeDeleted={markEdgeDeleted}
-        />
+        /> */}
       </div>
     </div>
   );
