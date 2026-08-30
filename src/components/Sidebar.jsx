@@ -60,6 +60,7 @@ export default function Sidebar({
   }, []);
 
   const [expandedMenus, setExpandedMenus] = useState({
+    topology: false,
     monitoring: false,
     device: false,
     sites: false,
@@ -71,6 +72,7 @@ export default function Sidebar({
 
   useEffect(() => {
     setExpandedMenus({
+      topology: pathname.startsWith("/topology"),
       monitoring: pathname.startsWith("/monitoring"),
       device: pathname.startsWith("/device"),
       sites: pathname.startsWith("/sites"),
@@ -167,16 +169,29 @@ export default function Sidebar({
         )}
 
         {hasAccess(currentUser, "topology", "read") && (
-          <Link
-            href="/topology"
-            onClick={onNavigate}
-            scroll={false}
-            title={isCollapsed ? "Peta Topologi" : undefined}
-            className={getLinkClass("/topology")}
-          >
-            <GitGraph size={18} className="flex-shrink-0" />
-            {!isCollapsed && <span>Peta Topologi</span>}
-          </Link>
+          <>
+            <Link
+              href="/maps"
+              onClick={onNavigate}
+              scroll={false}
+              title={isCollapsed ? "Peta Wilayah" : undefined}
+              className={getLinkClass("/maps")}
+            >
+              <MapPin size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span>Peta Wilayah</span>}
+            </Link>
+
+            <Link
+              href="/topology"
+              onClick={onNavigate}
+              scroll={false}
+              title={isCollapsed ? "Peta Topologi" : undefined}
+              className={getLinkClass("/topology")}
+            >
+              <GitGraph size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span>Topologi Jaringan</span>}
+            </Link>
+          </>
         )}
         {/* WhatsApp / Live Chat temporarily hidden from UI
         {hasAccess(currentUser, "chat", "read") && (
@@ -726,21 +741,7 @@ export default function Sidebar({
                       <span>Manajemen Role</span>
                     </Link>
                   )}
-                  {(currentUser?.role || "").toLowerCase() === "superadmin" && (
-                    <Link
-                      href="/settings/api-keys"
-                      onClick={onNavigate}
-                      scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "api-keys" || currentTab === "apikeys"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
-                    >
-                      <Key size={14} className="flex-shrink-0 text-blue-400" />
-                      <span>Akses API Key</span>
-                    </Link>
-                  )}
+                 
                   {hasAccess(currentUser, "settings-password", "read") && (
                     <Link
                       href="/settings/password"
@@ -784,6 +785,21 @@ export default function Sidebar({
                     <Palette size={14} className="flex-shrink-0" />
                     <span>Desain & Warna</span>
                   </Link>
+                   {(currentUser?.role || "").toLowerCase() === "superadmin" && (
+                    <Link
+                      href="/settings/api-keys"
+                      onClick={onNavigate}
+                      scroll={false}
+                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                        currentTab === "api-keys" || currentTab === "apikeys"
+                          ? "text-blue-400 bg-blue-500/10"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <Key size={14} className="flex-shrink-0 text-blue-400" />
+                      <span>Akses API Key</span>
+                    </Link>
+                  )}
                 </div>
               </div>
             )}
@@ -867,21 +883,7 @@ export default function Sidebar({
                     <span>Manajemen Role</span>
                   </Link>
                 )}
-                {(currentUser?.role || "").toLowerCase() === "superadmin" && (
-                  <Link
-                    href="/settings/api-keys"
-                    onClick={onNavigate}
-                    scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "api-keys" || currentTab === "apikeys"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Key size={14} className="flex-shrink-0 text-blue-400" />
-                    <span>Akses API Key</span>
-                  </Link>
-                )}
+               
                 {hasAccess(currentUser, "settings-password", "read") && (
                   <Link
                     href="/settings/password"
@@ -925,6 +927,21 @@ export default function Sidebar({
                   <Palette size={14} className="flex-shrink-0" />
                   <span>Desain & Warna</span>
                 </Link>
+                 {(currentUser?.role || "").toLowerCase() === "superadmin" && (
+                  <Link
+                    href="/settings/api-keys"
+                    onClick={onNavigate}
+                    scroll={false}
+                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                      currentTab === "api-keys" || currentTab === "apikeys"
+                        ? "text-blue-400 bg-blue-500/10"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <Key size={14} className="flex-shrink-0 text-blue-400" />
+                    <span>Akses API Key</span>
+                  </Link>
+                )}
               </div>
             )}
           </div>

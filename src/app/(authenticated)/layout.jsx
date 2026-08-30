@@ -237,7 +237,7 @@ export default function AuthenticatedLayout({ children }) {
 
     const firstSegment = currentPath.split("/")[0];
     let lookupKey = firstSegment;
-    if (firstSegment === "monitoring" || firstSegment === "device" || firstSegment === "sites") {
+    if (firstSegment === "monitoring" || firstSegment === "device" || firstSegment === "sites" || firstSegment === "topology") {
       const parts = currentPath.split("/");
       if (parts.length > 1) {
         lookupKey = `${parts[0]}/${parts[1]}`;
@@ -247,6 +247,9 @@ export default function AuthenticatedLayout({ children }) {
     const routeToMenuKeyMap = {
       dashboard: "dashboard",
       topology: "topology",
+      topologi: "topology",
+      maps: "maps",
+      "topology/architecture": "topology",
       "sites/desa": "sites",
       "sites/opd": "sites",
       sites: "sites",

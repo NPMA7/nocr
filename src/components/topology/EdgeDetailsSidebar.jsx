@@ -132,6 +132,40 @@ export default function EdgeDetailsSidebar({
               </div>
             )}
 
+            {/* Waypoints / Belokan Kabel */}
+            <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-xl border border-slate-700/60 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></span>
+                  Titik Belokan (Pen Tool)
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700/50">
+                  {Array.isArray(selectedEdge.waypoints) ? selectedEdge.waypoints.length : 0} Titik
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                💡 <strong className="text-slate-300">Tips Pen Tool:</strong> Klik pada garis kabel di peta untuk menambahkan titik belokan baru. Geser bulatan biru untuk mengatur lekukan kabel sesuai jalan.
+              </p>
+              {Array.isArray(selectedEdge.waypoints) && selectedEdge.waypoints.length > 0 && !readOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEdgesFromUser((prev) =>
+                      prev.map((ed) =>
+                        ed.id === selectedEdge.id
+                          ? { ...ed, waypoints: [] }
+                          : ed
+                      )
+                    );
+                    setSelectedEdge((prev) => (prev ? { ...prev, waypoints: [] } : prev));
+                  }}
+                  className="cursor-pointer mt-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-[11px] font-medium border border-slate-600/50 transition flex items-center justify-center gap-1.5"
+                >
+                  <span>Reset Jalur ke Garis Lurus</span>
+                </button>
+              )}
+            </div>
+
             {canDelete && (
               <button
                 onClick={() => {

@@ -3,7 +3,8 @@
 export const MENUS = {
   // Main Menus
   dashboard: 'Dashboard',
-  topology: 'Peta Topologi',
+  maps: 'Peta Wilayah',
+  topology: 'Topologi Jaringan',
   sites: 'Data Wilayah',
   'laporan-harian': 'Laporan Harian',
   // chat: 'Live Chat Omni',
@@ -63,27 +64,29 @@ export function hasAccess(user, menuKey, action) {
 
   // Handle legacy array format (graceful fallback)
   if (Array.isArray(perms)) {
-    // Basic mapping for older roles before migration
     if (menuKey === 'settings' && perms.includes('system.settings')) return true;
     if (menuKey === 'settings' && perms.includes('system.users')) return true;
-    if (menuKey === 'topology' && perms.includes('network.topology')) return true;
+    if ((menuKey === 'topology' || menuKey === 'topologi') && perms.includes('network.topology')) return true;
+    if (menuKey === 'maps' && (perms.includes('network.topology') || perms.includes('network.maps'))) return true;
     if (menuKey === 'devices' && perms.includes('network.devices')) return true;
     if (menuKey === 'chat' && perms.includes('chat.live')) return true;
     return false;
   }
 
-  // New object mapping format: { "laporan-harian": ["read", "create"] }
+  // New object mapping format: { "topology": ["read", "update"] }
   if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
-    // 1. Direct exact key match (e.g. 'settings-mikrotik')
-    if (Array.isArray(perms[menuKey]) && perms[menuKey].includes(action)) {
+    const key = menuKey === 'topologi' ? 'topology' : menuKey;
+
+    // 1. Direct exact key match (e.g. 'topology', 'maps', 'settings-mikrotik')
+    if (Array.isArray(perms[key]) && perms[key].includes(action)) {
       return true;
     }
     
     // Support unified settings-mikrotik covering settings-vpn
-    if (menuKey === 'settings-vpn' && Array.isArray(perms['settings-mikrotik']) && perms['settings-mikrotik'].includes(action)) {
+    if (key === 'settings-vpn' && Array.isArray(perms['settings-mikrotik']) && perms['settings-mikrotik'].includes(action)) {
       return true;
     }
-    
+
     // 2. Graceful fallback for legacy generic roles (e.g. 'settings', 'devices', 'monitoring')
     if (menuKey.startsWith('settings-') && Array.isArray(perms['settings']) && perms['settings'].includes(action)) {
       return true;

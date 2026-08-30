@@ -5,7 +5,7 @@ const NODE_COMPARE_KEYS = [
   'linked_interface', 'vendor', 'pic_name', 'pic_phone', 'group_name', 'site_id'
 ];
 
-const EDGE_COMPARE_KEYS = ['from_node', 'to_node', 'label', 'status'];
+const EDGE_COMPARE_KEYS = ['from_node', 'to_node', 'label', 'status', 'waypoints'];
 
 export function normalizeNode(n) {
   return {
@@ -27,12 +27,23 @@ export function normalizeNode(n) {
 }
 
 export function normalizeEdge(e) {
+  let waypoints = e.waypoints;
+  if (typeof waypoints === 'string') {
+    try {
+      waypoints = JSON.parse(waypoints);
+    } catch {
+      waypoints = [];
+    }
+  }
+  if (!Array.isArray(waypoints)) waypoints = [];
+
   return {
     id: e.id,
     from_node: e.from_node || e.from,
     to_node: e.to_node || e.to,
     label: e.label || '',
-    status: e.status || 'up'
+    status: e.status || 'up',
+    waypoints: waypoints
   };
 }
 

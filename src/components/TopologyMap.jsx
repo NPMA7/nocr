@@ -18,11 +18,79 @@ import {
 
 const DEFAULT_CENTER = [-7.065, 107.55];
 
-// Komponen interaksi peta
+// Helper finding closest segment to insert a new waypoint
+function distanceToSegment(p, p1, p2) {
+  const x = p.lat, y = p.lng;
+  const x1 = p1[0], y1 = p1[1];
+  const x2 = p2[0], y2 = p2[1];
+  const dx = x2 - x1, dy = y2 - y1;
+  if (dx === 0 && dy === 0) {
+    return Math.hypot(x - x1, y - y1);
+  }
+  const t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  return Math.hypot(x - projX, y - projY);
+}
+
+function findClosestSegmentIndex(point, positions) {
+  if (positions.length <= 2) return 0;
+  let minDist = Infinity;
+  let bestSegment = 0;
+
+  for (let i = 0; i < positions.length - 1; i++) {
+    const p1 = positions[i];
+    const p2 = positions[i + 1];
+    const dist = distanceToSegment(point, p1, p2);
+    if (dist < minDist) {
+      minDist = dist;
+      bestSegment = i;
+    }
+  }
+  return bestSegment;
+}
+
+// Icon Waypoint Handle (Titik Belokan yang bisa digeser)
+const getWaypointIcon = (index) => {
+  return L.divIcon({
+    className: "custom-waypoint-icon",
+    html: `<div class="group relative flex items-center justify-center cursor-move">
+      <div class="w-4 h-4 rounded-full bg-cyan-400 border-2 border-white shadow-[0_0_12px_#22d3ee] flex items-center justify-center transition-transform hover:scale-130 active:scale-95">
+        <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+      </div>
+      <div class="absolute -top-6 whitespace-nowrap text-[8px] font-bold text-cyan-200 bg-slate-950/95 px-1.5 py-0.5 rounded border border-cyan-500/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+        Belokan ${index + 1}
+      </div>
+    </div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+};
+
+const getDraftWaypointIcon = (index) => {
+  return L.divIcon({
+    className: "custom-draft-waypoint-icon",
+    html: `<div class="group relative flex items-center justify-center">
+      <div class="w-4 h-4 rounded-full bg-amber-400 border-2 border-white shadow-[0_0_10px_#f59e0b] flex items-center justify-center animate-pulse">
+        <div class="w-1.5 h-1.5 rounded-full bg-slate-950"></div>
+      </div>
+      <div class="absolute -top-6 whitespace-nowrap text-[8px] font-bold text-amber-200 bg-slate-950/95 px-1.5 py-0.5 rounded border border-amber-500/50 shadow-lg">
+        Titik ${index + 1}
+      </div>
+    </div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+};
+
+// Komponen interaksi peta (Mendukung Pen Tool saat menggambar kabel FO)
 function MapEvents({
   interactionMode,
   newNodeType,
+  linkStartNode,
   onAddNode,
+  onAddDraftWaypoint,
+  onMouseMove,
   onSelectEmpty,
   onZoomChange,
   readOnly,
@@ -35,8 +103,16 @@ function MapEvents({
       }
       if (interactionMode === "add_node") {
         onAddNode(e.latlng.lat, e.latlng.lng, newNodeType);
+      } else if (interactionMode === "add_edge" && linkStartNode) {
+        // Klik pada background peta saat sedang menggambar kabel FO -> Tambahkan Titik Belokan
+        onAddDraftWaypoint?.([e.latlng.lat, e.latlng.lng]);
       } else {
         onSelectEmpty();
+      }
+    },
+    mousemove(e) {
+      if (interactionMode === "add_edge" && linkStartNode) {
+        onMouseMove?.([e.latlng.lat, e.latlng.lng]);
       }
     },
     zoomend() {
@@ -106,8 +182,8 @@ function RightClickPan() {
   return null;
 }
 
-// Pengelola pintasan keyboard (Ctrl+Z untuk membatalkan seretan node terakhir)
-function KeyboardHandler({ onUndo }) {
+// Pengelola pintasan keyboard (Ctrl+Z untuk undo node drag, Escape/Backspace untuk Pen Tool waypoints)
+function KeyboardHandler({ onUndo, onCancelDraftWaypoint, isDrafting }) {
   const map = useMap();
   useEffect(() => {
     const handler = (e) => {
@@ -115,10 +191,14 @@ function KeyboardHandler({ onUndo }) {
         e.preventDefault();
         if (onUndo) onUndo();
       }
+      if (isDrafting && (e.key === "Escape" || e.key === "Backspace")) {
+        e.preventDefault();
+        onCancelDraftWaypoint?.();
+      }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onUndo]);
+  }, [onUndo, onCancelDraftWaypoint, isDrafting]);
   return null;
 }
 function FlyToHandler({ flyToTarget, onFlyToComplete }) {
@@ -423,6 +503,57 @@ const DraggableMarker = React.memo(function DraggableMarker({
   );
 });
 
+const WaypointMarker = React.memo(function WaypointMarker({
+  edgeId,
+  waypointIndex,
+  position,
+  readOnly,
+  onWaypointDrag,
+  onWaypointDelete,
+}) {
+  const [pos, setPos] = useState(position);
+
+  useEffect(() => {
+    setPos(position);
+  }, [position]);
+
+  const icon = useMemo(() => getWaypointIcon(waypointIndex), [waypointIndex]);
+
+  const eventHandlers = useMemo(
+    () => ({
+      drag: (e) => {
+        if (readOnly) return;
+        const newLatLng = e.target.getLatLng();
+        setPos([newLatLng.lat, newLatLng.lng]);
+        onWaypointDrag?.(edgeId, waypointIndex, [newLatLng.lat, newLatLng.lng]);
+      },
+      click: (e) => {
+        L.DomEvent.stopPropagation(e.originalEvent || e);
+      },
+      contextmenu: (e) => {
+        if (e.originalEvent) {
+          e.originalEvent.preventDefault();
+          L.DomEvent.stopPropagation(e.originalEvent || e);
+        }
+        if (!readOnly) {
+          onWaypointDelete?.(edgeId, waypointIndex);
+        }
+      },
+    }),
+    [edgeId, waypointIndex, readOnly, onWaypointDrag, onWaypointDelete]
+  );
+
+  return (
+    <Marker
+      position={pos}
+      icon={icon}
+      draggable={!readOnly}
+      eventHandlers={eventHandlers}
+      zIndexOffset={10000}
+    />
+  );
+});
+
 const MemoizedEdge = React.memo(
   ({
     edge,
@@ -432,32 +563,23 @@ const MemoizedEdge = React.memo(
     interactionMode,
     readOnly,
     onEdgeDelete,
-    setEdges,
-    setSelectedEdge,
-    setSelectedNode,
+    onEdgeClick,
   }) => {
     return (
       <Polyline
         positions={edge.positions}
         pathOptions={{
           color: edgeColor,
-          weight: isSelected ? 5 : 3.5,
+          weight: isSelected ? 5.5 : 3.5,
           dashArray: edgeDash,
-          opacity: 0.9,
+          opacity: isSelected ? 1.0 : 0.85,
           nodeFromId: edge.from_node || edge.from,
           nodeToId: edge.to_node || edge.to,
         }}
         eventHandlers={{
           click: (e) => {
             L.DomEvent.stopPropagation(e.originalEvent || e);
-            if (!readOnly && interactionMode === "delete_edge") {
-              onEdgeDelete?.(edge.id);
-              setEdges((prev) => prev.filter((ed) => ed.id !== edge.id));
-              if (isSelected) setSelectedEdge(null);
-            } else {
-              setSelectedNode(null);
-              setSelectedEdge(edge);
-            }
+            onEdgeClick?.(e, edge);
           },
         }}
       />
@@ -494,6 +616,95 @@ export default function TopologyMap({
   const [currentZoom, setCurrentZoom] = useState(zoom);
   const undoStackRef = useRef([]); // [{id, lat, lng}]
   const draggedNodeCoordRef = useRef({}); // { [nodeId]: { lat, lng } }
+
+  // Pen Tool Draft Waypoints State
+  const [draftWaypoints, setDraftWaypoints] = useState([]);
+  const [mouseCursorPos, setMouseCursorPos] = useState(null);
+
+  useEffect(() => {
+    if (!linkStartNode) {
+      setDraftWaypoints([]);
+      setMouseCursorPos(null);
+    }
+  }, [linkStartNode]);
+
+  const handleAddDraftWaypoint = useCallback((latlng) => {
+    setDraftWaypoints((prev) => [...prev, latlng]);
+  }, []);
+
+  const handleCancelDraftWaypoint = useCallback(() => {
+    setDraftWaypoints((prev) => {
+      if (prev.length > 0) return prev.slice(0, -1);
+      setLinkStartNode?.(null);
+      return [];
+    });
+  }, [setLinkStartNode]);
+
+  const handleWaypointDrag = useCallback((edgeId, index, newLatLng) => {
+    setEdges((prev) =>
+      prev.map((ed) => {
+        if (ed.id === edgeId) {
+          const newWaypoints = [...(ed.waypoints || [])];
+          newWaypoints[index] = newLatLng;
+          return { ...ed, waypoints: newWaypoints };
+        }
+        return ed;
+      })
+    );
+    setSelectedEdge((prev) => {
+      if (prev && prev.id === edgeId) {
+        const newWaypoints = [...(prev.waypoints || [])];
+        newWaypoints[index] = newLatLng;
+        return { ...prev, waypoints: newWaypoints };
+      }
+      return prev;
+    });
+  }, [setEdges, setSelectedEdge]);
+
+  const handleWaypointDelete = useCallback((edgeId, index) => {
+    setEdges((prev) =>
+      prev.map((ed) => {
+        if (ed.id === edgeId) {
+          const newWaypoints = (ed.waypoints || []).filter((_, i) => i !== index);
+          return { ...ed, waypoints: newWaypoints };
+        }
+        return ed;
+      })
+    );
+    setSelectedEdge((prev) => {
+      if (prev && prev.id === edgeId) {
+        const newWaypoints = (prev.waypoints || []).filter((_, i) => i !== index);
+        return { ...prev, waypoints: newWaypoints };
+      }
+      return prev;
+    });
+  }, [setEdges, setSelectedEdge]);
+
+  const handleEdgeClick = useCallback((e, edge) => {
+    if (!readOnly && interactionMode === "delete_edge") {
+      onEdgeDelete?.(edge.id);
+      setEdges((prev) => prev.filter((ed) => ed.id !== edge.id));
+      if (selectedEdge?.id === edge.id) setSelectedEdge(null);
+      return;
+    }
+
+    if (selectedEdge?.id === edge.id && !readOnly) {
+      // Pen Tool: Klik pada polyline yang sudah dipilih untuk menyisipkan titik belokan baru
+      const clickLatLng = [e.latlng.lat, e.latlng.lng];
+      const segIdx = findClosestSegmentIndex(e.latlng, edge.positions);
+      const currentWaypoints = [...(edge.waypoints || [])];
+      currentWaypoints.splice(segIdx, 0, clickLatLng);
+
+      const updatedEdge = { ...edge, waypoints: currentWaypoints };
+      setEdges((prev) =>
+        prev.map((ed) => (ed.id === edge.id ? { ...ed, waypoints: currentWaypoints } : ed))
+      );
+      setSelectedEdge(updatedEdge);
+    } else {
+      setSelectedNode(null);
+      setSelectedEdge(edge);
+    }
+  }, [readOnly, interactionMode, onEdgeDelete, selectedEdge, setEdges, setSelectedEdge, setSelectedNode]);
 
   const pushUndo = useCallback((id, lat, lng) => {
     undoStackRef.current.push({ id, lat, lng });
@@ -549,7 +760,7 @@ export default function TopologyMap({
 
   // Warna edge berdasarkan status: Disabled=abu-abu, Up=hijau/biru, Down=merah
   const getEdgeColor = (edge) => {
-    if (selectedEdge?.id === edge.id) return "#93c5fd"; // biru lebih muda saat dipilih untuk membedakan dari tautan infrastruktur
+    if (selectedEdge?.id === edge.id) return "#38bdf8"; // biru terang menyala saat dipilih
 
     const status = getEdgeDerivedStatus(edge);
     const isInfrastructure =
@@ -598,12 +809,28 @@ export default function TopologyMap({
           tLng = draggedNodeCoordRef.current[toNode.id].lng;
         }
 
+        let waypoints = edge.waypoints || [];
+        if (typeof waypoints === "string") {
+          try {
+            waypoints = JSON.parse(waypoints);
+          } catch {
+            waypoints = [];
+          }
+        }
+        if (!Array.isArray(waypoints)) waypoints = [];
+
+        const validWaypoints = waypoints.filter(
+          (pt) => Array.isArray(pt) && pt.length >= 2 && !isNaN(pt[0]) && !isNaN(pt[1])
+        );
+
         return {
           ...edge,
           fromNode: { ...fromNode, latitude: fLat, longitude: fLng },
           toNode: { ...toNode, latitude: tLat, longitude: tLng },
+          waypoints: validWaypoints,
           positions: [
             [fLat, fLng],
+            ...validWaypoints,
             [tLat, tLng],
           ],
         };
@@ -611,12 +838,26 @@ export default function TopologyMap({
       .filter(Boolean);
   }, [edges, nodes]);
 
+  // Draft polyline saat mode pen tool menggambar kabel FO baru
+  const draftStartNode = useMemo(() => {
+    if (!linkStartNode) return null;
+    return nodes.find((n) => n.id === linkStartNode) || null;
+  }, [linkStartNode, nodes]);
+
+  const draftPolylinePositions = useMemo(() => {
+    if (!draftStartNode || isNaN(draftStartNode.latitude) || isNaN(draftStartNode.longitude)) return null;
+    const startCoord = [draftStartNode.latitude, draftStartNode.longitude];
+    const points = [startCoord, ...draftWaypoints];
+    if (mouseCursorPos) points.push(mouseCursorPos);
+    return points;
+  }, [draftStartNode, draftWaypoints, mouseCursorPos]);
+
   return (
     <MapContainer
       center={center}
       zoom={zoom}
       scrollWheelZoom={true}
-      className="w-full h-full z-0 outline-none"
+      className={`w-full h-full z-0 outline-none ${interactionMode === "add_edge" && linkStartNode ? "cursor-crosshair" : ""}`}
       fadeAnimation={true}
       markerZoomAnimation={true}
     >
@@ -639,7 +880,10 @@ export default function TopologyMap({
       <MapEvents
         interactionMode={interactionMode}
         newNodeType={newNodeType}
+        linkStartNode={linkStartNode}
         onAddNode={handleAddNode}
+        onAddDraftWaypoint={handleAddDraftWaypoint}
+        onMouseMove={setMouseCursorPos}
         onSelectEmpty={() => {
           setSelectedNode(null);
           setSelectedEdge(null);
@@ -652,9 +896,15 @@ export default function TopologyMap({
         flyToTarget={flyToTarget}
         onFlyToComplete={onFlyToComplete}
       />
-      {!readOnly && <KeyboardHandler onUndo={handleUndo} />}
+      {!readOnly && (
+        <KeyboardHandler
+          onUndo={handleUndo}
+          onCancelDraftWaypoint={handleCancelDraftWaypoint}
+          isDrafting={!!linkStartNode}
+        />
+      )}
 
-      {/* Cari blok validEdges.map dan ubah menjadi seperti ini */}
+      {/* Render Valid Edges */}
       {validEdges.map((edge) => (
         <MemoizedEdge
           key={edge.id}
@@ -665,11 +915,47 @@ export default function TopologyMap({
           interactionMode={interactionMode}
           readOnly={readOnly}
           onEdgeDelete={onEdgeDelete}
-          setEdges={setEdges}
-          setSelectedEdge={setSelectedEdge}
-          setSelectedNode={setSelectedNode}
+          onEdgeClick={handleEdgeClick}
         />
       ))}
+
+      {/* Draft Polyline & Waypoints saat Pen Tool aktif */}
+      {draftPolylinePositions && draftPolylinePositions.length >= 2 && (
+        <Polyline
+          positions={draftPolylinePositions}
+          pathOptions={{
+            color: "#f59e0b",
+            weight: 3.5,
+            dashArray: "6, 6",
+            opacity: 0.95,
+          }}
+        />
+      )}
+      {draftWaypoints.map((pt, idx) => (
+        <Marker
+          key={`draft-wp-${idx}`}
+          position={pt}
+          icon={getDraftWaypointIcon(idx)}
+          zIndexOffset={10001}
+        />
+      ))}
+
+      {/* Waypoint Handles untuk Edge yang sedang dipilih (Bisa digeser untuk belokan jalan) */}
+      {selectedEdge && Array.isArray(selectedEdge.waypoints) && (
+        selectedEdge.waypoints.map((wp, idx) => (
+          <WaypointMarker
+            key={`wp-${selectedEdge.id}-${idx}`}
+            edgeId={selectedEdge.id}
+            waypointIndex={idx}
+            position={wp}
+            readOnly={readOnly}
+            onWaypointDrag={handleWaypointDrag}
+            onWaypointDelete={handleWaypointDelete}
+          />
+        ))
+      )}
+
+      {/* Render Node Markers */}
       {nodes
         .filter(
           (n) =>
@@ -724,7 +1010,7 @@ export default function TopologyMap({
               showLabels={showLabels}
               interactionMode={interactionMode}
               readOnly={readOnly}
-              handleNodeClick={handleNodeClick}
+              handleNodeClick={(e, n) => handleNodeClick(e, n, draftWaypoints)}
               setNodes={setNodes}
               pushUndo={pushUndo}
               setSelectedEdge={setSelectedEdge}

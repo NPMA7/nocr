@@ -91,7 +91,7 @@ app.prepare().then(() => {
     server.disable('x-powered-by');
 
     // Trust proxy for reverse proxies (Cloudflare, Nginx)
-    server.set('trust proxy', 1);
+    server.set('trust proxy', true);
 
     // HTTPS Redirect & Security Headers Middleware
     server.use((req, res, next) => {
@@ -139,42 +139,34 @@ app.prepare().then(() => {
                 if (decoded && decoded.id) return `user_${decoded.id}`;
             } catch (e) {}
         }
-        const forwarded = req.headers['x-forwarded-for'];
-        if (forwarded) {
-            const ips = String(forwarded).split(',').map(s => s.trim()).filter(Boolean);
-            if (ips.length > 0) return ips[0];
-        }
-        return req.ip || req.socket?.remoteAddress || '127.0.0.1';
+        return req.ip || '127.0.0.1';
     };
 
-    // Rate Limiting khusus Login / Brute-force prevention (5 requests/menit per IP)
+    // Rate Limiting khusus Login / Brute-force prevention (500 requests/menit per IP)
     const loginLimiter = rateLimit({
         windowMs: 60 * 1000,
-        max: 5,
+        max: 500,
         standardHeaders: true,
         legacyHeaders: false,
-        keyGenerator: (req) => {
-            const forwarded = req.headers['x-forwarded-for'];
-            if (forwarded) {
-                const ips = String(forwarded).split(',').map(s => s.trim()).filter(Boolean);
-                if (ips.length > 0) return ips[0];
-            }
-            return req.ip || req.socket?.remoteAddress || '127.0.0.1';
-        },
+        keyGenerator: (req) => req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1',
         message: { error: 'Terlalu banyak percobaan login. Silakan coba lagi setelah beberapa saat.' },
         handler: (req, res, next, options) => {
             res.status(429).json(options.message);
         }
     });
 
-    // Unified Rate Limiting pada seluruh endpoint /api/ (120 requests/menit per user/IP)
-    // Cukup longgar untuk SPA dashboard polling & initial load, namun tetap mencegah scraping & abuse
+    // Unified Rate Limiting pada seluruh endpoint /api/ (3000 requests/menit per user/IP)
     const apiLimiter = rateLimit({
         windowMs: 60 * 1000,
-        max: 120,
+        max: 3000,
         standardHeaders: true,
         legacyHeaders: false,
         keyGenerator: getRateLimitKey,
+        skip: (req) => {
+            const url = req.originalUrl || req.url || req.path || '';
+            // Skip rate limiting on auth checks, health & static assets
+            return url.includes('/auth/') || url.includes('/system-health') || url.includes('/ping');
+        },
         message: { error: 'Terlalu banyak request. Silakan coba lagi nanti.' },
         handler: (req, res, next, options) => {
             res.status(429).json(options.message);

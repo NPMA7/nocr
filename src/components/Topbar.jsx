@@ -1,23 +1,18 @@
 "use client";
 import {
-  Search,
   Bell,
-  MapPin,
   LogOut,
   Menu,
   ChevronLeft,
   ChevronRight,
   Volume2,
   VolumeX,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { API_URL, socket, useAppState } from "@/App";
 import { normalizeRole, getRoleLabel, getStoredUser, clearClientAuth } from "@/lib/roles";
-import { PRESET_THEMES, applyThemeConfig, getStoredThemeConfig } from "@/lib/themeEngine";
 
 export default function Topbar({ onMenuClick, isSidebarOpen }) {
   const { sessionUser, lastSyncTime, alerts, alarmEnabled, setAlarmEnabled, markAlertsRead, testAlarm } = useAppState();
@@ -38,103 +33,35 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
   const role = normalizeRole(userData.role) || "visitor";
   const username = userData.username || "User";
   const initials = username.substring(0, 2).toUpperCase();
-
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   // Notification panel state
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
   const notificationRef = useRef(null);
 
-  // Theme Toggle State
-  const [theme, setTheme] = useState("dark");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const config = getStoredThemeConfig();
-      const currentMode = config.category || (localStorage.getItem("nocr_theme") || "dark");
-      setTheme(currentMode);
-      applyThemeConfig(config);
-
-      const handleThemeChanged = (e) => {
-        if (e.detail) {
-          setTheme(e.detail.category || "dark");
-        }
-      };
-      window.addEventListener("nocr-theme-changed", handleThemeChanged);
-      return () => window.removeEventListener("nocr-theme-changed", handleThemeChanged);
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const nextMode = theme === "dark" ? "light" : "dark";
-    setTheme(nextMode);
-    const targetPreset = nextMode === "light" ? PRESET_THEMES[0] : PRESET_THEMES[1];
-    applyThemeConfig(targetPreset);
-  };
-
-  // Unread count = alerts with isRead: false
-  const unreadCount = (alerts || []).filter((a) => !a.isRead).length;
+  const unreadCount = alerts ? alerts.filter((a) => !a.isRead).length : 0;
 
   const handleToggleNotifications = () => {
-    const newState = !showNotifications;
-    setShowNotifications(newState);
-    if (newState && markAlertsRead) {
-      markAlertsRead();
+    if (!showNotifications && unreadCount > 0) {
+      markAlertsRead?.();
     }
+    setShowNotifications(!showNotifications);
   };
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+    const handleClickOutside = (event) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
         setShowNotifications(false);
       }
-    }
-    if (showNotifications) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showNotifications]);
-
-  useEffect(() => {
-    if (query.length >= 5) {
-      setLoading(true);
-      // Mengambil node dari topologi
-      axios
-        .get(`${API_URL}/topology`)
-        .then((res) => {
-          const nodes = res.data.nodes || [];
-          const matches = nodes.filter(
-            (n) =>
-              (n.label &&
-                n.label.toLowerCase().includes(query.toLowerCase())) ||
-              (n.linked_interface &&
-                n.linked_interface.toLowerCase().includes(query.toLowerCase())),
-          );
-          setSuggestions(matches);
-          setShowSuggestions(true);
-        })
-        .catch((err) => {
-          console.error(err);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setShowSuggestions(false);
-      setSuggestions([]);
-    }
-  }, [query]);
-
-  const handleSelect = (node) => {
-    setShowSuggestions(false);
-    setQuery("");
-    router.push(`/topology?focus=${node.id}`);
-  };
 
   const handleLogout = async () => {
     try {
@@ -148,63 +75,11 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
     window.location.href = "/login";
   };
 
-  const searchInput = (
-    <div className="relative w-full z-[2001]">
-      <Search
-        size={16}
-        className={`absolute left-3 top-1/2 -translate-y-1/2 ${loading ? "text-blue-400 animate-pulse" : "text-slate-400"}`}
-      />
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Cari interface atau nama titik (min 5 huruf)..."
-        className="text-sm w-full bg-slate-900/50 border border-slate-700/50 rounded-full py-2 pl-10 pr-4 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-slate-900 transition-all duration-300"
-      />
-
-      {/* Saran Dropdown */}
-      {showSuggestions && (
-        <div className="absolute top-12 left-0 right-0 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl max-h-72 overflow-auto">
-          {suggestions.length > 0 ? (
-            suggestions.map((node) => (
-              <div
-                key={node.id}
-                onClick={() => handleSelect(node)}
-                className="px-4 py-3 border-b border-slate-700/50 hover:bg-slate-700 cursor-pointer flex items-center justify-between transition-colors"
-              >
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-slate-200">
-                    {node.label}
-                  </span>
-                  {node.linked_interface && (
-                    <span className="text-[10px] text-blue-400 mt-0.5">
-                      Interface: {node.linked_interface}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-900 px-2 py-1 rounded">
-                    {node.type}
-                  </span>
-                  <MapPin size={14} className="text-slate-400" />
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="px-4 py-4 text-xs text-slate-500 text-center">
-              Tidak ada hasil yang cocok.
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <header className="bg-slate-800 border-b border-slate-700/50 flex flex-col md:flex-row md:justify-between md:items-center relative z-[2000] shrink-0">
-      {/* Baris Atas: Hamburger, Pencarian Desktop, Profil */}
+      {/* Baris Atas: Hamburger, Profil, Notifikasi, Status */}
       <div className="h-[70px] flex justify-between items-center px-3 md:px-6 w-full gap-2">
-        <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0 md:max-w-md relative mr-1 md:mr-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <button
             onClick={onMenuClick}
             className="cursor-pointer text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition flex items-center justify-center flex-shrink-0"
@@ -220,9 +95,6 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
               <Menu size={24} />
             </div>
           </button>
-
-          {/* Bilah Pencarian Desktop */}
-          <div className="hidden md:block w-full min-w-0">{searchInput}</div>
         </div>
 
         <div className="flex items-center gap-2.5 md:gap-4 flex-shrink-0">
@@ -251,7 +123,6 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
           )}
 
           {/* Notification Bell */}
-
           <div
             ref={notificationRef}
             className="relative cursor-pointer text-slate-200 hover:text-white transition"
@@ -332,7 +203,7 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
               <span className="text-xs font-bold text-slate-200 uppercase">
                 {username}
               </span>
-             <span className="text-[10px] font-bold text-slate-200 uppercase bg-slate-600/20">
+              <span className="text-[10px] font-bold text-slate-200 uppercase bg-slate-600/20">
                 {getRoleLabel(role)}
               </span>
             </div>
@@ -350,9 +221,6 @@ export default function Topbar({ onMenuClick, isSidebarOpen }) {
           </button>
         </div>
       </div>
-
-      {/* Bilah Pencarian Seluler (Di Bawah Baris Atas) */}
-      <div className="md:hidden px-4 pb-4 w-full">{searchInput}</div>
     </header>
   );
 }
