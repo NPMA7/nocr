@@ -6,9 +6,10 @@ import { hasAccess } from "@/lib/roles";
 
 function getFilePath() {
   const possibleDirs = [
-    path.join(process.cwd(), "src", "data"),
     path.join(process.cwd(), "data"),
-    "/app/src/data",
+    "/app/data",
+    "/var/www/nocr/data",
+    path.join(process.cwd(), "src", "data"),
     "/tmp",
   ];
 
@@ -27,7 +28,28 @@ function getFilePath() {
 
 function getStoredData() {
   const filePath = getFilePath();
+
+  // If primary file doesn't exist, check legacy locations to migrate
   if (!fs.existsSync(filePath)) {
+    const legacyPaths = [
+      path.join(process.cwd(), "src", "data", "topology_architectures.json"),
+      "/app/src/data/topology_architectures.json",
+      "/var/www/nocr/src/data/topology_architectures.json",
+    ];
+
+    for (const leg of legacyPaths) {
+      try {
+        if (fs.existsSync(leg)) {
+          const raw = fs.readFileSync(leg, "utf8");
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed.architectures) && parsed.architectures.length > 0) {
+            fs.writeFileSync(filePath, JSON.stringify(parsed, null, 2), "utf8");
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+
     const initialData = {
       activeId: null,
       architectures: [],
@@ -37,6 +59,7 @@ function getStoredData() {
     } catch (e) {}
     return initialData;
   }
+
   try {
     const raw = fs.readFileSync(filePath, "utf8");
     const parsed = JSON.parse(raw);
@@ -52,6 +75,14 @@ function getStoredData() {
 function saveStoredData(data) {
   const filePath = getFilePath();
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+
+  // Also maintain backup copy in src/data if accessible
+  try {
+    const backupPath = path.join(process.cwd(), "src", "data", "topology_architectures.json");
+    if (path.dirname(backupPath) !== path.dirname(filePath)) {
+      fs.writeFileSync(backupPath, JSON.stringify(data, null, 2), "utf8");
+    }
+  } catch (e) {}
 }
 
 export async function GET(req) {

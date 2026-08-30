@@ -21,6 +21,12 @@ import {
   Laptop,
   Network,
   Lock,
+  Globe,
+  Building2,
+  Home,
+  Boxes,
+  Activity,
+  Sparkles,
 } from "lucide-react";
 
 const DEVICE_ICONS = {
@@ -42,6 +48,13 @@ const DEVICE_ICONS = {
   pc: Monitor,
   laptop: Laptop,
   client: Monitor,
+  cluster: Layers,
+  aggregate: Activity,
+  globe: Globe,
+  home: Home,
+  building: Building2,
+  desa: Home,
+  opd: Building2,
 };
 
 export function maskIpAddress(ipString, isReadOnly = false) {
@@ -97,7 +110,11 @@ function NodeCard({
   canDelete = true,
   simulationActive = true,
 }) {
-  const isOnline = node.status === "online";
+  const isAggregate = Boolean(node.is_aggregate);
+  const isOnline = isAggregate
+    ? (node.online_count ?? (node.status === "online" ? 1 : 0)) > 0
+    : node.status === "online";
+  const hasOfflineInAggregate = isAggregate && (node.offline_count ?? 0) > 0;
   const IconComponent = DEVICE_ICONS[node.type] || Router;
   const isPassive = ["odp", "odc", "splitter", "closure", "joint_box", "patch_panel", "passive", "fiber_box"].includes(node.type?.toLowerCase());
   const isLiveNocr = Boolean(node.is_live_nocr || node.mapping_prefix || node.mapping_mac || node.nocr_category);
@@ -139,6 +156,10 @@ function NodeCard({
       className={`node-card-interactive absolute top-0 left-0 select-none group cursor-grab active:cursor-grabbing rounded-xl p-2.5 transition-shadow duration-300 border flex flex-col justify-between backdrop-blur-md z-20 ${
         isSelected
           ? "ring-2 ring-sky-400 border-sky-400 bg-slate-900/95 shadow-[0_0_25px_rgba(56,189,248,0.45)]"
+          : isAggregate
+          ? hasOfflineInAggregate
+            ? "bg-slate-900/95 border-slate-700/90 shadow-[0_0_18px_rgba(14,165,233,0.15)] hover:border-sky-500/70 hover:shadow-[0_0_22px_rgba(14,165,233,0.3)]"
+            : "bg-slate-900/95 border-slate-700/90 shadow-[0_0_18px_rgba(16,185,129,0.2)] hover:border-emerald-400 hover:shadow-[0_0_22px_rgba(16,185,129,0.35)]"
           : isOnline
           ? "bg-slate-900/90 border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:border-emerald-400 hover:shadow-[0_0_25px_rgba(16,185,129,0.4)]"
           : "bg-slate-900/90 border-red-500/70 shadow-[0_0_22px_rgba(239,68,68,0.35)] hover:border-red-400 hover:shadow-[0_0_28px_rgba(239,68,68,0.5)]"
@@ -149,7 +170,9 @@ function NodeCard({
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <div
             className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-              isOnline
+              isAggregate
+                ? "bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_8px_rgba(14,165,233,0.25)]"
+                : isOnline
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
                 : "bg-red-500/20 text-red-400 border border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
             }`}
@@ -158,20 +181,28 @@ function NodeCard({
           </div>
 
           <div className="min-w-0 flex-1 flex flex-col">
-            <span
-              className="text-xs font-bold text-slate-100 truncate tracking-tight leading-tight"
-              title={node.label}
-            >
-              {node.label}
-            </span>
             <div className="flex items-center gap-1">
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+              <span
+                className="text-xs font-bold text-slate-100 truncate tracking-tight leading-tight flex-1"
+                title={node.label}
+              >
+                {node.label}
+              </span>
+              {isAggregate && (
+                <span className="text-[7.5px] px-1.5 py-0.2 rounded font-bold uppercase bg-slate-800 text-sky-300 border border-slate-700 flex-shrink-0">
+                  Agregator
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 truncate max-w-[150px]">
                 {node.vendor || node.type}
               </span>
-              {node.ip && (
+              {!isAggregate && node.ip && (
                 <>
                   <span className="text-slate-600 text-[8px]">•</span>
-                  <span className="text-[9px] text-slate-400 font-mono truncate max-w-[125px]">
+                  <span className="text-[9px] text-slate-400 font-mono truncate max-w-[90px]">
                     {maskIpAddress(node.ip, readOnly)}
                   </span>
                 </>
@@ -181,27 +212,61 @@ function NodeCard({
         </div>
       </div>
 
-      {/* Footer: Status Glow Dot & Description */}
-      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-800/80">
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`w-2 h-2 rounded-full transition-all ${
-              isOnline
-                ? simulationActive
-                  ? "bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse"
-                  : "bg-emerald-400 shadow-[0_0_8px_#10b981]"
-                : "bg-red-500 shadow-[0_0_8px_#ef4444]"
-            }`}
-          />
-          <span className={`font-semibold uppercase text-[9px] tracking-wider ${isOnline ? "text-emerald-400" : "text-red-400"}`}>
-            {isOnline ? "Menyala" : "Mati"}
+      {/* Footer: Normal or Aggregate Status View */}
+      {isAggregate ? (
+        <div className="flex items-center justify-between gap-1 w-full pt-1 border-t border-slate-800/80">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[9px] border border-emerald-500/30 flex items-center gap-1 flex-shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {node.online_count ?? (node.status === "online" ? 1 : 0)} Online
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold text-[9px] border border-red-500/30 flex items-center gap-1 flex-shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              {node.offline_count ?? 0} Offline
+            </span>
+          </div>
+
+          <div className="flex flex-col items-end min-w-0">
+            <span className="text-[8.5px] text-slate-400 font-mono font-semibold truncate">
+              {node.total_count ? `${node.total_count} Unit` : "Semua"}
+            </span>
+            <div className="w-12 h-1 bg-slate-800 rounded-full overflow-hidden flex mt-0.5">
+              <div
+                style={{
+                  width: `${Math.round(
+                    ((node.online_count || 0) /
+                      Math.max(1, (node.online_count || 0) + (node.offline_count || 0))) *
+                      100
+                  )}%`,
+                }}
+                className="bg-emerald-400 h-full"
+              />
+              <div className="bg-red-500 h-full flex-1" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-800/80">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`w-2 h-2 rounded-full transition-all ${
+                isOnline
+                  ? simulationActive
+                    ? "bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse"
+                    : "bg-emerald-400 shadow-[0_0_8px_#10b981]"
+                  : "bg-red-500 shadow-[0_0_8px_#ef4444]"
+              }`}
+            />
+            <span className={`font-semibold uppercase text-[9px] tracking-wider ${isOnline ? "text-emerald-400" : "text-red-400"}`}>
+              {isOnline ? "Menyala" : "Mati"}
+            </span>
+          </div>
+
+          <span className="text-[9px] text-slate-400 truncate max-w-[110px] text-right font-medium">
+            {node.sublabel || (node.ports ? `${node.ports} Ports` : "Aktif")}
           </span>
         </div>
-
-        <span className="text-[9px] text-slate-400 truncate max-w-[110px] text-right font-medium">
-          {node.sublabel || (node.ports ? `${node.ports} Ports` : "Aktif")}
-        </span>
-      </div>
+      )}
 
       {/* Quick Action Floating Bar on Hover */}
       {!readOnly && (
@@ -294,4 +359,4 @@ function NodeCard({
   );
 }
 
-export default memo(NodeCard);
+export default NodeCard;

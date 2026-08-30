@@ -175,6 +175,128 @@ export const matchHardwareType = (node, hwKey) => {
   return false;
 };
 
+export const isSameAggregate = (node, aggKey) => {
+  if (!node || !aggKey) return false;
+  return Boolean(node.is_aggregate && node.aggregate_type === aggKey);
+};
+
+export const computeNocrAggregates = (liveMappings = []) => {
+  const desaMappings = (liveMappings || []).filter(
+    (m) => (m.connection_type || "L2TP").toUpperCase() === "L2TP"
+  );
+  const opdMappings = (liveMappings || []).filter(
+    (m) => (m.connection_type || "").toUpperCase() === "PPPOE"
+  );
+
+  // 1. Modem ONT Desa (diambil Dari Final Status desa/l2tp)
+  const desaOntOnline = desaMappings.filter(
+    (m) => (m.final_status || "").toLowerCase() === "online" || (m.final_status || "").toLowerCase() === "up"
+  ).length;
+  const desaOntTotal = desaMappings.length;
+  const desaOntOffline = Math.max(0, desaOntTotal - desaOntOnline);
+
+  // 2. Mikrotik Desa (diambil dari status mikrotik desa/l2tp)
+  const desaMikrotikOnline = desaMappings.filter(
+    (m) => (m.status_mikrotik || "").toLowerCase() === "online" || (m.status_mikrotik || "").toLowerCase() === "up"
+  ).length;
+  const desaMikrotikTotal = desaMappings.length;
+  const desaMikrotikOffline = Math.max(0, desaMikrotikTotal - desaMikrotikOnline);
+
+  // 3. Ruijie Desa (diambil dari status ruijie desa/l2tp)
+  const desaRuijieOnline = desaMappings.filter(
+    (m) => (m.status_ruijie || "").toLowerCase() === "online" || (m.status_ruijie || "").toLowerCase() === "up"
+  ).length;
+  const desaRuijieTotal = desaMappings.length;
+  const desaRuijieOffline = Math.max(0, desaRuijieTotal - desaRuijieOnline);
+
+  // 4. Modem ONT OPD (diambil dari status mikrotik PPPoE OPD)
+  const opdOntOnline = opdMappings.filter(
+    (m) => (m.status_mikrotik || "").toLowerCase() === "online" || (m.status_mikrotik || "").toLowerCase() === "up"
+  ).length;
+  const opdOntTotal = opdMappings.length;
+  const opdOntOffline = Math.max(0, opdOntTotal - opdOntOnline);
+
+  // 5. Ruijie OPD (diambil dari status ruijie OPD/PPPoE)
+  const opdRuijieOnline = opdMappings.filter(
+    (m) => (m.status_ruijie || "").toLowerCase() === "online" || (m.status_ruijie || "").toLowerCase() === "up"
+  ).length;
+  const opdRuijieTotal = opdMappings.length;
+  const opdRuijieOffline = Math.max(0, opdRuijieTotal - opdRuijieOnline);
+
+  return {
+    desa_ont: {
+      key: "desa_ont",
+      label: "Modem ONT Desa",
+      sublabel: `${desaOntTotal} Unit • ${desaOntOnline} Online • ${desaOntOffline} Offline`,
+      vendor: "Modem ONT (Final Status Desa)",
+      type: "ont",
+      nocr_hw_type: "ont",
+      total: desaOntTotal,
+      online: desaOntOnline,
+      offline: desaOntOffline,
+      nocr_category: "desa",
+      is_aggregate: true,
+      icon: Box,
+    },
+    desa_mikrotik: {
+      key: "desa_mikrotik",
+      label: "MikroTik Desa",
+      sublabel: `${desaMikrotikTotal} Unit • ${desaMikrotikOnline} Online • ${desaMikrotikOffline} Offline`,
+      vendor: "MikroTik Router Desa",
+      type: "router",
+      nocr_hw_type: "mikrotik",
+      total: desaMikrotikTotal,
+      online: desaMikrotikOnline,
+      offline: desaMikrotikOffline,
+      nocr_category: "desa",
+      is_aggregate: true,
+      icon: Router,
+    },
+    desa_ruijie: {
+      key: "desa_ruijie",
+      label: "Ruijie Desa",
+      sublabel: `${desaRuijieTotal} Unit • ${desaRuijieOnline} Online • ${desaRuijieOffline} Offline`,
+      vendor: "Ruijie AP Desa",
+      type: "ap",
+      nocr_hw_type: "ruijie",
+      total: desaRuijieTotal,
+      online: desaRuijieOnline,
+      offline: desaRuijieOffline,
+      nocr_category: "desa",
+      is_aggregate: true,
+      icon: Wifi,
+    },
+    opd_ont: {
+      key: "opd_ont",
+      label: "Modem ONT OPD",
+      sublabel: `${opdOntTotal} Unit • ${opdOntOnline} Online • ${opdOntOffline} Offline`,
+      vendor: "Modem ONT (PPPoE OPD)",
+      type: "ont",
+      nocr_hw_type: "ont",
+      total: opdOntTotal,
+      online: opdOntOnline,
+      offline: opdOntOffline,
+      nocr_category: "opd",
+      is_aggregate: true,
+      icon: Box,
+    },
+    opd_ruijie: {
+      key: "opd_ruijie",
+      label: "Ruijie OPD",
+      sublabel: `${opdRuijieTotal} Unit • ${opdRuijieOnline} Online • ${opdRuijieOffline} Offline`,
+      vendor: "Ruijie AP OPD",
+      type: "ap",
+      nocr_hw_type: "ruijie",
+      total: opdRuijieTotal,
+      online: opdRuijieOnline,
+      offline: opdRuijieOffline,
+      nocr_category: "opd",
+      is_aggregate: true,
+      icon: Wifi,
+    },
+  };
+};
+
 export const isSameSite = (node, siteMapping) => {
   if (!node || !siteMapping) return false;
   if (node.mapping_prefix && siteMapping.prefix) {
@@ -203,6 +325,7 @@ export default function DevicePalette({
 }) {
   const [search, setSearch] = useState("");
   const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [isAggregatesCollapsed, setIsAggregatesCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("live");
   const [liveFilter, setLiveFilter] = useState("all");
 
@@ -236,6 +359,30 @@ export default function DevicePalette({
     [canvasNodes]
   );
 
+  const nocrAggregates = useMemo(() => computeNocrAggregates(liveMappings), [liveMappings]);
+
+  const aggregateItems = useMemo(() => {
+    const list = Object.values(nocrAggregates);
+    if (liveFilter === "desa") {
+      return list.filter((item) => item.nocr_category === "desa");
+    }
+    if (liveFilter === "opd") {
+      return list.filter((item) => item.nocr_category === "opd");
+    }
+    return list;
+  }, [nocrAggregates, liveFilter]);
+
+  const filteredAggregates = useMemo(() => {
+    if (!search) return aggregateItems;
+    const q = search.toLowerCase();
+    return aggregateItems.filter(
+      (a) =>
+        a.label.toLowerCase().includes(q) ||
+        a.sublabel.toLowerCase().includes(q) ||
+        a.vendor.toLowerCase().includes(q)
+    );
+  }, [aggregateItems, search]);
+
   const filteredCatalog = useMemo(() => {
     if (!search) return DEVICE_CATALOG;
     return DEVICE_CATALOG.map((cat) => ({
@@ -250,6 +397,10 @@ export default function DevicePalette({
   }, [search]);
 
   const filteredLiveMappings = useMemo(() => {
+    if (liveFilter === "aggregate") {
+      return [];
+    }
+
     let list = liveMappings;
 
     if (liveFilter === "desa") {
@@ -289,11 +440,11 @@ export default function DevicePalette({
   }, [liveMappings, liveFilter, search, getSiteCanvasStatus]);
 
   const desaCount = useMemo(
-    () => liveMappings.filter((m) => m.connection_type !== "PPPOE").length,
+    () => (liveMappings || []).filter((m) => m.connection_type !== "PPPOE").length,
     [liveMappings]
   );
   const opdCount = useMemo(
-    () => liveMappings.filter((m) => m.connection_type === "PPPOE").length,
+    () => (liveMappings || []).filter((m) => m.connection_type === "PPPOE").length,
     [liveMappings]
   );
 
@@ -303,7 +454,7 @@ export default function DevicePalette({
       "application/nocr-topology-node",
       JSON.stringify({
         type: item.type,
-        nocr_hw_type: item.nocr_hw_type,
+        nocr_hw_type: item.nocr_hw_type || item.type,
         nocr_category: item.nocr_category,
         status_source: item.status_source,
         label: item.label,
@@ -311,10 +462,15 @@ export default function DevicePalette({
         vendor: item.vendor,
         ports: item.ports,
         ip: item.ip || "",
-        status: item.status || "online",
+        status: item.status || (item.is_aggregate ? (item.online > 0 ? "online" : "offline") : "online"),
         mapping_prefix: item.mapping_prefix,
         mapping_mac: item.mapping_mac,
         is_live_nocr: item.is_live_nocr,
+        is_aggregate: Boolean(item.is_aggregate),
+        aggregate_type: item.key || item.aggregate_type,
+        total_count: item.total ?? item.total_count,
+        online_count: item.online ?? item.online_count,
+        offline_count: item.offline ?? item.offline_count,
       })
     );
     e.dataTransfer.effectAllowed = "copy";
@@ -360,7 +516,7 @@ export default function DevicePalette({
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Hardware NOCR ({liveMappings.length})
+            Hardware NOCR ({(liveMappings || []).length})
           </button>
           <button
             onClick={() => setActiveTab("catalog")}
@@ -384,7 +540,7 @@ export default function DevicePalette({
             type="text"
             placeholder={
               activeTab === "live"
-                ? "Cari nama Desa, OPD, IP..."
+                ? "Cari nama Desa, OPD, Agregator..."
                 : "Cari router, OLT, switch, AP..."
             }
             value={search}
@@ -395,7 +551,7 @@ export default function DevicePalette({
 
         {/* Sub-filter untuk Data NOCR */}
         {activeTab === "live" && (
-          <div className="flex items-center gap-1 text-[10px] font-semibold pt-0.5">
+          <div className="flex items-center gap-1 text-[10px] font-semibold pt-0.5 flex-wrap">
             <button
               onClick={() => setLiveFilter("all")}
               className={`cursor-pointer px-2 py-0.5 rounded-md transition ${
@@ -404,7 +560,7 @@ export default function DevicePalette({
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Semua ({liveMappings.length})
+              Semua ({(liveMappings || []).length})
             </button>
             <button
               onClick={() => setLiveFilter("desa")}
@@ -421,12 +577,23 @@ export default function DevicePalette({
               onClick={() => setLiveFilter("opd")}
               className={`cursor-pointer px-2 py-0.5 rounded-md transition flex items-center gap-1 ${
                 liveFilter === "opd"
-                  ? "bg-purple-900/60 text-purple-300 border border-purple-600/50 font-bold"
+                  ? "bg-slate-800 text-white border border-slate-600 font-bold"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
               <Building2 size={10} />
               <span>OPD ({opdCount})</span>
+            </button>
+            <button
+              onClick={() => setLiveFilter("aggregate")}
+              className={`cursor-pointer px-2 py-0.5 rounded-md transition flex items-center gap-1 ${
+                liveFilter === "aggregate"
+                  ? "bg-sky-900/60 text-sky-300 border border-sky-500/50 font-bold"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Sparkles size={10} className="text-sky-400" />
+              <span>Agregator ({filteredAggregates.length})</span>
             </button>
           </div>
         )}
@@ -500,21 +667,134 @@ export default function DevicePalette({
         ) : (
           /* Live Devices from NOCR Database (/api/mappings) */
           <div className="space-y-2">
-            <div className="text-[10px] text-slate-400 px-1 font-semibold flex items-center justify-between">
-              <span>Pilih & tarik tipe hardware:</span>
-              <span className="text-emerald-400 text-[9px] font-mono font-bold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live Sync
-              </span>
-            </div>
+            {/* 1. MASTER AGREGATOR SECTION (Live Totals for Desa, OPD) */}
+            {filteredAggregates.length > 0 && (
+              <div className="space-y-1.5 p-2 rounded-xl bg-slate-950 border border-slate-800 shadow-md">
+                <button
+                  onClick={() => setIsAggregatesCollapsed((prev) => !prev)}
+                  className="cursor-pointer w-full flex items-center justify-between text-[11px] font-extrabold text-sky-400 uppercase tracking-wider px-1 py-0.5 hover:text-white transition"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-sky-400 animate-pulse" />
+                    <span>Master Agregator ({filteredAggregates.length})</span>
+                  </div>
+                  {isAggregatesCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                </button>
 
-            {filteredLiveMappings.length === 0 ? (
+                {!isAggregatesCollapsed && (
+                  <div className="space-y-1.5 pt-1">
+                    {filteredAggregates.map((agg) => {
+                      const Icon = agg.icon || Wifi;
+                      const isAlreadyOnCanvas = (canvasNodes || []).some(
+                        (n) => n.is_aggregate && n.aggregate_type === agg.key
+                      );
+
+                      const aggPayload = {
+                        type: agg.type,
+                        nocr_hw_type: agg.nocr_hw_type,
+                        nocr_category: agg.nocr_category,
+                        label: agg.label,
+                        sublabel: agg.sublabel,
+                        vendor: agg.vendor,
+                        is_aggregate: true,
+                        aggregate_type: agg.key,
+                        total_count: agg.total,
+                        online_count: agg.online,
+                        offline_count: agg.offline,
+                        status: agg.online > 0 ? "online" : "offline",
+                      };
+
+                      return (
+                        <div
+                          key={agg.key}
+                          draggable={isEditable}
+                          onDragStart={(e) => handleDragStart(e, aggPayload)}
+                          onClick={() => isEditable && onAddNodeDirect?.(aggPayload)}
+                          title={
+                            isEditable
+                              ? isAlreadyOnCanvas
+                                ? "Perangkat ini sudah ada di kanvas"
+                                : "Tarik ke kanvas atau klik untuk menambahkan"
+                              : "Mode Hanya Lihat"
+                          }
+                          className={`flex flex-col gap-1 p-2 rounded-xl border transition group shadow-sm ${
+                            isAlreadyOnCanvas
+                              ? "bg-slate-950/80 border-slate-800 opacity-60 cursor-pointer"
+                              : isEditable
+                              ? "cursor-grab active:cursor-grabbing bg-slate-900/90 hover:bg-slate-800 border-slate-700/70 hover:border-sky-500/60 hover:shadow-[0_0_15px_rgba(14,165,233,0.2)]"
+                              : "cursor-default bg-slate-900/80 border-slate-800 opacity-80"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-6 h-6 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_8px_rgba(14,165,233,0.2)]">
+                                <Icon size={13} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-slate-100 group-hover:text-white truncate">
+                                  {agg.label}
+                                </div>
+                                <div className="text-[9px] text-sky-400/80 font-semibold uppercase">
+                                  {agg.vendor}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {isAlreadyOnCanvas ? (
+                                <span className="text-[8px] px-1 py-0.2 rounded font-bold uppercase bg-slate-900 text-slate-500 border border-slate-800">
+                                  Di Kanvas
+                                </span>
+                              ) : (
+                                isEditable && (
+                                  <Plus size={13} className="text-sky-400 group-hover:scale-125 transition-transform" />
+                                )
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Status Stats Bar */}
+                          <div className="flex items-center justify-between text-[9px] pt-1 border-t border-slate-800/80 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                {agg.online} Online
+                              </span>
+                              <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 font-bold border border-red-500/30 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                                {agg.offline} Offline
+                              </span>
+                            </div>
+                            <span className="text-slate-400 font-semibold">Total {agg.total}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. SITES LIST HEADER */}
+            {liveFilter !== "aggregate" && (
+              <div className="text-[10px] text-slate-400 px-1 font-semibold flex items-center justify-between pt-1">
+                <span>Pilih & tarik hardware per lokasi:</span>
+                <span className="text-emerald-400 text-[9px] font-mono font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Sync
+                </span>
+              </div>
+            )}
+
+            {liveFilter !== "aggregate" && filteredLiveMappings.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-500">
-                {liveMappings.length === 0
+                {(liveMappings || []).length === 0
                   ? "Memuat data monitoring NOCR..."
                   : "Tidak ada site yang cocok dengan pencarian"}
               </div>
-            ) : (
+            ) : null}
+
+            {liveFilter !== "aggregate" &&
               filteredLiveMappings.slice(0, 60).map((m, idx) => {
                 const isOPD = m.connection_type === "PPPOE";
                 const label = m.prefix || m.site_name || m.mikrotik_alias || m.ruijie_mac;
@@ -740,8 +1020,7 @@ export default function DevicePalette({
                     </div>
                   </div>
                 );
-              })
-            )}
+              })}
           </div>
         )}
       </div>

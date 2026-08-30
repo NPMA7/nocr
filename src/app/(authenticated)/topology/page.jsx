@@ -39,7 +39,7 @@ import { toPng } from "html-to-image";
 
 import TopologyCanvas from "@/components/topology-builder/TopologyCanvas";
 import { maskIpAddress } from "@/components/topology-builder/NodeCard";
-import DevicePalette, { matchHardwareType, isSameSite } from "@/components/topology-builder/DevicePalette";
+import DevicePalette, { matchHardwareType, isSameSite, computeNocrAggregates } from "@/components/topology-builder/DevicePalette";
 import PropertiesDrawer from "@/components/topology-builder/PropertiesDrawer";
 import SimulationControl from "@/components/topology-builder/SimulationControl";
 import { TOPOLOGY_TEMPLATES, computeCascadedNodes } from "@/components/topology-builder/TopologyTemplates";
@@ -198,10 +198,51 @@ export default function TopologyArchitecturePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Hitung status efektif dengan propagasi gangguan (cascading outage)
+  // Hitung status efektif dengan propagasi gangguan (cascading outage) + Live Aggregates Real-Time
   const effectiveNodes = useMemo(() => {
-    return computeCascadedNodes(nodes, links);
-  }, [nodes, links]);
+    const aggregates = (liveMappings && liveMappings.length > 0) ? computeNocrAggregates(liveMappings) : null;
+
+    // 1. Inject live aggregate counts directly from DB
+    const withLiveAggregates = (nodes || []).map((node) => {
+      if (!node.is_aggregate) return node;
+      if (!aggregates) return node;
+
+      // Smart resolution of aggregate key
+      let aggKey = node.aggregate_type;
+      if (!aggKey || !aggregates[aggKey]) {
+        const lbl = (node.label || "").toLowerCase();
+        const sub = (node.sublabel || "").toLowerCase();
+        const ven = (node.vendor || "").toLowerCase();
+        const cat = (node.nocr_category || "").toLowerCase();
+        if (cat === "opd" || lbl.includes("opd") || sub.includes("opd") || ven.includes("opd")) {
+          if (node.type === "ap" || lbl.includes("ruijie") || ven.includes("ruijie")) aggKey = "opd_ruijie";
+          else aggKey = "opd_ont";
+        } else {
+          if (node.type === "ap" || lbl.includes("ruijie") || ven.includes("ruijie")) aggKey = "desa_ruijie";
+          else if (node.type === "router" || lbl.includes("mikrotik") || ven.includes("mikrotik")) aggKey = "desa_mikrotik";
+          else aggKey = "desa_ont";
+        }
+      }
+
+      const aggData = aggregates[aggKey];
+      if (aggData) {
+        return {
+          ...node,
+          is_aggregate: true,
+          aggregate_type: aggKey,
+          status: aggData.online > 0 ? "online" : "offline",
+          total_count: aggData.total,
+          online_count: aggData.online,
+          offline_count: aggData.offline,
+          sublabel: `${aggData.total} Unit • ${aggData.online} Online • ${aggData.offline} Offline`,
+        };
+      }
+      return node;
+    });
+
+    // 2. Compute cascading link outage propagation
+    return computeCascadedNodes(withLiveAggregates, links);
+  }, [nodes, links, liveMappings]);
 
   // Filtered Area Boxes & Nodes for search
   const filteredAreas = (areas || []).filter((a) =>
@@ -375,14 +416,48 @@ export default function TopologyArchitecturePage() {
   // Live Auto-Sync: Periodically check mappings
   const fetchLiveMappings = useCallback(async () => {
     try {
-      const res = await axios.get("/api/mappings");
+      const res = await axios.get("/api/mappings?force=true");
       const list = Array.isArray(res.data) ? res.data : (res.data?.mappings || []);
       if (list && Array.isArray(list) && list.length > 0) {
         setLiveMappings(list);
 
-        // Auto update node status based on fresh DB data
+        const aggregates = computeNocrAggregates(list);
+
+        // Auto update node status based on fresh DB data (both aggregate & regular nodes)
         setNodes((prevNodes) =>
           prevNodes.map((node) => {
+            if (node.is_aggregate) {
+              let aggKey = node.aggregate_type;
+              if (!aggKey || !aggregates[aggKey]) {
+                const lbl = (node.label || "").toLowerCase();
+                const sub = (node.sublabel || "").toLowerCase();
+                const ven = (node.vendor || "").toLowerCase();
+                const cat = (node.nocr_category || "").toLowerCase();
+                if (cat === "opd" || lbl.includes("opd") || sub.includes("opd") || ven.includes("opd")) {
+                  if (node.type === "ap" || lbl.includes("ruijie") || ven.includes("ruijie")) aggKey = "opd_ruijie";
+                  else aggKey = "opd_ont";
+                } else {
+                  if (node.type === "ap" || lbl.includes("ruijie") || ven.includes("ruijie")) aggKey = "desa_ruijie";
+                  else if (node.type === "router" || lbl.includes("mikrotik") || ven.includes("mikrotik")) aggKey = "desa_mikrotik";
+                  else aggKey = "desa_ont";
+                }
+              }
+
+              const aggData = aggregates[aggKey];
+              if (aggData) {
+                return {
+                  ...node,
+                  aggregate_type: aggKey,
+                  status: aggData.online > 0 ? "online" : "offline",
+                  total_count: aggData.total,
+                  online_count: aggData.online,
+                  offline_count: aggData.offline,
+                  sublabel: `${aggData.total} Unit • ${aggData.online} Online • ${aggData.offline} Offline`,
+                };
+              }
+              return node;
+            }
+
             const match = list.find(
               (m) =>
                 (node.mapping_prefix && m.prefix && node.mapping_prefix.trim().toLowerCase() === m.prefix.trim().toLowerCase()) ||
@@ -407,7 +482,9 @@ export default function TopologyArchitecturePage() {
           })
         );
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("fetchLiveMappings warning:", e);
+    }
   }, []);
 
   const fetchLiveDevices = useCallback(async () => {
@@ -427,10 +504,10 @@ export default function TopologyArchitecturePage() {
     setHistory([{ nodes: [], links: [], areas: [] }]);
     setHistoryIndex(0);
 
-    // Fast polling fallback every 5 seconds for zero-delay status updates
+    // Ultra-fast live polling fallback every 2 seconds
     const pollInterval = setInterval(() => {
       fetchLiveMappings();
-    }, 5000);
+    }, 2000);
 
     if (socket) {
       const handleLiveUpdate = () => {
@@ -466,12 +543,21 @@ export default function TopologyArchitecturePage() {
 
       socket.on("topology_architecture_updated", handleArchUpdate);
       socket.on("mappings_updated", handleLiveUpdate);
+      socket.on("mappings-updated", handleLiveUpdate);
       socket.on("device-status", handleLiveUpdate);
+      socket.on("device_status_updated", handleLiveUpdate);
+      socket.on("ruijie_sync_completed", handleLiveUpdate);
+      socket.on("mikrotik_sync_completed", handleLiveUpdate);
+
       return () => {
         clearInterval(pollInterval);
         socket.off("topology_architecture_updated", handleArchUpdate);
         socket.off("mappings_updated", handleLiveUpdate);
+        socket.off("mappings-updated", handleLiveUpdate);
         socket.off("device-status", handleLiveUpdate);
+        socket.off("device_status_updated", handleLiveUpdate);
+        socket.off("ruijie_sync_completed", handleLiveUpdate);
+        socket.off("mikrotik_sync_completed", handleLiveUpdate);
       };
     }
 
@@ -1384,6 +1470,41 @@ export default function TopologyArchitecturePage() {
             onClose={() => setIsPaletteOpen(false)}
             onAddNodeDirect={(item) => {
               if (!perms.canCreate && !perms.canUpdate) return;
+              // Prevent duplicate Master Agregator
+              if (item.is_aggregate) {
+                const existing = nodes.find(
+                  (n) => n.is_aggregate && n.aggregate_type === item.aggregate_type
+                );
+                if (existing) {
+                  setSelectedNodeId(existing.id);
+                  showToast?.(`Master Agregator "${item.label}" sudah ada di kanvas`, "warning");
+                  return;
+                }
+
+                const newNode = {
+                  id: `node-${Date.now()}`,
+                  type: item.type || "router",
+                  nocr_hw_type: item.nocr_hw_type || item.type,
+                  nocr_category: item.nocr_category,
+                  label: item.label,
+                  sublabel: item.sublabel,
+                  vendor: item.vendor,
+                  is_aggregate: true,
+                  aggregate_type: item.aggregate_type,
+                  total_count: item.total_count || item.total,
+                  online_count: item.online_count || item.online,
+                  offline_count: item.offline_count || item.offline,
+                  status: item.status || (item.online > 0 ? "online" : "offline"),
+                  x: 400,
+                  y: 300,
+                };
+                setNodes((prev) => [...prev, newNode]);
+                pushState([...nodes, newNode], links);
+                setSelectedNodeId(newNode.id);
+                showToast?.(`Master Agregator "${item.label}" ditambahkan ke kanvas`, "success");
+                return;
+              }
+
               // Prevent duplicate NOCR devices
               if (item.is_live_nocr) {
                 const existing = nodes.find(

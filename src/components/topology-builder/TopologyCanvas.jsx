@@ -900,6 +900,51 @@ export default function TopologyCanvas({
     try {
       const item = JSON.parse(rawData);
 
+      // 1. Prevent duplicate Master Agregator
+      if (item.is_aggregate) {
+        const existingNode = nodes.find(
+          (n) => n.is_aggregate && n.aggregate_type === item.aggregate_type
+        );
+        if (existingNode) {
+          onSelectNode?.(existingNode);
+          onNodeDragEnd?.();
+          return;
+        }
+
+        let { x, y } = screenToCanvas(e.clientX, e.clientY);
+        x = x - 105;
+        y = y - 43;
+
+        if (snapToGrid) {
+          x = Math.round(x / 20) * 20;
+          y = Math.round(y / 20) * 20;
+        }
+
+        const newNode = {
+          id: `node-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          type: item.type || "router",
+          nocr_hw_type: item.nocr_hw_type || item.type,
+          nocr_category: item.nocr_category,
+          label: item.label,
+          sublabel: item.sublabel,
+          vendor: item.vendor,
+          is_aggregate: true,
+          aggregate_type: item.aggregate_type,
+          total_count: item.total_count || item.total,
+          online_count: item.online_count || item.online,
+          offline_count: item.offline_count || item.offline,
+          status: item.status || (item.online > 0 ? "online" : "offline"),
+          x,
+          y,
+        };
+
+        setNodes((prev) => [...prev, newNode]);
+        onSelectNode?.(newNode);
+        onNodeDragEnd?.();
+        return;
+      }
+
+      // 2. Prevent duplicate NOCR devices
       if (item.is_live_nocr) {
         const existingNode = nodes.find(
           (n) =>

@@ -56,4 +56,5 @@ src/lib/data/
 .wwebjs_cache/
 /core*
 /data/
+/src/data/
 
