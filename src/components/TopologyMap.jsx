@@ -56,6 +56,39 @@ export function formatDistance(meters) {
   return `${Math.round(meters)} m`;
 }
 
+// Helper mencari titik tengah geografis kabel (midpoint)
+export function getPolylineMidpoint(positions = []) {
+  if (!Array.isArray(positions) || positions.length === 0) return [-7.065, 107.55];
+  if (positions.length === 1) return positions[0];
+  if (positions.length === 2) {
+    return [
+      (positions[0][0] + positions[1][0]) / 2,
+      (positions[0][1] + positions[1][1]) / 2,
+    ];
+  }
+  
+  const totalLength = calculatePolylineDistance(positions);
+  const targetHalf = totalLength / 2;
+  let accumulated = 0;
+
+  for (let i = 0; i < positions.length - 1; i++) {
+    const p1 = positions[i];
+    const p2 = positions[i + 1];
+    const segLen = getDistanceMeters(p1[0], p1[1], p2[0], p2[1]);
+    if (accumulated + segLen >= targetHalf) {
+      const remain = targetHalf - accumulated;
+      const fraction = segLen > 0 ? remain / segLen : 0.5;
+      return [
+        p1[0] + (p2[0] - p1[0]) * fraction,
+        p1[1] + (p2[1] - p1[1]) * fraction,
+      ];
+    }
+    accumulated += segLen;
+  }
+  const midIdx = Math.floor(positions.length / 2);
+  return positions[midIdx];
+}
+
 // Helper finding closest segment to insert a new waypoint
 function distanceToSegment(p, p1, p2) {
   const x = p.lat, y = p.lng;
@@ -608,38 +641,73 @@ const MemoizedEdge = React.memo(
       [edge.positions]
     );
 
+    const midpoint = useMemo(
+      () => getPolylineMidpoint(edge.positions),
+      [edge.positions]
+    );
+
+    const distanceIcon = useMemo(() => {
+      const formatted = formatDistance(distanceMeters);
+      return L.divIcon({
+        className: "custom-distance-badge-icon",
+        html: `<div style="transform: translate(-50%, -50%);" class="flex items-center gap-1.5 font-mono font-bold text-xs text-white bg-slate-950/95 border-2 border-cyan-400 px-3 py-1 rounded-full shadow-[0_0_20px_rgba(34,211,238,0.8)] backdrop-blur-md whitespace-nowrap pointer-events-none">
+          <span class="text-cyan-400 text-sm">📏</span>
+          <span class="tracking-wide">${formatted}</span>
+        </div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      });
+    }, [distanceMeters]);
+
     return (
-      <Polyline
-        positions={edge.positions}
-        pathOptions={{
-          color: edgeColor,
-          weight: isSelected ? 5.5 : 3.5,
-          dashArray: edgeDash,
-          opacity: isSelected ? 1.0 : 0.85,
-          nodeFromId: edge.from_node || edge.from,
-          nodeToId: edge.to_node || edge.to,
-        }}
-        eventHandlers={{
-          click: (e) => {
-            L.DomEvent.stopPropagation(e.originalEvent || e);
-            onEdgeClick?.(e, edge);
-          },
-        }}
-      >
+      <React.Fragment>
+        {/* Area klik transparan selebar 24px agar sangat mudah diklik */}
+        <Polyline
+          positions={edge.positions}
+          pathOptions={{
+            color: "#ffffff",
+            weight: 24,
+            opacity: 0.001,
+            className: "cursor-pointer",
+          }}
+          eventHandlers={{
+            click: (e) => {
+              L.DomEvent.stopPropagation(e.originalEvent || e);
+              onEdgeClick?.(e, edge);
+            },
+          }}
+        />
+
+        {/* Garis kabel visual utama */}
+        <Polyline
+          positions={edge.positions}
+          pathOptions={{
+            color: isSelected ? "#38bdf8" : edgeColor,
+            weight: isSelected ? 6 : 3.5,
+            dashArray: edgeDash,
+            opacity: isSelected ? 1.0 : 0.85,
+            nodeFromId: edge.from_node || edge.from,
+            nodeToId: edge.to_node || edge.to,
+            className: "cursor-pointer",
+          }}
+          eventHandlers={{
+            click: (e) => {
+              L.DomEvent.stopPropagation(e.originalEvent || e);
+              onEdgeClick?.(e, edge);
+            },
+          }}
+        />
+
+        {/* Badge Jarak di tengah kabel saat kabel dipilih */}
         {isSelected && (
-          <Tooltip
-            permanent
-            direction="top"
-            className="custom-edge-distance-tooltip"
-            sticky={false}
-          >
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] text-white bg-slate-950/95 border border-cyan-400/80 px-2 py-0.5 rounded-lg shadow-2xl pointer-events-none">
-              <span className="text-cyan-400">📏</span>
-              <span>{formatDistance(distanceMeters)}</span>
-            </div>
-          </Tooltip>
+          <Marker
+            position={midpoint}
+            icon={distanceIcon}
+            zIndexOffset={30000}
+            interactive={false}
+          />
         )}
-      </Polyline>
+      </React.Fragment>
     );
   },
 );
