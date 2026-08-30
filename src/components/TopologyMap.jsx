@@ -14,6 +14,7 @@ import {
   Polyline,
   useMapEvents,
   useMap,
+  ZoomControl,
 } from "react-leaflet";
 
 const DEFAULT_CENTER = [-7.065, 107.55];
@@ -856,6 +857,8 @@ export default function TopologyMap({
     <MapContainer
       center={center}
       zoom={zoom}
+      maxZoom={22}
+      zoomControl={false}
       scrollWheelZoom={true}
       className={`w-full h-full z-0 outline-none ${interactionMode === "add_edge" && linkStartNode ? "cursor-crosshair" : ""}`}
       fadeAnimation={true}
@@ -873,10 +876,39 @@ export default function TopologyMap({
             ? "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
             : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         }
-        maxZoom={19}
+        maxZoom={22}
+        maxNativeZoom={mapTheme === "colored" ? 21 : 19}
         keepBuffer={4}
         className={mapTheme === "colored" ? "" : "map-tiles-carto-dark"}
       />
+      <ZoomControl position="bottomright" />
+      <style jsx global>{`
+        .leaflet-bottom.leaflet-right .leaflet-control-zoom {
+          margin-bottom: 72px !important;
+          margin-right: 24px !important;
+          border-radius: 12px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(51, 65, 85, 0.8) !important;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+          background: rgba(15, 23, 42, 0.9) !important;
+          backdrop-filter: blur(8px) !important;
+        }
+        .leaflet-bottom.leaflet-right .leaflet-control-zoom a {
+          background: rgba(15, 23, 42, 0.9) !important;
+          color: #e2e8f0 !important;
+          border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
+          width: 32px !important;
+          height: 32px !important;
+          line-height: 32px !important;
+          font-size: 16px !important;
+          font-weight: bold !important;
+          transition: all 0.15s ease !important;
+        }
+        .leaflet-bottom.leaflet-right .leaflet-control-zoom a:hover {
+          background: #1e293b !important;
+          color: #38bdf8 !important;
+        }
+      `}</style>
       <MapEvents
         interactionMode={interactionMode}
         newNodeType={newNodeType}
