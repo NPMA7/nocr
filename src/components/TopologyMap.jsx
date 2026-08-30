@@ -671,26 +671,33 @@ const MemoizedEdge = React.memo(
       });
     }, [distanceMeters, angle]);
 
+    const handleClick = useCallback(
+      (e) => {
+        if (e.originalEvent) {
+          L.DomEvent.stop(e.originalEvent);
+        }
+        onEdgeClick?.(e, edge);
+      },
+      [edge, onEdgeClick]
+    );
+
     return (
       <React.Fragment>
-        {/* Area klik transparan selebar 24px agar sangat mudah diklik */}
+        {/* Area klik transparan selebar 40px agar sangat mudah diklik */}
         <Polyline
           positions={edge.positions}
           pathOptions={{
             color: "#ffffff",
-            weight: 24,
+            weight: 40,
             opacity: 0.001,
             className: "cursor-pointer",
           }}
           eventHandlers={{
-            click: (e) => {
-              L.DomEvent.stopPropagation(e.originalEvent || e);
-              onEdgeClick?.(e, edge);
-            },
+            click: handleClick,
           }}
         />
 
-        {/* Garis kabel visual utama (Hanya klik, tanpa hover tooltip) */}
+        {/* Garis kabel visual utama */}
         <Polyline
           positions={edge.positions}
           pathOptions={{
@@ -703,10 +710,7 @@ const MemoizedEdge = React.memo(
             className: "cursor-pointer",
           }}
           eventHandlers={{
-            click: (e) => {
-              L.DomEvent.stopPropagation(e.originalEvent || e);
-              onEdgeClick?.(e, edge);
-            },
+            click: handleClick,
           }}
         />
 
@@ -821,11 +825,17 @@ export default function TopologyMap({
     if (!readOnly && interactionMode === "delete_edge") {
       onEdgeDelete?.(edge.id);
       setEdges((prev) => prev.filter((ed) => ed.id !== edge.id));
-      if (selectedEdge?.id === edge.id) setSelectedEdge(null);
+      if (selectedEdge && (selectedEdge.id === edge.id || String(selectedEdge.id) === String(edge.id))) {
+        setSelectedEdge(null);
+      }
       return;
     }
 
-    if (selectedEdge?.id === edge.id && !readOnly) {
+    const isCurrentEdgeSelected = Boolean(
+      selectedEdge && (selectedEdge.id === edge.id || String(selectedEdge.id) === String(edge.id))
+    );
+
+    if (isCurrentEdgeSelected && !readOnly && interactionMode === "select") {
       // Pen Tool: Klik pada polyline yang sudah dipilih untuk menyisipkan titik belokan baru
       const clickLatLng = [e.latlng.lat, e.latlng.lng];
       const segIdx = findClosestSegmentIndex(e.latlng, edge.positions);
@@ -1095,7 +1105,7 @@ export default function TopologyMap({
         <MemoizedEdge
           key={edge.id}
           edge={edge}
-          isSelected={selectedEdge?.id === edge.id}
+          isSelected={Boolean(selectedEdge && (selectedEdge.id === edge.id || String(selectedEdge.id) === String(edge.id)))}
           edgeColor={getEdgeColor(edge)}
           edgeDash={getEdgeDash(edge)}
           interactionMode={interactionMode}
@@ -1105,37 +1115,18 @@ export default function TopologyMap({
         />
       ))}
 
-      {/* Draft Polyline & Waypoints saat Pen Tool aktif */}
-      {draftPolylinePositions && draftPolylinePositions.length >= 2 && (() => {
-        const { midpoint, angle } = getSegmentAngleAndMidpoint(draftPolylinePositions);
-        const dist = calculatePolylineDistance(draftPolylinePositions);
-        return (
-          <>
-            <Polyline
-              positions={draftPolylinePositions}
-              pathOptions={{
-                color: "#f59e0b",
-                weight: 4,
-                dashArray: "6, 6",
-                opacity: 0.95,
-              }}
-            />
-            <Marker
-              position={midpoint}
-              icon={L.divIcon({
-                className: "custom-draft-distance-badge-icon",
-                html: `<div style="transform: translate(-50%, -50%) rotate(${angle}deg);" class="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-mono font-bold text-xs shadow-md border border-white whitespace-nowrap pointer-events-none select-none tracking-tight">
-                  ${formatDistance(dist)}
-                </div>`,
-                iconSize: [0, 0],
-                iconAnchor: [0, 0],
-              })}
-              zIndexOffset={35000}
-              interactive={false}
-            />
-          </>
-        );
-      })()}
+      {/* Draft Polyline & Waypoints saat Pen Tool aktif (Clean line without middle box) */}
+      {draftPolylinePositions && draftPolylinePositions.length >= 2 && (
+        <Polyline
+          positions={draftPolylinePositions}
+          pathOptions={{
+            color: "#f59e0b",
+            weight: 3.5,
+            dashArray: "6, 6",
+            opacity: 0.95,
+          }}
+        />
+      )}
       {draftWaypoints.map((pt, idx) => (
         <Marker
           key={`draft-wp-${idx}`}
