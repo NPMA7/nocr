@@ -12,12 +12,49 @@ import {
   TileLayer,
   Marker,
   Polyline,
+  Tooltip,
   useMapEvents,
   useMap,
   ZoomControl,
 } from "react-leaflet";
 
 const DEFAULT_CENTER = [-7.065, 107.55];
+
+// Helper menghitung jarak fisik kabel geografis (Haversine formula)
+export function calculatePolylineDistance(positions = []) {
+  if (!Array.isArray(positions) || positions.length < 2) return 0;
+  let totalDistanceMeters = 0;
+  for (let i = 0; i < positions.length - 1; i++) {
+    const p1 = positions[i];
+    const p2 = positions[i + 1];
+    if (Array.isArray(p1) && Array.isArray(p2) && p1.length >= 2 && p2.length >= 2) {
+      totalDistanceMeters += getDistanceMeters(p1[0], p1[1], p2[0], p2[1]);
+    }
+  }
+  return totalDistanceMeters;
+}
+
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Radius bumi dalam meter
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export function formatDistance(meters) {
+  if (!meters || isNaN(meters)) return "0 m";
+  if (meters >= 1000) {
+    return `${(meters / 1000).toFixed(2)} km (${Math.round(meters)} m)`;
+  }
+  return `${Math.round(meters)} m`;
+}
 
 // Helper finding closest segment to insert a new waypoint
 function distanceToSegment(p, p1, p2) {
@@ -566,6 +603,11 @@ const MemoizedEdge = React.memo(
     onEdgeDelete,
     onEdgeClick,
   }) => {
+    const distanceMeters = useMemo(
+      () => calculatePolylineDistance(edge.positions),
+      [edge.positions]
+    );
+
     return (
       <Polyline
         positions={edge.positions}
@@ -583,7 +625,21 @@ const MemoizedEdge = React.memo(
             onEdgeClick?.(e, edge);
           },
         }}
-      />
+      >
+        {isSelected && (
+          <Tooltip
+            permanent
+            direction="top"
+            className="custom-edge-distance-tooltip"
+            sticky={false}
+          >
+            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] text-white bg-slate-950/95 border border-cyan-400/80 px-2 py-0.5 rounded-lg shadow-2xl pointer-events-none">
+              <span className="text-cyan-400">📏</span>
+              <span>{formatDistance(distanceMeters)}</span>
+            </div>
+          </Tooltip>
+        )}
+      </Polyline>
     );
   },
 );
@@ -904,9 +960,27 @@ export default function TopologyMap({
           font-weight: bold !important;
           transition: all 0.15s ease !important;
         }
-        .leaflet-bottom.leaflet-right .leaflet-control-zoom a:hover {
+        .leaflet-bottom.leaflet-right .leaflet-control-zoom a:hover:not(.leaflet-disabled) {
           background: #1e293b !important;
           color: #38bdf8 !important;
+        }
+        .leaflet-bottom.leaflet-right .leaflet-control-zoom a.leaflet-disabled,
+        .leaflet-control-zoom-in.leaflet-disabled,
+        .leaflet-control-zoom-out.leaflet-disabled {
+          background: rgba(15, 23, 42, 0.5) !important;
+          color: #475569 !important;
+          cursor: not-allowed !important;
+          pointer-events: none !important;
+          opacity: 0.3 !important;
+        }
+        .custom-edge-distance-tooltip {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        .custom-edge-distance-tooltip::before {
+          display: none !important;
         }
       `}</style>
       <MapEvents

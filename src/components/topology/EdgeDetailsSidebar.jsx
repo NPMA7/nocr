@@ -1,7 +1,41 @@
-"use client";
-
-import { X, Trash2 } from "lucide-react";
+import React, { useMemo } from "react";
+import { X, Trash2, Ruler } from "lucide-react";
 import { IfaceBadge } from "./StatusBadge";
+
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function calculatePolylineDistance(positions = []) {
+  if (!Array.isArray(positions) || positions.length < 2) return 0;
+  let total = 0;
+  for (let i = 0; i < positions.length - 1; i++) {
+    const p1 = positions[i];
+    const p2 = positions[i + 1];
+    if (Array.isArray(p1) && Array.isArray(p2) && p1.length >= 2 && p2.length >= 2) {
+      total += getDistanceMeters(p1[0], p1[1], p2[0], p2[1]);
+    }
+  }
+  return total;
+}
+
+function formatDistance(meters) {
+  if (!meters || isNaN(meters)) return "0 m";
+  if (meters >= 1000) {
+    return `${(meters / 1000).toFixed(2)} km (${Math.round(meters)} m)`;
+  }
+  return `${Math.round(meters)} m`;
+}
 
 export default function EdgeDetailsSidebar({
   selectedEdge,
@@ -12,6 +46,23 @@ export default function EdgeDetailsSidebar({
   coreInterfaces,
   markEdgeDeleted,
 }) {
+  const cableDistance = useMemo(() => {
+    if (selectedEdge?.positions && selectedEdge.positions.length >= 2) {
+      return calculatePolylineDistance(selectedEdge.positions);
+    }
+    const fNode = selectedEdge?.fromNode;
+    const tNode = selectedEdge?.toNode;
+    if (fNode && tNode && !isNaN(fNode.latitude) && !isNaN(tNode.latitude)) {
+      const pos = [
+        [fNode.latitude, fNode.longitude],
+        ...(selectedEdge.waypoints || []),
+        [tNode.latitude, tNode.longitude],
+      ];
+      return calculatePolylineDistance(pos);
+    }
+    return 0;
+  }, [selectedEdge]);
+
   if (!selectedEdge) return null;
 
   return (
@@ -131,6 +182,22 @@ export default function EdgeDetailsSidebar({
                 </select>
               </div>
             )}
+
+            {/* Estimasi Panjang Kabel */}
+            <div className="flex items-center justify-between p-3 bg-slate-900/60 rounded-xl border border-slate-700/60 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-bold text-sm">
+                  📏
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-200">Estimasi Panjang Kabel</div>
+                  <div className="text-[10px] text-slate-400">Total rute termasuk belokan</div>
+                </div>
+              </div>
+              <div className="text-xs font-bold font-mono text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-2 py-1 rounded-lg shadow-sm">
+                {formatDistance(cableDistance)}
+              </div>
+            </div>
 
             {/* Waypoints / Belokan Kabel */}
             <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-xl border border-slate-700/60 text-xs">
