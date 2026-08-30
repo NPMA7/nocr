@@ -45,7 +45,7 @@ function edgeToRow(e) {
         to_node: norm.to_node,
         label: norm.label,
         status: norm.status,
-        waypoints: norm.waypoints || []
+        waypoints: JSON.stringify(norm.waypoints || [])
     };
 }
 

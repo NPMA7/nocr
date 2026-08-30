@@ -697,7 +697,7 @@ const MemoizedEdge = React.memo(
           }}
         />
 
-        {/* Garis kabel visual utama */}
+        {/* Garis kabel visual utama dengan Hover Tooltip */}
         <Polyline
           positions={edge.positions}
           pathOptions={{
@@ -712,7 +712,14 @@ const MemoizedEdge = React.memo(
           eventHandlers={{
             click: handleClick,
           }}
-        />
+        >
+          <Tooltip direction="top" sticky={true} opacity={0.95}>
+            <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-100 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-700">
+              <span>{formatDistance(distanceMeters)}</span>
+              {edge.label && <span className="text-slate-400 font-normal">({edge.label})</span>}
+            </div>
+          </Tooltip>
+        </Polyline>
 
         {/* Badge Jarak di tengah kabel menempel sesuai kemiringan kabel hanya saat kabel diklik/dipilih */}
         {isSelected && (

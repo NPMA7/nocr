@@ -124,12 +124,22 @@ class QueryBuilder {
             } else if (this._action === 'insert') {
                 if (this._data.length === 0) return { data: [], error: null };
                 const keys = Object.keys(this._data[0]);
-                const values = this._data.map(obj => keys.map(k => obj[k]));
+                const values = this._data.map(obj => keys.map(k => {
+                    const val = obj[k];
+                    if (val !== null && typeof val === 'object') {
+                        return JSON.stringify(val);
+                    }
+                    return val;
+                }));
                 sql = format('INSERT INTO %I (%I) VALUES %L RETURNING *', this.table, keys, values);
             } else if (this._action === 'update') {
                 const keys = Object.keys(this._data);
                 if (keys.length === 0) return { data: null, error: new Error('Empty update payload') };
-                const updates = keys.map(k => format('%I = %L', k, this._data[k])).join(', ');
+                const updates = keys.map(k => {
+                    const val = this._data[k];
+                    const safeVal = (val !== null && typeof val === 'object') ? JSON.stringify(val) : val;
+                    return format('%I = %L', k, safeVal);
+                }).join(', ');
                 sql = format('UPDATE %I SET %s', this.table, updates);
                 sql += whereClause + ' RETURNING *';
                 whereClause = ''; // Already added
@@ -140,7 +150,13 @@ class QueryBuilder {
             } else if (this._action === 'upsert') {
                 if (this._data.length === 0) return { data: [], error: null };
                 const keys = Object.keys(this._data[0]);
-                const values = this._data.map(obj => keys.map(k => obj[k]));
+                const values = this._data.map(obj => keys.map(k => {
+                    const val = obj[k];
+                    if (val !== null && typeof val === 'object') {
+                        return JSON.stringify(val);
+                    }
+                    return val;
+                }));
                 
                 const conflictKeys = Array.isArray(this._onConflict) ? this._onConflict : [this._onConflict];
                 const updates = keys.filter(k => !conflictKeys.includes(k)).map(k => format('%I = EXCLUDED.%I', k, k)).join(', ');
