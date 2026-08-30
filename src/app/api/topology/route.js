@@ -250,56 +250,6 @@ export async function POST(req) {
             global.io.emit('dashboard_topology_refresh');
         }
 
-        if (global.addActivityLog) {
-            const newNodes = mergedSafe.nodes;
-            const oldNodeIds = new Set(oldNodes.map((n) => n.id));
-            const newNodeIds = new Set(newNodes.map((n) => n.id));
-
-            const addedNodes = newNodes.filter((n) => !oldNodeIds.has(n.id));
-            const deletedNodes = oldNodes.filter((n) => !newNodeIds.has(n.id));
-
-            let hasNodeChanges = false;
-
-            for (const n of addedNodes) {
-                hasNodeChanges = true;
-                if (n.type === 'client' || n.type === 'pppoe-client') {
-                    global.addActivityLog(`Pelanggan baru ditambahkan ke peta topologi: ${n.label}`);
-                } else {
-                    const nodeTypeUpper = (n.type || 'odp').toUpperCase();
-                    global.addActivityLog(`Node topologi ditambahkan: ${n.label} (${nodeTypeUpper})`);
-                }
-            }
-
-            for (const n of deletedNodes) {
-                hasNodeChanges = true;
-                if (n.type === 'client' || n.type === 'pppoe-client') {
-                    global.addActivityLog(`Pelanggan dihapus dari peta topologi: ${n.label}`);
-                } else {
-                    global.addActivityLog(`Node topologi dihapus: ${n.label}`);
-                }
-            }
-
-            if (!hasNodeChanges && oldNodes.length > 0 && newNodes.length > 0) {
-                let coordinatesChanged = false;
-                for (const n of newNodes) {
-                    const oldN = oldNodes.find((o) => o.id === n.id);
-                    if (oldN) {
-                        const newLat = parseFloat(n.latitude || 0);
-                        const newLng = parseFloat(n.longitude || 0);
-                        const oldLat = parseFloat(oldN.latitude || 0);
-                        const oldLng = parseFloat(oldN.longitude || 0);
-                        if (Math.abs(newLat - oldLat) > 0.00001 || Math.abs(newLng - oldLng) > 0.00001) {
-                            coordinatesChanged = true;
-                            break;
-                        }
-                    }
-                }
-                if (coordinatesChanged) {
-                    global.addActivityLog('Tata letak topologi jaringan diperbarui');
-                }
-            }
-        }
-
         // Invalidate cache
         lastTopologyFetchTime = 0;
 

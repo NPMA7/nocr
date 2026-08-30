@@ -557,10 +557,6 @@ export async function DELETE(req, { params }) {
 
                 const { error } = await db.from('topology_nodes').delete().eq('id', id);
                 if (error) throw error;
-
-                if (global.addActivityLog) {
-                    global.addActivityLog(`Node topologi dihapus: ${nodeLabel}`);
-                }
             } else {
                 let devName = id;
                 try {

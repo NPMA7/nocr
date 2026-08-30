@@ -454,7 +454,7 @@ export default function PathRenderer({
             )}
 
             {/* Red Pulsing Particle jika MATI / OFFLINE */}
-            {isDead && (
+            {isDead && simulationActive && (
               <circle r="3" fill="#ef4444" filter="url(#neon-glow-red)" className="pointer-events-none opacity-80">
                 <animate
                   attributeName="r"

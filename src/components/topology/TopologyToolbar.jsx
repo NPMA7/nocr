@@ -9,6 +9,38 @@ import {
   Save,
 } from "lucide-react";
 
+export function maskIpAddress(ipString, isReadOnly = false) {
+  if (!ipString || typeof ipString !== "string") return "";
+  if (!isReadOnly) return ipString;
+
+  let mainIp = ipString.trim();
+  let portSuffix = "";
+
+  if (mainIp.includes(":")) {
+    const colonIdx = mainIp.lastIndexOf(":");
+    const portPart = mainIp.substring(colonIdx + 1);
+    if (!isNaN(portPart) || portPart.length > 0) {
+      mainIp = mainIp.substring(0, colonIdx);
+      portSuffix = ":xxx";
+    }
+  }
+
+  let subnetSuffix = "";
+  if (mainIp.includes("/")) {
+    const slashIdx = mainIp.lastIndexOf("/");
+    subnetSuffix = mainIp.substring(slashIdx);
+    mainIp = mainIp.substring(0, slashIdx);
+  }
+
+  const octets = mainIp.split(".");
+  if (octets.length === 4) {
+    octets[2] = "xxx";
+    return `${octets.join(".")}${subnetSuffix}${portSuffix}`;
+  }
+
+  return `${mainIp}${portSuffix}`;
+}
+
 function checkIsPPPoENode(node, mappings = []) {
   if (!node) return false;
   if (node.type === "pppoe-client") return true;
@@ -295,7 +327,7 @@ export default function TopologyToolbar({
                       )}
                       {node.ip && (
                         <span className="text-emerald-400 font-mono">
-                          {node.ip}
+                          {maskIpAddress(node.ip, readOnly)}
                         </span>
                       )}
                     </div>

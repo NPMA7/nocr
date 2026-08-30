@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 import NodeCard from "./NodeCard";
 import PathRenderer from "./PathRenderer";
 import AreaBox from "./AreaBox";
-import { ZoomIn, ZoomOut, Maximize2, RotateCcw } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, RotateCcw, Play, Pause } from "lucide-react";
 import { matchHardwareType, isSameSite } from "./DevicePalette";
 
 export default function TopologyCanvas({
@@ -29,6 +29,7 @@ export default function TopologyCanvas({
   gridStyle = "dots",
   snapToGrid = false,
   simulationActive = true,
+  setSimulationActive,
   simulationSpeed = 1,
   showLabels = true,
   canvasRef,
@@ -957,16 +958,32 @@ export default function TopologyCanvas({
             zoom={zoom}
             readOnly={readOnly}
             canDelete={canDelete}
+            simulationActive={simulationActive}
           />
         ))}
       </div>
 
       {/* Top Right Zoom Controls */}
       <div
-        className={`absolute top-4 ${
+        data-export-ignore="true"
+        className={`export-exclude absolute top-4 ${
           hasFloatingRight ? "right-52" : "right-4"
         } flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 shadow-2xl backdrop-blur-md z-30 transition-all duration-200`}
       >
+        {setSimulationActive && (
+          <button
+            onClick={() => setSimulationActive((s) => !s)}
+            title={simulationActive ? "Matikan Animasi Aliran Kabel" : "Nyalakan Animasi Aliran Kabel"}
+            className={`cursor-pointer p-1.5 rounded-lg transition ${
+              simulationActive
+                ? "text-amber-400 hover:text-amber-300 hover:bg-slate-800"
+                : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+            }`}
+          >
+            {simulationActive ? <Pause size={15} /> : <Play size={15} />}
+          </button>
+        )}
+
         <button
           onClick={() => setZoom((z) => Math.min(z + 0.15, 3.0))}
           title="Perbesar (Zoom In)"
@@ -1011,7 +1028,10 @@ export default function TopologyCanvas({
 
       {/* Link Connecting Instruction Banner */}
       {linkStart && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500/90 border border-amber-300 text-slate-950 px-4 py-1.5 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 z-40 animate-bounce">
+        <div
+          data-export-ignore="true"
+          className="export-exclude absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500/90 border border-amber-300 text-slate-950 px-4 py-1.5 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 z-40 animate-bounce"
+        >
           <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping" />
           <span>Klik node tujuan untuk menyambungkan kabel (Tekan Esc untuk batal)</span>
         </div>

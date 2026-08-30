@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Search,
   Cloud,
@@ -148,7 +148,6 @@ export const matchHardwareType = (node, hwKey) => {
       nodeType === "ont" ||
       nodeType === "modem" ||
       nodeVendor.includes("ont") ||
-      nodeVendor.includes("modem") ||
       nodeSublabel.includes("ont") ||
       nodeSublabel.includes("modem")
     );
@@ -157,34 +156,39 @@ export const matchHardwareType = (node, hwKey) => {
   if (key === "mikrotik") {
     return (
       nodeHw === "mikrotik" ||
-      nodeHw === "router" ||
-      nodeType === "mikrotik" ||
+      nodeType === "router" ||
       nodeVendor.includes("mikrotik") ||
-      nodeSublabel.includes("mikrotik") ||
-      (nodeType === "router" && !nodeVendor.includes("ruijie") && !nodeVendor.includes("ont"))
+      nodeSublabel.includes("mikrotik")
     );
   }
 
   if (key === "ruijie") {
     return (
       nodeHw === "ruijie" ||
-      nodeHw === "ap" ||
-      nodeType === "ruijie" ||
       nodeType === "ap" ||
+      nodeType === "wifi" ||
       nodeVendor.includes("ruijie") ||
       nodeSublabel.includes("ruijie")
     );
   }
 
-  return nodeHw === key || nodeType === key;
+  return false;
 };
 
-export const isSameSite = (n, m) => {
-  if (!n || !m) return false;
-  if (n.mapping_prefix && m.prefix && n.mapping_prefix.toLowerCase() === m.prefix.toLowerCase()) return true;
-  if (n.mapping_mac && m.ruijie_mac && n.mapping_mac.toLowerCase() === m.ruijie_mac.toLowerCase()) return true;
-  if (n.label && m.prefix && n.label.toLowerCase() === m.prefix.toLowerCase()) return true;
-  if (n.label && m.site_name && n.label.toLowerCase() === m.site_name.toLowerCase()) return true;
+export const isSameSite = (node, siteMapping) => {
+  if (!node || !siteMapping) return false;
+  if (node.mapping_prefix && siteMapping.prefix) {
+    if (node.mapping_prefix.toLowerCase() === siteMapping.prefix.toLowerCase()) return true;
+  }
+  if (node.mapping_mac && siteMapping.ruijie_mac) {
+    if (node.mapping_mac.toLowerCase() === siteMapping.ruijie_mac.toLowerCase()) return true;
+  }
+  if (node.label && siteMapping.site_name) {
+    if (node.label.trim().toLowerCase() === siteMapping.site_name.trim().toLowerCase()) return true;
+  }
+  if (node.label && siteMapping.prefix) {
+    if (node.label.trim().toLowerCase() === siteMapping.prefix.trim().toLowerCase()) return true;
+  }
   return false;
 };
 
@@ -199,8 +203,8 @@ export default function DevicePalette({
 }) {
   const [search, setSearch] = useState("");
   const [collapsedCategories, setCollapsedCategories] = useState({});
-  const [activeTab, setActiveTab] = useState("live"); // default ke 'live' Data NOCR
-  const [liveFilter, setLiveFilter] = useState("all"); // 'all' | 'desa' | 'opd'
+  const [activeTab, setActiveTab] = useState("live");
+  const [liveFilter, setLiveFilter] = useState("all");
 
   const isEditable = !readOnly && canCreate;
 
@@ -211,7 +215,27 @@ export default function DevicePalette({
     }));
   };
 
-  // Filter hardware catalog
+  const getSiteCanvasStatus = useCallback(
+    (m) => {
+      const isOPD = m.connection_type === "PPPOE";
+      const keys = isOPD ? ["ont", "ruijie"] : ["ont", "mikrotik", "ruijie"];
+      const total = keys.length;
+      let used = 0;
+      for (const k of keys) {
+        if ((canvasNodes || []).some((n) => isSameSite(n, m) && matchHardwareType(n, k))) {
+          used++;
+        }
+      }
+      return {
+        total,
+        used,
+        isAllUsed: used >= total,
+        unused: total - used,
+      };
+    },
+    [canvasNodes]
+  );
+
   const filteredCatalog = useMemo(() => {
     if (!search) return DEVICE_CATALOG;
     return DEVICE_CATALOG.map((cat) => ({
@@ -225,7 +249,6 @@ export default function DevicePalette({
     })).filter((cat) => cat.items.length > 0);
   }, [search]);
 
-  // Filter Data NOCR (Live Mappings dari Monitoring Desa/OPD)
   const filteredLiveMappings = useMemo(() => {
     let list = liveMappings;
 
@@ -247,8 +270,23 @@ export default function DevicePalette({
       );
     }
 
-    return list;
-  }, [liveMappings, liveFilter, search]);
+    return [...list].sort((a, b) => {
+      const statusA = getSiteCanvasStatus(a);
+      const statusB = getSiteCanvasStatus(b);
+
+      if (statusA.isAllUsed !== statusB.isAllUsed) {
+        return statusA.isAllUsed ? 1 : -1;
+      }
+
+      if (statusA.unused !== statusB.unused) {
+        return statusB.unused - statusA.unused;
+      }
+
+      const nameA = (a.site_name || a.prefix || "").toLowerCase();
+      const nameB = (b.site_name || b.prefix || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [liveMappings, liveFilter, search, getSiteCanvasStatus]);
 
   const desaCount = useMemo(
     () => liveMappings.filter((m) => m.connection_type !== "PPPOE").length,
@@ -536,10 +574,15 @@ export default function DevicePalette({
                       },
                     ];
 
+                const siteStatus = getSiteCanvasStatus(m);
+                const isAllUsed = siteStatus.isAllUsed;
+
                 return (
                   <div
                     key={m.id || m.ruijie_mac || idx}
-                    className="p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-2 shadow-sm"
+                    className={`p-2 rounded-xl bg-slate-950/80 border space-y-2 shadow-sm transition-opacity ${
+                      isAllUsed ? "border-slate-900/80 opacity-60" : "border-slate-800/80"
+                    }`}
                   >
                     {/* Site Header */}
                     <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-slate-800/60">
@@ -561,15 +604,22 @@ export default function DevicePalette({
                         </span>
                       </div>
 
-                      <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase flex-shrink-0 ${
-                          isOPD
-                            ? "bg-purple-950 text-purple-300 border border-purple-700/50"
-                            : "bg-blue-950 text-blue-300 border border-blue-700/50"
-                        }`}
-                      >
-                        {isOPD ? "OPD" : "Desa"}
-                      </span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {isAllUsed && (
+                          <span className="text-[8px] px-1 py-0.2 rounded font-semibold uppercase bg-slate-900 text-slate-500 border border-slate-800">
+                            Semua di Kanvas
+                          </span>
+                        )}
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                            isOPD
+                              ? "bg-purple-950 text-purple-300 border border-purple-700/50"
+                              : "bg-blue-950 text-blue-300 border border-blue-700/50"
+                          }`}
+                        >
+                          {isOPD ? "OPD" : "Desa"}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Hardware Items List (3 for Desa, 2 for OPD) */}

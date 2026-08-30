@@ -18,7 +18,31 @@ export async function GET(req) {
       return sendApiError(error);
     }
 
-    const { cleanLogs, flappingIds } = filterFlappingLogs(logs || []);
+    const isTopologyNoiseLog = (msg = '') => {
+      const lower = msg.toLowerCase();
+      return (
+        lower.includes('tata letak topologi') ||
+        lower.includes('node topologi') ||
+        lower.includes('peta topologi')
+      );
+    };
+
+    const topologyNoiseIds = (logs || [])
+      .filter((log) => isTopologyNoiseLog(log.message))
+      .map((log) => log.id);
+
+    if (topologyNoiseIds.length > 0) {
+      db.from('activity_logs')
+        .delete()
+        .in('id', topologyNoiseIds)
+        .catch(() => {});
+    }
+
+    const filteredLogs = (logs || []).filter(
+      (log) => !isTopologyNoiseLog(log.message)
+    );
+
+    const { cleanLogs, flappingIds } = filterFlappingLogs(filteredLogs);
 
     // Hapus ID flapping yang terdeteksi dari DB secara asinkron (background)
     if (flappingIds && flappingIds.length > 0) {

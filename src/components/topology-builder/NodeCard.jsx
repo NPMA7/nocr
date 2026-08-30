@@ -44,6 +44,41 @@ const DEVICE_ICONS = {
   client: Monitor,
 };
 
+export function maskIpAddress(ipString, isReadOnly = false) {
+  if (!ipString || typeof ipString !== "string") return "";
+  if (!isReadOnly) return ipString;
+
+  let mainIp = ipString.trim();
+  let portSuffix = "";
+
+  // Deteksi Port (contoh: :8680 atau :1549)
+  if (mainIp.includes(":")) {
+    const colonIdx = mainIp.lastIndexOf(":");
+    const portPart = mainIp.substring(colonIdx + 1);
+    if (!isNaN(portPart) || portPart.length > 0) {
+      mainIp = mainIp.substring(0, colonIdx);
+      portSuffix = ":xxx";
+    }
+  }
+
+  // Deteksi Subnet Mask CIDR (contoh: /24)
+  let subnetSuffix = "";
+  if (mainIp.includes("/")) {
+    const slashIdx = mainIp.lastIndexOf("/");
+    subnetSuffix = mainIp.substring(slashIdx);
+    mainIp = mainIp.substring(0, slashIdx);
+  }
+
+  // Pecah 4 oktet IP
+  const octets = mainIp.split(".");
+  if (octets.length === 4) {
+    octets[2] = "xxx";
+    return `${octets.join(".")}${subnetSuffix}${portSuffix}`;
+  }
+
+  return `${mainIp}${portSuffix}`;
+}
+
 function NodeCard({
   node,
   isSelected,
@@ -59,6 +94,7 @@ function NodeCard({
   zoom = 1,
   readOnly = false,
   canDelete = true,
+  simulationActive = true,
 }) {
   const isOnline = node.status === "online";
   const IconComponent = DEVICE_ICONS[node.type] || Router;
@@ -133,8 +169,8 @@ function NodeCard({
               {node.ip && (
                 <>
                   <span className="text-slate-600 text-[8px]">•</span>
-                  <span className="text-[9px] text-slate-400 font-mono truncate max-w-[110px]">
-                    {node.ip}
+                  <span className="text-[9px] text-slate-400 font-mono truncate max-w-[125px]">
+                    {maskIpAddress(node.ip, readOnly)}
                   </span>
                 </>
               )}
@@ -149,7 +185,9 @@ function NodeCard({
           <span
             className={`w-2 h-2 rounded-full transition-all ${
               isOnline
-                ? "bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse"
+                ? simulationActive
+                  ? "bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse"
+                  : "bg-emerald-400 shadow-[0_0_8px_#10b981]"
                 : "bg-red-500 shadow-[0_0_8px_#ef4444]"
             }`}
           />

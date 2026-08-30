@@ -19,6 +19,7 @@ import {
   Zap,
   Plus,
   Play,
+  Pause,
   Share2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -37,6 +38,7 @@ import {
 import { toPng } from "html-to-image";
 
 import TopologyCanvas from "@/components/topology-builder/TopologyCanvas";
+import { maskIpAddress } from "@/components/topology-builder/NodeCard";
 import DevicePalette, { matchHardwareType, isSameSite } from "@/components/topology-builder/DevicePalette";
 import PropertiesDrawer from "@/components/topology-builder/PropertiesDrawer";
 import SimulationControl from "@/components/topology-builder/SimulationControl";
@@ -827,10 +829,25 @@ export default function TopologyArchitecturePage() {
       const element = document.getElementById("topology-export-container");
       if (!element) return;
 
+      const filter = (domNode) => {
+        if (!domNode) return true;
+        if (domNode.classList && (
+          domNode.classList.contains("export-exclude") ||
+          domNode.classList.contains("topology-ui-overlay")
+        )) {
+          return false;
+        }
+        if (typeof domNode.getAttribute === "function") {
+          if (domNode.getAttribute("data-export-ignore") === "true") return false;
+        }
+        return true;
+      };
+
       const dataUrl = await toPng(element, {
         backgroundColor: "#0d1117",
         quality: 0.98,
         pixelRatio: 2,
+        filter,
       });
 
       const link = document.createElement("a");
@@ -1189,7 +1206,7 @@ export default function TopologyArchitecturePage() {
                               </span>
                               <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                                 <span className="uppercase font-semibold text-[9px]">{node.vendor || node.type}</span>
-                                {node.ip && <span>• {node.ip}</span>}
+                                {node.ip && <span>• {maskIpAddress(node.ip, readOnly)}</span>}
                               </div>
                             </div>
                             <span
@@ -1297,6 +1314,7 @@ export default function TopologyArchitecturePage() {
             </button>
           )}
 
+
           {/* Export PNG */}
           <button
             onClick={handleExportImage}
@@ -1403,9 +1421,10 @@ export default function TopologyArchitecturePage() {
           {/* Floating Button to open Palette when closed (Hanya jika punya hak edit) */}
           {(perms.canCreate || perms.canUpdate) && !isPaletteOpen && (
             <button
+              data-export-ignore="true"
               onClick={() => setIsPaletteOpen(true)}
               title="Buka Katalog Perangkat"
-              className="cursor-pointer absolute top-4 left-4 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
+              className="export-exclude cursor-pointer absolute top-4 left-4 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
             >
               <PanelLeftOpen size={15} className="text-emerald-400 group-hover:scale-110 transition-transform" />
               <span>Katalog Perangkat</span>
@@ -1415,9 +1434,10 @@ export default function TopologyArchitecturePage() {
           {/* Floating Button to open Properties Drawer when closed (Hanya jika punya hak edit/kelola) */}
           {(perms.canCreate || perms.canUpdate) && !isPropertiesOpen && (
             <button
+              data-export-ignore="true"
               onClick={() => setIsPropertiesOpen(true)}
               title="Buka Ringkasan Topologi"
-              className="cursor-pointer absolute top-4 right-4 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
+              className="export-exclude cursor-pointer absolute top-4 right-4 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
             >
               <span>Ringkasan Topologi</span>
               <PanelRightOpen size={15} className="text-blue-400 group-hover:scale-110 transition-transform" />
@@ -1453,6 +1473,7 @@ export default function TopologyArchitecturePage() {
             gridStyle={gridStyle}
             snapToGrid={snapToGrid}
             simulationActive={simulationActive}
+            setSimulationActive={setSimulationActive}
             simulationSpeed={simulationSpeed}
             showLabels={showLabels}
             canvasRef={canvasExportRef}
