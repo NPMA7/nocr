@@ -72,6 +72,10 @@ export default function TopologyCanvas({
   const isRightDraggingRef = useRef(false);
   const rightDragStartRef = useRef(null);
 
+  // Multi-Touch Pinch to Zoom & Touch Dragging State
+  const touchPinchDistRef = useRef(null);
+  const touchPinchCenterRef = useRef(null);
+
   // Link Connection State
   const [linkStart, setLinkStart] = useState(null); // { nodeId, port }
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -407,11 +411,158 @@ export default function TopologyCanvas({
       }
     };
 
+    const handleWindowTouchMove = (e) => {
+      // Multi-touch Pinch to Zoom
+      if (e.touches.length === 2 && touchPinchDistRef.current) {
+        if (e.cancelable) e.preventDefault();
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        const currentDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const midX = (t0.clientX + t1.clientX) / 2;
+        const midY = (t0.clientY + t1.clientY) / 2;
+
+        if (touchPinchDistRef.current > 0) {
+          const factor = currentDist / touchPinchDistRef.current;
+          const newZoom = Math.min(Math.max(zoom * factor, 0.25), 3.0);
+          if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const mouseX = midX - rect.left;
+            const mouseY = midY - rect.top;
+            const newPanX = mouseX - (mouseX - pan.x) * (newZoom / zoom);
+            const newPanY = mouseY - (mouseY - pan.y) * (newZoom / zoom);
+            setZoom(newZoom);
+            setPan({ x: newPanX, y: newPanY });
+          }
+          touchPinchDistRef.current = currentDist;
+          touchPinchCenterRef.current = { x: midX, y: midY };
+        }
+        return;
+      }
+
+      // Single Touch: Node Drag or Canvas Pan
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const canvasPos = screenToCanvas(touch.clientX, touch.clientY);
+        setMousePos(canvasPos);
+
+        // 1. Pan Canvas on Touch
+        if (isPanningRef.current) {
+          if (e.cancelable) e.preventDefault();
+          setPan({
+            x: touch.clientX - panStartRef.current.x,
+            y: touch.clientY - panStartRef.current.y,
+          });
+          return;
+        }
+
+        // 2. Drag Node on Touch
+        if (draggingNodeRef.current) {
+          if (e.cancelable) e.preventDefault();
+          hasMovedNodeRef.current = true;
+          let nextX = canvasPos.x - dragOffsetRef.current.x;
+          let nextY = canvasPos.y - dragOffsetRef.current.y;
+
+          if (snapToGrid) {
+            nextX = Math.round(nextX / 20) * 20;
+            nextY = Math.round(nextY / 20) * 20;
+          }
+
+          setNodes((prev) =>
+            prev.map((n) =>
+              n.id === draggingNodeRef.current
+                ? { ...n, x: nextX, y: nextY }
+                : n
+            )
+          );
+          return;
+        }
+
+        // 3. Drag Area Box on Touch
+        if (draggingAreaRef.current) {
+          if (e.cancelable) e.preventDefault();
+          hasMovedAreaRef.current = true;
+          const deltaX = canvasPos.x - dragAreaStartCanvasRef.current.x;
+          const deltaY = canvasPos.y - dragAreaStartCanvasRef.current.y;
+
+          let nextAreaX = initialAreaPosRef.current.x + deltaX;
+          let nextAreaY = initialAreaPosRef.current.y + deltaY;
+          if (snapToGrid) {
+            nextAreaX = Math.round(nextAreaX / 20) * 20;
+            nextAreaY = Math.round(nextAreaY / 20) * 20;
+          }
+
+          const effectiveDeltaX = nextAreaX - initialAreaPosRef.current.x;
+          const effectiveDeltaY = nextAreaY - initialAreaPosRef.current.y;
+
+          if (setAreas) {
+            setAreas((prev) =>
+              (prev || []).map((a) =>
+                a.id === draggingAreaRef.current
+                  ? { ...a, x: nextAreaX, y: nextAreaY }
+                  : a
+              )
+            );
+          }
+
+          if (containedNodeIdsRef.current.length > 0) {
+            setNodes((prev) =>
+              (prev || []).map((n) => {
+                if (containedNodeIdsRef.current.includes(n.id)) {
+                  const initPos = initialNodePositionsRef.current.find((p) => p.id === n.id);
+                  if (initPos) {
+                    return {
+                      ...n,
+                      x: initPos.x + effectiveDeltaX,
+                      y: initPos.y + effectiveDeltaY,
+                    };
+                  }
+                }
+                return n;
+              })
+            );
+          }
+          return;
+        }
+      }
+    };
+
+    const handleWindowTouchEnd = (e) => {
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+      }
+      if (draggingAreaRef.current) {
+        if (hasMovedAreaRef.current) {
+          onAreaDragEnd?.();
+        }
+        draggingAreaRef.current = null;
+        containedNodeIdsRef.current = [];
+        initialNodePositionsRef.current = [];
+        hasMovedAreaRef.current = false;
+      }
+      if (draggingNodeRef.current) {
+        if (hasMovedNodeRef.current) {
+          onNodeDragEnd?.();
+        }
+        draggingNodeRef.current = null;
+        hasMovedNodeRef.current = false;
+      }
+      if (!e.touches || e.touches.length < 2) {
+        touchPinchDistRef.current = null;
+        touchPinchCenterRef.current = null;
+      }
+    };
+
     window.addEventListener("mousemove", handleWindowMouseMove);
     window.addEventListener("mouseup", handleWindowMouseUp);
+    window.addEventListener("touchmove", handleWindowTouchMove, { passive: false });
+    window.addEventListener("touchend", handleWindowTouchEnd);
+    window.addEventListener("touchcancel", handleWindowTouchEnd);
     return () => {
       window.removeEventListener("mousemove", handleWindowMouseMove);
       window.removeEventListener("mouseup", handleWindowMouseUp);
+      window.removeEventListener("touchmove", handleWindowTouchMove);
+      window.removeEventListener("touchend", handleWindowTouchEnd);
+      window.removeEventListener("touchcancel", handleWindowTouchEnd);
     };
   }, [
     screenToCanvas,
@@ -424,6 +575,8 @@ export default function TopologyCanvas({
     areas,
     nodes,
     links,
+    zoom,
+    pan,
   ]);
 
   // Wheel Zoom
@@ -670,6 +823,66 @@ export default function TopologyCanvas({
     };
   };
 
+  // Node TouchStart for Mobile touch devices
+  const handleNodeTouchStart = (e, node) => {
+    if (e.target.closest("button")) return;
+    if (e.touches && e.touches.length === 1) {
+      const touch = e.touches[0];
+      if (linkStart) {
+        if (linkStart.nodeId !== node.id) {
+          handleFinishLink(node.id, "auto");
+        } else {
+          setLinkStart(null);
+        }
+        return;
+      }
+
+      onSelectNode?.(node);
+      if (readOnly) return;
+      draggingNodeRef.current = node.id;
+      hasMovedNodeRef.current = false;
+      const canvasPos = screenToCanvas(touch.clientX, touch.clientY);
+      dragOffsetRef.current = {
+        x: canvasPos.x - node.x,
+        y: canvasPos.y - node.y,
+      };
+    }
+  };
+
+  // Canvas TouchStart for Pan / Pinch-to-Zoom
+  const handleCanvasTouchStart = (e) => {
+    // Multi-touch: 2 fingers -> Pinch to zoom
+    if (e.touches.length === 2) {
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      touchPinchDistRef.current = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      touchPinchCenterRef.current = {
+        x: (t0.clientX + t1.clientX) / 2,
+        y: (t0.clientY + t1.clientY) / 2,
+      };
+      draggingNodeRef.current = null;
+      draggingAreaRef.current = null;
+      isPanningRef.current = false;
+      return;
+    }
+
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      if (e.target.closest("button") || e.target.closest(".node-card-interactive") || e.target.closest(".export-exclude")) {
+        return;
+      }
+      if (linkStart) {
+        setLinkStart(null);
+      }
+      isPanningRef.current = true;
+      panStartRef.current = {
+        x: touch.clientX - pan.x,
+        y: touch.clientY - pan.y,
+      };
+      onDeselectAll?.();
+    }
+  };
+
   // Drag & Drop from DevicePalette
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -829,10 +1042,11 @@ export default function TopologyCanvas({
       ref={containerRef}
       onWheel={handleWheel}
       onMouseDown={handleCanvasMouseDown}
+      onTouchStart={handleCanvasTouchStart}
       onContextMenu={(e) => e.preventDefault()}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`relative w-full h-full overflow-hidden select-none bg-[#0d1117] ${
+      className={`relative w-full h-full overflow-hidden select-none touch-none bg-[#0d1117] ${
         spacePressed ? "cursor-grab active:cursor-grabbing" : "cursor-default"
       }`}
     >
@@ -948,6 +1162,7 @@ export default function TopologyCanvas({
             isSelected={selectedNodeId === node.id}
             onSelect={onSelectNode}
             onMouseDown={(e) => handleNodeMouseDown(e, node)}
+            onTouchStart={(e) => handleNodeTouchStart(e, node)}
             onStartLink={handleStartLink}
             onFinishLink={handleFinishLink}
             onToggleStatus={!readOnly ? onToggleNodeStatus : null}
@@ -963,12 +1178,12 @@ export default function TopologyCanvas({
         ))}
       </div>
 
-      {/* Top Right Zoom Controls */}
+      {/* Top/Bottom Responsive Zoom Controls */}
       <div
         data-export-ignore="true"
-        className={`export-exclude absolute top-4 ${
-          hasFloatingRight ? "right-52" : "right-4"
-        } flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 shadow-2xl backdrop-blur-md z-30 transition-all duration-200`}
+        className={`export-exclude absolute bottom-4 right-4 sm:bottom-auto sm:top-4 ${
+          hasFloatingRight ? "sm:right-52" : "sm:right-4"
+        } flex items-center gap-1 sm:gap-1.5 bg-slate-900/95 border border-slate-700/80 rounded-xl p-1 shadow-2xl backdrop-blur-md z-30 transition-all duration-200`}
       >
         {setSimulationActive && (
           <button

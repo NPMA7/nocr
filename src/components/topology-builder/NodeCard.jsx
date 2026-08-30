@@ -84,6 +84,7 @@ function NodeCard({
   isSelected,
   onSelect,
   onMouseDown,
+  onTouchStart,
   onStartLink,
   onFinishLink,
   onToggleStatus,
@@ -126,6 +127,7 @@ function NodeCard({
         height: 86,
       }}
       onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
       onClick={(e) => {
         e.stopPropagation();
         if (isConnectingLink && !isLinkStart) {

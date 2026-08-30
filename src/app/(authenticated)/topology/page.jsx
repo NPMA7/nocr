@@ -98,8 +98,8 @@ export default function TopologyArchitecturePage() {
   const [selectedLinkId, setSelectedLinkId] = useState(null);
 
   // UI Panels State
-  const [isPaletteOpen, setIsPaletteOpen] = useState(true);
-  const [isPropertiesOpen, setIsPropertiesOpen] = useState(true);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
@@ -1074,36 +1074,36 @@ export default function TopologyArchitecturePage() {
       {/* ========================================================
           TOP HEADER & TOOLBAR
           ======================================================== */}
-      <header className="flex-shrink-0 bg-slate-900 border-b border-slate-700/60 px-4 py-2 flex flex-wrap items-center justify-between gap-3 z-40">
-        {/* Left Section: Title & Status */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-              <GitGraph size={17} />
+      <header className="flex-shrink-0 bg-slate-900 border-b border-slate-700/60 px-3 py-1.5 sm:px-4 sm:py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 z-40">
+        {/* Left Section: Title & Status + Search */}
+        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)] flex-shrink-0">
+              <GitGraph size={15} />
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-100 truncate max-w-[260px]">
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-100 truncate max-w-[130px] sm:max-w-[240px]">
                   {activeTemplateName}
                 </span>
-                <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="text-[9px] sm:text-[10px] text-emerald-400 font-semibold flex items-center gap-1 flex-shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Canvas
+                  <span className="hidden xs:inline">Live Canvas</span>
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 truncate hidden xs:inline">
                 Arsitektur Topologi Jaringan Interaktif
               </span>
             </div>
           </div>
 
-          {/* Search Bar / Area Box Navigator (Left-aligned) */}
-          <div className="relative" ref={searchRef}>
-            <div className="flex items-center bg-slate-950/90 border border-slate-800 hover:border-slate-700 focus-within:border-sky-500 focus-within:ring-1 focus-within:ring-sky-500/50 rounded-xl px-2.5 py-1.5 gap-2 shadow-inner w-44 sm:w-56 md:w-64 transition-all">
-              <Search size={13} className="text-sky-400 flex-shrink-0" />
+          {/* Search Bar / Area Box Navigator */}
+          <div className="relative flex-shrink-0" ref={searchRef}>
+            <div className="flex items-center bg-slate-950/90 border border-slate-800 hover:border-slate-700 focus-within:border-sky-500 focus-within:ring-1 focus-within:ring-sky-500/50 rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 gap-1.5 shadow-inner w-36 xs:w-44 sm:w-56 md:w-64 transition-all">
+              <Search size={12} className="text-sky-400 flex-shrink-0" />
               <input
                 type="text"
-                placeholder="Cari Area Box / Perangkat..."
+                placeholder="Cari Area / Perangkat..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -1123,14 +1123,14 @@ export default function TopologyArchitecturePage() {
                   <X size={12} />
                 </button>
               )}
-              <kbd className="hidden sm:inline-block bg-slate-900 border border-slate-700/80 rounded px-1.5 py-0.5 text-[9px] font-mono text-slate-400">
+              <kbd className="hidden md:inline-block bg-slate-900 border border-slate-700/80 rounded px-1.5 py-0.5 text-[9px] font-mono text-slate-400">
                 /
               </kbd>
             </div>
 
             {/* Search Results Dropdown */}
             {isSearchOpen && (
-              <div className="absolute left-0 top-10 w-72 sm:w-84 bg-slate-900/95 border border-slate-700/90 rounded-2xl p-2 shadow-2xl backdrop-blur-xl z-50 max-h-96 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 sm:left-0 top-9 sm:top-10 w-72 sm:w-84 bg-slate-900/95 border border-slate-700/90 rounded-2xl p-2 shadow-2xl backdrop-blur-xl z-50 max-h-96 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95">
                 {/* 1. Area Boxes Section */}
                 <div className="p-1">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-1">
@@ -1163,13 +1163,13 @@ export default function TopologyArchitecturePage() {
                             className="cursor-pointer w-full flex items-center justify-between p-2 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition group text-left"
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className={`w-2.5 h-2.5 rounded-full ${theme.dot} shadow-[0_0_8px_currentColor] flex-shrink-0`} />
-                              <span className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
-                                {area.name || "Area Wilayah"}
+                              <span className={`w-2.5 h-2.5 rounded-full ${theme.dot} flex-shrink-0 shadow-sm`} />
+                              <span className="text-xs font-semibold text-slate-200 group-hover:text-white truncate">
+                                {area.name}
                               </span>
                             </div>
-                            <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${theme.badge} flex-shrink-0`}>
-                              {count} Perangkat
+                            <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">
+                              {count} unit
                             </span>
                           </button>
                         );
@@ -1177,83 +1177,72 @@ export default function TopologyArchitecturePage() {
                     </div>
                   ) : (
                     <div className="text-[11px] text-slate-500 italic p-2 text-center bg-slate-950/30 rounded-lg">
-                      {areas.length === 0 ? "Belum ada kotak area. Buat dengan Klik Kanan + Tarik." : "Tidak ada area yang cocok."}
+                      Tidak ada kotak area.
                     </div>
                   )}
                 </div>
 
-                {/* 2. Nodes Section */}
-                {searchQuery.trim().length > 0 && (
-                  <div className="p-1 border-t border-slate-800/80 mt-1.5 pt-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-1">
-                      <span className="flex items-center gap-1.5 text-emerald-400">
-                        <Layers size={12} />
-                        <span>Perangkat ({filteredNodes.length})</span>
-                      </span>
-                    </div>
+                {/* Divider */}
+                <div className="h-px bg-slate-800 my-1" />
 
-                    {filteredNodes.length > 0 ? (
-                      <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                        {filteredNodes.map((node) => (
-                          <button
-                            key={node.id}
-                            onClick={() => handleSelectNodeFromSearch(node)}
-                            className="cursor-pointer w-full flex items-center justify-between p-2 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition group text-left"
-                          >
-                            <div className="flex flex-col min-w-0 pr-2">
-                              <span className="text-xs font-semibold text-slate-200 group-hover:text-white truncate">
-                                {node.label}
-                              </span>
-                              <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                                <span className="uppercase font-semibold text-[9px]">{node.vendor || node.type}</span>
-                                {node.ip && <span>• {maskIpAddress(node.ip, readOnly)}</span>}
-                              </div>
-                            </div>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                                node.status === "online"
-                                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
-                              }`}
-                            >
-                              {node.status === "online" ? "Online" : "Offline"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-slate-500 italic p-2 text-center bg-slate-950/30 rounded-lg">
-                        Tidak ada perangkat yang cocok.
-                      </div>
-                    )}
+                {/* 2. Device Nodes Section */}
+                <div className="p-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-1">
+                    <span className="flex items-center gap-1.5 text-emerald-400">
+                      <Layers size={12} />
+                      <span>Perangkat Jaringan ({filteredNodes.length})</span>
+                    </span>
+                    <span className="text-[9px] font-normal text-slate-500">Klik untuk fokus</span>
                   </div>
-                )}
+
+                  {filteredNodes.length > 0 ? (
+                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                      {filteredNodes.map((node) => (
+                        <button
+                          key={node.id}
+                          onClick={() => handleSelectNodeFromSearch(node)}
+                          className="cursor-pointer w-full flex items-center justify-between p-2 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition group text-left"
+                        >
+                          <div className="flex flex-col min-w-0 pr-2">
+                            <span className="text-xs font-semibold text-slate-200 group-hover:text-white truncate">
+                              {node.label}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                              <span className="uppercase font-semibold text-[9px]">{node.vendor || node.type}</span>
+                              {node.ip && <span>• {maskIpAddress(node.ip, !perms.canUpdate)}</span>}
+                            </div>
+                          </div>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                              node.status === "online"
+                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                : "bg-red-500/20 text-red-400 border border-red-500/30"
+                            }`}
+                          >
+                            {node.status === "online" ? "Online" : "Offline"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-slate-500 italic p-2 text-center bg-slate-950/30 rounded-lg">
+                      Tidak ada perangkat yang cocok.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Center Section: Real-time Status Badges */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800/80 text-[11px] font-semibold">
-          <div className="flex items-center gap-1.5 text-emerald-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
-            <span>{onlineCount} Menyala</span>
-          </div>
-          <span className="text-slate-700">•</span>
-          <div className="flex items-center gap-1.5 text-red-400">
-            <span className="w-2 h-2 rounded-full bg-red-400 shadow-[0_0_8px_#ef4444]" />
-            <span>{offlineCount} Mati</span>
-          </div>
-        </div>
-
         {/* Right Section: Action Buttons */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto custom-scrollbar max-w-full pb-0.5 sm:pb-0">
           {/* New Canvas Button */}
           {(perms.canCreate || perms.canUpdate) && (
             <button
               onClick={handleNewCanvas}
               title="Mulai Kanvas Baru Kosong"
-              className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-semibold transition"
+              className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-semibold transition flex-shrink-0"
             >
               <Plus size={13} />
               <span className="hidden sm:inline">Kanvas Baru</span>
@@ -1265,10 +1254,10 @@ export default function TopologyArchitecturePage() {
             <button
               onClick={() => setShowTemplateModal(true)}
               title="Buka Folder Template & Skema Tersimpan"
-              className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition"
+              className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex-shrink-0"
             >
               <FolderOpen size={13} className="text-amber-400" />
-              <span className="hidden sm:inline">Folder Template</span>
+              <span className="hidden md:inline">Folder Template</span>
               {savedDiagrams.length > 0 && (
                 <span className="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                   {savedDiagrams.length}
@@ -1279,7 +1268,7 @@ export default function TopologyArchitecturePage() {
 
           {/* Undo / Redo */}
           {(perms.canCreate || perms.canUpdate) && (
-            <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5">
+            <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5 flex-shrink-0">
               <button
                 onClick={handleUndo}
                 disabled={historyIndex <= 0}
@@ -1307,30 +1296,52 @@ export default function TopologyArchitecturePage() {
                 setShowSaveModal(true);
               }}
               title="Simpan Diagram Topologi ke Folder Template"
-              className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-500/20"
+              className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-500/20 flex-shrink-0"
             >
               <Save size={13} />
               <span className="hidden sm:inline">Simpan</span>
             </button>
           )}
 
+          {/* Toggle Animasi Aliran Kabel */}
+          <button
+            onClick={() => setSimulationActive((prev) => !prev)}
+            title={simulationActive ? "Matikan Animasi Aliran Kabel & Trafik" : "Aktifkan Animasi Aliran Kabel & Trafik"}
+            className={`cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border text-xs font-semibold transition flex-shrink-0 ${
+              simulationActive
+                ? "bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/50 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-400"
+            }`}
+          >
+            {simulationActive ? (
+              <>
+                <Pause size={13} className="text-amber-400" />
+                <span className="hidden lg:inline">Animasi (ON)</span>
+              </>
+            ) : (
+              <>
+                <Play size={13} className="text-slate-400" />
+                <span className="hidden lg:inline">Animasi (OFF)</span>
+              </>
+            )}
+          </button>
 
           {/* Export PNG */}
           <button
             onClick={handleExportImage}
             title="Ekspor Diagram ke Gambar PNG"
-            className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition"
+            className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex-shrink-0"
           >
             <ImageIcon size={13} className="text-sky-400" />
             <span className="hidden lg:inline">Ekspor PNG</span>
           </button>
 
           {/* Export/Import JSON */}
-          <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5">
+          <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5 flex-shrink-0">
             <button
               onClick={handleExportJSON}
               title="Unduh File JSON Topologi"
-              className="cursor-pointer p-1.5 text-slate-400 hover:text-emerald-400 transition"
+              className="cursor-pointer p-1 sm:p-1.5 text-slate-400 hover:text-emerald-400 transition"
             >
               <Download size={13} />
             </button>
@@ -1338,7 +1349,7 @@ export default function TopologyArchitecturePage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 title="Unggah File JSON Topologi"
-                className="cursor-pointer p-1.5 text-slate-400 hover:text-emerald-400 transition"
+                className="cursor-pointer p-1 sm:p-1.5 text-slate-400 hover:text-emerald-400 transition"
               >
                 <Upload size={13} />
               </button>
@@ -1350,7 +1361,7 @@ export default function TopologyArchitecturePage() {
             <button
               onClick={handleClearAll}
               title="Kosongkan Kanvas"
-              className="cursor-pointer p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 hover:text-white transition"
+              className="cursor-pointer p-1 sm:p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 hover:text-white transition flex-shrink-0"
             >
               <Trash2 size={13} />
             </button>
@@ -1424,10 +1435,10 @@ export default function TopologyArchitecturePage() {
               data-export-ignore="true"
               onClick={() => setIsPaletteOpen(true)}
               title="Buka Katalog Perangkat"
-              className="export-exclude cursor-pointer absolute top-4 left-4 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
+              className="export-exclude cursor-pointer absolute top-3 left-3 sm:top-4 sm:left-4 z-30 flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
             >
-              <PanelLeftOpen size={15} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-              <span>Katalog Perangkat</span>
+              <PanelLeftOpen size={15} className="text-emerald-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <span className="hidden sm:inline">Katalog Perangkat</span>
             </button>
           )}
 
@@ -1437,10 +1448,10 @@ export default function TopologyArchitecturePage() {
               data-export-ignore="true"
               onClick={() => setIsPropertiesOpen(true)}
               title="Buka Ringkasan Topologi"
-              className="export-exclude cursor-pointer absolute top-4 right-4 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
+              className="export-exclude cursor-pointer absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
             >
-              <span>Ringkasan Topologi</span>
-              <PanelRightOpen size={15} className="text-blue-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Ringkasan Topologi</span>
+              <PanelRightOpen size={15} className="text-blue-400 group-hover:scale-110 transition-transform flex-shrink-0" />
             </button>
           )}
 
