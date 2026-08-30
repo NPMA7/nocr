@@ -696,7 +696,15 @@ const MemoizedEdge = React.memo(
               onEdgeClick?.(e, edge);
             },
           }}
-        />
+        >
+          <Tooltip direction="top" sticky={true} opacity={0.95}>
+            <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-100 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-700">
+              <span className="text-cyan-400">📏</span>
+              <span>{formatDistance(distanceMeters)}</span>
+              {edge.label && <span className="text-slate-400 font-normal">({edge.label})</span>}
+            </div>
+          </Tooltip>
+        </Polyline>
 
         {/* Badge Jarak di tengah kabel saat kabel dipilih */}
         {isSelected && (
@@ -1095,15 +1103,31 @@ export default function TopologyMap({
 
       {/* Draft Polyline & Waypoints saat Pen Tool aktif */}
       {draftPolylinePositions && draftPolylinePositions.length >= 2 && (
-        <Polyline
-          positions={draftPolylinePositions}
-          pathOptions={{
-            color: "#f59e0b",
-            weight: 3.5,
-            dashArray: "6, 6",
-            opacity: 0.95,
-          }}
-        />
+        <>
+          <Polyline
+            positions={draftPolylinePositions}
+            pathOptions={{
+              color: "#f59e0b",
+              weight: 4,
+              dashArray: "6, 6",
+              opacity: 0.95,
+            }}
+          />
+          <Marker
+            position={getPolylineMidpoint(draftPolylinePositions)}
+            icon={L.divIcon({
+              className: "custom-draft-distance-badge-icon",
+              html: `<div style="transform: translate(-50%, -50%);" class="flex items-center gap-1.5 font-mono font-bold text-xs text-slate-950 bg-amber-400 border-2 border-white px-3 py-1 rounded-full shadow-[0_0_20px_#f59e0b] whitespace-nowrap pointer-events-none">
+                <span class="text-slate-950 text-sm font-black">📏</span>
+                <span class="tracking-wide font-black">${formatDistance(calculatePolylineDistance(draftPolylinePositions))}</span>
+              </div>`,
+              iconSize: [0, 0],
+              iconAnchor: [0, 0],
+            })}
+            zIndexOffset={35000}
+            interactive={false}
+          />
+        </>
       )}
       {draftWaypoints.map((pt, idx) => (
         <Marker
