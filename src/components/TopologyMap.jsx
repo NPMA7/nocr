@@ -51,22 +51,29 @@ function getDistanceMeters(lat1, lon1, lat2, lon2) {
 export function formatDistance(meters) {
   if (!meters || isNaN(meters)) return "0 m";
   if (meters >= 1000) {
-    return `${(meters / 1000).toFixed(2)} km (${Math.round(meters)} m)`;
+    return `${(meters / 1000).toFixed(2)} km`;
   }
   return `${Math.round(meters)} m`;
 }
 
-// Helper mencari titik tengah geografis kabel (midpoint)
-export function getPolylineMidpoint(positions = []) {
-  if (!Array.isArray(positions) || positions.length === 0) return [-7.065, 107.55];
-  if (positions.length === 1) return positions[0];
-  if (positions.length === 2) {
-    return [
-      (positions[0][0] + positions[1][0]) / 2,
-      (positions[0][1] + positions[1][1]) / 2,
-    ];
+// Helper mencari titik tengah geografis & sudut kemiringan kabel (midpoint & angle)
+export function getSegmentAngleAndMidpoint(positions = []) {
+  if (!Array.isArray(positions) || positions.length < 2) {
+    return { midpoint: [-7.065, 107.55], angle: 0 };
   }
   
+  if (positions.length === 2) {
+    const p1 = positions[0];
+    const p2 = positions[1];
+    const mid = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+    const dy = p2[0] - p1[0];
+    const dx = p2[1] - p1[1];
+    let deg = (Math.atan2(-dy, dx) * 180) / Math.PI;
+    if (deg > 90) deg -= 180;
+    if (deg < -90) deg += 180;
+    return { midpoint: mid, angle: deg };
+  }
+
   const totalLength = calculatePolylineDistance(positions);
   const targetHalf = totalLength / 2;
   let accumulated = 0;
@@ -78,15 +85,21 @@ export function getPolylineMidpoint(positions = []) {
     if (accumulated + segLen >= targetHalf) {
       const remain = targetHalf - accumulated;
       const fraction = segLen > 0 ? remain / segLen : 0.5;
-      return [
+      const mid = [
         p1[0] + (p2[0] - p1[0]) * fraction,
         p1[1] + (p2[1] - p1[1]) * fraction,
       ];
+      const dy = p2[0] - p1[0];
+      const dx = p2[1] - p1[1];
+      let deg = (Math.atan2(-dy, dx) * 180) / Math.PI;
+      if (deg > 90) deg -= 180;
+      if (deg < -90) deg += 180;
+      return { midpoint: mid, angle: deg };
     }
     accumulated += segLen;
   }
   const midIdx = Math.floor(positions.length / 2);
-  return positions[midIdx];
+  return { midpoint: positions[midIdx], angle: 0 };
 }
 
 // Helper finding closest segment to insert a new waypoint
@@ -641,8 +654,8 @@ const MemoizedEdge = React.memo(
       [edge.positions]
     );
 
-    const midpoint = useMemo(
-      () => getPolylineMidpoint(edge.positions),
+    const { midpoint, angle } = useMemo(
+      () => getSegmentAngleAndMidpoint(edge.positions),
       [edge.positions]
     );
 
@@ -650,14 +663,13 @@ const MemoizedEdge = React.memo(
       const formatted = formatDistance(distanceMeters);
       return L.divIcon({
         className: "custom-distance-badge-icon",
-        html: `<div style="transform: translate(-50%, -50%);" class="flex items-center gap-1.5 font-mono font-bold text-xs text-white bg-slate-950/95 border-2 border-cyan-400 px-3 py-1 rounded-full shadow-[0_0_20px_rgba(34,211,238,0.8)] backdrop-blur-md whitespace-nowrap pointer-events-none">
-          <span class="text-cyan-400 text-sm">📏</span>
-          <span class="tracking-wide">${formatted}</span>
+        html: `<div style="transform: translate(-50%, -50%) rotate(${angle}deg);" class="px-2 py-0.5 rounded bg-slate-950/95 border border-cyan-400 text-cyan-300 font-mono font-bold text-xs shadow-xl whitespace-nowrap pointer-events-none select-none tracking-tight">
+          ${formatted}
         </div>`,
         iconSize: [0, 0],
         iconAnchor: [0, 0],
       });
-    }, [distanceMeters]);
+    }, [distanceMeters, angle]);
 
     return (
       <React.Fragment>
@@ -678,7 +690,7 @@ const MemoizedEdge = React.memo(
           }}
         />
 
-        {/* Garis kabel visual utama */}
+        {/* Garis kabel visual utama (Hanya klik, tanpa hover tooltip) */}
         <Polyline
           positions={edge.positions}
           pathOptions={{
@@ -696,17 +708,9 @@ const MemoizedEdge = React.memo(
               onEdgeClick?.(e, edge);
             },
           }}
-        >
-          <Tooltip direction="top" sticky={true} opacity={0.95}>
-            <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-100 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-700">
-              <span className="text-cyan-400">📏</span>
-              <span>{formatDistance(distanceMeters)}</span>
-              {edge.label && <span className="text-slate-400 font-normal">({edge.label})</span>}
-            </div>
-          </Tooltip>
-        </Polyline>
+        />
 
-        {/* Badge Jarak di tengah kabel saat kabel dipilih */}
+        {/* Badge Jarak di tengah kabel menempel sesuai kemiringan kabel hanya saat kabel diklik/dipilih */}
         {isSelected && (
           <Marker
             position={midpoint}
@@ -1102,33 +1106,36 @@ export default function TopologyMap({
       ))}
 
       {/* Draft Polyline & Waypoints saat Pen Tool aktif */}
-      {draftPolylinePositions && draftPolylinePositions.length >= 2 && (
-        <>
-          <Polyline
-            positions={draftPolylinePositions}
-            pathOptions={{
-              color: "#f59e0b",
-              weight: 4,
-              dashArray: "6, 6",
-              opacity: 0.95,
-            }}
-          />
-          <Marker
-            position={getPolylineMidpoint(draftPolylinePositions)}
-            icon={L.divIcon({
-              className: "custom-draft-distance-badge-icon",
-              html: `<div style="transform: translate(-50%, -50%);" class="flex items-center gap-1.5 font-mono font-bold text-xs text-slate-950 bg-amber-400 border-2 border-white px-3 py-1 rounded-full shadow-[0_0_20px_#f59e0b] whitespace-nowrap pointer-events-none">
-                <span class="text-slate-950 text-sm font-black">📏</span>
-                <span class="tracking-wide font-black">${formatDistance(calculatePolylineDistance(draftPolylinePositions))}</span>
-              </div>`,
-              iconSize: [0, 0],
-              iconAnchor: [0, 0],
-            })}
-            zIndexOffset={35000}
-            interactive={false}
-          />
-        </>
-      )}
+      {draftPolylinePositions && draftPolylinePositions.length >= 2 && (() => {
+        const { midpoint, angle } = getSegmentAngleAndMidpoint(draftPolylinePositions);
+        const dist = calculatePolylineDistance(draftPolylinePositions);
+        return (
+          <>
+            <Polyline
+              positions={draftPolylinePositions}
+              pathOptions={{
+                color: "#f59e0b",
+                weight: 4,
+                dashArray: "6, 6",
+                opacity: 0.95,
+              }}
+            />
+            <Marker
+              position={midpoint}
+              icon={L.divIcon({
+                className: "custom-draft-distance-badge-icon",
+                html: `<div style="transform: translate(-50%, -50%) rotate(${angle}deg);" class="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-mono font-bold text-xs shadow-md border border-white whitespace-nowrap pointer-events-none select-none tracking-tight">
+                  ${formatDistance(dist)}
+                </div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0],
+              })}
+              zIndexOffset={35000}
+              interactive={false}
+            />
+          </>
+        );
+      })()}
       {draftWaypoints.map((pt, idx) => (
         <Marker
           key={`draft-wp-${idx}`}
