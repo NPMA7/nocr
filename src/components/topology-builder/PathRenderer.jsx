@@ -471,29 +471,101 @@ export default function PathRenderer({
               </circle>
             )}
 
-            {/* Midpoint Info Badge */}
-            {showLabels && (
-              <foreignObject
-                x={midX - 70}
-                y={midY - 14}
-                width="140"
-                height="28"
-                className="overflow-visible pointer-events-none"
-              >
-                <div
+            {/* Midpoint Info Badge using Pure SVG for 100% flawless export & high-DPI rendering */}
+            {showLabels && (() => {
+              const labelText = isDead ? "LINK MATI" : link.label || (isEthernet ? "LAN Cat6" : link.type.toUpperCase());
+              const badgeWidth = Math.max(74, labelText.length * 6.6 + 26);
+              const badgeHeight = 22;
+              const bgFill = isDead
+                ? "#2a0a0f"
+                : isSelected
+                ? "#0c2d48"
+                : isFiber
+                ? "#062820"
+                : isVPN
+                ? "#261a06"
+                : isWireless
+                ? "#220c30"
+                : "#081d33";
+              const strokeColor = isDead
+                ? "#ef4444"
+                : isSelected
+                ? "#38bdf8"
+                : isFiber
+                ? "#10b981"
+                : isVPN
+                ? "#f59e0b"
+                : isWireless
+                ? "#a855f7"
+                : "#38bdf8";
+              const dotFill = isDead
+                ? "#ef4444"
+                : isFiber
+                ? "#34d399"
+                : isVPN
+                ? "#fbbf24"
+                : isWireless
+                ? "#c084fc"
+                : "#38bdf8";
+              const textFill = isDead
+                ? "#fca5a5"
+                : isSelected
+                ? "#e0f2fe"
+                : isFiber
+                ? "#6ee7b7"
+                : isVPN
+                ? "#fde68a"
+                : isWireless
+                ? "#e9d5ff"
+                : "#bae6fd";
+
+              return (
+                <g
+                  transform={`translate(${midX}, ${midY})`}
+                  className="cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectLink?.(link);
                   }}
-                  className={`pointer-events-auto mx-auto w-fit max-w-[130px] px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 shadow-lg transition duration-200 border ${linkBadgeStyle}`}
                 >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${linkDotColor}`}
+                  {/* Pill Background */}
+                  <rect
+                    x={-badgeWidth / 2}
+                    y={-badgeHeight / 2}
+                    width={badgeWidth}
+                    height={badgeHeight}
+                    rx={badgeHeight / 2}
+                    fill={bgFill}
+                    stroke={strokeColor}
+                    strokeWidth={isSelected ? "2" : "1.2"}
+                    strokeOpacity="0.9"
+                    opacity="0.96"
                   />
-                  <span className="truncate">{isDead ? "LINK MATI" : link.label || (isEthernet ? "ETHERNET" : link.type.toUpperCase())}</span>
-                </div>
-              </foreignObject>
-            )}
+
+                  {/* Status Dot */}
+                  <circle
+                    cx={-badgeWidth / 2 + 10}
+                    cy={0}
+                    r={3.2}
+                    fill={dotFill}
+                  />
+
+                  {/* Badge Label Text */}
+                  <text
+                    x={-badgeWidth / 2 + 18}
+                    y={3.5}
+                    fill={textFill}
+                    fontSize="9.5"
+                    fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                    fontWeight="700"
+                    letterSpacing="0.02em"
+                    textAnchor="start"
+                  >
+                    {labelText}
+                  </text>
+                </g>
+              );
+            })()}
           </g>
         );
       })}
