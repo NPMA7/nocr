@@ -930,9 +930,44 @@ export default function TopologyMap({
     return edge.status === "down" ? "down" : "up";
   };
 
+  const isNodeDown = useCallback((node) => {
+    if (!node) return false;
+    if (node.status === "offline" || node.status === "merah" || node.status === "down") return true;
+    if (node.linked_interface) {
+      const linkedPrefix = node.linked_interface.toLowerCase();
+      const m = mappings || [];
+      const mappedNode = m.find(
+        (map) => map.prefix && map.prefix.toLowerCase() === linkedPrefix
+      );
+      if (mappedNode) {
+        if (mappedNode.final_status === "Offline") return true;
+        if (mappedNode.final_status === "Online") return false;
+      }
+      const matchedIface = (coreInterfaces || []).find(
+        (i) => i.name && i.name.toLowerCase() === linkedPrefix
+      );
+      if (matchedIface) {
+        if (matchedIface.disabled === "true") return true;
+        if (matchedIface.running === "true") return false;
+        return true;
+      }
+    }
+    return node.status === "offline";
+  }, [mappings, coreInterfaces]);
+
+  const isEdgeDeadOrDown = useCallback((edge) => {
+    const status = getEdgeDerivedStatus(edge);
+    if (status === "down" || status === "disabled") return true;
+    if (isNodeDown(edge.fromNode) || isNodeDown(edge.toNode)) return true;
+    return false;
+  }, [getEdgeDerivedStatus, isNodeDown]);
+
   // Warna edge berdasarkan status: Disabled=abu-abu, Up=hijau/biru, Down=merah
   const getEdgeColor = (edge) => {
     if (selectedEdge?.id === edge.id) return "#38bdf8"; // biru terang menyala saat dipilih
+
+    const isDead = isEdgeDeadOrDown(edge);
+    if (isDead) return "#ef4444"; // red-500
 
     const status = getEdgeDerivedStatus(edge);
     const isInfrastructure =
@@ -945,6 +980,9 @@ export default function TopologyMap({
   };
 
   const getEdgeDash = (edge) => {
+    const isDead = isEdgeDeadOrDown(edge);
+    if (isDead) return "6, 6";
+
     const status = getEdgeDerivedStatus(edge);
     const isInfrastructure =
       edge.fromNode?.type?.toLowerCase() !== "client" &&
