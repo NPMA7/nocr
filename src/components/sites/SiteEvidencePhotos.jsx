@@ -312,7 +312,6 @@ export default function SiteEvidencePhotos({
                     type="file"
                     ref={fileInputRefs[slot.key]}
                     accept="image/*"
-                    capture="environment"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];

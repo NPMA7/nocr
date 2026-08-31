@@ -7,6 +7,7 @@ import {
   Search,
   RefreshCw,
   Save,
+  Layers,
 } from "lucide-react";
 
 export function maskIpAddress(ipString, isReadOnly = false) {
@@ -381,6 +382,17 @@ export default function TopologyToolbar({
       </div>
 
       <div className="flex flex-wrap justify-center xl:justify-end items-center gap-2 xl:gap-3 w-full xl:w-auto border-t border-slate-700/50 xl:border-0 xl:pt-0">
+        <button
+          type="button"
+          onClick={() => setShowMobileMode?.((prev) => !prev)}
+          className={`md:hidden flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+            showMobileMode
+              ? "bg-blue-600 border border-blue-500 text-white shadow-md shadow-blue-500/20"
+              : "bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200"
+          }`}
+        >
+          <Layers size={13} /> {showMobileMode ? "Tutup Mode" : "Mode"}
+        </button>
         <button
           onClick={() => fetchTopology(true)}
           className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 cursor-pointer whitespace-nowrap"

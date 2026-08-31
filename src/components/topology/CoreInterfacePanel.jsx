@@ -131,7 +131,7 @@ export default function CoreInterfacePanel({
       <div
         className={`${
           showMobileMode ? "flex" : "hidden"
-        } w-44 md:flex absolute bottom-8 left-3 md:bottom-auto md:top-3 md:left-auto md:right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}
+        } w-44 md:flex absolute top-3 right-3 z-[1000] flex-col gap-2 pointer-events-none max-h-[calc(100%-24px)] overflow-y-auto hide-scrollbar`}
       >
         {/* Mode Panel */}
         <div className="rounded-xl border border-slate-700/50 bg-slate-900/95 shadow-xl backdrop-blur-sm pointer-events-auto">
