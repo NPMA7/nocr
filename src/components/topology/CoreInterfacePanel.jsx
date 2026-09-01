@@ -34,7 +34,7 @@ export default function CoreInterfacePanel({
   splitMode,
   setSplitMode,
 }) {
-  const [showModePanel, setShowModePanel] = useState(true);
+  const [showModePanel, setShowModePanel] = useState(false);
 
   return (
     <>

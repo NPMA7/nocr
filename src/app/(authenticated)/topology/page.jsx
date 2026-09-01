@@ -1124,7 +1124,7 @@ export default function TopologyArchitecturePage() {
 
   if (!perms.canRead) {
     return (
-      <div className="-m-4 md:-m-6 h-[calc(100vh-4.5rem)] flex items-center justify-center p-8 bg-slate-950 text-slate-100 select-none">
+      <div className="h-full w-full flex items-center justify-center p-8 bg-slate-950 text-slate-100 select-none">
         <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-2xl space-y-4">
           <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
             <ShieldAlert size={32} />
@@ -1147,7 +1147,7 @@ export default function TopologyArchitecturePage() {
   }
 
   return (
-    <div className="-m-4 md:-m-6 h-[calc(100vh-4.5rem)] flex flex-col bg-slate-950 text-slate-100 overflow-hidden select-none">
+    <div className="h-full w-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden select-none">
       {/* Hidden File Input for JSON Import */}
       <input
         type="file"

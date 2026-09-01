@@ -554,6 +554,12 @@ export default function AuthenticatedLayout({ children }) {
     }
   };
 
+  const isFullscreenPage =
+    pathname === "/maps" ||
+    pathname === "/topology" ||
+    pathname === "/topologi" ||
+    pathname?.startsWith("/topology");
+
   return (
     <AppStateContext.Provider value={contextValue}>
       <div className="fixed inset-0 flex bg-slate-900 text-slate-50 overflow-hidden">
@@ -600,7 +606,13 @@ export default function AuthenticatedLayout({ children }) {
             isSidebarOpen={isDesktopSidebarOpen}
           />
 
-          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto p-4 md:p-6">
+          <div
+            className={`flex-1 flex flex-col min-w-0 min-h-0 ${
+              isFullscreenPage
+                ? "overflow-hidden p-0"
+                : "overflow-y-auto p-4 md:p-6"
+            }`}
+          >
             {children}
           </div>
         </main>

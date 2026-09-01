@@ -179,10 +179,10 @@ export default function TopologyToolbar({
       setFlyToTarget?.({ lat, lng, zoom: 18 });
     }
 
-    // 3. Pilih node dan tutup dropdown pencarian
+    // 3. Pilih node, tutup dropdown pencarian, dan reset input search
     setSelectedNode?.(node);
     setShowSearchDropdown(false);
-    setSearchQuery(node.label || node.linked_interface || "");
+    setSearchQuery("");
   };
 
   return (

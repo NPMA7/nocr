@@ -319,7 +319,7 @@ function TopologyContent() {
   const [coreStatus, setCoreStatus] = useState(null);
   const [coreInterfaces, setCoreInterfaces] = useState([]);
   const [coreLoading, setCoreLoading] = useState(false);
-  const [showIfacePanel, setShowIfacePanel] = useState(true);
+  const [showIfacePanel, setShowIfacePanel] = useState(false);
   const [liveLogs, setLiveLogs] = useState([]);
   const [showMobileMode, setShowMobileMode] = useState(false);
 
@@ -1484,7 +1484,7 @@ function TopologyContent() {
   return (
     <div
       ref={mapContainerRef}
-      className="flex flex-col h-full min-h-0 -m-4 md:-m-6 relative overflow-hidden bg-slate-950"
+      className="flex flex-col h-full w-full min-h-0 relative overflow-hidden bg-slate-950"
     >
       {/* Map Control Toolbar */}
       <TopologyToolbar
