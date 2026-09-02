@@ -26,7 +26,7 @@ export default function AuthenticatedLayout({ children }) {
   const [devices, setDevices] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [sessionUser, setSessionUser] = useState(() =>
     typeof window !== "undefined" ? getStoredUser() : {},
