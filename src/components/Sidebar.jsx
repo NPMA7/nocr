@@ -268,6 +268,21 @@ export default function Sidebar({
                       <span>Monitor OPD</span>
                     </Link>
                   )}
+                  {hasAccess(currentUser, "monitoring-l2tp", "read") && (
+                    <Link
+                      href="/monitoring/traffic"
+                      onClick={onNavigate}
+                      scroll={false}
+                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                        pathname.startsWith("/monitoring/traffic")
+                          ? "text-blue-400 bg-blue-500/10"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <Activity size={14} className="flex-shrink-0" />
+                      <span>Traffic Semua Site</span>
+                    </Link>
+                  )}
                 </div>
               </div>
             )}
@@ -302,6 +317,21 @@ export default function Sidebar({
                   >
                     <Monitor size={14} className="flex-shrink-0" />
                     <span>Monitor OPD</span>
+                  </Link>
+                )}
+                {hasAccess(currentUser, "monitoring-l2tp", "read") && (
+                  <Link
+                    href="/monitoring/traffic"
+                    onClick={onNavigate}
+                    scroll={false}
+                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
+                      pathname.startsWith("/monitoring/traffic")
+                        ? "text-blue-400 bg-blue-500/10"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <Activity size={14} className="flex-shrink-0" />
+                    <span>Traffic Semua Site</span>
                   </Link>
                 )}
               </div>
