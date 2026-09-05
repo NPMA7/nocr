@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
+import { getStoredUser } from "@/lib/roles";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function formatBytes(bytes) {
@@ -90,6 +91,24 @@ function formatIndoDateTime(dt = new Date()) {
   const mm = String(dt.getMinutes()).padStart(2, "0");
   const ss = String(dt.getSeconds()).padStart(2, "0");
   return `${dayName}, ${d} ${m} ${y} pukul ${hh}:${mm}:${ss} WIB`;
+}
+
+function formatShortWibTime(dateInput) {
+  if (!dateInput) return "";
+  try {
+    const dt = new Date(dateInput);
+    if (isNaN(dt.getTime())) return "";
+    return (
+      dt.toLocaleTimeString("id-ID", {
+        timeZone: "Asia/Jakarta",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).replace(".", ":") + " WIB"
+    );
+  } catch (e) {
+    return "";
+  }
 }
 
 function loadExcelJsLibrary() {
@@ -282,6 +301,8 @@ export default function MonitoringTrafficPage() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
   // Filters & State
   const [rangeType, setRangeType] = useState("30days"); // Default 30h
@@ -337,10 +358,13 @@ export default function MonitoringTrafficPage() {
 
   // Cleanup timer on component unmount
   useEffect(() => {
+    setCurrentUser(getStoredUser());
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  const canManualSync = (currentUser?.role || "").toLowerCase() === "superadmin";
 
   // ─── Fetch All Sites Traffic ───────────────────────────────────────────────
   const fetchTraffic = async (isForce = false) => {
@@ -379,6 +403,12 @@ export default function MonitoringTrafficPage() {
         endDate: data.endDate,
         rangeType: data.rangeType || rangeType,
       });
+      if (data.lastSyncedAt) {
+        setLastSyncedAt(data.lastSyncedAt);
+      }
+      if (isForce) {
+        showToast("Sinkronisasi manual berhasil! Data terbaru tersimpan di database.", "success");
+      }
       const totalSecs = ((Date.now() - startStamp) / 1000).toFixed(1);
       setLastFetchDuration(totalSecs);
     } catch (err) {
@@ -704,12 +734,31 @@ export default function MonitoringTrafficPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {lastSyncedAt && (
+            <span className="text-[11px] text-slate-300 bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700/60 flex items-center gap-1.5 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+              Terakhir sinkronasi: {formatShortWibTime(lastSyncedAt)}
+            </span>
+          )}
+
           {lastFetchDuration && !loading && (
             <span className="text-[11px] font-mono text-slate-400 bg-slate-800/80 px-2 py-1 rounded border border-slate-700/50 flex items-center gap-1">
               <Clock size={12} className="text-blue-400" />
               {lastFetchDuration}s
             </span>
+          )}
+
+          {canManualSync && (
+            <button
+              onClick={() => fetchTraffic(true)}
+              disabled={loading}
+              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition shadow-md bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 disabled:opacity-50"
+              title="Tarik data traffic terbaru secara langsung dari Ruijie Cloud (Khusus Super Admin)"
+            >
+              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+              <span>{loading ? "Menyinkronkan..." : "Sync Sekarang"}</span>
+            </button>
           )}
 
           <button
@@ -851,7 +900,7 @@ export default function MonitoringTrafficPage() {
             <AlertTriangle size={28} className="text-red-400 mb-1.5" />
             <div className="text-xs font-semibold text-red-300">{error}</div>
             <button
-              onClick={() => fetchTraffic(true)}
+              onClick={() => fetchTraffic(false)}
               className="cursor-pointer mt-2.5 px-3 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-[11px] font-semibold text-white"
             >
               Coba Lagi

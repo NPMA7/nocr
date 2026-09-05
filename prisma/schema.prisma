@@ -288,3 +288,19 @@ model api_keys {
   @@index([is_active], map: "idx_api_keys_active")
   @@index([key], map: "idx_api_keys_key")
 }
+
+model site_traffic_snapshots {
+  id              Int       @id @default(autoincrement())
+  connection_type String    @default("L2TP") @db.VarChar(20)
+  range_type      String    @default("30days") @db.VarChar(30)
+  start_date      String?   @db.VarChar(20)
+  end_date        String?   @db.VarChar(20)
+  summary         Json      @default("{}")
+  sites_traffic   Json      @default("[]")
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([connection_type, range_type], map: "uq_site_traffic_snapshot")
+  @@index([connection_type, range_type], map: "idx_traffic_snapshot_lookup")
+}
+

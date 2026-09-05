@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { resolveAuth, sendApiError } from '@/lib/auth';
 import { hasAccess } from '@/lib/roles';
+import db from '@/lib/dbClient';
 
 const RUIJIE_SERVER_URL =
   process.env.RUIJIE_SCRAPE_URL ||
@@ -30,6 +31,43 @@ export async function POST(request) {
       forceRefresh = false,
     } = body;
 
+    // Hanya role Super Admin yang dapat memicu sinkronisasi manual langsung ke cloud
+    if (forceRefresh) {
+      const isSuper = user?.role === 'superadmin' || user?.role === 'admin';
+      if (!isSuper) {
+        return NextResponse.json(
+          { error: 'Akses Ditolak: Hanya Super Admin yang dapat melakukan sinkronisasi manual.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Jika bukan force refresh dan bukan custom range, baca langsung dari snapshot Database PostgreSQL
+    if (!forceRefresh && rangeType !== 'custom') {
+      try {
+        const { data: snapshot } = await db
+          .from('site_traffic_snapshots')
+          .select('*')
+          .eq('connection_type', type.toUpperCase())
+          .eq('range_type', rangeType)
+          .maybeSingle();
+
+        if (snapshot && snapshot.sites_traffic && Array.isArray(snapshot.sites_traffic) && snapshot.sites_traffic.length > 0) {
+          return NextResponse.json({
+            sitesTraffic: snapshot.sites_traffic,
+            summary: snapshot.summary,
+            startDate: snapshot.start_date,
+            endDate: snapshot.end_date,
+            rangeType,
+            lastSyncedAt: snapshot.updated_at,
+            isFromDatabase: true,
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[traffic/all] Gagal baca snapshot DB, fallback ke scraper:', dbErr.message);
+      }
+    }
+
     const payload = {
       type: type.toLowerCase(),
       rangeType,
@@ -45,7 +83,7 @@ export async function POST(request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(90000),
       });
     } catch (fetchErr) {
       console.error('[traffic/all] Ruijie scrape server tidak dapat dihubungi:', fetchErr.message);
@@ -69,3 +107,4 @@ export async function POST(request) {
     return sendApiError(error);
   }
 }
+
