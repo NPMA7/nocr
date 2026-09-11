@@ -4,7 +4,7 @@ services:
     container_name: nocr_postgres
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./backend/.env.production
     environment:
       POSTGRES_DB: ${DB_NAME:-nocr}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -31,7 +31,7 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - ./backend/.env
+      - ./backend/.env.production
     ports:
       - "127.0.0.1:9371:9371"
     volumes:

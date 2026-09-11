@@ -1,3 +1,20 @@
+const path = require('path');
+const fs = require('fs');
+
+// Dynamic environment loader (.env.development vs .env.production / .env)
+const currentEnv = process.env.NODE_ENV || 'development';
+const targetEnvFile = currentEnv === 'production' ? '.env.production' : '.env.development';
+const targetEnvPath = path.resolve(__dirname, targetEnvFile);
+const defaultEnvPath = path.resolve(__dirname, '.env');
+
+if (fs.existsSync(targetEnvPath)) {
+    require('dotenv').config({ path: targetEnvPath });
+} else if (fs.existsSync(defaultEnvPath)) {
+    require('dotenv').config({ path: defaultEnvPath });
+} else {
+    require('dotenv').config();
+}
+
 const express = require('express');
 const next = require('next');
 const http = require('http');
@@ -6,8 +23,6 @@ const crypto = require('crypto');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const ping = require('ping');
-const fs = require('fs');
-const path = require('path');
 const rateLimit = require('express-rate-limit');
 const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');

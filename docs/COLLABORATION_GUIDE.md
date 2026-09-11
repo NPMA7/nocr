@@ -19,20 +19,24 @@ Dokumen ini adalah panduan standar untuk mempermudah kolaborasi antara tim **Bac
 nocr/
 ├── backend/               # Workspace Node.js / Express / Socket.IO / Prisma
 │   ├── server.js          # Main server & worker runner
-│   ├── src/lib/           # Core library (MikroTik, DB, Auth, WhatsApp)
-│   ├── database/          # SQL scripts & schema
+│   ├── src/lib/           # Core library (MikroTik, DB, Auth, WhatsApp, OLT)
+│   ├── database/          # SQL scripts & schema PostgreSQL
 │   ├── prisma/            # Prisma ORM schema & migrations
 │   ├── scripts/           # Maintenance scripts (Backup DB, Drive Sync)
-│   ├── data/              # Storage runtime & server settings
-│   └── package.json       # Dependencies backend
+│   ├── data/              # Storage runtime (uploads/, server-settings.json)
+│   ├── package.json       # Dependencies backend
+│   ├── .env.development  # Konfigurasi dev lokal (Port 8888, Demo mode)
+│   └── .env.production   # Konfigurasi prod server (Port 9371)
 │
 ├── frontend/              # Workspace Next.js App Router & React UI
 │   ├── src/app/           # Next.js Pages & Layouts
-│   ├── src/components/    # Reusable UI Components
+│   ├── src/components/    # Reusable UI Components (Dashboard, Maps, Topology)
 │   ├── src/hooks/         # Custom React Hooks
 │   ├── src/lib/           # Frontend utilities (themes, helpers)
 │   ├── public/            # Static assets (images, logos, audio)
-│   └── package.json       # Dependencies frontend
+│   ├── package.json       # Dependencies frontend
+│   ├── .env.development  # Target backend dev (http://localhost:8888)
+│   └── .env.production   # Target backend prod (http://localhost:9371)
 │
 ├── docs/                  # Dokumentasi teknis & spesifikasi API
 │   ├── ARCHITECTURE.md    # Arsitektur sistem & aliran data
@@ -42,7 +46,8 @@ nocr/
 │   └── DEPLOYMENT.md      # Panduan instalasi lokal & server
 │
 ├── docker-compose.yml     # Container database & app orchestration
-├── package.json           # Root package.json (npm workspaces & root scripts)
+├── Dockerfile             # Multi-stage production container build
+├── package.json           # Root package.json (Shortcut scripts)
 └── README.md              # Dokumentasi umum
 ```
 
@@ -50,33 +55,31 @@ nocr/
 
 ## 3. Workflow Pengembangan Lokal
 
-### A. Menjalankan Seluruh Aplikasi Sekaligus
-Dari root direktori `nocr/`:
+### A. Instalasi Dependensi
 ```bash
-# Install seluruh dependency backend & frontend
-npm install
+# Di root direktori (Install kedua folder):
+npm run install:all
 
-# Jalankan backend (port 8888) & frontend (port 3000) sekaligus
-npm run dev
+# Atau install mandiri:
+npm run install:backend   # di folder backend/
+npm run install:frontend  # di folder frontend/
 ```
 
 ### B. Menjalankan Backend Saja (Bagi Backend Dev)
 ```bash
 npm run dev:backend
 # atau:
-cd backend
-npm run dev
+cd backend && npm run dev
 ```
-Backend akan berjalan pada `http://localhost:8888`.
+Backend akan berjalan pada `http://localhost:8888` dengan `DEMO_MODE=true` (aman tanpa mengganggu perangkat jaringan fisik).
 
 ### C. Menjalankan Frontend Saja (Bagi Frontend Dev)
 ```bash
 npm run dev:frontend
 # atau:
-cd frontend
-npm run dev
+cd frontend && npm run dev
 ```
-Frontend akan berjalan pada `http://localhost:3000` dan otomatis meneruskan request `/api/*` serta `/socket.io/*` ke backend `http://localhost:8888`.
+Frontend akan berjalan pada `http://localhost:3000` dan otomatis terhubung ke backend dev (`http://localhost:8888`) atau bisa diarahkan ke backend staging/prod via `frontend/.env.development`.
 
 ---
 
@@ -93,7 +96,7 @@ Frontend akan berjalan pada `http://localhost:3000` dan otomatis meneruskan requ
    - Dokumen: `docs/<nama-dokumen>`
 
 3. **Pull Request (PR) & Code Review:**
-   - Setiap perubahan harus dibuat melalui Pull Request ke branch `staging` atau `master`.
+   - Setiap perubahan dibuat melalui Pull Request ke branch `staging` atau `master`.
    - Lakukan code review silang: Frontend dev mereview dampak UI, Backend dev mereview dampak performa/keamanan API.
 
 ---
@@ -111,6 +114,6 @@ Frontend akan berjalan pada `http://localhost:3000` dan otomatis meneruskan requ
 
 ## 6. Penanganan Environment Variables (.env)
 
-- **Backend:** Gunakan `backend/.env` (berisi kredensial database, JWT Secret, RouterOS credentials, API keys).
-- **Frontend:** Gunakan `frontend/.env.local` (berisi `NEXT_PUBLIC_BACKEND_URL`, `NEXT_PUBLIC_SOCKET_URL`).
-- **PENTING:** Jangan pernah commit file `.env` ke Git repository. Selalu perbarui `.env.example` jika menambahkan variabel baru.
+- **Backend:** Gunakan `backend/.env.development` untuk dev lokal dan `backend/.env.production` untuk server produksi.
+- **Frontend:** Gunakan `frontend/.env.development` untuk dev lokal dan `frontend/.env.production` untuk build produksi.
+- **PENTING:** File `.env.development` dan `.env.production` otomatis diabaikan oleh Git (`.gitignore`). Hanya file `.env.example` yang dikomit sebagai template.

@@ -1,52 +1,50 @@
 # Panduan Deployment NOCR
 
-Dokumen ini menjelaskan tata cara deployment sistem NOCR pada lingkungan server produksi menggunakan Nginx, PM2 / Node service, dan Docker.
+Dokumen ini menjelaskan tata cara deployment sistem NOCR pada lingkungan server produksi menggunakan Nginx dan Docker Compose.
 
 ---
 
 ## 1. Arsitektur Port & Service
 
-| Komponen | Host / Port | Service / Runner |
-|---|---|---|
-| **PostgreSQL** | `127.0.0.1:5432` | Native PostgreSQL Service atau Docker |
-| **Backend (Express + Socket.IO)** | `127.0.0.1:8888` / `9371` | Node.js via PM2 / Systemd |
-| **Frontend (Next.js App)** | `127.0.0.1:3000` | Next.js Server via PM2 / Standalone |
-| **Reverse Proxy & SSL** | `80` & `443` (HTTPS) | Nginx |
+| Komponen | Host / Port | Lingkungan | Service / Container |
+|---|---|---|---|
+| **PostgreSQL 18** | `127.0.0.1:5432` | Production (Internal Docker) | Container `nocr_postgres` |
+| **Backend & Frontend App** | `127.0.0.1:9371` | Production (Internal Docker) | Container `nocr_app` (Next.js + Express) |
+| **Backend Dev (Lokal)** | `127.0.0.1:8888` | Development (Manual) | `npm run dev:backend` |
+| **Frontend Dev (Lokal)** | `127.0.0.1:3000` | Development (Manual) | `npm run dev:frontend` |
+| **Reverse Proxy & SSL** | `80` & `443` (HTTPS) | Host Publik (`nocrnetwork.com`) | Nginx |
 
 ---
 
-## 2. Deployment via PM2 (Bare Metal / VPS)
+## 2. Deployment via Docker Compose (Direkomendasikan)
 
-### Step 1: Install Dependencies
+Stack produksi berjalan secara otomatis dengan container terisolasi dalam jaringan `nocr-net`:
+
+### Step 1: Konfigurasi Environment Produksi
+Pastikan file `backend/.env.production` telah terisi kredensial server produksi:
 ```bash
-# Di root direktori
-npm install
-
-# Di backend
-cd backend && npm install
-
-# Di frontend
-cd ../frontend && npm install
-npm run build
+# Cek / sesuaikan konfigurasi produksi
+nano backend/.env.production
 ```
 
-### Step 2: Konfigurasi PM2 (`ecosystem.config.js`)
-Jalankan backend dan frontend menggunakan PM2:
+### Step 2: Build & Jalankan Container
 ```bash
-# Jalankan backend
-pm2 start backend/server.js --name nocr-backend
+# Build image Docker dan jalankan di background
+docker compose up -d --build
 
-# Jalankan frontend
-cd frontend && pm2 start npm --name nocr-frontend -- start
+# Cek status container yang aktif
+docker compose ps
+
+# Memeriksa log aplikasi live
+docker compose logs -f nocr
 ```
 
 ---
 
-## 3. Konfigurasi Nginx Reverse Proxy
+## 3. Konfigurasi Nginx Reverse Proxy & SSL
 
 Gunakan konfigurasi pada `nginx_site.conf` untuk mengarahkan request domain publik:
-- Request `/socket.io/` dan `/api/*` diteruskan ke Backend (`127.0.0.1:8888`).
-- Request halaman UI, static chunks `/_next/` diteruskan ke Frontend (`127.0.0.1:3000`).
+- Request `/socket.io/` dan request aplikasi diteruskan ke upstream `127.0.0.1:9371`.
 - Request folder upload `/uploads/` dilayani langsung via alias disk `/var/www/nocr/backend/data/uploads/`.
 
 Salin dan aktifkan di Nginx:
@@ -58,10 +56,16 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
-## 4. Deployment via Docker Compose
+## 4. Maintenance & Backup Rutin
 
-Untuk menjalankan seluruh stack secara otomatis:
+### Backup Database:
 ```bash
-docker compose up -d --build
+cd backend
+./scripts/backup-db.sh
 ```
-Semua container (PostgreSQL dan NOCR App) akan berjalan secara terisolasi dan tersambung dalam jaringan internal `nocr-net`.
+
+### Sinkronisasi Foto & Database ke Google Drive:
+```bash
+cd backend
+./scripts/sync-all-to-gdrive.sh
+```
