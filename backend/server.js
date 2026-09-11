@@ -80,7 +80,13 @@ async function getUserInfo(userId) {
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
-const app = next({ dev, hostname, port });
+const frontendDir = path.resolve(__dirname, '../frontend');
+const app = next({
+    dev,
+    hostname,
+    port,
+    dir: fs.existsSync(frontendDir) ? frontendDir : __dirname
+});
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {

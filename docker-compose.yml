@@ -3,18 +3,20 @@ services:
     image: postgres:18-alpine
     container_name: nocr_postgres
     restart: unless-stopped
+    env_file:
+      - ./backend/.env
     environment:
       POSTGRES_DB: ${DB_NAME:-nocr}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-@pasha937110}
     ports:
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     networks:
       - nocr-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-nocr}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nocr"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,12 +31,12 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env
+      - ./backend/.env
     ports:
-      - "127.0.0.1:${PORT:-9371}:9371"
+      - "127.0.0.1:9371:9371"
     volumes:
-      - ./data:/app/data
-      - ./.wwebjs_auth:/app/.wwebjs_auth
+      - ./backend/data:/app/backend/data
+      - ./backend/.wwebjs_auth:/app/backend/.wwebjs_auth
     networks:
       - nocr-net
 

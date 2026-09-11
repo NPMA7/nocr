@@ -1,70 +1,177 @@
 # 🌐 NOCR: Network Operations Center & Reporting
-**Sistem Pemantauan Terpadu & Manajemen Infrastruktur Jaringan**
+**Platform Terpadu Pemantauan & Manajemen Infrastruktur Jaringan Berstandar Enterprise**
 
-![Status](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge) ![Version](https://img.shields.io/badge/Version-2.0.0-blue?style=for-the-badge) ![Tech](https://img.shields.io/badge/Platform-Next.js_15_|_Node.js_|_PostgreSQL-black?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge) ![Architecture](https://img.shields.io/badge/Architecture-Modular_Monorepo-blueviolet?style=for-the-badge) ![Version](https://img.shields.io/badge/Version-2.0.0-blue?style=for-the-badge) ![Frontend](https://img.shields.io/badge/Frontend-Next.js_15_|_React_19-black?style=for-the-badge) ![Backend](https://img.shields.io/badge/Backend-Node.js_|_Express_|_Socket.IO-green?style=for-the-badge) ![Database](https://img.shields.io/badge/Database-PostgreSQL_18_|_Prisma_ORM-336791?style=for-the-badge)
 
 ---
 
 ## 📑 Ringkasan Eksekutif
-**NOCR (Network Operations Center & Reporting)** adalah platform *Network Management System* (NMS) berbasis web mutakhir yang dirancang khusus untuk memusatkan, mengotomatisasi, dan mengamankan operasi jaringan berskala menengah hingga besar. Sistem ini secara khusus ditargetkan untuk **Dinas Komunikasi dan Informatika (Diskominfo), Penyedia Layanan Internet (ISP), dan Institusi Enterprise**.
 
-NOCR menjembatani berbagai perangkat dari berbagai vendor (MikroTik, HSGQ, Ruijie) ke dalam satu pintu komando (*Single Pane of Glass*), dilengkapi dengan pelaporan otomatis dan integrasi WhatsApp terdedikasi.
+**NOCR (Network Operations Center & Reporting)** adalah platform *Network Management System* (NMS) berbasis web modern yang dirancang untuk memusatkan, mengotomatisasi, dan mengamankan pemantauan infrastruktur jaringan berskala menengah hingga besar (Diskominfo, ISP, dan Enterprise).
 
----
-
-## 🚨 Latar Belakang Masalah
-Dalam operasional infrastruktur jaringan modern, instansi sering kali menghadapi tantangan berikut:
-1. **Sistem Terpecah (Fragmented Systems):** Tim IT harus membuka banyak aplikasi bawaan vendor (Winbox untuk MikroTik, Web GUI untuk OLT, Ruijie Cloud untuk AP) secara terpisah hanya untuk melihat status jaringan.
-2. **Keterlambatan Penanganan (High MTTR):** Informasi gangguan sering kali baru diketahui *setelah* pengguna/masyarakat melapor. Tidak ada deteksi dini yang otomatis.
-3. **Risiko Keamanan Akses:** Pembagian kredensial (seperti *password* administrator) sering kali diberikan secara penuh kepada teknisi tingkat bawah karena kurangnya sistem pembatasan akses (*Granular Access*).
-4. **Pelaporan Manual yang Menyita Waktu:** Proses rekapitulasi gangguan, koneksi, dan laporan harian untuk pimpinan masih dikerjakan secara manual.
+NOCR mengintegrasikan perangkat multi-vendor (**MikroTik, HSGQ EPON/GPON OLT, Ruijie Cloud AP/Switch**) ke dalam satu dashboard terpadu (*Single Pane of Glass*), dilengkapi dengan visualisasi peta geolokasi, builder topologi interaktif, sistem peringatan dini WhatsApp Gateway otomatis, audit trail granular, serta pelaporan resmi SLA Uptime.
 
 ---
 
-## 💡 Solusi yang NOCR Hadirkan
-NOCR mengeliminasi masalah-masalah di atas melalui ekosistem yang terotomatisasi dan aman:
+## 🧭 Panduan Modul & Halaman Aktif Aplikasi
 
-### 1. 🎯 *Single Pane of Glass* (Pemantauan Terpusat)
-Memantau seluruh aset secara *Real-Time* menggunakan teknologi **WebSockets**.
-- **MikroTik Core:** Pantau *Interface*, penggunaan CPU/Memory, serta manajemen *Tunnel* L2TP & PPPoE aktif.
-- **HSGQ OLT:** Pantau redaman optik dan status operasional perangkat ONU/ONT secara detail dari jarak jauh.
-- **Ruijie AP:** Lacak status seluruh perangkat pemancar WiFi secara terpusat di berbagai area (Menggunakan modul eksternal [ruijie-scrape](https://github.com/NPMA7/ruijie-scrape)).
-- **Peta Topologi Cerdas:** Visualisasi hubungan antar-perangkat menggunakan `vis-network` dan peta interaktif `Leaflet`, dilengkapi fitur *Co-Editing Presence Lock* berbasis WebSockets untuk mencegah bentrokan edit antar-administrator.
+Aplikasi NOCR memiliki modul-modul fungsional yang dapat diakses melalui antarmuka dashboard:
 
-### 2. 🤖 Otomatisasi & Peringatan Dini (*Early Warning System*)
-- **WhatsApp Gateway & Live Chat Omnichannel:** Berjalan langsung di dalam server aplikasi (`whatsapp-web.js`), menghubungkan satu nomor WhatsApp untuk digunakan sebagai pusat layanan pelanggan (*Customer Service*) terpadu. Dilengkapi fitur *Auto-Reply* pesan di luar jam kerja, *Simple Bot Commands* (seperti `/ping` dan `/info`), serta pengunduh media chat.
-- **Downtime Auto-Tracking, Bulk Import & PDF Reports:** Sistem melacak waktu henti perangkat (*downtime*) secara otomatis. Admin dapat melengkapi laporan progres perbaikan (*Issue* & *Action*), mengunduh laporan PDF resmi secara *on-demand*, serta melakukan **impor massal (Bulk Upsert)** salin-tempel langsung dari Google Sheets/Excel dengan sistem penanganan duplikasi otomatis berbasis *live progress matching*.
-- **VPN Connection Control:** Memungkinkan administrator menyambung/memutus koneksi VPN host server (`rasdial` di Windows / `pon-poff` di Linux) langsung melalui dashboard.
+### 1. 📊 Dashboard & Monitoring Real-time
+| Halaman / Rute | Deskripsi Fungsionalitas |
+|---|---|
+| **`/dashboard`** | Halaman utama yang menampilkan ringkasan metrik status jaringan (Total Sites, UP, DOWN, FLAPPING), utilisasi resource router core (CPU, RAM, Uptime), dan *live activity stream*. |
+| **`/monitoring/desa`** | Monitoring status ketersediaan koneksi seluruh titik Site Desa / Kelurahan secara real-time. |
+| **`/monitoring/desa/traffic/[ruijie_mac]`** | Grafik bandwidth dan statistik throughput data real-time untuk site desa tertentu. |
+| **`/monitoring/opd`** | Monitoring status koneksi jaringan kantor Organisasi Perangkat Daerah (OPD) / Dinas. |
+| **`/monitoring/opd/traffic/[ruijie_mac]`** | Grafik bandwidth dan analisis traffic perangkat pada lokasi kantor OPD tertentu. |
+| **`/monitoring/traffic`** | Monitoring agregasi total throughput bandwidth seluruh jaringan (Rx / Tx Mbps). |
 
-### 3. 🛡️ Keamanan & Hak Akses Berstandar Enterprise (Granular RBAC)
-Tidak semua teknisi membutuhkan akses penuh. NOCR dilengkapi dengan manajemen *Role-Based Access Control* (RBAC) granular:
-- **Batasan per Modul (CRUD):** *Super-Admin* dapat mendefinisikan *role* (misalnya: *Helpdesk*, *Network Engineer*). *Helpdesk* mungkin hanya diberi akses **Read** untuk melihat status tanpa bisa memutuskan koneksi, sementara *Engineer* bisa memiliki akses **Update** dan **Delete** untuk memodifikasi pengaturan.
-- **Keamanan Data Mutakhir:** Memanfaatkan enkripsi *bcrypt* dan JSON Web Tokens (JWT) dengan *backend* PostgreSQL (Supabase/Prisma ORM) untuk integritas data tingkat tinggi, dilengkapi fitur *Auto-Trim Log* untuk membatasi ukuran database.
+### 2. 📍 Manajemen Sites & Pemetaan Geolokasi
+| Halaman / Rute | Deskripsi Fungsionalitas |
+|---|---|
+| **`/sites/desa`** | Manajemen inventaris Site Desa (nama titik, IP address, MAC Ruijie, koordinat, kontak penanggung jawab). |
+| **`/sites/desa/[ruijie_mac]`** | Detail mendalam site desa, riwayat pergantian status, dan galeri foto bukti instalasi (*Evidence Photos*). |
+| **`/sites/opd`** | Manajemen inventaris Site Kantor Dinas / Instansi OPD. |
+| **`/sites/opd/[ruijie_mac]`** | Detail profil site OPD beserta histori stabilitas koneksi. |
+| **`/maps`** | Peta geolokasi interaktif berbasis **Leaflet & OpenStreetMap** yang menampilkan sebaran titik tower/site dengan indikator status warna dinamis (Hijau = UP, Merah = DOWN, Kuning = FLAPPING). |
+
+### 3. 🔌 Multi-Vendor Device Management
+| Halaman / Rute | Deskripsi Fungsionalitas |
+|---|---|
+| **`/device/mikrotik`** | Monitoring MikroTik Core: resource router, status interface, traffic per port, daftar sesi pelanggan PPPoE aktif, dan terminal web interaktif. |
+| **`/device/hsgq-olt`** | Manajemen HSGQ EPON/GPON OLT: status port PON, pemantauan optical power (redaman optik dBm), list 160+ ONU/ONT online/offline, dan aksi remote reboot ONT. |
+| **`/device/ruijie`** | Monitoring perangkat AP & Switch Ruijie Cloud serta akses remote ke Web GUI perangkat (*eWeb Modal*). |
+
+### 4. 🗺️ Builder Topologi Jaringan Interaktif
+| Halaman / Rute | Deskripsi Fungsionalitas |
+|---|---|
+| **`/topology`** | Visualisasi diagram arsitektur jaringan berbasis `vis-network` (Core Router, Distribution Switch, OLT, Tower, Access Point). Dilengkapi fitur **Co-Editing Presence Lock** berbasis WebSocket untuk mencegah bentrokan edit saat beberapa administrator bekerja bersamaan, simulasi failover jalur, dan kalkulasi propagasi status link (Fiber Optic / Wireless). |
+
+### 5. 💬 WhatsApp Gateway & Customer Service
+| Halaman / Rute | Deskripsi Fungsionalitas |
+|---|---|
+| **`/live-chat`** | Pusat layanan pesan pelanggan omnichannel terintegrasi langsung dengan WhatsApp bot (`whatsapp-web.js`), mendukung kirim-terima pesan teks dan unduh media/foto. |
+| **`/settings/whatsapp`** | Halaman kontrol bot WhatsApp: scan QR code session login, status koneksi bot, dan pengaturan auto-reply di luar jam kerja. |
+
+### 6. 📑 Pelaporan SLA & Rekapitulasi Gangguan
+| Halaman / Rute | Deskripsi Fungsionalitas |
+|---|---|
+| **`/report`** & **`/report/dashboard`** | Pusat laporan persentase SLA Uptime per site, durasi total downtime, dan ekspor laporan resmi dalam format **PDF** dan **Excel (.xlsx)**. |
+| **`/report/dashboard/sites`** | Analisis performa ketersediaan jaringan per kategori site (Desa vs OPD). |
+| **`/daily-reports`** & **`/daily-reports/dashboard`** | Pencatatan rekapitulasi tiket gangguan harian (*Issue Description* & *Corrective Action* teknisi) dengan fitur **Bulk Upsert** dari spreadsheet. |
+
+### 7. ⚙️ Pengaturan Sistem & Granular RBAC
+| Halaman / Rute | Deskripsi Fungsionalitas |
+|---|---|
+| **`/settings/server`** / **`/settings/system`** | Konfigurasi interval ICMP ping background, timeout flapping log, dan sinkronisasi hardware. |
+| **`/settings/health`** | Monitoring utilisasi CPU, RAM, Disk, dan Uptime server host aplikasi. |
+| **`/settings/roles`** | Pengaturan level hak akses **Role-Based Access Control (RBAC)** per menu dan aksi (Read, Create, Update, Delete). |
+| **`/settings/users`** | Manajemen akun pengguna sistem, aktivasi user, dan penetapan role. |
+| **`/settings/core`** / **`/settings/mikrotik-gateway`** | Konfigurasi IP, port API, dan kredensial Router MikroTik gateway. |
+| **`/settings/company`** | Pengaturan identitas instansi, nama branding, dan logo kop laporan resmi. |
+| **`/settings/api-keys`** | Manajemen token API untuk integrasi sistem eksternal. |
+| **`/settings/vpn`** | Kontrol koneksi dial VPN server host (L2TP/PPTP/OpenVPN). |
+| **`/settings/design`** | Kustomisasi tema antarmuka dashboard (*Glassmorphism*, palet warna, dan mode tampilan). |
+| **`/settings/password`** | Ubah password akun administrator. |
 
 ---
 
-## ⚙️ Arsitektur Teknologi
+## 🏗️ Struktur Codebase Modular
 
-Aplikasi ini tidak dibangun dengan tumpukan teknologi lawas. NOCR menggunakan standar industri teknologi tahun 2024-2025:
+Codebase proyek telah ditata ke dalam struktur folder terpisah:
 
-| Komponen | Teknologi yang Digunakan |
-| :--- | :--- |
-| **Frontend Framework** | **Next.js 15 (App Router)** & **React 19** untuk rendering super cepat. |
-| **Styling & UI** | **TailwindCSS 4** & **Lucide Icons** dengan desain *Glassmorphism* & *Dark Mode* modern yang elegan. |
-| **Backend API** | **Node.js** terintegrasi, dengan *socket.io* untuk aliran data 2 arah secara *real-time*. |
-| **Database & ORM** | **PostgreSQL** (*Supabase*) dikelola menggunakan **Prisma Client** modern. |
-| **Integrasi Perangkat** | `node-routeros` (MikroTik API), REST API HSGQ, [ruijie-scrape](https://github.com/NPMA7/ruijie-scrape) (Ruijie API), dan `ping` Daemon. |
+```text
+/var/www/nocr/
+├── backend/                     # Khusus Tim Backend (Node.js, Express, Socket.IO, Prisma)
+│   ├── server.js                # Server utama Express, WebSocket hub, & background pollers
+│   ├── src/lib/                 # Library inti (MikroTik, DB client, WhatsApp, Ping engine, OLT)
+│   ├── database/                # schema.sql & skrip inisialisasi database PostgreSQL
+│   ├── prisma/                  # Skema Prisma ORM & migrasi database
+│   ├── scripts/                 # Skrip automasi backup database & Google Drive sync
+│   ├── data/                    # Penyimpanan runtime (uploads/, server-settings.json, session)
+│   ├── package.json             # Dependensi khusus backend
+│   └── .env.example             # Template konfigurasi backend
+│
+├── frontend/                    # Khusus Tim Frontend (Next.js 15, React 19, Tailwind CSS)
+│   ├── src/app/                 # Next.js App Router (Pages, layout, route handlers)
+│   ├── src/components/          # Komponen antarmuka React (Dashboard, Maps, Topology, Modals)
+│   ├── src/hooks/               # Custom React Hooks (useSocket, useAuth, useToast)
+│   ├── src/lib/                 # Helper frontend (theme engine, formatters)
+│   ├── src/index.css            # Styling Tailwind CSS setup
+│   ├── public/                  # Asset statis publik (logo, audio alarm, icons)
+│   ├── next.config.mjs          # Konfigurasi Next.js
+│   ├── package.json             # Dependensi khusus frontend
+│   └── .env.example             # Template konfigurasi frontend
+│
+├── docs/                        # Dokumentasi & Panduan Kolaborasi Tim
+│   ├── ARCHITECTURE.md          # Diagram arsitektur sistem & aliran data
+│   ├── API_REFERENCE.md         # Spesifikasi lengkap REST API & event WebSocket
+│   ├── COLLABORATION_GUIDE.md   # Panduan alur kerja Git & pembagian tugas
+│   ├── DATABASE.md              # Struktur tabel PostgreSQL & skema Prisma
+│   └── DEPLOYMENT.md            # Panduan instalasi lokal, Docker Compose & Nginx
+│
+├── docker-compose.yml           # Orchestration container produksi (App & PostgreSQL)
+├── Dockerfile                   # Multi-stage production container build
+├── nginx_site.conf              # Konfigurasi reverse proxy Nginx & SSL
+├── package.json                 # Root script runner
+└── README.md                    # Dokumentasi utama ini
+```
 
 ---
 
-## 📈 Potensi Dampak / *Return on Investment* (ROI)
-Bagi Instansi atau ISP yang mengadopsi NOCR:
-1. **Efisiensi Waktu (SLA Meningkat):** Waktu identifikasi gangguan berkurang drastis berkat sistem *monitoring realtime* dan integrasi WhatsApp. Keluhan publik/pengguna dapat ditekan.
-2. **Akuntabilitas Kinerja:** Setiap klik dan perubahan konfigurasi dicatat dalam **Log Aktivitas** yang permanen, memudahkan proses audit investigasi (*Who did what and when*).
+## 🚀 Panduan Memulai & Workflow Tim
+
+### 1. Instalasi Dependensi
+Dependensi dikelola secara mandiri pada masing-masing folder:
+```bash
+# Install seluruh dependensi backend dan frontend:
+npm run install:all
+
+# Atau install mandiri per folder:
+npm run install:backend   # di folder backend/
+npm run install:frontend  # di folder frontend/
+```
+
+### 2. Menjalankan di Lingkungan Pengembangan (Local Dev)
+```bash
+# Khusus Backend Developer (berjalan di http://localhost:8888):
+npm run dev:backend
+
+# Khusus Frontend Developer (berjalan di http://localhost:3000):
+npm run dev:frontend
+
+# Melakukan kompilasi build Frontend:
+npm run build:frontend
+```
 
 ---
 
-> *"NOCR bukan sekadar alat pemantau; ini adalah pusat komando cerdas yang merampingkan kerumitan infrastruktur IT Anda menjadi sebuah kanvas yang bersih, responsif, dan sangat aman."*
+## 🐳 Deployment Produksi (`nocrnetwork.com`)
 
-**Siap untuk melakukan modernisasi infrastruktur jaringan instansi Anda?** 
-Mari jadwalkan demonstrasi (*Live Demo*) aplikasi NOCR.
+Sistem produksi dijalankan menggunakan Docker Compose dan Nginx Reverse Proxy:
+
+```bash
+# 1. Build & jalankan container produksi
+docker compose up -d --build
+
+# 2. Cek status container
+docker compose ps
+
+# 3. Cek log output realtime
+docker compose logs -f nocr
+```
+
+---
+
+## 📚 Tautan Dokumentasi Lanjutan
+
+- 📖 [Panduan Kolaborasi Tim (Git & Workflow)](/docs/COLLABORATION_GUIDE.md)
+- 🔌 [Referensi REST API & Event WebSocket](/docs/API_REFERENCE.md)
+- 🏗️ [Arsitektur Sistem & Alur Integrasi Hardware](/docs/ARCHITECTURE.md)
+- 🗄️ [Dokumentasi Database PostgreSQL & Prisma](/docs/DATABASE.md)
+- 🚀 [Panduan Lengkap Deployment & Nginx](/docs/DEPLOYMENT.md)
+
+---
+
+*Dikelola dan dikembangkan oleh tim Network Operations Center (NPMA).*

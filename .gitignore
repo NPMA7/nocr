@@ -1,60 +1,69 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+**/node_modules/
+.pnp
+**/.pnp
 .pnp.js
+**/.pnp.js
 .yarn/install-state.gz
+**/.yarn/install-state.gz
 
-# testing
-/coverage
+# Testing & Coverage
+coverage/
+**/coverage/
 
-# next.js
-/.next/
-/out/
+# Next.js Build & Output
+.next/
+**/.next/
+out/
+**/out/
+build/
+**/build/
 
-# production
-/build
+# Environment Variables (Ignore all .env except .env.example)
+.env
+.env*.local
+.env.production
+.env.development
+**/.env
+**/.env*.local
+**/.env.production
+**/.env.development
+**/.env.prod
+!**/.env.example
 
-# misc
-.DS_Store
-*.pem
+# Runtime Data, Uploads, & SQLite
+*.sqlite
+*.db
+*.db-journal
+**/data/uploads/
+**/data/server-settings.json
+**/.wwebjs_auth/
+**/.wwebjs_cache/
+**/core*
 
-# debug
+# Prisma Generated Client
+**/src/generated/prisma/
+
+# Logs & Debug
+logs/
+**/logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# IDEs and Editors
+# Misc & System
+.DS_Store
+Thumbs.db
+*.pem
+.vercel
 .idea/
 .vscode/
 *.swp
 *.bak
 *.tmp
-Thumbs.db
-
-# Database / Prisma generated
-*.sqlite
-*.db
-*.db-journal
-/src/generated/prisma/
-src/lib/data/
-
-# WhatsApp Web JS
-.wwebjs_auth/
-.wwebjs_cache/
-/core*
-/data/
-/src/data/
-

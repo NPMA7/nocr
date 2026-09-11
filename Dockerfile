@@ -27,24 +27,23 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 WORKDIR /app
 
-# Salin dependencies list
-COPY package*.json ./
-COPY prisma ./prisma/
+# 1. Install dependencies backend & generate Prisma
+COPY backend/package*.json ./backend/
+COPY backend/prisma ./backend/prisma/
+RUN cd backend && npm install --include=dev && npx prisma generate
 
-# Install dependencies (termasuk devDependencies sementara untuk proses build Next.js)
-RUN npm install --include=dev
+# 2. Install dependencies frontend
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm install --include=dev
 
-# Generate Prisma Client ke output yang ditentukan
-RUN npx prisma generate
-
-# Salin kode aplikasi
+# 3. Salin source code
 COPY . .
 
-# Build Next.js dashboard
-RUN npm run build
+# 4. Build Next.js dashboard di frontend
+RUN cd frontend && npm run build
 
-# Buat folder data dan auth WhatsApp jika belum ada
-RUN mkdir -p data .wwebjs_auth
+# Buat folder runtime data dan WhatsApp auth
+RUN mkdir -p backend/data backend/.wwebjs_auth
 
 ENV NODE_ENV=production
 
@@ -52,4 +51,4 @@ EXPOSE 9371
 
 ENTRYPOINT ["dumb-init", "--"]
 
-CMD ["node", "server.js"]
+CMD ["node", "backend/server.js"]
