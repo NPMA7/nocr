@@ -221,6 +221,31 @@ async function seed() {
                     longitude = EXCLUDED.longitude,
                     full_address = EXCLUDED.full_address;
             `, [s.mac, s.type, s.lat, s.lng, s.address]);
+
+            // Upsert ruijie_devices (agar halaman /device/ruijie menampilkan data tanpa butuh scraper cloud)
+            await client.query(`
+                INSERT INTO ruijie_devices (
+                    sn, mac_address, alias, ip_address, status, connection_type,
+                    clients, product_type, group_name
+                )
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, 'RG-RAP2200(E)', 'NOCR-Group-Dev'
+                )
+                ON CONFLICT (sn) DO UPDATE
+                SET mac_address = EXCLUDED.mac_address,
+                    alias = EXCLUDED.alias,
+                    ip_address = EXCLUDED.ip_address,
+                    status = EXCLUDED.status,
+                    clients = EXCLUDED.clients;
+            `, [
+                `SN-RUIJIE-${s.mac.replace(/:/g, '')}`,
+                s.mac,
+                s.alias,
+                `10.10.${s.mac.slice(-2)}.${Math.floor(Math.random() * 200) + 10}`,
+                s.status,
+                s.type,
+                Math.floor(Math.random() * 25) + 1
+            ]);
         }
 
         // 6. Seed Activity Logs Dummy
