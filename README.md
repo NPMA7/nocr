@@ -128,9 +128,10 @@ Ikuti alur ini agar pengembangan di PC lokal **100% aman dan terisolasi dari dat
    npm run install:all
    ```
 3. **Setup Database Lokal & Dummy Data:**
-   Pastikan PostgreSQL lokal di PC Anda sudah aktif, lalu jalankan:
+   Pastikan database PostgreSQL sudah aktif dan ekstensi `extensions` sudah dibuat (lihat detail lengkap di [docs/DATABASE.md](docs/DATABASE.md)):
    ```bash
    cd backend
+   cp .env.example .env
    npx prisma db push
    npm run seed:dummy
    ```

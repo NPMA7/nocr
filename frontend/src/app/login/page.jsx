@@ -14,15 +14,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isSetup, setIsSetup] = useState(false);
 
   useEffect(() => {
     // Apply theme on client mount
     if (typeof window !== "undefined") {
-      const config = getStoredThemeConfig();
-      applyThemeConfig(config);
+      try {
+        const config = getStoredThemeConfig();
+        applyThemeConfig(config);
+      } catch (e) {
+        console.warn("Theme apply warning:", e);
+      }
     }
 
     const initLogin = async () => {
@@ -51,15 +55,13 @@ export default function LoginPage() {
             err.response?.data?.message?.includes("does not exist")
           ) {
             setError(
-              "Tabel users tidak ditemukan di database Supabase. Silakan jalankan perintah SQL Setup."
+              "Tabel users tidak ditemukan di database PostgreSQL. Silakan jalankan perintah SQL Setup."
             );
             setIsSetup(true);
           }
         }
       } catch (err) {
         console.error("Login initialization error:", err);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -96,23 +98,6 @@ export default function LoginPage() {
       setSubmitting(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center transition-colors duration-300"
-        style={{
-          backgroundColor: "var(--color-app-bg, #0F172A)",
-          color: "var(--color-text-main, #F8FAFC)",
-        }}
-      >
-        <div
-          className="animate-spin w-8 h-8 border-4 border-t-transparent rounded-full"
-          style={{ borderColor: "var(--color-primary, #3B82F6)", borderTopColor: "transparent" }}
-        />
-      </div>
-    );
-  }
 
   return (
     <div

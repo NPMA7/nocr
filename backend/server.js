@@ -92,18 +92,26 @@ async function getUserInfo(userId) {
 }
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+const hostname = '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 const frontendDir = path.resolve(__dirname, '../frontend');
-const app = next({
+
+// In development with separate frontend dev (npm run dev:frontend on port 3000),
+// avoid running Next.js compiler inside backend server to prevent duplicate compilation locks on .next/
+const shouldRunNext = process.env.NODE_ENV === 'production' || process.env.EMBED_NEXT === 'true';
+
+const app = shouldRunNext ? next({
     dev,
     hostname,
     port,
     dir: fs.existsSync(frontendDir) ? frontendDir : __dirname
-});
-const handle = app.getRequestHandler();
+}) : null;
+const handle = app ? app.getRequestHandler() : null;
 
-app.prepare().then(() => {
+const initApp = async () => {
+    if (app) {
+        await app.prepare();
+    }
     const server = express();
     const httpServer = http.createServer(server);
 
@@ -2174,9 +2182,15 @@ app.prepare().then(() => {
     });
 
     // Default Next.js Handler
-    server.all('*', (req, res) => {
-        return handle(req, res);
-    });
+    if (handle) {
+        server.all('*', (req, res) => {
+            return handle(req, res);
+        });
+    } else {
+        server.all('*', (req, res) => {
+            res.status(404).json({ message: 'NOCR Backend API & Worker Server. Buka antarmuka UI di port 3000.' });
+        });
+    }
 
     httpServer.listen(port, (err) => {
         if (err) throw err;
@@ -2190,4 +2204,9 @@ app.prepare().then(() => {
 
     process.on('SIGINT', () => handleShutdown('SIGINT'));
     process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+};
+
+initApp().catch(err => {
+    console.error('Fatal error starting server:', err);
+    process.exit(1);
 });

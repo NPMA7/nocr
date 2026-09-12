@@ -1,9 +1,21 @@
 const { Pool } = require('pg');
 const format = require('pg-format');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
+if (!process.env.DATABASE_URL) {
+    const backendEnv = path.resolve(__dirname, '../../../backend/.env');
+    if (fs.existsSync(backendEnv)) {
+        require('dotenv').config({ path: backendEnv });
+    }
+}
+
+const defaultDatabaseUrl = "postgresql://postgres:password@127.0.0.1:5432/nocr?schema=public";
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+    connectionString: process.env.DATABASE_URL || defaultDatabaseUrl,
+    connectionTimeoutMillis: 5000
 });
 
 class QueryBuilder {

@@ -6,7 +6,7 @@ import { sendApiError } from '@/lib/errorHandler';
 export { normalizeRole, hasAccess } from '@/lib/roles';
 export { sendApiError } from '@/lib/errorHandler';
 
-export const JWT_SECRET = process.env.JWT_SECRET;
+export const JWT_SECRET = process.env.JWT_SECRET || 'nocr_dev_secret_key';
 
 export function isValidRole(role) {
     return !!normalizeRole(role);

@@ -116,8 +116,11 @@ export function getStoredThemeConfig() {
   if (typeof window === "undefined") return PRESET_THEMES[0];
   try {
     const raw = localStorage.getItem("nocr_custom_theme");
-    if (raw) {
-      return JSON.parse(raw);
+    if (raw && raw !== "undefined" && raw !== "null") {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
     }
   } catch (e) {
     console.error("Gagal membaca tema dari localStorage", e);
@@ -128,10 +131,11 @@ export function getStoredThemeConfig() {
 export function applyThemeConfig(config) {
   if (typeof document === "undefined") return;
 
+  const safeConfig = (config && typeof config === "object") ? config : PRESET_THEMES[0];
   const root = document.documentElement;
   const body = document.body;
 
-  const isLight = config.category === "light";
+  const isLight = safeConfig.category === "light";
 
   if (isLight) {
     root.classList.add("light");

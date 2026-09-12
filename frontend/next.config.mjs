@@ -26,7 +26,7 @@ const securityHeaders = [
   },
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; script-src 'self' 'unsafe-inline' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https: *.openstreetmap.org *.tile.openstreetmap.org; font-src 'self' data: https:; connect-src 'self' ws: wss: http: https:; frame-ancestors 'self';",
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https: *.openstreetmap.org *.tile.openstreetmap.org; font-src 'self' data: https:; connect-src 'self' ws: wss: http: https:; frame-ancestors 'self';",
   },
   {
     key: 'X-Robots-Tag',
@@ -56,10 +56,6 @@ const nextConfig = {
       return [];
     }
     return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
       {
         source: '/socket.io/:path*',
         destination: `${backendUrl}/socket.io/:path*`,

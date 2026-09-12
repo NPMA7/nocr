@@ -109,12 +109,20 @@ function isSecureRequest(req) {
     return false;
 }
 
+function isSecureCookie(req) {
+    if (process.env.COOKIE_SECURE === 'false') return false;
+    if (process.env.COOKIE_SECURE === 'true') return true;
+    if (process.env.NODE_ENV !== 'production') return false;
+    const proto = typeof req?.headers?.get === 'function' ? req.headers.get('x-forwarded-proto') : req?.headers?.['x-forwarded-proto'];
+    return proto === 'https';
+}
+
 function setAuthCookie(response, token, req) {
     response.cookies.set({
         name: COOKIE_NAME,
         value: token,
         httpOnly: true,
-        secure: true,
+        secure: isSecureCookie(req),
         sameSite: 'lax',
         path: '/',
         maxAge: COOKIE_MAX_AGE
@@ -127,7 +135,7 @@ function clearAuthCookie(response, req) {
         name: COOKIE_NAME,
         value: '',
         httpOnly: true,
-        secure: true,
+        secure: isSecureCookie(req),
         sameSite: 'lax',
         path: '/',
         maxAge: 0

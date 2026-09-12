@@ -68,13 +68,10 @@ Panduan ini wajib diikuti agar pengujian dan penambahan fitur baru **100% aman t
    npm run install:all
    ```
 3. **Setup Database Lokal & Seeder Data Dummy:**
-   Pastikan PostgreSQL lokal di PC Anda sudah berjalan (misal via Docker lokal atau service PostgreSQL). Buat database lokal bernama `nocr_dev`, lalu jalankan:
-   ```bash
-   # Di folder root atau backend:
-   cd backend
-   npx prisma db push
-   npm run seed:dummy
-   ```
+
+   Pastikan PostgreSQL lokal di PC Anda sudah berjalan (misal via Docker lokal atau service PostgreSQL). Buat database lokal bernama `nocr_dev`:
+
+   Langkah-langkah setup database lengkap ada di [docs/DATABASE.md](/docs/DATABASE.md).
    > 💡 **Data Dummy yang Dibuat Otomatis:**
    > - Akun Login: `admin` / `password123` (Admin), `teknisi` / `password123`, `visitor` / `password123`.
    > - Perangkat Dummy: Core Router MikroTik, OLT HSGQ, Switch Ruijie.
@@ -85,11 +82,14 @@ Panduan ini wajib diikuti agar pengujian dan penambahan fitur baru **100% aman t
 Buka 2 terminal di root proyek:
 * **Terminal 1 (Backend - Port 8888):**
   ```bash
+  cd nocr
   npm run dev:backend
   ```
   *(Berjalan dengan `DEMO_MODE=true`, aman tanpa menyentuh router fisik lapangan)*
 * **Terminal 2 (Frontend - Port 3000):**
   ```bash
+  cd nocr
+  npm run build:frontend
   npm run dev:frontend
   ```
   *(Otomatis mem-proxy API & WebSocket ke backend port 8888)*
