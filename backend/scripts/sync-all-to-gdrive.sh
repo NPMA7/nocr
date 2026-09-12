@@ -20,7 +20,7 @@ if ! command -v rclone &> /dev/null; then
     exit 1
 fi
 
-if ! rclone listremotes 2>/dev/null | grep -Eq "^${RCLONE_REMOTE}:"; then
+if ! rclone listremotes 2>/dev/null | grep -E "^${RCLONE_REMOTE}:" > /dev/null; then
     echo "ERROR: Remote '${RCLONE_REMOTE}:' belum terkonfigurasi di rclone."
     echo "Silakan hubungkan Google Drive terlebih dahulu."
     exit 1

@@ -61,7 +61,7 @@ fi
 
 # Upload ke Google Drive via rclone jika remote dikonfigurasi
 if command -v rclone &> /dev/null; then
-    if rclone listremotes 2>/dev/null | grep -Eq "^${RCLONE_REMOTE}:"; then
+    if rclone listremotes 2>/dev/null | grep -E "^${RCLONE_REMOTE}:" > /dev/null; then
         log "Uploading backup to Google Drive (${RCLONE_REMOTE}:${DATE_FOLDER})..."
         if rclone copy "$BACKUP_FILE" "${RCLONE_REMOTE}:${DATE_FOLDER}/" --retries 3 --low-level-retries 10 2>> "$LOG_FILE"; then
             log "SUCCESS: Backup berhasil di-upload ke Google Drive (${RCLONE_REMOTE}:${DATE_FOLDER}/nocr_backup_${TIMESTAMP}.sql.gz)"
