@@ -1068,7 +1068,7 @@ export default function MonitorOpd() {
                     </div>
                   ) : pingResult ? (
                     <span className={pingResult.alive ? "text-emerald-300" : "text-red-300"}>
-                      {pingResult.output}
+                      {pingResult.output || (pingResult.alive ? `PING ${pingModalDevice.remote_address}: Host terhubung.` : `PING ${pingModalDevice.remote_address}: Request timed out (RTO).`)}
                     </span>
                   ) : (
                     <span className="text-slate-500">Klik "Ulangi Ping" untuk memulai test.</span>

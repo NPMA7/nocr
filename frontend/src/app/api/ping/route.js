@@ -112,7 +112,7 @@ async function handlePing(target, countParam, timeoutParam, user, clientKey) {
     stdout = res.stdout || '';
     alive = true;
   } catch (err) {
-    stdout = err.stdout || '';
+    stdout = err.stdout || err.stderr || err.message || '';
     alive = false;
   }
 
@@ -133,7 +133,10 @@ async function handlePing(target, countParam, timeoutParam, user, clientKey) {
     maxTime = parseFloat(rttMatch[3]);
   }
 
-  // Clean structured response without leaking raw OS stdout/stderr
+  const cleanOutput = stdout.trim() || (alive
+    ? `PING ${cleanHost}: ${count} packets transmitted, ${packetLoss}% packet loss`
+    : `PING ${cleanHost}: Request timed out (100% packet loss)`);
+
   return NextResponse.json({
     host: cleanHost,
     alive,
@@ -141,6 +144,7 @@ async function handlePing(target, countParam, timeoutParam, user, clientKey) {
     avgTime,
     minTime,
     maxTime,
+    output: cleanOutput,
   });
 }
 
