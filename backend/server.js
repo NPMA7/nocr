@@ -168,7 +168,9 @@ app.prepare().then(() => {
         max: 500,
         standardHeaders: true,
         legacyHeaders: false,
-        keyGenerator: (req) => req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1',
+        validate: { xForwardedForHeader: false, default: false },
+        keyGenerator: (req) => req.ip || '127.0.0.1',
+        skip: (req) => req.method === 'OPTIONS',
         message: { error: 'Terlalu banyak percobaan login. Silakan coba lagi setelah beberapa saat.' },
         handler: (req, res, next, options) => {
             res.status(429).json(options.message);
@@ -181,6 +183,7 @@ app.prepare().then(() => {
         max: 3000,
         standardHeaders: true,
         legacyHeaders: false,
+        validate: { xForwardedForHeader: false, default: false },
         keyGenerator: getRateLimitKey,
         skip: (req) => {
             const url = req.originalUrl || req.url || req.path || '';

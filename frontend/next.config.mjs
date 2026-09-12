@@ -46,8 +46,15 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    // In standalone frontend dev, proxy API, Socket.IO, and uploads to Backend
+    // Only proxy in standalone dev mode (frontend running on port 3000 -> backend on port 8888)
+    // NEVER rewrite in production where Next.js runs directly inside Express on port 9371
+    if (process.env.NODE_ENV === 'production') {
+      return [];
+    }
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8888';
+    if (backendUrl.includes('9371') || backendUrl.includes('nocrnetwork.com')) {
+      return [];
+    }
     return [
       {
         source: '/api/:path*',

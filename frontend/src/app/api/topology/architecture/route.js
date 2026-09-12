@@ -4,12 +4,51 @@ import path from "path";
 import { resolveAuth } from "@/lib/auth";
 import { hasAccess } from "@/lib/roles";
 
+function getCandidateFiles() {
+  return [
+    path.join(process.cwd(), "backend", "data", "topology_architectures.json"),
+    path.join(process.cwd(), "data", "topology_architectures.json"),
+    "/app/backend/data/topology_architectures.json",
+    "/app/data/topology_architectures.json",
+    "/var/www/nocr/backend/data/topology_architectures.json",
+    "/var/www/nocr/data/topology_architectures.json",
+    path.join(process.cwd(), "..", "backend", "data", "topology_architectures.json"),
+    path.join(process.cwd(), "src", "data", "topology_architectures.json"),
+  ];
+}
+
 function getFilePath() {
+  const candidates = getCandidateFiles();
+
+  // 1. Return first candidate that already exists and has substantial content (> 100 bytes)
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file)) {
+        const stat = fs.statSync(file);
+        if (stat.size > 100) {
+          return file;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Return first candidate that already exists
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file)) {
+        return file;
+      }
+    } catch (e) {}
+  }
+
+  // 3. Fallback to preferred directory
   const possibleDirs = [
+    path.join(process.cwd(), "backend", "data"),
     path.join(process.cwd(), "data"),
+    "/app/backend/data",
     "/app/data",
+    "/var/www/nocr/backend/data",
     "/var/www/nocr/data",
-    path.join(process.cwd(), "src", "data"),
     "/tmp",
   ];
 
@@ -19,70 +58,54 @@ function getFilePath() {
         fs.mkdirSync(dir, { recursive: true });
       }
       return path.join(dir, "topology_architectures.json");
-    } catch (e) {
-      // try next
-    }
+    } catch (e) {}
   }
   return path.join(process.cwd(), "topology_architectures.json");
 }
 
 function getStoredData() {
-  const filePath = getFilePath();
+  const candidates = getCandidateFiles();
 
-  // If primary file doesn't exist, check legacy locations to migrate
-  if (!fs.existsSync(filePath)) {
-    const legacyPaths = [
-      path.join(process.cwd(), "src", "data", "topology_architectures.json"),
-      "/app/src/data/topology_architectures.json",
-      "/var/www/nocr/src/data/topology_architectures.json",
-    ];
-
-    for (const leg of legacyPaths) {
-      try {
-        if (fs.existsSync(leg)) {
-          const raw = fs.readFileSync(leg, "utf8");
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed.architectures) && parsed.architectures.length > 0) {
-            fs.writeFileSync(filePath, JSON.stringify(parsed, null, 2), "utf8");
-            return parsed;
-          }
-        }
-      } catch (e) {}
-    }
-
-    const initialData = {
-      activeId: null,
-      architectures: [],
-    };
+  // Look across all candidates for one that has non-empty architectures
+  for (const p of candidates) {
     try {
-      fs.writeFileSync(filePath, JSON.stringify(initialData, null, 2), "utf8");
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, "utf8");
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.architectures) && parsed.architectures.length > 0) {
+          return parsed;
+        }
+      }
     } catch (e) {}
-    return initialData;
   }
 
-  try {
-    const raw = fs.readFileSync(filePath, "utf8");
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.architectures)) {
-      parsed.architectures = [];
-    }
-    return parsed;
-  } catch (e) {
-    return { activeId: null, architectures: [] };
+  const filePath = getFilePath();
+  if (fs.existsSync(filePath)) {
+    try {
+      const raw = fs.readFileSync(filePath, "utf8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.architectures)) {
+        return parsed;
+      }
+    } catch (e) {}
   }
+
+  return { activeId: null, architectures: [] };
 }
 
 function saveStoredData(data) {
   const filePath = getFilePath();
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
 
-  // Also maintain backup copy in src/data if accessible
-  try {
-    const backupPath = path.join(process.cwd(), "src", "data", "topology_architectures.json");
-    if (path.dirname(backupPath) !== path.dirname(filePath)) {
-      fs.writeFileSync(backupPath, JSON.stringify(data, null, 2), "utf8");
-    }
-  } catch (e) {}
+  // Also sync to all existing candidate directories so no data is lost across mounts
+  const candidates = getCandidateFiles();
+  for (const target of candidates) {
+    try {
+      if (target !== filePath && fs.existsSync(path.dirname(target))) {
+        fs.writeFileSync(target, JSON.stringify(data, null, 2), "utf8");
+      }
+    } catch (e) {}
+  }
 }
 
 export async function GET(req) {

@@ -36,6 +36,7 @@ services:
       - "127.0.0.1:9371:9371"
     volumes:
       - ./backend/data:/app/backend/data
+      - ./backend/data:/app/data
     networks:
       - nocr-net
 

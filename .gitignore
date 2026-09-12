@@ -36,8 +36,15 @@ build/
 *.sqlite
 *.db
 *.db-journal
+backend/data/*
+!backend/data/.gitkeep
+!backend/data/*.example.*
+frontend/src/data/*
+!frontend/src/data/.gitkeep
 **/data/uploads/
 **/data/server-settings.json
+**/data/gdrive-config.json
+**/data/topology_architectures.json
 **/.wwebjs_auth/
 **/.wwebjs_cache/
 **/core*

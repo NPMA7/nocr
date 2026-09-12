@@ -1,0 +1,7 @@
+{
+  "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+  "client_secret": "YOUR_GOOGLE_CLIENT_SECRET",
+  "refresh_token": "YOUR_GOOGLE_REFRESH_TOKEN",
+  "photos_folder_id": "YOUR_GDRIVE_PHOTOS_FOLDER_ID",
+  "backup_folder_id": "YOUR_GDRIVE_BACKUP_FOLDER_ID"
+}
