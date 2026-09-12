@@ -1266,7 +1266,29 @@ app.prepare().then(() => {
     // Jalankan background sync dan broadcast HSGQ OLT secara berkala
     async function broadcastHsgqOltData() {
         const url = process.env.HSGQ_OLT_URL;
-        if (!url) return;
+        if (!url || process.env.DEMO_MODE === 'true') {
+            const mockOltData = {
+                code: 1,
+                message: 'Success (Demo Mode)',
+                data: [
+                    { identifier: 257, port_id: 1, ont_id: 1, ont_name: 'DESA-SUKAMAKMUR', name: 'DESA-SUKAMAKMUR', ont_sn: 'HSGQ01A12345', sn: 'HSGQ01A12345', rstate: 1, rec_optical_power: -19.45, last_up_time: '2026-09-11 14:20:10', last_down_time: '-', last_down_cause: '-', ont_description: 'Kantor Desa Sukamakmur', wifiname: 'SUKAMAKMUR_FREE', sharekey: 'sukamakmur123', securitymode: 4, channel: 6, bandwidth: 1, isolation: 0, broadcast: 1, enable: 1 },
+                    { identifier: 258, port_id: 1, ont_id: 2, ont_name: 'DESA-BOJONGGEDE', name: 'DESA-BOJONGGEDE', ont_sn: 'HSGQ01A12346', sn: 'HSGQ01A12346', rstate: 1, rec_optical_power: -21.20, last_up_time: '2026-09-11 12:10:05', last_down_time: '-', last_down_cause: '-', ont_description: 'Kantor Desa Bojonggede', wifiname: 'BOJONGGEDE_NET', sharekey: 'bojonggede123', securitymode: 4, channel: 1, bandwidth: 1, isolation: 0, broadcast: 1, enable: 1 },
+                    { identifier: 513, port_id: 2, ont_id: 1, ont_name: 'OPD-DISMINFO', name: 'OPD-DISMINFO', ont_sn: 'HSGQ02B12347', sn: 'HSGQ02B12347', rstate: 1, rec_optical_power: -18.30, last_up_time: '2026-09-10 09:00:00', last_down_time: '-', last_down_cause: '-', ont_description: 'Dinas Komunikasi dan Informatika', wifiname: 'DISKOMINFO_LAN', sharekey: 'diskominfo123', securitymode: 4, channel: 11, bandwidth: 1, isolation: 0, broadcast: 1, enable: 1 },
+                    { identifier: 514, port_id: 2, ont_id: 2, ont_name: 'OPD-BAPPEDA', name: 'OPD-BAPPEDA', ont_sn: 'HSGQ02B12348', sn: 'HSGQ02B12348', rstate: 2, rec_optical_power: -29.80, last_up_time: '2026-09-08 11:30:15', last_down_time: '2026-09-11 08:45:00', last_down_cause: 'dying-gasp', ont_description: 'Badan Perencanaan Pembangunan', wifiname: 'BAPPEDA_GUEST', sharekey: 'bappeda123', securitymode: 4, channel: 6, bandwidth: 1, isolation: 0, broadcast: 1, enable: 1 },
+                    { identifier: 769, port_id: 3, ont_id: 1, ont_name: 'DESA-CIBINONG', name: 'DESA-CIBINONG', ont_sn: 'HSGQ03C12349', sn: 'HSGQ03C12349', rstate: 1, rec_optical_power: -20.15, last_up_time: '2026-09-11 16:50:22', last_down_time: '-', last_down_cause: '-', ont_description: 'Kantor Kelurahan Cibinong', wifiname: 'CIBINONG_WIFI', sharekey: 'cibinong123', securitymode: 4, channel: 6, bandwidth: 1, isolation: 0, broadcast: 1, enable: 1 }
+                ]
+            };
+            global.hsgqDataCache = global.hsgqDataCache || {};
+            global.hsgqDataCache.ontinfo = mockOltData;
+            global.hsgqDataCache.timestamp = Date.now();
+            io.emit('hsgq_olt_update', {
+                endpoint: '/ontinfo_table',
+                type: 'Authenticate List',
+                data: mockOltData,
+                timestamp: new Date().toISOString()
+            });
+            return;
+        }
 
         try {
             let token = await keepHsgqOltSessionAlive();
