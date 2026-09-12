@@ -45,7 +45,7 @@ async function seed() {
         // 2. Seed Access Roles
         console.log('📦 Menyiapkan Access Roles...');
         const allMenus = [
-            'dashboard', 'monitoring-l2tp', 'monitoring-pppoe', 'devices-ruijie',
+            'dashboard', 'monitoring-l2tp', 'monitoring-pppoe', 'monitoring-traffic', 'devices-ruijie',
             'devices-mikrotik', 'devices-hsgq', 'sites', 'topology', 'maps',
             'laporan-harian', 'settings-company', 'settings-mikrotik', 'settings-vpn',
             'settings-health', 'settings-users', 'settings-roles', 'settings-apikeys',
@@ -58,7 +58,7 @@ async function seed() {
         });
 
         const teknisiPermissions = {};
-        ['dashboard', 'monitoring-l2tp', 'monitoring-pppoe', 'devices-ruijie',
+        ['dashboard', 'monitoring-l2tp', 'monitoring-pppoe', 'monitoring-traffic', 'devices-ruijie',
          'devices-mikrotik', 'devices-hsgq', 'sites', 'topology', 'maps', 'laporan-harian']
             .forEach(m => {
                 teknisiPermissions[m] = ['read', 'create', 'update'];

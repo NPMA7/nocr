@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '@/lib/dbClient';
@@ -96,7 +97,7 @@ function getClientIp(req) {
 }
 
 const COOKIE_NAME = 'nocr_token';
-const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
+const COOKIE_MAX_AGE = 24 * 60 * 60; // 24 hours (hardened session policy)
 
 function isSecureRequest(req) {
     if (process.env.COOKIE_SECURE === 'true') return true;
@@ -227,6 +228,12 @@ export async function POST(req, { params }) {
         }
 
         if (path[0] === 'setup') {
+            // Check first if system is already initialized before parsing input
+            const { count } = await db.from('users').select('*', { count: 'exact', head: true });
+            if (count > 0) {
+                return NextResponse.json({ error: 'Sistem sudah dikonfigurasi. Silakan login.' }, { status: 403 });
+            }
+
             const ip = getClientIp(req);
             const rateCheck = checkIpRateLimit(ip);
             if (rateCheck.limited) {
@@ -254,11 +261,6 @@ export async function POST(req, { params }) {
 
             const cleanUsername = username.trim();
 
-            const { count } = await db.from('users').select('*', { count: 'exact', head: true });
-            if (count > 0) {
-                return NextResponse.json({ error: 'Sistem sudah dikonfigurasi. Silakan login.' }, { status: 403 });
-            }
-
             const salt = await bcrypt.genSalt(10);
             const password_hash = await bcrypt.hash(password, salt);
 
@@ -272,7 +274,12 @@ export async function POST(req, { params }) {
             const token = jwt.sign(
                 { id: data[0].id, username: data[0].username, role: data[0].role },
                 JWT_SECRET,
-                { expiresIn: '7d' }
+                {
+                    expiresIn: '24h',
+                    issuer: 'nocrnetwork.com',
+                    audience: 'nocr-users',
+                    jwtid: crypto.randomUUID()
+                }
             );
 
             const response = NextResponse.json({
@@ -359,7 +366,12 @@ export async function POST(req, { params }) {
             const token = jwt.sign(
                 { id: data.id, username: data.username, role: userRole },
                 JWT_SECRET,
-                { expiresIn: '7d' }
+                {
+                    expiresIn: '24h',
+                    issuer: 'nocrnetwork.com',
+                    audience: 'nocr-users',
+                    jwtid: crypto.randomUUID()
+                }
             );
 
             const response = NextResponse.json({

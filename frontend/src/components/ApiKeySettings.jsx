@@ -436,9 +436,9 @@ export default function ApiKeySettings({
         {snippetTab === "curl" && (
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 relative">
             <pre className="text-blue-300 leading-relaxed">{`curl -X GET "${sampleUrl}" \\
-  -H "X-API-Key: nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx"`}</pre>
+  -H "X-API-Key: YOUR_API_KEY"`}</pre>
             <button
-              onClick={() => copyToClipboard(`curl -X GET "${sampleUrl}" -H "X-API-Key: nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx"`, `curl_${endpointPath}`)}
+              onClick={() => copyToClipboard(`curl -X GET "${sampleUrl}" -H "X-API-Key: YOUR_API_KEY"`, `curl_${endpointPath}`)}
               className="cursor-pointer absolute top-2 right-2 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] flex items-center gap-1 border border-slate-800 transition"
             >
               {copiedState[`curl_${endpointPath}`] ? <Check size={11} /> : <Copy size={11} />}
@@ -450,7 +450,7 @@ export default function ApiKeySettings({
         {/* Tab 3: JavaScript */}
         {snippetTab === "javascript" && (
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 relative">
-            <pre className="text-amber-200 leading-relaxed">{`const API_KEY = "nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx";
+            <pre className="text-amber-200 leading-relaxed">{`const API_KEY = "YOUR_API_KEY";
 
 async function fetchData() {
   const response = await fetch("${sampleUrl}", {
@@ -468,7 +468,7 @@ async function fetchData() {
 
 fetchData();`}</pre>
             <button
-              onClick={() => copyToClipboard(`const API_KEY = "nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx";\n\nasync function fetchData() {\n  const response = await fetch("${sampleUrl}", {\n    method: "GET",\n    headers: {\n      "X-API-Key": API_KEY,\n      "Content-Type": "application/json"\n    }\n  });\n  if (!response.ok) throw new Error(\`HTTP error! status: \${response.status}\`);\n  const data = await response.json();\n  return data;\n}\nfetchData();`, `js_${endpointPath}`)}
+              onClick={() => copyToClipboard(`const API_KEY = "YOUR_API_KEY";\n\nasync function fetchData() {\n  const response = await fetch("${sampleUrl}", {\n    method: "GET",\n    headers: {\n      "X-API-Key": API_KEY,\n      "Content-Type": "application/json"\n    }\n  });\n  if (!response.ok) throw new Error(\`HTTP error! status: \${response.status}\`);\n  const data = await response.json();\n  return data;\n}\nfetchData();`, `js_${endpointPath}`)}
               className="cursor-pointer absolute top-2 right-2 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] flex items-center gap-1 border border-slate-800 transition"
             >
               {copiedState[`js_${endpointPath}`] ? <Check size={11} /> : <Copy size={11} />}
@@ -482,7 +482,7 @@ fetchData();`}</pre>
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 relative">
             <pre className="text-emerald-300 leading-relaxed">{`import requests
 
-API_KEY = "nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx"
+API_KEY = "YOUR_API_KEY"
 headers = {
     "X-API-Key": API_KEY,
     "Accept": "application/json"
@@ -495,7 +495,7 @@ if response.status_code == 200:
 else:
     print(f"Error {response.status_code}: {response.text}")`}</pre>
             <button
-              onClick={() => copyToClipboard(`import requests\n\nAPI_KEY = "nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx"\nheaders = {"X-API-Key": API_KEY, "Accept": "application/json"}\nresponse = requests.get("${sampleUrl}", headers=headers)\nprint(response.json())`, `py_${endpointPath}`)}
+              onClick={() => copyToClipboard(`import requests\n\nAPI_KEY = "YOUR_API_KEY"\nheaders = {"X-API-Key": API_KEY, "Accept": "application/json"}\nresponse = requests.get("${sampleUrl}", headers=headers)\nprint(response.json())`, `py_${endpointPath}`)}
               className="cursor-pointer absolute top-2 right-2 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] flex items-center gap-1 border border-slate-800 transition"
             >
               {copiedState[`py_${endpointPath}`] ? <Check size={11} /> : <Copy size={11} />}
@@ -508,7 +508,7 @@ else:
         {snippetTab === "php" && (
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 relative">
             <pre className="text-purple-300 leading-relaxed">{`<?php
-$apiKey = "nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx";
+$apiKey = "YOUR_API_KEY";
 $url = "${sampleUrl}";
 
 $ch = curl_init();
@@ -531,7 +531,7 @@ if ($httpCode === 200) {
 }
 ?>`}</pre>
             <button
-              onClick={() => copyToClipboard(`<?php\n$apiKey = "nocr_live_xxxxxxxxxxxxxxxxxxxxxxxx";\n$url = "${sampleUrl}";\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, $url);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ["X-API-Key: " . $apiKey, "Accept: application/json"]);\n$response = curl_exec($ch);\ncurl_close($ch);\nprint_r(json_decode($response, true));\n?>`, `php_${endpointPath}`)}
+              onClick={() => copyToClipboard(`<?php\n$apiKey = "YOUR_API_KEY";\n$url = "${sampleUrl}";\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, $url);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ["X-API-Key: " . $apiKey, "Accept: application/json"]);\n$response = curl_exec($ch);\ncurl_close($ch);\nprint_r(json_decode($response, true));\n?>`, `php_${endpointPath}`)}
               className="cursor-pointer absolute top-2 right-2 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] flex items-center gap-1 border border-slate-800 transition"
             >
               {copiedState[`php_${endpointPath}`] ? <Check size={11} /> : <Copy size={11} />}
@@ -823,15 +823,15 @@ if ($httpCode === 200) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
             <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
               <span className="text-blue-400 font-bold block">HTTP Header (Rekomendasi):</span>
-              <code>X-API-Key: nocr_live_...</code>
+              <code>X-API-Key: &lt;YOUR_API_KEY&gt;</code>
             </div>
             <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
               <span className="text-cyan-400 font-bold block">Bearer Header:</span>
-              <code>Authorization: Bearer nocr_live_...</code>
+              <code>Authorization: Bearer &lt;YOUR_API_KEY&gt;</code>
             </div>
             <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
               <span className="text-emerald-400 font-bold block">URL Query Parameter:</span>
-              <code>?api_key=nocr_live_...</code>
+              <code>?api_key=&lt;YOUR_API_KEY&gt;</code>
             </div>
           </div>
         </div>

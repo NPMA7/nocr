@@ -16,7 +16,10 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!hasAccess(user, "settings-system", "read") && !hasAccess(user, "laporan-harian", "read")) {
+    const canReadSystem = hasAccess(user, "settings-system", "read");
+    const canReadReports = hasAccess(user, "laporan-harian", "read");
+
+    if (!canReadSystem && !canReadReports) {
       return NextResponse.json({ error: "Akses Ditolak: Membaca Konfigurasi Server" }, { status: 403 });
     }
 
@@ -49,6 +52,13 @@ export async function GET(request) {
         alarm_delay_ms: 1500,
         alarm_sound: "beep"
       };
+    }
+
+    // If caller only has report read access, return only standard_issues to prevent server ops config leak
+    if (!canReadSystem) {
+      return NextResponse.json({
+        standard_issues: settingsData.standard_issues || []
+      });
     }
 
     return NextResponse.json(settingsData);

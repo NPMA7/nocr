@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import { verifyAuth, sendApiError } from '@/lib/auth';
+import { resolveAuth, hasAccess, sendApiError } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -62,7 +62,10 @@ function isTokenError(resData) {
 
 export async function GET(request) {
   try {
-    verifyAuth(request);
+    const user = await resolveAuth(request);
+    if (!hasAccess(user, 'devices-hsgq', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat detail ONT HSGQ' }, { status: 403 });
+    }
     const url = process.env.HSGQ_OLT_URL;
     if (!url) {
       return NextResponse.json({ error: 'HSGQ_OLT_URL is not configured' }, { status: 500 });

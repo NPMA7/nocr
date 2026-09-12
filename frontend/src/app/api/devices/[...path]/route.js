@@ -26,7 +26,21 @@ export async function GET(req, { params }) {
     const url = new URL(req.url);
 
     try {
-        verifyAuth(req);
+        const user = await resolveAuth(req);
+        const canReadDevices = hasAccess(user, 'devices-mikrotik', 'read');
+        const canReadTopology = hasAccess(user, 'topology', 'read');
+        const canReadMaps = hasAccess(user, 'maps', 'read');
+        const canReadDashboard = hasAccess(user, 'dashboard', 'read');
+
+        if (path[0] === 'core' && (path[1] === 'status' || path[1] === 'interfaces')) {
+            if (!canReadDevices && !canReadTopology && !canReadMaps && !canReadDashboard) {
+                throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin melihat data MikroTik'), { status: 403 });
+            }
+        } else {
+            if (!canReadDevices) {
+                throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin melihat data MikroTik'), { status: 403 });
+            }
+        }
 
         if (path[0] === 'core') {
             const device = await getCoreDevice();

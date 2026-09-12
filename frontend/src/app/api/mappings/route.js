@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, resolveAuth, enforceRoleForMutation, sendApiError } from '@/lib/auth';
+import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess, sendApiError } from '@/lib/auth';
 
 let cachedData = null;
 let lastFetchTime = 0;
@@ -8,7 +8,13 @@ const CACHE_TTL = 15000; // 15 seconds
 
 export async function GET(req) {
   try {
-    verifyAuth(req);
+    const user = await resolveAuth(req);
+    const canReadMonitoring = hasAccess(user, 'monitoring-l2tp', 'read') || hasAccess(user, 'monitoring-pppoe', 'read');
+    const canReadGeneral = hasAccess(user, 'topology', 'read') || hasAccess(user, 'maps', 'read') || hasAccess(user, 'dashboard', 'read') || hasAccess(user, 'sites', 'read');
+
+    if (!canReadMonitoring && !canReadGeneral) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat mapping perangkat' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const force = searchParams.get('force') === 'true';
@@ -47,7 +53,7 @@ export async function GET(req) {
         if (sec && sec.last_logged_out) offlineTime = sec.last_logged_out;
       }
       
-      return { ...m, offline_since: offlineTime, remote_address: remoteAddr, connection_type: connType, last_log_history: lastLogHistory, last_online: ap?.last_online || null, clients: ap?.clients ?? null };
+      return { ...m, offline_since: offlineTime, remote_address: canReadMonitoring ? remoteAddr : null, connection_type: connType, last_log_history: lastLogHistory, last_online: ap?.last_online || null, clients: ap?.clients ?? null };
     });
 
     cachedData = enrichedData;

@@ -8,6 +8,13 @@ export { sendApiError } from '@/lib/errorHandler';
 
 export const JWT_SECRET = process.env.JWT_SECRET;
 
+if (process.env.NODE_ENV === 'production') {
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'nocr' || process.env.JWT_SECRET.length < 32) {
+        console.error('FATAL: JWT_SECRET tidak aman atau belum dikonfigurasi (minimal 32 karakter)!');
+        throw new Error('SECURITY CONFIGURATION ERROR: JWT_SECRET must be at least 32 characters long in production');
+    }
+}
+
 export function isValidRole(role) {
     return !!normalizeRole(role);
 }
@@ -109,10 +116,22 @@ export function verifyAuth(req) {
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, {
+            algorithms: ['HS256', 'HS384', 'HS512'],
+            issuer: 'nocrnetwork.com',
+            audience: 'nocr-users'
+        });
         return decoded;
     } catch (err) {
-        throw Object.assign(new Error('Token tidak valid atau sudah kedaluwarsa'), { status: 401 });
+        // Fallback for transition compatibility during secret rotation
+        try {
+            const decodedLegacy = jwt.verify(token, JWT_SECRET, {
+                algorithms: ['HS256', 'HS384', 'HS512']
+            });
+            return decodedLegacy;
+        } catch (e) {
+            throw Object.assign(new Error('Token tidak valid atau sudah kedaluwarsa'), { status: 401 });
+        }
     }
 }
 

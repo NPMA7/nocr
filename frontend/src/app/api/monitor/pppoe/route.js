@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, sendApiError } from '@/lib/auth';
+import { resolveAuth, hasAccess, sendApiError } from '@/lib/auth';
 
 export async function GET(req) {
   try {
-    verifyAuth(req);
+    const user = await resolveAuth(req);
+    if (!hasAccess(user, 'monitoring-pppoe', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat monitoring PPPoE' }, { status: 403 });
+    }
     const device = await getCoreDevice();
 
     // Ambil PPPoE ruijie devices

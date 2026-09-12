@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth } from '@/lib/auth';
+import { resolveAuth, hasAccess } from '@/lib/auth';
 
 const sendError = (err, defaultStatus = 500) => {
     return NextResponse.json(
@@ -11,7 +11,13 @@ const sendError = (err, defaultStatus = 500) => {
 
 export async function GET(req) {
     try {
-        verifyAuth(req);
+        const user = await resolveAuth(req);
+        const canReadDevices = hasAccess(user, 'devices-ruijie', 'read');
+        const canReadDashboard = hasAccess(user, 'dashboard', 'read');
+
+        if (!canReadDevices && !canReadDashboard) {
+            return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat perangkat Ruijie' }, { status: 403 });
+        }
 
         const { data: devices, error } = await db
             .from('ruijie_devices')
@@ -20,7 +26,14 @@ export async function GET(req) {
 
         if (error) throw error;
 
-        return NextResponse.json(devices || []);
+        // If user only has dashboard access, redact sensitive serial numbers
+        const sanitized = (devices || []).map(d => canReadDevices ? d : {
+            ...d,
+            sn: undefined,
+            serial_num: undefined
+        });
+
+        return NextResponse.json(sanitized);
     } catch (err) {
         return sendError(err);
     }

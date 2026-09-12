@@ -254,7 +254,7 @@ export default function Sidebar({
                       <span>Monitor OPD</span>
                     </Link>
                   )}
-                  {hasAccess(currentUser, "monitoring-l2tp", "read") && (
+                  {hasAccess(currentUser, "monitoring-traffic", "read") && (
                     <Link
                       href="/monitoring/traffic"
                       onClick={onNavigate}
@@ -305,7 +305,7 @@ export default function Sidebar({
                     <span>Monitor OPD</span>
                   </Link>
                 )}
-                {hasAccess(currentUser, "monitoring-l2tp", "read") && (
+                {hasAccess(currentUser, "monitoring-traffic", "read") && (
                   <Link
                     href="/monitoring/traffic"
                     onClick={onNavigate}

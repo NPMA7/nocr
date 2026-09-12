@@ -19,7 +19,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!hasAccess(user, 'sites', 'read')) {
+    if (!hasAccess(user, 'monitoring-traffic', 'read') && !hasAccess(user, 'sites', 'read') && !hasAccess(user, 'monitoring-l2tp', 'read')) {
       return NextResponse.json({ error: 'Akses Ditolak' }, { status: 403 });
     }
 

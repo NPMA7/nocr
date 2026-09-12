@@ -1,0 +1,6 @@
+Contact: mailto:security@nocrnetwork.com
+Contact: https://nocrnetwork.com/
+Expires: 2027-09-12T00:00:00.000Z
+Preferred-Languages: id, en
+Canonical: https://nocrnetwork.com/.well-known/security.txt
+Policy: https://nocrnetwork.com/

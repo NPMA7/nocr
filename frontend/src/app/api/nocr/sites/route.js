@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { resolveAuth, sendApiError } from '@/lib/auth';
+import { resolveAuth, hasAccess, sendApiError } from '@/lib/auth';
 
 export async function GET(req) {
   try {
     const user = await resolveAuth(req);
+    if (!hasAccess(user, 'sites', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin melihat data sites' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const statusParam = (searchParams.get('status') || 'all').toLowerCase(); // all, online, offline

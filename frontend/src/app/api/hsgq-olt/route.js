@@ -68,7 +68,10 @@ function isTokenError(resData) {
 
 export async function GET(request) {
   try {
-    verifyAuth(request);
+    const user = await resolveAuth(request);
+    if (!hasAccess(user, 'devices-hsgq', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat perangkat HSGQ OLT' }, { status: 403 });
+    }
     const url = process.env.HSGQ_OLT_URL;
     if (!url || process.env.DEMO_MODE === 'true') {
       const mockOltData = {

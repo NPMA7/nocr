@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, sendApiError } from '@/lib/auth';
+import { resolveAuth, hasAccess, sendApiError } from '@/lib/auth';
 
 export async function GET(req) {
   try {
-    verifyAuth(req);
+    const user = await resolveAuth(req);
+    if (!hasAccess(user, 'monitoring-l2tp', 'read') && !hasAccess(user, 'devices-mikrotik', 'read')) {
+      return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat monitoring MikroTik' }, { status: 403 });
+    }
     const [secretsResult, activeResult] = await Promise.all([
       db.from('pppoe_secrets').select('name, service, disabled'),
       db.from('pppoe_active').select('name, address, uptime')

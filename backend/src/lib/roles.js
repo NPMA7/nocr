@@ -12,6 +12,7 @@ export const MENUS = {
   // Monitoring
   'monitoring-l2tp': 'Monitor L2TP',
   'monitoring-pppoe': 'Monitor PPPOE',
+  'monitoring-traffic': 'Traffic Semua Site',
   
   // Perangkat Jaringan
   'devices-ruijie': 'Ruijie AP',
@@ -87,6 +88,11 @@ export function hasAccess(user, menuKey, action) {
       return true;
     }
 
+    // Support monitoring-traffic fallback to monitoring-l2tp if not explicitly set
+    if (key === 'monitoring-traffic' && !perms['monitoring-traffic'] && Array.isArray(perms['monitoring-l2tp']) && perms['monitoring-l2tp'].includes(action)) {
+      return true;
+    }
+
     // 2. Graceful fallback for legacy generic roles (e.g. 'settings', 'devices', 'monitoring')
     if (menuKey.startsWith('settings-') && Array.isArray(perms['settings']) && perms['settings'].includes(action)) {
       return true;
@@ -147,6 +153,7 @@ export const MENU_ROUTE_HIERARCHY = [
   { menuKey: 'sites', path: '/sites/desa' },
   { menuKey: 'monitoring-l2tp', path: '/monitoring/desa' },
   { menuKey: 'monitoring-pppoe', path: '/monitoring/opd' },
+  { menuKey: 'monitoring-traffic', path: '/monitoring/traffic' },
   { menuKey: 'devices-ruijie', path: '/device/ruijie' },
   { menuKey: 'devices-mikrotik', path: '/device/mikrotik' },
   { menuKey: 'devices-hsgq', path: '/device/hsgq-olt' },

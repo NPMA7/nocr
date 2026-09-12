@@ -15,6 +15,14 @@ if (fs.existsSync(targetEnvPath)) {
     require('dotenv').config();
 }
 
+if (process.env.NODE_ENV === 'production') {
+    const sec = process.env.JWT_SECRET;
+    if (!sec || sec === 'nocr' || sec.length < 32) {
+        console.error('FATAL: JWT_SECRET tidak aman atau belum dikonfigurasi (minimal 32 karakter)!');
+        process.exit(1);
+    }
+}
+
 const express = require('express');
 const next = require('next');
 const http = require('http');
@@ -195,8 +203,8 @@ const initApp = async () => {
         keyGenerator: getRateLimitKey,
         skip: (req) => {
             const url = req.originalUrl || req.url || req.path || '';
-            // Skip rate limiting on auth checks, health & static assets
-            return url.includes('/auth/') || url.includes('/system-health') || url.includes('/ping');
+            // Skip rate limiting on auth checks & health
+            return url.includes('/auth/') || url.includes('/system-health');
         },
         message: { error: 'Terlalu banyak request. Silakan coba lagi nanti.' },
         handler: (req, res, next, options) => {
@@ -257,7 +265,18 @@ const initApp = async () => {
                 return next(err);
             }
 
-            const decoded = jwt.verify(token, jwtSecret);
+            let decoded;
+            try {
+                decoded = jwt.verify(token, jwtSecret, {
+                    algorithms: ['HS256', 'HS384', 'HS512'],
+                    issuer: 'nocrnetwork.com',
+                    audience: 'nocr-users'
+                });
+            } catch (e) {
+                decoded = jwt.verify(token, jwtSecret, {
+                    algorithms: ['HS256', 'HS384', 'HS512']
+                });
+            }
             const userInfo = await getUserInfo(decoded.id);
             socket.user = {
                 id: decoded.id,
@@ -1721,7 +1740,18 @@ const initApp = async () => {
             return null;
         }
         try {
-            const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+            let decoded;
+            try {
+                decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET, {
+                    algorithms: ['HS256', 'HS384', 'HS512'],
+                    issuer: 'nocrnetwork.com',
+                    audience: 'nocr-users'
+                });
+            } catch (e) {
+                decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET, {
+                    algorithms: ['HS256', 'HS384', 'HS512']
+                });
+            }
             return decoded;
         } catch (e) {
             res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa' });

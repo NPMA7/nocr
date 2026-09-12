@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/dbClient';
-import { verifyAuth, resolveAuth, enforceTopologyMutation } from '@/lib/auth';
+import { verifyAuth, resolveAuth, enforceTopologyMutation, hasAccess } from '@/lib/auth';
 import {
     mergeTopologySave,
     normalizeNode,
@@ -86,7 +86,10 @@ const TOPOLOGY_CACHE_TTL = 15000; // 15 seconds
 
 export async function GET(req) {
     try {
-        verifyAuth(req);
+        const user = await resolveAuth(req);
+        if (!hasAccess(user, 'topology', 'read') && !hasAccess(user, 'maps', 'read')) {
+            return NextResponse.json({ error: 'Akses Ditolak: Anda tidak memiliki izin melihat topologi' }, { status: 403 });
+        }
 
         const now = Date.now();
         if (cachedTopology && now - lastTopologyFetchTime < TOPOLOGY_CACHE_TTL) {

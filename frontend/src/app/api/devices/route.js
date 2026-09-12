@@ -4,7 +4,14 @@ import { verifyAuth, resolveAuth, enforceRoleForMutation, hasAccess, sendApiErro
 
 export async function GET(req) {
     try {
-        verifyAuth(req);
+        const user = await resolveAuth(req);
+        const canReadDevices = hasAccess(user, 'devices-mikrotik', 'read');
+        const canReadTopology = hasAccess(user, 'topology', 'read');
+        const canReadMaps = hasAccess(user, 'maps', 'read');
+
+        if (!canReadDevices && !canReadTopology && !canReadMaps) {
+            throw Object.assign(new Error('Akses Ditolak: Anda tidak memiliki izin untuk melihat data perangkat'), { status: 403 });
+        }
         
         const { data: devicesData, error: devicesError } = await db
             .from('devices')
@@ -30,7 +37,14 @@ export async function GET(req) {
             last_seen: null
         }));
 
-        return NextResponse.json([...(devicesData || []), ...mappedNodes]);
+        // If user does not have devices-mikrotik permission, redact internal IP addresses and ports
+        const sanitizedDevices = (devicesData || []).map(d => ({
+            ...d,
+            ip_address: canReadDevices ? d.ip_address : '-',
+            port: canReadDevices ? d.port : null
+        }));
+
+        return NextResponse.json([...sanitizedDevices, ...mappedNodes]);
     } catch (err) {
         return sendApiError(err);
     }
