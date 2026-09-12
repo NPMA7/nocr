@@ -1,15 +1,7 @@
 FROM node:20-bookworm-slim
 
-# Install dependency sistem untuk Chromium (WhatsApp-Web.js / Puppeteer), modul native (node-pty), dan Prisma
+# Install dependency sistem untuk modul native (node-pty), Prisma, dan monitoring ping
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libgbm1 \
-    libasound2 \
-    fonts-liberation \
     ca-certificates \
     openssl \
     python3 \
@@ -20,10 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
-# Konfigurasi environment Puppeteer agar menggunakan Chromium sistem bawaan container
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
-    PORT=9371
+ENV PORT=9371
 
 WORKDIR /app
 
@@ -42,8 +31,8 @@ COPY . .
 # 4. Build Next.js dashboard di frontend
 RUN cd frontend && npm run build
 
-# Buat folder runtime data dan WhatsApp auth
-RUN mkdir -p backend/data backend/.wwebjs_auth
+# Buat folder runtime data
+RUN mkdir -p backend/data
 
 ENV NODE_ENV=production
 

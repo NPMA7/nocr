@@ -36,7 +36,6 @@ services:
       - "127.0.0.1:9371:9371"
     volumes:
       - ./backend/data:/app/backend/data
-      - ./backend/.wwebjs_auth:/app/backend/.wwebjs_auth
     networks:
       - nocr-net
 

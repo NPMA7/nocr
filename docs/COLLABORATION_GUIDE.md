@@ -53,33 +53,49 @@ nocr/
 
 ---
 
-## 3. Workflow Pengembangan Lokal
+## 3. Workflow Pengembangan di PC Lokal Developer
 
-### A. Instalasi Dependensi
-```bash
-# Di root direktori (Install kedua folder):
-npm run install:all
+Panduan ini wajib diikuti agar pengujian dan penambahan fitur baru **100% aman tanpa mengganggu database dan perangkat jaringan produksi**.
 
-# Atau install mandiri:
-npm run install:backend   # di folder backend/
-npm run install:frontend  # di folder frontend/
-```
+### A. Setup Awal di PC Developer (Hanya Sekali)
+1. **Clone repositori dari GitHub:**
+   ```bash
+   git clone https://github.com/NPMA7/nocr.git
+   cd nocr
+   ```
+2. **Install dependensi (Backend & Frontend):**
+   ```bash
+   npm run install:all
+   ```
+3. **Setup Database Lokal & Seeder Data Dummy:**
+   Pastikan PostgreSQL lokal di PC Anda sudah berjalan (misal via Docker lokal atau service PostgreSQL). Buat database lokal bernama `nocr_dev`, lalu jalankan:
+   ```bash
+   # Di folder root atau backend:
+   cd backend
+   npx prisma db push
+   npm run seed:dummy
+   ```
+   > 💡 **Data Dummy yang Dibuat Otomatis:**
+   > - Akun Login: `admin` / `password123` (Admin), `teknisi` / `password123`, `visitor` / `password123`.
+   > - Perangkat Dummy: Core Router MikroTik, OLT HSGQ, Switch Ruijie.
+   > - 5 Titik Site & Koordinat Peta Nyata (Desa & OPD) untuk visualisasi peta.
+   > - Log aktivitas awal.
 
-### B. Menjalankan Backend Saja (Bagi Backend Dev)
-```bash
-npm run dev:backend
-# atau:
-cd backend && npm run dev
-```
-Backend akan berjalan pada `http://localhost:8888` dengan `DEMO_MODE=true` (aman tanpa mengganggu perangkat jaringan fisik).
+### B. Menjalankan Aplikasi di PC Developer
+Buka 2 terminal di root proyek:
+* **Terminal 1 (Backend - Port 8888):**
+  ```bash
+  npm run dev:backend
+  ```
+  *(Berjalan dengan `DEMO_MODE=true`, aman tanpa menyentuh router fisik lapangan)*
+* **Terminal 2 (Frontend - Port 3000):**
+  ```bash
+  npm run dev:frontend
+  ```
+  *(Otomatis mem-proxy API & WebSocket ke backend port 8888)*
 
-### C. Menjalankan Frontend Saja (Bagi Frontend Dev)
-```bash
-npm run dev:frontend
-# atau:
-cd frontend && npm run dev
-```
-Frontend akan berjalan pada `http://localhost:3000` dan otomatis terhubung ke backend dev (`http://localhost:8888`) atau bisa diarahkan ke backend staging/prod via `frontend/.env.development`.
+Buka browser di: **`http://localhost:3000`** dan login dengan user `admin` / `password123`.
+Developer bebas koding, testing fitur, dan mengubah data tanpa khawatir data server produksi tersentuh sedikit pun!
 
 ---
 

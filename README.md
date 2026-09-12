@@ -48,20 +48,14 @@ Aplikasi NOCR memiliki modul-modul fungsional yang dapat diakses melalui antarmu
 |---|---|
 | **`/topology`** | Visualisasi diagram arsitektur jaringan berbasis `vis-network` (Core Router, Distribution Switch, OLT, Tower, Access Point). Dilengkapi fitur **Co-Editing Presence Lock** berbasis WebSocket untuk mencegah bentrokan edit saat beberapa administrator bekerja bersamaan, simulasi failover jalur, dan kalkulasi propagasi status link (Fiber Optic / Wireless). |
 
-### 5. 💬 WhatsApp Gateway & Customer Service
-| Halaman / Rute | Deskripsi Fungsionalitas |
-|---|---|
-| **`/live-chat`** | Pusat layanan pesan pelanggan omnichannel terintegrasi langsung dengan WhatsApp bot (`whatsapp-web.js`), mendukung kirim-terima pesan teks dan unduh media/foto. |
-| **`/settings/whatsapp`** | Halaman kontrol bot WhatsApp: scan QR code session login, status koneksi bot, dan pengaturan auto-reply di luar jam kerja. |
-
-### 6. 📑 Pelaporan SLA & Rekapitulasi Gangguan
+### 5. 📑 Pelaporan SLA & Rekapitulasi Gangguan
 | Halaman / Rute | Deskripsi Fungsionalitas |
 |---|---|
 | **`/report`** & **`/report/dashboard`** | Pusat laporan persentase SLA Uptime per site, durasi total downtime, dan ekspor laporan resmi dalam format **PDF** dan **Excel (.xlsx)**. |
 | **`/report/dashboard/sites`** | Analisis performa ketersediaan jaringan per kategori site (Desa vs OPD). |
 | **`/daily-reports`** & **`/daily-reports/dashboard`** | Pencatatan rekapitulasi tiket gangguan harian (*Issue Description* & *Corrective Action* teknisi) dengan fitur **Bulk Upsert** dari spreadsheet. |
 
-### 7. ⚙️ Pengaturan Sistem & Granular RBAC
+### 6. ⚙️ Pengaturan Sistem & Granular RBAC
 | Halaman / Rute | Deskripsi Fungsionalitas |
 |---|---|
 | **`/settings/server`** / **`/settings/system`** | Konfigurasi interval ICMP ping background, timeout flapping log, dan sinkronisasi hardware. |
@@ -120,30 +114,34 @@ Codebase proyek telah ditata ke dalam struktur folder terpisah:
 
 ---
 
-## 🚀 Panduan Memulai & Workflow Tim
+## 🚀 Panduan Memulai (PC Developer)
 
-### 1. Instalasi Dependensi
-Dependensi dikelola secara mandiri pada masing-masing folder:
-```bash
-# Install seluruh dependensi backend dan frontend:
-npm run install:all
+Ikuti alur ini agar pengembangan di PC lokal **100% aman dan terisolasi dari database/hardware produksi**:
 
-# Atau install mandiri per folder:
-npm run install:backend   # di folder backend/
-npm run install:frontend  # di folder frontend/
-```
+1. **Clone Repositori:**
+   ```bash
+   git clone https://github.com/NPMA7/nocr.git
+   cd nocr
+   ```
+2. **Install Dependensi:**
+   ```bash
+   npm run install:all
+   ```
+3. **Setup Database Lokal & Dummy Data:**
+   Pastikan PostgreSQL lokal di PC Anda sudah aktif, lalu jalankan:
+   ```bash
+   cd backend
+   npx prisma db push
+   npm run seed:dummy
+   ```
+   *(Menghasilkan akun admin `admin` / `password123`, data dummy router, 5 site peta desa/OPD, dan log)*
 
-### 2. Menjalankan di Lingkungan Pengembangan (Local Dev)
-```bash
-# Khusus Backend Developer (berjalan di http://localhost:8888):
-npm run dev:backend
+4. **Jalankan Aplikasi di PC:**
+   Buka 2 terminal terpisah:
+   * **Terminal 1 (Backend Dev):** `npm run dev:backend` *(Port 8888, DEMO_MODE aktif)*
+   * **Terminal 2 (Frontend Dev):** `npm run dev:frontend` *(Port 3000, otomatis proxy ke 8888)*
 
-# Khusus Frontend Developer (berjalan di http://localhost:3000):
-npm run dev:frontend
-
-# Melakukan kompilasi build Frontend:
-npm run build:frontend
-```
+Buka browser di **`http://localhost:3000`**. Developer bebas mengubah kode dan data tanpa khawatir mengganggu server produksi!
 
 ---
 

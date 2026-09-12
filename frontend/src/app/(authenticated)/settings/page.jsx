@@ -33,7 +33,6 @@ import {
 } from "lucide-react";
 import { hasAccess, getStoredUser, getRoleLabel } from "@/lib/roles";
 import RoleSettings from "@/components/RoleSettings";
-import WhatsAppGateway from "@/components/WhatsAppGateway";
 import CompanyProfileSettings from "@/components/CompanyProfileSettings";
 import ApiKeySettings from "@/components/ApiKeySettings";
 
@@ -2220,16 +2219,6 @@ function Settings({ activeTab: activeTabProp }) {
           {activeTab === "health" && (
             <SystemHealth isAdmin={perms.healthUpdate} />
           )}
-
-          {/* WhatsApp Gateway temporarily hidden
-          {activeTab === "whatsapp" && perms.waRead && (
-            <WhatsAppGateway
-              canCreate={perms.waCreate}
-              canUpdate={perms.waUpdate}
-              canDelete={perms.waDelete}
-            />
-          )}
-          */}
 
           {(activeTab === "system" || activeTab === "server" || activeTab === "mikrotik-gateway" || activeTab === "vpn" || activeTab === "core") && (perms.systemRead || perms.mikrotikRead) && (
             <SystemConfigSettings

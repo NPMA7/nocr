@@ -193,20 +193,6 @@ export default function Sidebar({
             </Link>
           </>
         )}
-        {/* WhatsApp / Live Chat temporarily hidden from UI
-        {hasAccess(currentUser, "chat", "read") && (
-          <Link
-            href="/live-chat"
-            onClick={onNavigate}
-            scroll={false}
-            title={isCollapsed ? "Live Chat Omni" : undefined}
-            className={getLinkClass("/live-chat")}
-          >
-            <MessageCircle size={18} className="flex-shrink-0" />
-            {!isCollapsed && <span>Live Chat Omni</span>}
-          </Link>
-        )}
-        */}
         {["monitoring-l2tp", "monitoring-pppoe"].some((k) =>
           hasAccess(currentUser, k, "read"),
         ) && (
@@ -724,23 +710,6 @@ export default function Sidebar({
                       <span>Kesehatan Sistem & DB</span>
                     </Link>
                   )}
-                  {/* WhatsApp Gateway temporarily hidden from UI
-                  {hasAccess(currentUser, "settings-wa", "read") && (
-                    <Link
-                      href="/settings/whatsapp"
-                      onClick={onNavigate}
-                      scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "whatsapp"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
-                    >
-                      <MessageCircle size={14} className="flex-shrink-0" />
-                      <span>WhatsApp Gateway</span>
-                    </Link>
-                  )}
-                  */}
                   {hasAccess(currentUser, "settings-users", "read") && (
                     <Link
                       href="/settings/users"
@@ -866,23 +835,6 @@ export default function Sidebar({
                     <span>Kesehatan Sistem & DB</span>
                   </Link>
                 )}
-                {/* WhatsApp Gateway temporarily hidden from UI
-                {hasAccess(currentUser, "settings-wa", "read") && (
-                  <Link
-                    href="/settings/whatsapp"
-                    onClick={onNavigate}
-                    scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "whatsapp"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <MessageCircle size={14} className="flex-shrink-0" />
-                    <span>WhatsApp Gateway</span>
-                  </Link>
-                )}
-                */}
                 {hasAccess(currentUser, "settings-users", "read") && (
                   <Link
                     href="/settings/users"

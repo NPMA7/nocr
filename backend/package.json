@@ -8,7 +8,8 @@
     "dev": "NODE_ENV=development nodemon server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "seed:dummy": "node scripts/seed-dummy.js"
   },
   "dependencies": {
     "@prisma/client": "^7.8.0",
@@ -25,11 +26,9 @@
     "pg": "^8.21.0",
     "pg-format": "^1.0.4",
     "ping": "^1.0.0",
-    "qrcode": "^1.5.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "socket.io": "^4.7.4",
-    "whatsapp-web.js": "^1.34.7"
+    "socket.io": "^4.7.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.0",

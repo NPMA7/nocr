@@ -26,7 +26,6 @@ const ping = require('ping');
 const rateLimit = require('express-rate-limit');
 const db = require('./src/lib/dbClient');
 const mikrotik = require('./src/lib/mikrotik');
-const whatsapp = require('./src/lib/whatsapp');
 const { getStatusLogInfo, filterFlappingLogs, getFlappingThresholdMs } = require('./src/lib/logUtils');
 
 function getSystemSettings() {
@@ -1697,124 +1696,6 @@ app.prepare().then(() => {
         }
     }
 
-    // Rute Express WhatsApp Gateway
-    server.use('/api/whatsapp', express.json());
-
-    server.get('/api/whatsapp/status', (req, res) => {
-        const user = authenticateExpressRequest(req, res);
-        if (!user) return;
-        res.json(whatsapp.getStatus());
-    });
-
-    server.post('/api/whatsapp/action', async (req, res) => {
-        const user = authenticateExpressRequest(req, res);
-        if (!user) return;
-
-        try {
-            const userInfo = await getUserInfo(user.id);
-            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'settings-wa', 'update', 'system.settings');
-            if (!isAuthorized) {
-                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
-            }
-        } catch (e) {
-            return res.status(500).json({ error: 'Gagal memverifikasi hak akses' });
-        }
-
-        const { action, settings } = req.body;
-        try {
-            let result;
-            if (action === 'start') result = await whatsapp.start();
-            else if (action === 'stop') result = await whatsapp.stop();
-            else if (action === 'logout') result = await whatsapp.logout();
-            else if (action === 'settings') {
-                whatsapp.saveSettings(settings);
-                result = { success: true, message: 'Pengaturan disimpan' };
-            } else {
-                return res.status(400).json({ error: 'Invalid action' });
-            }
-            res.json(result);
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    server.get('/api/whatsapp/chat', async (req, res) => {
-        const user = authenticateExpressRequest(req, res);
-        if (!user) return;
-
-        try {
-            const userInfo = await getUserInfo(user.id);
-            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'read', 'chat.live');
-            if (!isAuthorized) {
-                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
-            }
-            const chats = await whatsapp.getChats();
-            res.json(chats);
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    server.get('/api/whatsapp/chat/:id', async (req, res) => {
-        const user = authenticateExpressRequest(req, res);
-        if (!user) return;
-
-        try {
-            const userInfo = await getUserInfo(user.id);
-            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'read', 'chat.live');
-            if (!isAuthorized) {
-                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
-            }
-            const messages = await whatsapp.getChatMessages(req.params.id);
-            res.json(messages);
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    server.post('/api/whatsapp/chat/send', async (req, res) => {
-        const user = authenticateExpressRequest(req, res);
-        if (!user) return;
-
-        try {
-            const userInfo = await getUserInfo(user.id);
-            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'create', 'chat.live');
-            if (!isAuthorized) {
-                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
-            }
-        } catch (e) {
-            return res.status(500).json({ error: 'Gagal memverifikasi hak akses' });
-        }
-
-        try {
-            const result = await whatsapp.sendMessage(req.body.chatId, req.body.text);
-            res.json({ success: true, message: result });
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    server.get('/api/whatsapp/chat/media/:msgId', async (req, res) => {
-        const user = authenticateExpressRequest(req, res);
-        if (!user) return;
-
-        try {
-            const userInfo = await getUserInfo(user.id);
-            const isAuthorized = userInfo.role === 'admin' || hasServerAccess(userInfo.permissions, 'chat', 'read', 'chat.live');
-            if (!isAuthorized) {
-                return res.status(403).json({ error: 'Akses ditolak: Tidak ada izin' });
-            }
-
-            const media = await whatsapp.getMessageMedia(req.params.msgId);
-            if (!media) return res.status(404).json({ error: 'Media tidak ditemukan atau kedaluwarsa' });
-            res.json({ success: true, media: media.data, mimetype: media.mimetype, filename: media.filename });
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    // whatsapp.start(); // Dinonaktifkan sementara agar tidak memakan RAM/Chromium saat tidak digunakan.
-
     server.post('/api/mappings/sync-notify', (req, res) => {
         const user = authenticateExpressRequest(req, res);
         if (!user) return;
@@ -2279,12 +2160,6 @@ app.prepare().then(() => {
 
     const handleShutdown = async (signal) => {
         console.info(`Received ${signal}. Cleaning up...`);
-        try {
-            await whatsapp.stop();
-            console.info('WhatsApp client stopped successfully.');
-        } catch (e) {
-            console.error('Error stopping WhatsApp client during shutdown:', e);
-        }
         process.exit(0);
     };
 
