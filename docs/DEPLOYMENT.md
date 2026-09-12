@@ -45,7 +45,7 @@ docker compose logs -f nocr
 
 Gunakan konfigurasi pada `nginx_site.conf` untuk mengarahkan request domain publik:
 - Request `/socket.io/` dan request aplikasi diteruskan ke upstream `127.0.0.1:9371`.
-- Request folder upload `/uploads/` dilayani langsung via alias disk `/var/www/nocr/backend/data/uploads/`.
+- Request folder upload `/uploads/` dilayani langsung via alias disk `/backend/data/uploads/`.
 
 Salin dan aktifkan di Nginx:
 ```bash

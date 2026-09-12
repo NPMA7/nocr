@@ -55,8 +55,8 @@ Koneksi Socket.IO menggunakan path default `/socket.io/` dengan token JWT pada `
 | `ping_update` | `{ targets: Array<{ id, ip, status, latency, last_seen }> }` | Dikirim setiap interval ping selesai |
 | `site_status_change` | `{ site_id, name, old_status, new_status, timestamp }` | Dikirim seketika saat ada site DOWN atau UP |
 | `traffic_tick` | `{ timestamp, rx_bps, tx_bps, total_mbps }` | Data bandwidth real-time |
-| `whatsapp_qr` | `{ qr: string }` | QR code untuk scan login WhatsApp bot |
-| `whatsapp_ready` | `{ ready: boolean, phone: string }` | Notifikasi status WhatsApp terhubung |
+| `hsgq_olt_update` | `{ endpoint, type, data, timestamp }` | Update real-time status port PON & ONT OLT |
+| `ruijie_update` | `Array<RuijieDevice>` | Broadcast update berkala Access Point Ruijie |
 | `system_health` | `{ cpu, memory, uptime, disk }` | Status utilisasi resource server |
 
 ### Event yang Dikirim Client (Client -> Server)

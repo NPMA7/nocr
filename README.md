@@ -76,7 +76,7 @@ Aplikasi NOCR memiliki modul-modul fungsional yang dapat diakses melalui antarmu
 Codebase proyek telah ditata ke dalam struktur folder terpisah:
 
 ```text
-/var/www/nocr/
+/nocr/
 ├── backend/                     # Khusus Tim Backend (Node.js, Express, Socket.IO, Prisma)
 │   ├── server.js                # Server utama Express, WebSocket hub, & background pollers
 │   ├── src/lib/                 # Library inti (MikroTik, DB client, WhatsApp, Ping engine, OLT)

@@ -120,9 +120,9 @@ Developer bebas koding, testing fitur, dan mengubah data tanpa khawatir data ser
 ## 5. Kontrak API & Komunikasi Perubahan
 
 1. **API First / Kontrak Terlebih Dahulu:**
-   - Sebelum membuat fitur baru yang melibatkan data baru, Backend dan Frontend sepakati bentuk payload request dan response terlebih dahulu di [docs/API_REFERENCE.md](file:///var/www/nocr/docs/API_REFERENCE.md).
+   - Sebelum membuat fitur baru yang melibatkan data baru, Backend dan Frontend sepakati bentuk payload request dan response terlebih dahulu di [docs/API_REFERENCE.md](/docs/API_REFERENCE.md).
 2. **Real-time Event Contract:**
-   - Daftar event WebSocket Socket.IO (misal: `ping_update`, `traffic_update`, `device_status_change`) harus terdokumentasi di [docs/API_REFERENCE.md](file:///var/www/nocr/docs/API_REFERENCE.md).
+   - Daftar event WebSocket Socket.IO (misal: `ping_update`, `traffic_update`, `device_status_change`) harus terdokumentasi di [docs/API_REFERENCE.md](/docs/API_REFERENCE.md).
 3. **Breaking Change Notification:**
    - Jika Backend mengubah struktur data yang sudah ada, wajib memberitahu Frontend dev sebelum melakukan merge ke branch bersama.
 
