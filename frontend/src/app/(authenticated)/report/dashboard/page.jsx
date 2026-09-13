@@ -13,6 +13,9 @@ import {
   Layers,
   FileText,
   Check,
+  Copy,
+  ShieldAlert,
+  ArrowUpRight,
   Download,
   Image as ImageIcon,
 } from "lucide-react";
@@ -260,6 +263,21 @@ export default function DailyReportDashboard() {
   }
 
   const executiveSummaryText = `Berdasarkan data laporan untuk ${getPeriodLabelText()} (${categorySummaryTag}), tercatat sebanyak ${stats.totalReports} total kasus gangguan dengan rata-rata ${Math.ceil(Number(stats.averagePerDay || 0))} kasus per hari.${weeklyText} Tren tertinggi harian terjadi pada ${maxTrendPoint.label !== "-" ? `periode/tanggal ${maxTrendPoint.label}` : "periode terpilih"} dengan jumlah ${maxTrendPoint.count} laporan. Lokasi dengan frekuensi gangguan terbanyak tercatat di ${topSitesText}, di mana indikasi kendala utama didominasi oleh ${topIssuesText}.`;
+
+  const totalApAll = stats.totalApAll ?? (apDesaCount + apOpdCount);
+  const displaySitesCount =
+    type === "L2TP" ? apDesaCount : type === "PPPOE" ? apOpdCount : totalApAll;
+  const displaySitesLabel =
+    type === "L2TP" ? "Cakupan Desa" : type === "PPPOE" ? "Cakupan OPD" : "Cakupan Sites";
+  const displaySitesSubtitle =
+    type === "L2TP"
+      ? "Total Wilayah Desa"
+      : type === "PPPOE"
+      ? "Total Wilayah OPD"
+      : `${apDesaCount} Desa • ${apOpdCount} OPD`;
+
+  const currentlyOffline = stats.currentlyOffline ?? 0;
+  const totalIssueCount = topIssues.reduce((acc, curr) => acc + curr.count, 0) || 1;
 
   const handleCopySummary = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -542,7 +560,7 @@ export default function DailyReportDashboard() {
           const y = sBottom - barH;
 
           // Bar Rect
-          doc.setFillColor(139, 92, 246); // Purple-500
+          doc.setFillColor(14, 165, 233); // Sky-500
           doc.rect(x, y, colW, Math.max(barH, 1), "F");
 
           // Value Top
@@ -744,152 +762,117 @@ export default function DailyReportDashboard() {
   };
 
   return (
-    <div ref={dashboardRef} className="h-full overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-1 pb-10">
+    <div ref={dashboardRef} className="flex-1 flex flex-col gap-4 min-w-0 pb-10 overflow-x-hidden">
       {/* Header & Main Controls */}
-      <div className="flex flex-col gap-4 bg-slate-900/40 p-5 border border-slate-800/80 rounded-2xl">
-        {/* Top Row: Title & Actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl backdrop-blur-sm">
+        {/* Top Row: Title & Action Buttons */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-              <Activity className="text-blue-500 dark:text-blue-400 animate-pulse" size={24} />
-              Dashboard Laporan Harian
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                <Activity size={18} className="animate-pulse" />
+              </div>
+              <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                Dashboard Laporan Harian
+                <span className="text-[11px] px-2 py-0.5 rounded font-mono font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  {type === "ALL" ? "Semua (Desa & OPD)" : type === "PPPOE" ? "OPD" : "Desa"}
+                </span>
+              </h1>
+            </div>
             <p className="text-xs text-slate-400 mt-1">
-              Statistik penanganan gangguan dan log laporan periodik
+              Statistik penanganan gangguan, tren insiden, distribusi mingguan, dan analitik kendala jaringan
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-end md:self-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => fetchSummary(true)}
-              disabled={isExporting}
-              className="cursor-pointer flex items-center gap-2 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-300 rounded-lg text-xs transition disabled:opacity-50"
-            >
-              <RefreshCw size={13} className={isExporting ? "animate-spin" : ""} />
-              Segarkan
-            </button>
-            <button
+              type="button"
               onClick={() => setShowPdfModal(true)}
               disabled={isExporting}
-              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold shadow transition disabled:opacity-50"
+              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold shadow-sm border border-rose-500/40 transition disabled:opacity-50"
               title="Unduh Rekap Laporan Dashboard sebagai PDF"
             >
               <Download size={13} />
               <span>{isExporting ? "Memproses PDF..." : "Download PDF"}</span>
             </button>
             <Link
-              href="/daily-reports"
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-lg shadow-blue-500/20 transition"
+              href="/report"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold shadow-sm border border-sky-500/40 transition"
             >
-              Kelola Laporan <ChevronRight size={13} />
+              <span>Kelola Laporan</span>
+              <ChevronRight size={13} />
             </Link>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-slate-800/60 w-full" />
+        {/* Filter Bar: Segmented Category & Time Range Switcher */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Category Switcher */}
+            <div className="inline-flex p-1 rounded-lg bg-slate-950/80 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setType("ALL")}
+                className={`cursor-pointer px-3.5 py-1 rounded-md text-xs font-semibold transition ${
+                  type === "ALL"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Semua
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("L2TP")}
+                className={`cursor-pointer px-3.5 py-1 rounded-md text-xs font-semibold transition ${
+                  type === "L2TP"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Desa
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("PPPOE")}
+                className={`cursor-pointer px-3.5 py-1 rounded-md text-xs font-semibold transition ${
+                  type === "PPPOE"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                OPD
+              </button>
+            </div>
 
-        {/* Bottom Row: Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Connection Type Toggle */}
-          <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
-            <button
-              onClick={() => setType("ALL")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                type === "ALL"
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Semua
-            </button>
-            <button
-              onClick={() => setType("L2TP")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                type === "L2TP"
-                  ? "tag-desa shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Desa
-            </button>
-            <button
-              onClick={() => setType("PPPOE")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                type === "PPPOE"
-                  ? "tag-opd shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              OPD
-            </button>
-          </div>
-
-          {/* Time Range Selector */}
-          <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
-            <button
-              onClick={() => setRange("7d")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "7d"
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              7 Hari
-            </button>
-            <button
-              onClick={() => setRange("1m")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "1m"
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              1 Bulan
-            </button>
-            <button
-              onClick={() => setRange("1y")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "1y"
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              1 Tahun
-            </button>
-            <button
-              onClick={() => setRange("all")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "all"
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Semua Waktu
-            </button>
-            <button
-              onClick={() => setRange("custom")}
-              className={`cursor-pointer px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                range === "custom"
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Custom
-            </button>
+            {/* Time Range Dropdown */}
+            <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1">
+              <Calendar size={13} className="text-sky-400 flex-shrink-0" />
+              <select
+                value={range}
+                onChange={(e) => setRange(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-slate-200 outline-none cursor-pointer pr-1"
+              >
+                <option value="7d" className="bg-slate-900 text-slate-200">7 Hari Terakhir</option>
+                <option value="1m" className="bg-slate-900 text-slate-200">1 Bulan Terakhir</option>
+                <option value="1y" className="bg-slate-900 text-slate-200">1 Tahun Terakhir</option>
+                <option value="all" className="bg-slate-900 text-slate-200">Semua Waktu</option>
+                <option value="custom" className="bg-slate-900 text-slate-200">Custom (Pilih Periode)</option>
+              </select>
+            </div>
           </div>
 
           {/* Custom Date Range selector */}
           {range === "custom" && (
-            <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-900/60 border border-slate-700/50 px-3 py-1.5 rounded-lg">
-              <span className="text-slate-300 font-semibold">Dari:</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-lg animate-in fade-in duration-150">
+              <span className="text-slate-400 font-medium">Dari:</span>
               <select
                 value={startMonth}
                 onChange={(e) => setStartMonth(parseInt(e.target.value, 10))}
-                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-900 text-slate-200 border border-slate-800 rounded px-2 py-1 outline-none cursor-pointer text-xs"
               >
                 {months.map((m) => (
-                  <option key={m.value} value={m.value} className="bg-slate-900 text-slate-100">
+                  <option key={m.value} value={m.value} className="bg-slate-900 text-slate-200">
                     {m.label.slice(0, 3)}
                   </option>
                 ))}
@@ -897,23 +880,23 @@ export default function DailyReportDashboard() {
               <select
                 value={startYear}
                 onChange={(e) => setStartYear(parseInt(e.target.value, 10))}
-                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-900 text-slate-200 border border-slate-800 rounded px-2 py-1 outline-none cursor-pointer text-xs"
               >
                 {years.map((y) => (
-                  <option key={y} value={y} className="bg-slate-900 text-slate-100">
+                  <option key={y} value={y} className="bg-slate-900 text-slate-200">
                     {y}
                   </option>
                 ))}
               </select>
 
-              <span className="text-slate-300 font-semibold ml-2">Sampai:</span>
+              <span className="text-slate-400 font-medium ml-1">Sampai:</span>
               <select
                 value={endMonth}
                 onChange={(e) => setEndMonth(parseInt(e.target.value, 10))}
-                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-900 text-slate-200 border border-slate-800 rounded px-2 py-1 outline-none cursor-pointer text-xs"
               >
                 {months.map((m) => (
-                  <option key={m.value} value={m.value} className="bg-slate-900 text-slate-100">
+                  <option key={m.value} value={m.value} className="bg-slate-900 text-slate-200">
                     {m.label.slice(0, 3)}
                   </option>
                 ))}
@@ -921,10 +904,10 @@ export default function DailyReportDashboard() {
               <select
                 value={endYear}
                 onChange={(e) => setEndYear(parseInt(e.target.value, 10))}
-                className="bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer text-xs"
+                className="bg-slate-900 text-slate-200 border border-slate-800 rounded px-2 py-1 outline-none cursor-pointer text-xs"
               >
                 {years.map((y) => (
-                  <option key={y} value={y} className="bg-slate-900 text-slate-100">
+                  <option key={y} value={y} className="bg-slate-900 text-slate-200">
                     {y}
                   </option>
                 ))}
@@ -933,169 +916,180 @@ export default function DailyReportDashboard() {
           )}
         </div>
       </div>
-      {/* Dynamic Executive Audit Summary Card */}
-      <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 shadow-lg flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
-              <FileText size={18} />
+
+      {/* 4-Card Executive KPI Bento Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Card 1: Total Insiden Laporan */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+              Total Insiden
+            </span>
+            <div className="p-1.5 bg-sky-500/10 text-sky-400 rounded-md">
+              <ClipboardList size={14} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-slate-100 font-mono">
+                {stats.totalReports}
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">kasus</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              Periode {getPeriodLabelText()}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Rata-rata Harian & Peak */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Rata-rata Harian
+            </span>
+            <div className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-md">
+              <TrendingUp size={14} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-emerald-400 font-mono">
+                {Math.ceil(Number(stats.averagePerDay || 0))}
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">kasus / hari</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {maxTrendPoint.count > 0 ? `Puncak: ${maxTrendPoint.count} kasus (${maxTrendPoint.label})` : "Tidak ada lonjakan"}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: Gangguan Belum Selesai (Progress) */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              Gangguan Aktif
+            </span>
+            <div className="p-1.5 bg-rose-500/10 text-rose-400 rounded-md">
+              <AlertTriangle size={14} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-rose-400 font-mono">
+                {currentlyOffline}
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">perangkat</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {currentlyOffline > 0
+                ? type === "PPPOE"
+                  ? "Status Progress (OPD)"
+                  : type === "L2TP"
+                  ? "Status Progress (Desa)"
+                  : "Masih dalam status Progress"
+                : "Semua insiden telah diselesaikan"}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 4: Cakupan Monitoring Sites */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+              {displaySitesLabel}
+            </span>
+            <div className="p-1.5 bg-sky-500/10 text-sky-400 rounded-md">
+              <Layers size={14} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-sky-400 font-mono">
+                {displaySitesCount}
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">sites</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {displaySitesSubtitle}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Dynamic Executive Briefing Card */}
+      <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl flex flex-col gap-3 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+              <FileText size={15} />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                Kesimpulan Laporan 
-                <span className="text-[10px] font-medium bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                Kesimpulan Laporan
+                <span className="text-[10px] font-mono font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full">
                   {getPeriodLabelText()}
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                Ringkasan naratif otomatis berdasarkan data &amp; periode terpilih
+                Ringkasan naratif otomatis berdasarkan data insiden periodik
               </p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleCopySummary}
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-slate-100 rounded-lg text-xs font-medium transition"
+          >
+            {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+            <span>{copied ? "Tersalin!" : "Salin Ringkasan"}</span>
+          </button>
         </div>
 
-        <blockquote className="text-sm text-slate-300 dark:text-slate-200 leading-relaxed italic bg-slate-900/50 p-4 rounded-lg border border-slate-700/60 border-l-4 border-l-blue-500">
+        <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-3.5 sm:p-4 text-xs text-slate-300 leading-relaxed font-sans">
           "{executiveSummaryText}"
-        </blockquote>
-      </div>
-
-      
-      {/* Grid Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Total Reports */}
-        <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between hover:border-slate-600 transition group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">
-              Total Laporan
-            </span>
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg group-hover:scale-105 transition">
-              <ClipboardList size={18} />
-            </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold text-blue-400">
-              {stats.totalReports}
-            </span>
-            <div className="text-[10px] text-slate-500 mt-1">
-              Jumlah kasus gangguan dalam periode terpilih
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Average Per Day */}
-        <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between hover:border-slate-600 transition group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">
-              Rata-rata Laporan (Harian)
-            </span>
-            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:scale-105 transition">
-              <BarChart3 size={18} />
-            </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold text-emerald-400">
-              {Math.ceil(Number(stats.averagePerDay || 0))}
-            </span>
-            <div className="text-[10px] text-slate-500 mt-1">
-              Kasus laporan gangguan per hari
-            </div>
-          </div>
         </div>
       </div>
-
-      
 
       {/* Trend Chart - Full Width - SVG Line Chart */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+      <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl backdrop-blur-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <TrendingUp size={16} className="text-blue-400" />
-            Tren Total Laporan Gangguan
-          </h2>
+          <div className="flex items-center gap-2">
+            <TrendingUp size={16} className="text-sky-400" />
+            <h2 className="text-sm font-bold text-slate-100">
+              Tren Total Laporan Gangguan
+            </h2>
+          </div>
 
-          {/* Legenda Chart */}
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            <div className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 px-2.5 py-1 rounded-lg">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-blue-500/30"></span>
-              <span className="text-blue-500 dark:text-blue-400 font-semibold text-[11px]">Total Laporan Gangguan</span>
+          {/* Legenda & Status Chart */}
+          <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/30 px-2.5 py-1 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+              <span className="text-sky-400 font-semibold text-[11px]">Total Laporan</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-slate-800/40 border border-slate-700/60 px-2.5 py-1 rounded-lg text-slate-300 dark:text-slate-200 text-[11px]">
-              <span>Kategori:</span>
-              <span className="text-slate-100 font-bold">
+            <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300 text-[11px]">
+              <span className="text-slate-500">Kategori:</span>
+              <span className="text-slate-200 font-semibold">
                 {type === "ALL" ? "Semua (Desa & OPD)" : type === "L2TP" ? "Desa" : "OPD"}
               </span>
             </div>
+            {maxTrendPoint.count > 0 && (
+              <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300 text-[11px] font-mono">
+                <span className="text-slate-500">Puncak:</span>
+                <span className="text-amber-400 font-bold">{maxTrendPoint.count} kasus</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* SVG Line Chart */}
+        {/* SVG Line Chart: Dedicated Desktop and Mobile Renderers */}
         {(() => {
-          const chartW = 800;
-          const chartH = 180;
-          const padL = 40;
-          const padR = 20;
-          const padT = 20;
-          const padB = 40;
-          const innerW = chartW - padL - padR;
-          const innerH = chartH - padT - padB;
-          const maxVal = Math.max(...trend.map((t) => t.count), 1);
-          const stepCount = trend.length > 1 ? trend.length - 1 : 1;
-          const slotWidth = innerW / stepCount;
-
-          const points = trend.map((item, i) => {
-            const x = padL + (i / stepCount) * innerW;
-            const countRatio = maxVal > 0 ? item.count / maxVal : 0;
-            const y = padT + innerH - countRatio * innerH;
-            return {
-              x: isNaN(x) ? padL : x,
-              y: isNaN(y) ? padT + innerH : y,
-              ...item,
-            };
-          });
-
-          const linePath = points
-            .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
-            .join(" ");
-          const areaPath =
-            linePath +
-            ` L${points[points.length - 1]?.x || padL},${padT + innerH} L${padL},${padT + innerH} Z`;
-
-          // Y-axis grid lines (5 lines)
-          const yGridLines = Array.from({ length: 5 }, (_, i) => {
-            const val = Math.round((maxVal / 4) * i);
-            const y = padT + innerH - (val / maxVal) * innerH;
-            return { val, y };
-          });
-
-          // Sampling parameters for clean presentation regardless of data length
-          const totalPoints = points.length;
-          // Maximum number of X-axis labels to display (max ~8-10 evenly spaced labels)
-          const maxLabels = totalPoints > 31 ? 8 : 10;
-          const labelStep = Math.max(1, Math.ceil(totalPoints / maxLabels));
-
-          // Maximum number of top numeric count indicators to display above line dots
-          const maxCountLabels = totalPoints > 31 ? 10 : 14;
-          const countStep = Math.max(1, Math.ceil(totalPoints / maxCountLabels));
-
-          // Format function for date label
-          const formatDateLabel = (item) => {
-            const isMonthly = range === "1y" || (range === "all" && totalPoints > 365);
-            if (isMonthly) return item.label;
-            if (!item.label) return "";
-
-            // Format YYYY-MM-DD to "DD MMM" (e.g. 15 Jan)
-            const parts = item.label.split("-");
-            if (parts.length === 3) {
-              const mIndex = parseInt(parts[1], 10) - 1;
-              const monthNames = [
-                "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-                "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
-              ];
-              return `${parseInt(parts[2], 10)} ${monthNames[mIndex] || parts[1]}`;
-            }
-            return item.label;
-          };
-
           const formatHoverDate = (dateStr) => {
             if (!dateStr) return "-";
             const parts = dateStr.split("-");
@@ -1110,400 +1104,525 @@ export default function DailyReportDashboard() {
             return dateStr;
           };
 
-          const isTopPeak = hoveredPoint ? hoveredPoint.y < 60 : false;
-          const isRightEdge = hoveredPoint ? hoveredPoint.x > chartW - 100 : false;
-          const isLeftEdge = hoveredPoint ? hoveredPoint.x < 100 : false;
+          const formatDateLabel = (item, isMobile) => {
+            const totalPoints = trend.length;
+            const isMonthly = range === "1y" || (range === "all" && totalPoints > 365);
+            if (isMonthly) return item.label;
+            if (!item.label) return "";
 
-          const transformClass = `${isRightEdge ? "-translate-x-full" : isLeftEdge ? "translate-x-0" : "-translate-x-1/2"} ${isTopPeak ? "translate-y-3 mt-1" : "-translate-y-full mb-3"}`;
+            const parts = item.label.split("-");
+            if (parts.length === 3) {
+              const mIndex = parseInt(parts[1], 10) - 1;
+              const monthNames = [
+                "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+                "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+              ];
+              return `${parseInt(parts[2], 10)} ${monthNames[mIndex] || parts[1]}`;
+            }
+            return item.label;
+          };
 
-          return (
-            <div className="relative overflow-visible group">
-              {/* Floating Custom Interactive Hover Tooltip */}
-              {hoveredPoint && (
-                <div
-                  className={`absolute pointer-events-none z-30 transition-all duration-150 transform ${transformClass}`}
-                  style={{
-                    left: `${(hoveredPoint.x / chartW) * 100}%`,
-                    top: `${(hoveredPoint.y / chartH) * 100}%`,
-                  }}
-                >
-                  <div className="bg-slate-950/95 border border-blue-500/50 rounded-xl px-3 py-2 text-xs shadow-2xl flex flex-col gap-1 min-w-[140px] backdrop-blur-md">
-                    <div className="text-[11px] font-semibold text-slate-300 border-b border-slate-800 pb-1">
-                      📅 {formatHoverDate(hoveredPoint.label)}
-                    </div>
-                    <div className="flex items-center gap-2 pt-0.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-500/20 animate-pulse"></span>
-                      <span className="font-bold text-blue-400 text-xs">
-                        {hoveredPoint.count} Laporan
-                      </span>
+          const renderChart = (isMobile) => {
+            const chartW = isMobile ? 420 : 960;
+            const chartH = isMobile ? 180 : 250;
+            const padL = isMobile ? 34 : 52;
+            const padR = isMobile ? 16 : 24;
+            const padT = isMobile ? 24 : 30;
+            const padB = isMobile ? 32 : 38;
+            const innerW = chartW - padL - padR;
+            const innerH = chartH - padT - padB;
+            const pointPad = isMobile ? 12 : 26;
+            const pointsW = innerW - pointPad * 2;
+            const maxVal = Math.max(...trend.map((t) => t.count), 1);
+            const stepCount = trend.length > 1 ? trend.length - 1 : 1;
+            const slotWidth = pointsW / stepCount;
+
+            const points = trend.map((item, i) => {
+              const x = padL + pointPad + (i / stepCount) * pointsW;
+              const countRatio = maxVal > 0 ? item.count / maxVal : 0;
+              const y = padT + innerH - countRatio * innerH;
+              return {
+                x: isNaN(x) ? padL + pointPad : x,
+                y: isNaN(y) ? padT + innerH : y,
+                ...item,
+              };
+            });
+
+            const linePath = points
+              .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+              .join(" ");
+            const areaPath =
+              linePath +
+              ` L${points[points.length - 1]?.x || (padL + innerW - pointPad)},${padT + innerH} L${points[0]?.x || (padL + pointPad)},${padT + innerH} Z`;
+
+            // Y-axis grid lines (5 lines)
+            const yGridLines = Array.from({ length: 5 }, (_, i) => {
+              const val = Math.round((maxVal / 4) * i);
+              const y = padT + innerH - (val / maxVal) * innerH;
+              return { val, y };
+            });
+
+            const totalPoints = points.length;
+            const maxLabels = isMobile
+              ? (totalPoints > 14 ? 5 : 7)
+              : (totalPoints > 31 ? 8 : 12);
+            const labelStep = Math.max(1, Math.ceil(totalPoints / maxLabels));
+
+            const isTopPeak = hoveredPoint ? hoveredPoint.y < (isMobile ? 75 : 95) : false;
+            const isRightEdge = hoveredPoint ? hoveredPoint.x > chartW - (isMobile ? 110 : 150) : false;
+            const isLeftEdge = hoveredPoint ? hoveredPoint.x < (isMobile ? 90 : 150) : false;
+            const transformClass = `${
+              isRightEdge ? "-translate-x-full" : isLeftEdge ? "translate-x-0" : "-translate-x-1/2"
+            } ${isTopPeak ? "translate-y-4 mt-2" : "-translate-y-full mb-3"}`;
+
+            return (
+              <div
+                key={isMobile ? "mobile-chart" : "desktop-chart"}
+                className={`w-full relative overflow-visible group ${
+                  isMobile ? "block sm:hidden" : "hidden sm:block"
+                }`}
+              >
+                {/* Floating Interactive Hover Tooltip */}
+                {hoveredPoint && (
+                  <div
+                    className={`absolute pointer-events-none z-30 transition-all duration-150 transform ${transformClass}`}
+                    style={{
+                      left: `${(hoveredPoint.x / chartW) * 100}%`,
+                      top: `${(hoveredPoint.y / chartH) * 100}%`,
+                    }}
+                  >
+                    <div className="bg-slate-950/95 border border-sky-500/50 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs shadow-2xl flex flex-col gap-0.5 sm:gap-1 min-w-[120px] sm:min-w-[140px] backdrop-blur-md">
+                      <div className="text-[10px] sm:text-[11px] font-semibold text-slate-300 border-b border-slate-800 pb-0.5 sm:pb-1">
+                        {formatHoverDate(hoveredPoint.label)}
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 pt-0.5">
+                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                        <span className="font-bold text-sky-400 text-[11px] sm:text-xs font-mono">
+                          {hoveredPoint.count} Laporan
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              <svg
-                viewBox={`0 0 ${chartW} ${chartH}`}
-                className="w-full h-auto min-h-[180px]"
-                preserveAspectRatio="xMidYMid meet"
-                onMouseLeave={() => setHoveredPoint(null)}
-              >
-                {/* Y-axis grid lines */}
-                {yGridLines.map((line, i) => (
-                  <g key={i}>
-                    <line
-                      x1={padL}
-                      y1={line.y}
-                      x2={chartW - padR}
-                      y2={line.y}
-                      stroke="#1e293b"
-                      strokeWidth="1"
-                    />
-                    <text
-                      x={padL - 6}
-                      y={line.y + 3}
-                      textAnchor="end"
-                      fill="#64748b"
-                      fontSize="9"
-                    >
-                      {line.val}
-                    </text>
-                  </g>
-                ))}
-
-                {/* Vertical Dashed Hover Guide Line */}
-                {hoveredPoint && (
-                  <line
-                    x1={hoveredPoint.x}
-                    y1={padT}
-                    x2={hoveredPoint.x}
-                    y2={padT + innerH}
-                    stroke="#3b82f6"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 4"
-                    opacity="0.8"
-                  />
                 )}
 
-                {/* Gradient fill under line */}
-                <defs>
-                  <linearGradient
-                    id="trendGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                    <stop
-                      offset="100%"
-                      stopColor="#3b82f6"
-                      stopOpacity="0.02"
-                    />
-                  </linearGradient>
-                </defs>
-                {points.length > 1 && (
-                  <path d={areaPath} fill="url(#trendGradient)" />
-                )}
-
-                {/* Line */}
-                {points.length > 1 && (
-                  <path
-                    d={linePath}
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                )}
-
-                {/* Data points and invisible hover hit areas */}
-                {points.map((p, i) => {
-                  const isHovered = hoveredPoint?.label === p.label;
-                  const isSampledDot = totalPoints <= 40 || i % labelStep === 0 || i === totalPoints - 1 || p.count > 0;
-                  // Only show static count text numbers directly on line if range is <= 14 days
-                  const showCount = totalPoints <= 14;
-
-                  return (
+                <svg
+                  viewBox={`0 0 ${chartW} ${chartH}`}
+                  className={`w-full ${isMobile ? "h-auto" : "h-[250px] lg:h-[270px]"} block`}
+                  preserveAspectRatio={isMobile ? "xMidYMid meet" : "none"}
+                  onMouseLeave={() => setHoveredPoint(null)}
+                >
+                  {/* Y-axis grid lines */}
+                  {yGridLines.map((line, i) => (
                     <g key={i}>
-                      {/* Transparent wide hover area */}
-                      <rect
-                        x={p.x - slotWidth / 2}
-                        y={padT}
-                        width={Math.max(slotWidth, 8)}
-                        height={innerH}
-                        fill="transparent"
-                        className="cursor-pointer"
-                        onMouseEnter={() => setHoveredPoint(p)}
+                      <line
+                        x1={padL}
+                        y1={line.y}
+                        x2={chartW - padR}
+                        y2={line.y}
+                        stroke="#1e293b"
+                        strokeWidth="1"
                       />
-
-                      {/* Dot circle */}
-                      {(isSampledDot || isHovered) && (
-                        <circle
-                          cx={p.x}
-                          cy={p.y}
-                          r={isHovered ? 6 : totalPoints > 50 ? 2.5 : 4}
-                          fill={isHovered ? "#3b82f6" : "#1e293b"}
-                          stroke="#3b82f6"
-                          strokeWidth={isHovered ? 3 : totalPoints > 50 ? 1.5 : 2}
-                          className="transition-all duration-150 pointer-events-none"
-                        />
-                      )}
-
-                      {/* Count label on top of dot (only for small ranges <= 14 days) */}
-                      {showCount && !isHovered && (
-                        <text
-                          x={p.x}
-                          y={p.y - 8}
-                          textAnchor="middle"
-                          fill="#93c5fd"
-                          fontSize="8"
-                          fontWeight="600"
-                          className="pointer-events-none"
-                        >
-                          {p.count}
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
-
-                {/* X-axis sampled labels */}
-                {points.map((p, i) => {
-                  const showLabel = i % labelStep === 0 || i === totalPoints - 1;
-                  if (!showLabel) return null;
-
-                  const formattedLabel = formatDateLabel(p);
-                  const showYear = range === "custom" && startYear !== endYear;
-                  const subLabel = showYear && p.label ? p.label.slice(0, 4) : "";
-
-                  return (
-                    <g key={`label-${i}`}>
                       <text
-                        x={p.x}
-                        y={padT + innerH + 16}
-                        textAnchor="middle"
-                        fill="#94a3b8"
-                        fontSize="9"
-                        fontWeight="500"
+                        x={padL - 8}
+                        y={line.y + 3.5}
+                        textAnchor="end"
+                        fill="#64748b"
+                        fontSize={isMobile ? "9" : "10"}
+                        fontFamily="monospace"
                       >
-                        {formattedLabel}
+                        {line.val}
                       </text>
-                      {subLabel && (
+                    </g>
+                  ))}
+
+                  {/* Vertical Dashed Hover Guide Line */}
+                  {hoveredPoint && (
+                    <line
+                      x1={hoveredPoint.x}
+                      y1={padT}
+                      x2={hoveredPoint.x}
+                      y2={padT + innerH}
+                      stroke="#0284c7"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 4"
+                      opacity="0.8"
+                    />
+                  )}
+
+                  {/* Gradient fill under line */}
+                  <defs>
+                    <linearGradient
+                      id={isMobile ? "trendGradientMobile" : "trendGradientDesktop"}
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor="#0284c7" stopOpacity="0.32" />
+                      <stop offset="100%" stopColor="#0284c7" stopOpacity="0.01" />
+                    </linearGradient>
+                  </defs>
+                  {points.length > 1 && (
+                    <path
+                      d={areaPath}
+                      fill={`url(#${isMobile ? "trendGradientMobile" : "trendGradientDesktop"})`}
+                    />
+                  )}
+
+                  {/* Outer Glow for Line */}
+                  {points.length > 1 && (
+                    <path
+                      d={linePath}
+                      fill="none"
+                      stroke="#38bdf8"
+                      strokeWidth={isMobile ? "3.5" : "5"}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.15"
+                    />
+                  )}
+
+                  {/* Main Line */}
+                  {points.length > 1 && (
+                    <path
+                      d={linePath}
+                      fill="none"
+                      stroke="#0284c7"
+                      strokeWidth={isMobile ? "2.5" : "3"}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+
+                  {/* Data points and hover hit areas */}
+                  {points.map((p, i) => {
+                    const isHovered = hoveredPoint?.label === p.label;
+                    const isSampledDot =
+                      totalPoints <= 40 ||
+                      i % labelStep === 0 ||
+                      i === totalPoints - 1 ||
+                      p.count > 0;
+                    const showCount = totalPoints <= 14;
+
+                    return (
+                      <g key={i}>
+                        <rect
+                          x={p.x - Math.max(slotWidth, 20) / 2}
+                          y={padT}
+                          width={Math.max(slotWidth, 20)}
+                          height={innerH}
+                          fill="transparent"
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoveredPoint(p)}
+                          onTouchStart={() => setHoveredPoint(p)}
+                          onClick={() => setHoveredPoint(p)}
+                        />
+
+                        {(isSampledDot || isHovered) && (
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r={
+                              isHovered
+                                ? isMobile ? 5.5 : 7
+                                : totalPoints > 50
+                                ? 2.5
+                                : isMobile ? 4 : 5
+                            }
+                            fill={isHovered ? "#38bdf8" : "#0f172a"}
+                            stroke="#0284c7"
+                            strokeWidth={isHovered ? 2.5 : 2}
+                            className="transition-all duration-150 pointer-events-none"
+                          />
+                        )}
+
+                        {showCount && !isHovered && (
+                          <text
+                            x={p.x}
+                            y={p.y - 8}
+                            textAnchor="middle"
+                            fill="#38bdf8"
+                            fontSize={isMobile ? "10" : "11"}
+                            fontWeight="700"
+                            fontFamily="monospace"
+                            className="pointer-events-none"
+                          >
+                            {p.count}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  {/* X-axis labels */}
+                  {points.map((p, i) => {
+                    const showLabel = i % labelStep === 0 || i === totalPoints - 1;
+                    if (!showLabel) return null;
+
+                    const formattedLabel = formatDateLabel(p, isMobile);
+                    return (
+                      <g key={`label-${i}`}>
                         <text
                           x={p.x}
-                          y={padT + innerH + 26}
+                          y={padT + innerH + (isMobile ? 15 : 18)}
                           textAnchor="middle"
-                          fill="#64748b"
-                          fontSize="7"
+                          fill="#94a3b8"
+                          fontSize={isMobile ? "9" : "10"}
+                          fontWeight="500"
                         >
-                          {subLabel}
+                          {formattedLabel}
                         </text>
-                      )}
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            );
+          };
+
+          return (
+            <>
+              {renderChart(false)}
+              {renderChart(true)}
+            </>
           );
         })()}
       </div>
 
-      {/* Main Grid Content: Weekly Averages & Top Devices */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart 1: Rata-rata Mingguan */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-              <Calendar size={16} className="text-emerald-400" />
-              Rata-rata Laporan Mingguan
-            </h2>
-            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg text-[11px] font-medium text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span>Rata-rata Laporan</span>
+      {/* Middle Grid: Weekly Distribution & Top Ranked Sites */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left Column: Weekly Distribution */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-xl backdrop-blur-sm">
+          <div>
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+              <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Calendar size={16} className="text-emerald-400" />
+                Rata-rata Laporan Mingguan
+              </h2>
+              <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg text-[11px] font-medium text-emerald-300 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Rata-rata Laporan / Hari</span>
+              </div>
             </div>
-          </div>
-          <div className="flex items-end justify-between h-44 px-8 border-b border-slate-800/85 pt-4">
-            {weeklyAverage.map((week, idx) => {
-              const roundedAverage = Math.ceil(week.average);
-              const percentHeight = Math.round(
-                (week.average / maxWeeklyAverage) * 100,
-              );
-              return (
-                <div
-                  key={idx}
-                  className="relative h-full flex flex-col items-center justify-end flex-1 group"
-                >
-                  {/* Count Label */}
-                  <span className="text-[9px] font-bold text-emerald-300 mb-1">
-                    {roundedAverage}
-                  </span>
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full mb-6 bg-slate-950/90 border border-slate-800 text-[10px] text-slate-300 rounded px-2.5 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 whitespace-nowrap">
-                    Rata-rata: {roundedAverage} Laporan
-                  </div>
 
-                  {/* Bar Container */}
-                  <div
-                    className="w-10 bg-slate-800/60 rounded-t-sm relative overflow-hidden cursor-pointer"
-                    style={{ height: `${Math.max(percentHeight, 4)}%` }}
-                  >
-                    <div className="absolute inset-0 bg-emerald-500/80 hover:bg-emerald-400 transition"></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-between px-8 text-center text-[10px] text-slate-500 font-medium h-16 pt-2">
-            {weeklyAverage.map((w, idx) => (
-              <div key={idx} className="flex-1">
-                <span>{w.week}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Chart 2: Top Laporan Perangkat/Sites Terbanyak - Column Chart */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-              <Layers size={16} className="text-purple-400" />
-              Top 10 Laporan Sites Terbanyak
-            </h2>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded-lg text-[11px] font-medium text-purple-300">
-                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                <span>Jumlah Laporan</span>
-              </div>
-              <Link
-                href="/report/dashboard/sites"
-                className="flex items-center gap-1 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:scale-105 active:scale-95"
-              >
-                <span>Detail Laporan</span>
-                <ChevronRight size={13} />
-              </Link>
-            </div>
-          </div>
-          {topDevices.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-xs">
-              Tidak ada data laporan gangguan
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {/* Column Chart */}
-              <div className="flex items-end justify-between h-44 px-2 border-b border-slate-800/80 gap-2 pt-4">
-                {topDevices.map((device, idx) => {
-                  const percentHeight = Math.round(
-                    (device.count / maxDeviceCount) * 100,
-                  );
-                  return (
-                    <div
-                      key={idx}
-                      className="relative h-full flex flex-col items-center justify-end flex-1 group"
-                    >
-                      {/* Count Label */}
-                      <span className="text-[9px] font-bold text-purple-300 mb-1">
-                        {device.count}
-                      </span>
-                      {/* Bar */}
-                      <div
-                        className="w-full max-w-[32px] bg-slate-800 rounded-t-sm relative overflow-hidden cursor-pointer transition-all duration-500"
-                        style={{ height: `${Math.max(percentHeight, 5)}%` }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-t from-purple-600/80 to-purple-400/90 hover:from-purple-500 hover:to-purple-300 transition"></div>
-                      </div>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-6 bg-slate-950/95 border border-slate-700 text-[10px] text-slate-200 rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 whitespace-nowrap shadow-xl">
-                        {device.name}:{" "}
-                        <span className="font-bold text-purple-300">
-                          {device.count}
-                        </span>{" "}
-                        Laporan
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Labels - Rotated */}
-              <div className="flex justify-between px-2 gap-2 h-16">
-                {topDevices.map((device, idx) => (
+            {/* Weekly Bars */}
+            <div className="flex items-end justify-between h-44 px-4 sm:px-8 border-b border-slate-800 pt-4">
+              {weeklyAverage.map((week, idx) => {
+                const roundedAverage = Math.ceil(week.average);
+                const percentHeight = Math.round(
+                  (week.average / maxWeeklyAverage) * 100,
+                );
+                return (
                   <div
                     key={idx}
-                    className="flex-1 flex justify-center min-w-0 relative"
+                    className="relative h-full flex flex-col items-center justify-end flex-1 group"
                   >
-                    <span
-                      className="text-[9px] text-slate-400 font-medium absolute top-1 whitespace-nowrap origin-top-left"
-                      style={{
-                        transform: "rotate(-40deg)",
-                        transformOrigin: "top center",
-                      }}
-                      title={device.name}
-                    >
-                      {device.name}
+                    <span className="text-[10px] font-bold text-emerald-400 font-mono mb-1.5">
+                      {roundedAverage}
                     </span>
+                    <div className="absolute bottom-full mb-6 bg-slate-950 border border-slate-800 text-[10px] text-slate-200 rounded px-2.5 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 whitespace-nowrap shadow-xl">
+                      {week.week}: <span className="font-bold text-emerald-400 font-mono">{roundedAverage}</span> kasus / hari
+                    </div>
+                    <div
+                      className="w-8 sm:w-10 bg-slate-950 rounded-t-md relative overflow-hidden cursor-pointer border-t border-x border-emerald-500/40"
+                      style={{ height: `${Math.max(percentHeight, 4)}%` }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-emerald-600/60 to-emerald-400/90 group-hover:from-emerald-500 group-hover:to-emerald-300 transition"></div>
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-between px-4 sm:px-8 text-center text-[11px] text-slate-400 font-medium pt-3">
+              {weeklyAverage.map((w, idx) => (
+                <div key={idx} className="flex-1">
+                  <span>{w.week}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {maxWeeklyPoint.average > 0 && (
+            <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>Konsentrasi Tertinggi:</span>
+              <span className="font-bold text-emerald-400 font-mono">
+                {maxWeeklyPoint.week} ({Math.ceil(maxWeeklyPoint.average)} kasus/hari)
+              </span>
             </div>
           )}
         </div>
+
+        {/* Right Column: Top 10 Sites Terbanyak (Diagram Batang Kolom) */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-xl backdrop-blur-sm">
+          <div>
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+              <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Layers size={16} className="text-sky-400" />
+                Top 10 Lokasi Gangguan Terbanyak
+              </h2>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 rounded-lg text-[11px] font-medium text-sky-300 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                  <span>Jumlah Laporan</span>
+                </div>
+                <Link
+                  href="/report/dashboard/sites"
+                  className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition"
+                >
+                  <span>Detail Sites</span>
+                  <ChevronRight size={13} />
+                </Link>
+              </div>
+            </div>
+
+            {topDevices.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                Tidak ada data insiden untuk periode ini
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {/* Column Chart */}
+                <div className="flex items-end justify-between h-44 px-2 sm:px-4 border-b border-slate-800 gap-1.5 pt-4">
+                  {topDevices.slice(0, 10).map((device, idx) => {
+                    const percentHeight = Math.round(
+                      (device.count / maxDeviceCount) * 100,
+                    );
+                    return (
+                      <div
+                        key={idx}
+                        className="relative h-full flex flex-col items-center justify-end flex-1 group"
+                      >
+                        {/* Count Label */}
+                        <span className="text-[10px] font-bold text-sky-400 font-mono mb-1.5">
+                          {device.count}
+                        </span>
+                        {/* Bar */}
+                        <div
+                          className="w-full max-w-[28px] sm:max-w-[34px] bg-slate-950 rounded-t-md relative overflow-hidden cursor-pointer border-t border-x border-sky-500/40 transition-all duration-500"
+                          style={{ height: `${Math.max(percentHeight, 5)}%` }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-t from-sky-600/70 to-sky-400/90 group-hover:from-sky-500 group-hover:to-sky-300 transition"></div>
+                        </div>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-6 bg-slate-950 border border-slate-800 text-[10px] text-slate-200 rounded px-2.5 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 whitespace-nowrap shadow-xl">
+                          {device.name} ({device.type === "L2TP" ? "Desa" : "OPD"}):{" "}
+                          <span className="font-bold text-sky-400 font-mono">
+                            {device.count}
+                          </span>{" "}
+                          Laporan
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Labels - Rotated */}
+                <div className="flex justify-between px-2 gap-1.5 h-16 pt-1">
+                  {topDevices.slice(0, 10).map((device, idx) => (
+                    <div
+                      key={idx}
+                      className="flex-1 flex justify-center min-w-0 relative"
+                    >
+                      <span
+                        className="text-[9px] text-slate-400 font-medium absolute top-1 whitespace-nowrap origin-top-left"
+                        style={{
+                          transform: "rotate(-40deg)",
+                          transformOrigin: "top center",
+                        }}
+                        title={device.name}
+                      >
+                        {device.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Frekuensi Tertinggi:</span>
+            <span className="font-bold text-sky-400 font-mono truncate max-w-[260px]">
+              {topDevices[0] ? `${topDevices[0].name} (${topDevices[0].count} kasus)` : "-"}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Chart 3: Top 10 Kendala/Issue - Horizontal Bar Chart */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-          <AlertTriangle size={16} className="text-amber-400" />
-          Top 10 Kendala Terbanyak
-          <span className="ml-auto text-[10px] text-slate-500 font-normal">
-            Berdasarkan field Issue pada laporan
+      {/* Bottom Section: Top 10 Root Cause / Kendala Terbanyak */}
+      <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-3 flex-wrap border-b border-slate-800/80 pb-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-amber-400" />
+            <h2 className="text-sm font-bold text-slate-100">
+              Analisis Akar Masalah (Top 10 Kendala Terbanyak)
+            </h2>
+          </div>
+          <span className="text-[11px] text-slate-400 font-mono">
+            Berdasarkan klasifikasi field Issue laporan
           </span>
-        </h2>
+        </div>
 
         {!topIssues || topIssues.length === 0 ? (
           <div className="py-12 text-center text-slate-500 text-xs">
-            Tidak ada data kendala / issue
+            Tidak ada data kendala / issue yang teridentifikasi
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
             {topIssues.slice(0, 10).map((item, idx) => {
               const pct = Math.round((item.count / maxIssueCount) * 100);
+              const sharePct = ((item.count / totalIssueCount) * 100).toFixed(1);
               const colors = [
-                "from-rose-600 via-red-600 to-rose-500", // Rank 1 (Paling Merah di paling atas)
-                "from-red-600 to-red-500",               // Rank 2 (Merah Terang)
-                "from-red-500 to-rose-500",              // Rank 3 (Merah-Rose)
-                "from-rose-500 to-orange-500",           // Rank 4 (Merah-Oranye)
-                "from-orange-500 to-amber-500",          // Rank 5 (Oranye)
-                "from-amber-500 to-amber-400",           // Rank 6 (Amber)
-                "from-amber-400 to-yellow-500",          // Rank 7 (Kuning-Amber)
-                "from-yellow-500 to-yellow-600",         // Rank 8 (Kuning)
-                "from-yellow-600 to-slate-500",          // Rank 9 (Kuning-Kelu-Abu)
-                "from-slate-500 to-slate-600",            // Rank 10 (Abu-abu)
+                "from-rose-600 via-red-600 to-rose-500",
+                "from-red-600 to-red-500",
+                "from-red-500 to-rose-500",
+                "from-rose-500 to-orange-500",
+                "from-orange-500 to-amber-500",
+                "from-amber-500 to-amber-400",
+                "from-amber-400 to-yellow-500",
+                "from-yellow-500 to-yellow-600",
+                "from-yellow-600 to-slate-500",
+                "from-slate-500 to-slate-600",
               ];
               const color = colors[idx % colors.length];
               const countColor = idx === 0 ? "text-rose-400 font-extrabold" : idx === 1 ? "text-red-400 font-bold" : "text-amber-300";
+
               return (
-                <div key={idx} className="flex items-center gap-3 group">
-                  {/* Rank */}
-                  <span className="text-[10px] font-bold text-slate-500 w-4 text-right flex-shrink-0">
-                    {idx + 1}
-                  </span>
-                  {/* Label */}
-                  <span
-                    className="text-[11px] text-slate-300 truncate flex-shrink-0 w-52"
-                    title={item.issue}
-                  >
-                    {item.issue}
-                  </span>
-                  {/* Bar */}
-                  <div className="flex-1 relative bg-slate-800/60 rounded-full h-4 overflow-hidden">
+                <div
+                  key={idx}
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-2.5 sm:p-1.5 rounded-lg bg-slate-950/40 sm:bg-transparent border border-slate-800/40 sm:border-0 hover:bg-slate-850/40 transition group"
+                >
+                  <div className="flex items-center justify-between gap-2 min-w-0 sm:w-64 sm:flex-shrink-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-mono font-bold text-slate-500 w-5 text-left sm:text-right flex-shrink-0">
+                        #{idx + 1}
+                      </span>
+                      <span
+                        className="text-xs text-slate-200 truncate font-medium"
+                        title={item.issue}
+                      >
+                        {item.issue}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-400">
+                        {sharePct}%
+                      </span>
+                      <span className={`sm:hidden text-xs font-mono font-bold ${countColor}`}>
+                        {item.count} <span className="text-[10px] font-normal text-slate-500">kasus</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full sm:flex-1 relative bg-slate-950 rounded-full h-2 sm:h-2.5 overflow-hidden border border-slate-800/80">
                     <div
                       className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-700`}
                       style={{ width: `${Math.max(pct, 2)}%` }}
                     />
                   </div>
-                  {/* Count */}
-                  <span className={`text-[11px] font-bold ${countColor} w-8 text-right flex-shrink-0`}>
-                    {item.count}
+
+                  <span className={`hidden sm:inline-block text-xs font-mono font-bold ${countColor} w-16 text-right flex-shrink-0`}>
+                    {item.count} <span className="text-[10px] font-normal text-slate-500">kasus</span>
                   </span>
                 </div>
               );
@@ -1512,88 +1631,92 @@ export default function DailyReportDashboard() {
         )}
       </div>
 
-      {/* PDF Export Version Selector Modal */}
+      {/* PDF Export Selector Modal */}
       {showPdfModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-red-500/10 text-red-400 rounded-lg">
-                  <Download size={18} />
+                <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                  <Download size={16} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-100 text-base">Unduh Laporan PDF</h3>
-                  <p className="text-xs text-slate-400">Pilih format dokumen PDF yang ingin Anda unduh</p>
+                  <h3 className="font-bold text-slate-100 text-sm">Unduh Laporan PDF</h3>
+                  <p className="text-[11px] text-slate-400">Pilih format dokumen PDF laporan rekap</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowPdfModal(false)}
-                className="cursor-pointer text-slate-400 hover:text-slate-200 text-sm py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+                className="cursor-pointer text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-850 transition"
               >
                 ✕
               </button>
             </div>
 
-            <div className="flex flex-col gap-3">
-              {/* Option 1: Ringkas (1 Halaman) */}
+            <div className="flex flex-col gap-2.5">
+              {/* Option 1: Ringkas */}
               <button
+                type="button"
                 onClick={() => {
                   setShowPdfModal(false);
                   handleDownloadPDF("summary");
                 }}
                 disabled={isExporting}
-                className="group flex items-start gap-4 p-4 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/50 rounded-xl transition text-left cursor-pointer"
+                className="group flex items-start gap-3 p-3.5 bg-slate-950/80 hover:bg-slate-850 border border-slate-800 hover:border-sky-500/50 rounded-xl transition text-left cursor-pointer"
               >
-                <div className="p-2.5 bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 rounded-lg flex-shrink-0 mt-0.5">
-                  <BarChart3 size={20} />
+                <div className="p-2 bg-sky-500/10 text-sky-400 group-hover:bg-sky-500/20 rounded-lg flex-shrink-0 mt-0.5">
+                  <BarChart3 size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-slate-200 text-sm group-hover:text-blue-400 transition">
+                    <span className="font-bold text-slate-200 text-xs group-hover:text-sky-400 transition">
                       Laporan Ringkas
                     </span>
-                    <span className="text-[10px] font-medium bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20">
+                    <span className="text-[10px] font-mono font-medium bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/20">
                       1 Halaman
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Berisi Halaman 1 Grafik saja (Ringkasan Eksekutif, Grafik Tren, Top 10 Lokasi, & Top 10 Issue).
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    Halaman 1 Grafik (Ringkasan Eksekutif, Grafik Tren, Top 10 Lokasi, & Top 10 Issue).
                   </p>
                 </div>
               </button>
 
-              {/* Option 2: Lengkap (Multi Halaman) */}
+              {/* Option 2: Lengkap */}
               <button
+                type="button"
                 onClick={() => {
                   setShowPdfModal(false);
                   handleDownloadPDF("full");
                 }}
                 disabled={isExporting}
-                className="group flex items-start gap-4 p-4 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-purple-500/50 rounded-xl transition text-left cursor-pointer"
+                className="group flex items-start gap-3 p-3.5 bg-slate-950/80 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/50 rounded-xl transition text-left cursor-pointer"
               >
-                <div className="p-2.5 bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 rounded-lg flex-shrink-0 mt-0.5">
-                  <FileText size={20} />
+                <div className="p-2 bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 rounded-lg flex-shrink-0 mt-0.5">
+                  <FileText size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-slate-200 text-sm group-hover:text-purple-400 transition">
+                    <span className="font-bold text-slate-200 text-xs group-hover:text-blue-400 transition">
                       Laporan Komprehensif
                     </span>
-                    <span className="text-[10px] font-medium bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/20">
-                      Lengkap
+                    <span className="text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20">
+                      Multi-Halaman
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Berisi Halaman 1 Grafik + Rincian Seluruh Lokasi Gangguan & Rincian Seluruh Issue (Halaman 2 dst).
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    Halaman 1 Grafik + Rincian Seluruh Lokasi Gangguan & Seluruh Issue ke tabel detail.
                   </p>
                 </div>
               </button>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-800/60">
+            <div className="flex justify-end pt-2 border-t border-slate-800">
               <button
+                type="button"
                 onClick={() => setShowPdfModal(false)}
-                className="cursor-pointer px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition font-medium"
+                className="cursor-pointer px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition font-medium border border-slate-700"
               >
                 Batal
               </button>

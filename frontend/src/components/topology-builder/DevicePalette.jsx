@@ -870,7 +870,7 @@ export default function DevicePalette({
                         <div
                           className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
                             isOPD
-                              ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                              ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
                               : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                           }`}
                         >
@@ -893,7 +893,7 @@ export default function DevicePalette({
                         <span
                           className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
                             isOPD
-                              ? "bg-purple-950 text-purple-300 border border-purple-700/50"
+                              ? "bg-cyan-950 text-cyan-300 border border-cyan-700/50"
                               : "bg-blue-950 text-blue-300 border border-blue-700/50"
                           }`}
                         >

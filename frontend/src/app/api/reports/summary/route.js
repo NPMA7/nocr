@@ -232,6 +232,7 @@ export async function GET(request) {
           issue: r.issue || 'Belum diisi'
         };
       })
+      .filter(r => typeParam === 'ALL' || r.type === typeParam)
       .sort((a, b) => new Date(b.offline_since) - new Date(a.offline_since));
 
     // 5. Top Kendala/Issue Terbanyak (Hanya sertakan kendala valid yang terisi)

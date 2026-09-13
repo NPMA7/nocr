@@ -1,6 +1,5 @@
 "use client";
-// Force hot-reload trigger comment
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import {
   RefreshCw,
@@ -17,6 +16,14 @@ import {
   Edit2,
   X,
   Power,
+  Wifi,
+  CheckCircle2,
+  AlertCircle,
+  Activity,
+  Layers,
+  SlidersHorizontal,
+  ArrowUpDown,
+  Filter,
 } from "lucide-react";
 import { socket, useAppState } from "@/App";
 import { getStoredUser, hasAccess } from "@/lib/roles";
@@ -30,6 +37,8 @@ export default function HsgqOltPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("Authenticate List");
+  const [totalOntCount, setTotalOntCount] = useState(163);
+  const [totalWlanCount, setTotalWlanCount] = useState(76);
   const [displayType, setDisplayType] = useState("All");
   const [displayValue, setDisplayValue] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,8 +83,6 @@ export default function HsgqOltPage() {
 
   const tabSlugs = {
     "Authenticate List": "authenticate",
-    "Version Information": "version",
-    "Bind Profile Info": "profile",
     WLAN: "wlan",
     "ONT Detail": "detail",
   };
@@ -103,19 +110,30 @@ export default function HsgqOltPage() {
     const handleOltUpdate = (payload) => {
       if (!payload || !payload.data) return;
       const isRelevant =
-        (activeTab === "Authenticate List" && (payload.type === "Authenticate List" || payload.endpoint === "/ontinfo_table")) ||
-        (activeTab === "Version Information" && (payload.type === "Version Information" || payload.endpoint === "/ontversion_table")) ||
-        (activeTab === "Bind Profile Info" && (payload.type === "Bind Profile Info" || payload.endpoint === "/ontprofile_table")) ||
-        (activeTab === "WLAN" && (payload.type === "WLAN" || payload.endpoint === "/ontwificonfig_table"));
+        (activeTab === "Authenticate List" &&
+          (payload.type === "Authenticate List" ||
+            payload.endpoint === "/ontinfo_table")) ||
+        (activeTab === "WLAN" &&
+          (payload.type === "WLAN" ||
+            payload.endpoint === "/ontwificonfig_table"));
 
       if (isRelevant) {
         let tableData = payload.data;
-        if (!Array.isArray(tableData) && tableData.data && Array.isArray(tableData.data)) {
+        if (
+          !Array.isArray(tableData) &&
+          tableData.data &&
+          Array.isArray(tableData.data)
+        ) {
           tableData = tableData.data;
         } else if (!Array.isArray(tableData)) {
           return;
         }
         setData(tableData);
+        if (payload.type === "Authenticate List" || payload.endpoint === "/ontinfo_table") {
+          setTotalOntCount(tableData.length);
+        } else if (payload.type === "WLAN") {
+          setTotalWlanCount(tableData.length);
+        }
         setLoading(false);
         if (setLastSyncTime) {
           setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
@@ -128,7 +146,6 @@ export default function HsgqOltPage() {
       setData((prevData) =>
         prevData.map((row) => {
           if (row.identifier === payload.identifier) {
-            // make sure we have a wifi array
             const currentWifi = row.wifi && row.wifi[0] ? row.wifi[0] : {};
             if (currentWifi.instance === payload.instance) {
               return {
@@ -169,18 +186,22 @@ export default function HsgqOltPage() {
       ) {
         tableData = tableData.data;
       } else if (!Array.isArray(tableData)) {
-        // Fallback dummy data or empty
         console.warn("Unrecognized data format:", tableData);
         tableData = [];
       }
 
       setData(tableData);
+      if (activeTab === "Authenticate List") {
+        setTotalOntCount(tableData.length);
+      } else if (activeTab === "WLAN") {
+        setTotalWlanCount(tableData.length);
+      }
       if (setLastSyncTime) {
         setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch OLT data");
+      setError("Gagal memuat data OLT. Periksa koneksi ke perangkat.");
     } finally {
       if (!silent) {
         setLoading(false);
@@ -196,8 +217,6 @@ export default function HsgqOltPage() {
       if (!wifi) return;
 
       const newValue = currentValue === 1 ? 0 : 1;
-      // OLT bitmask flags (captured from OLT native UI):
-      // 1024 = isolation, 2048 = broadcast/enable
       const flagsMap = {
         enable: 2048,
         isolation: 1024,
@@ -216,7 +235,6 @@ export default function HsgqOltPage() {
         param: param,
       };
 
-      // Optimistic update
       setData((prevData) =>
         prevData.map((r) => {
           if (r.identifier === row.identifier) {
@@ -229,7 +247,7 @@ export default function HsgqOltPage() {
       await axios.post("/api/hsgq-olt?action=set_wifi", payload);
     } catch (err) {
       showToast("Gagal update WiFi: " + (err.response?.data?.error || err.message));
-      fetchData(); // Revert on failure
+      fetchData();
     }
   };
 
@@ -258,189 +276,97 @@ export default function HsgqOltPage() {
   };
 
   const handleSaveWifi = async () => {
-    if (!editingWifi) return;
-    if (Number(wifiEnable) === 1) {
-      // Full validation only when WLAN is being enabled
-      if (!wifiSsid.trim()) return;
-      // Only require 8 character password for WPA modes (3: wpapsk, 4: wpa2psk, 5: wpa2mixed)
-      if ([3, 4, 5].includes(Number(wifiSecurityMode)) && wifiShareKey.length < 8) {
-        showToast("Share key (Password) harus minimal 8 karakter!", 'warning');
-        return;
-      }
+    if (!canManageOlt || !editingWifi) return;
+
+    if (Number(wifiEnable) === 1 && !wifiSsid.trim()) {
+      showToast("SSID tidak boleh kosong jika WiFi aktif");
+      return;
     }
+
     setIsSavingWifi(true);
     try {
-      const originalWifi = (editingWifi.row && editingWifi.row.wifi && editingWifi.row.wifi[0]) ? editingWifi.row.wifi[0] : {};
-      let calculatedFlags = 0;
-      if (wifiSsid.trim() !== (originalWifi.wifiname || "")) calculatedFlags |= 1;
-      if (wifiShareKey !== (originalWifi.sharekey || "")) calculatedFlags |= 2;
-      if (Number(wifiSecurityMode) !== (originalWifi.securitymode !== undefined ? originalWifi.securitymode : 4)) calculatedFlags |= 4;
-      if (Number(wifiWpaEncrypt) !== (originalWifi.wpaencrypt !== undefined ? originalWifi.wpaencrypt : 2)) calculatedFlags |= 16;
-      if (Number(wifiWepAuth) !== (originalWifi.wepauth !== undefined ? originalWifi.wepauth : 0)) calculatedFlags |= 4;
-      if (Number(wifiChannel) !== (originalWifi.channel !== undefined ? originalWifi.channel : 0)) calculatedFlags |= 16;
-      if (Number(wifiBandwidth) !== (originalWifi.bandwidth !== undefined ? originalWifi.bandwidth : 1)) calculatedFlags |= 32;
-      if (Number(wifiBeacon) !== (originalWifi.beacon !== undefined ? originalWifi.beacon : 100)) calculatedFlags |= 128;
-      if (Number(wifiDtim) !== (originalWifi.dtim !== undefined ? originalWifi.dtim : 1)) calculatedFlags |= 256;
-      if (Number(wifiShortgi) !== (originalWifi.shortgi !== undefined ? originalWifi.shortgi : 1)) calculatedFlags |= 512;
-      if (Number(wifiIsolation) !== (originalWifi.isolation !== undefined ? originalWifi.isolation : 0)) calculatedFlags |= 1024;
-      if (Number(wifiBroadcast) !== (originalWifi.broadcast !== undefined ? originalWifi.broadcast : 1)) calculatedFlags |= 2048;
-      if (Number(wifiEnable) !== (originalWifi.enable !== undefined ? originalWifi.enable : 1)) calculatedFlags |= 2048;
-
-      if (calculatedFlags === 0) {
-        calculatedFlags = 4095; // Default fallback to update all
-      }
+      const param = {
+        identifier: editingWifi.identifier,
+        flags: 4095,
+        instance: editingWifi.instance,
+        enable: Number(wifiEnable),
+        wifiname: wifiSsid.trim(),
+        securitymode: Number(wifiSecurityMode),
+        wepauth: Number(wifiWepAuth),
+        wpaencrypt: Number(wifiWpaEncrypt),
+        sharekey: wifiShareKey,
+        channel: Number(wifiChannel),
+        bandwidth: Number(wifiBandwidth),
+        beacon: Number(wifiBeacon),
+        dtim: Number(wifiDtim),
+        shortgi: Number(wifiShortgi),
+        isolation: Number(wifiIsolation),
+        broadcast: Number(wifiBroadcast),
+      };
 
       const payload = {
         method: "set",
-        param: {
-          identifier: editingWifi.identifier,
-          flags: calculatedFlags,
-          instance: editingWifi.instance,
-          enable: Number(wifiEnable),
-          wifiname: wifiSsid.trim(),
-          securitymode: Number(wifiSecurityMode),
-          wpaencrypt: Number(wifiWpaEncrypt),
-          sharekey: wifiShareKey,
-          wepauth: Number(wifiWepAuth),
-          keyindex: 0,
-          key1: "",
-          key2: "",
-          key3: "",
-          key4: "",
-          channel: Number(wifiChannel),
-          bandwidth: Number(wifiBandwidth),
-          beacon: Number(wifiBeacon),
-          dtim: Number(wifiDtim),
-          shortgi: Number(wifiShortgi),
-          isolation: Number(wifiIsolation),
-          broadcast: Number(wifiBroadcast),
-        },
+        param: param,
       };
 
-      const response = await axios.post("/api/hsgq-olt?action=set_wifi", payload);
+      const response = await axios.post(
+        "/api/hsgq-olt?action=set_wifi",
+        payload,
+      );
       if (response.data && response.data.code === 1) {
-        setData((prevData) =>
-          prevData.map((r) => {
-            if (r.identifier === editingWifi.identifier) {
-              const currentWifi = r.wifi && r.wifi[0] ? r.wifi[0] : {};
-              if (currentWifi.instance === editingWifi.instance) {
-                return {
-                  ...r,
-                  wifi: [
-                    {
-                      ...currentWifi,
-                      wifiname: wifiSsid.trim(),
-                      enable: Number(wifiEnable),
-                      securitymode: Number(wifiSecurityMode),
-                      wpaencrypt: Number(wifiWpaEncrypt),
-                      sharekey: wifiShareKey,
-                      wepauth: Number(wifiWepAuth),
-                      channel: Number(wifiChannel),
-                      bandwidth: Number(wifiBandwidth),
-                      beacon: Number(wifiBeacon),
-                      dtim: Number(wifiDtim),
-                      shortgi: Number(wifiShortgi),
-                      isolation: Number(wifiIsolation),
-                      broadcast: Number(wifiBroadcast),
-                    },
-                  ],
-                };
-              }
-            }
-            return r;
-          }),
-        );
+        showToast("Pengaturan WiFi berhasil disimpan!");
         setEditingWifi(null);
-        setTimeout(() => {
-          fetchData(true);
-        }, 2000);
+        fetchData();
       } else {
-        showToast("Gagal ubah konfigurasi WiFi: " + (response.data?.message || "Error tidak diketahui"));
+        showToast(
+          "Gagal menyimpan WiFi: " +
+            (response.data?.message || "Error tidak diketahui"),
+        );
       }
     } catch (err) {
       console.error(err);
-      showToast("Gagal ubah konfigurasi WiFi: " + (err.response?.data?.error || err.message));
+      showToast("Gagal menyimpan WiFi: " + (err.response?.data?.error || err.message));
     } finally {
       setIsSavingWifi(false);
     }
   };
 
-  const handleOpenEditModal = (row, portId, ontId, currentName) => {
-    if (!canManageOlt) return;
-    const isArray = Array.isArray(row);
-    const initialDesc = !isArray ? (row.ont_description || row.ont_desc || row.description || "No-description") : "No-description";
-    
-    let identifier = 0;
-    if (!isArray && row.identifier !== undefined) {
-      identifier = row.identifier;
-    } else {
-      identifier = (portId << 8) | ontId;
-    }
-
-    setEditingOnt({
-      row,
-      portId,
-      ontId,
-      identifier,
-    });
-    setEditOntName(currentName);
-    setEditOntDesc(initialDesc);
-  };
-
   const handleSaveEdit = async () => {
-    if (!editingOnt || !editOntName.trim()) return;
+    if (!canManageOlt || !editingOnt) return;
+
     setIsSavingEdit(true);
     try {
-      const identifier = (Number(editingOnt.portId) << 8) | Number(editingOnt.ontId);
+      const identifier = (editingOnt.portId << 8) | editingOnt.ontId;
+      const flags = 3; // Bit 0 (Name) + Bit 1 (Description)
       const payload = {
         method: "set",
         param: {
           identifier: identifier,
-          flags: 8,
+          flags: flags,
           ont_name: editOntName.trim(),
-          ont_description: editOntDesc.trim() || "No-description",
+          ont_description: editOntDesc.trim(),
         },
       };
 
-      const response = await axios.post("/api/hsgq-olt?action=set_info", payload);
-      if (response.data && response.data.code === 1) {
-        setData(prevData => {
-          return prevData.map(row => {
-            let p = 1, o = 0;
-            const rawName = row.ont_name || row.name || "";
-            if (rawName && rawName.includes("/")) {
-              const parts = rawName.split("/");
-              p = parseInt(parts[0].replace("ONT", "").replace("PON", ""), 10);
-              o = parseInt(parts[1], 10);
-            } else if (row.identifier !== undefined) {
-              p = (row.identifier >> 8) & 255;
-              o = row.identifier & 255;
-            }
-            
-            if (Number(p) === Number(editingOnt.portId) && Number(o) === Number(editingOnt.ontId)) {
-              return {
-                ...row,
-                ont_name: editOntName.trim(),
-                name: editOntName.trim(),
-                ont_description: editOntDesc.trim() || "No-description",
-                description: editOntDesc.trim() || "No-description",
-              };
-            }
-            return row;
-          });
-        });
+      const response = await axios.post(
+        "/api/hsgq-olt?action=set_info",
+        payload,
+      );
 
-        setEditingOnt(null);
+      if (response.data && response.data.code === 1) {
+        showToast("Nama dan deskripsi ONT berhasil disimpan!");
         setEditTimestamp(Date.now());
-        setTimeout(() => {
-          fetchData(true); // silent refresh
-        }, 2000);
+        setEditingOnt(null);
+        fetchData(true);
       } else {
-        showToast("Gagal ubah nama ONT: " + (response.data?.message || "Error tidak diketahui"));
+        showToast(
+          "Gagal menyimpan: " +
+            (response.data?.message || "Error tidak diketahui"),
+        );
       }
     } catch (err) {
       console.error(err);
-      showToast("Gagal ubah nama ONT: " + (err.response?.data?.error || err.message));
+      showToast("Gagal menyimpan: " + (err.response?.data?.error || err.message));
     } finally {
       setIsSavingEdit(false);
     }
@@ -448,18 +374,11 @@ export default function HsgqOltPage() {
 
   const handleViewDetail = () => {
     if (!editingOnt) return;
-    
-    // Set active tab to "ONT Detail"
     setActiveTab("ONT Detail");
-    
-    // Set selected port & ONT ID in the details dropdowns
     setDetailSelectedPortId(editingOnt.portId.toString());
     setDetailSelectedOntId(editingOnt.ontId.toString());
-    
-    // Close the settings modal
     setEditingOnt(null);
-    
-    // Update URL history
+
     if (typeof window !== "undefined") {
       const url = new URL(window.location);
       url.search = `?tab=detail`;
@@ -470,12 +389,9 @@ export default function HsgqOltPage() {
   useEffect(() => {
     if (canRead) {
       fetchData();
-
-      // Lazy auto-refresh main data every 1 minute
       const interval = setInterval(() => {
-        fetchData(true); // silent refresh
+        fetchData(true);
       }, 60000);
-
       return () => clearInterval(interval);
     }
   }, [activeTab, canRead]);
@@ -578,14 +494,41 @@ export default function HsgqOltPage() {
     }).length,
   };
 
+  const wlanStats = {
+    total: filteredByPortData.length,
+    enabled: filteredByPortData.filter((item) => {
+      const wifi = item.wifi && item.wifi[0];
+      return wifi?.enable === 1;
+    }).length,
+    disabled: filteredByPortData.filter((item) => {
+      const wifi = item.wifi && item.wifi[0];
+      return !wifi || wifi.enable !== 1;
+    }).length,
+    broadcast: filteredByPortData.filter((item) => {
+      const wifi = item.wifi && item.wifi[0];
+      return wifi?.broadcast === 1;
+    }).length,
+  };
+
   const filteredData = filteredByPortData.filter((row, idx) => {
-    if (displayType === "All" || !displayValue) return true;
+    if (displayType === "All" || !displayValue) {
+      // Global search if query method is All but displayValue is present
+      if (!displayValue) return true;
+      const q = displayValue.toLowerCase();
+      const isArray = Array.isArray(row);
+      const rawName = String(row.ont_name || row.name || (isArray ? row[1] : "")).toLowerCase();
+      const sn = String(row.ont_sn || row.sn || row.serial_number || (isArray ? row[2] : "")).toLowerCase();
+      const wifi = row.wifi && row.wifi[0];
+      const ssid = String(wifi?.wifiname || "").toLowerCase();
+      return rawName.includes(q) || sn.includes(q) || ssid.includes(q);
+    }
+
     const isArray = Array.isArray(row);
     let fieldVal = "";
 
     if (displayType === "ONT ID") {
-      let genId = "";
       const rawName = row.ont_name || row.name || "";
+      let genId = "";
       if (rawName && rawName.includes("/")) {
         const parts = rawName.split("/");
         genId = `${parts[0].replace("ONT", "PON")}/${parseInt(parts[1], 10)}`;
@@ -595,38 +538,17 @@ export default function HsgqOltPage() {
         genId = `PON0${Math.floor(idx / 10)}/${idx % 10}`;
       }
       fieldVal = String(isArray ? row[0] : row.ont_id || row.id || genId);
-    } else if (displayType === "Name")
+    } else if (displayType === "Name") {
       fieldVal = String(
         isArray ? row[1] : row.ont_name || row.name || `ONT01/00${idx}`,
       );
-    else if (displayType === "Serial Number")
+    } else if (displayType === "Serial Number") {
       fieldVal = String(
         isArray ? row[2] : row.ont_sn || row.sn || row.serial_number || "-",
       );
-    else if (displayType === "Device Type")
-      fieldVal = String(
-        isArray
-          ? activeTab === "Version Information" ||
-            activeTab === "Bind Profile Info"
-            ? row[3]
-            : row[6]
-          : row.dev_type || row.device_type || "",
-      );
-    else if (displayType === "Vendor ID")
-      fieldVal = String(isArray ? row[4] : row.vendorid || "-");
-    else if (displayType === "ONT Version")
-      fieldVal = String(isArray ? row[5] : row.ont_version || "-");
-    else if (displayType === "Equipment ID")
-      fieldVal = String(
-        isArray
-          ? activeTab === "Version Information"
-            ? row[6]
-            : row[4]
-          : row.equipmentid || "-",
-      );
-    else if (displayType === "Line Profile ID")
-      fieldVal = String(isArray ? row[5] : (row.lprofid ?? "-"));
-    else if (displayType === "SSID") {
+    } else if (displayType === "Device Type") {
+      fieldVal = String(isArray ? row[6] : row.dev_type || row.device_type || "");
+    } else if (displayType === "SSID") {
       const wifi = row.wifi && row.wifi[0];
       fieldVal = String(isArray ? "" : wifi?.wifiname || "");
     } else if (displayType === "Running state") {
@@ -660,7 +582,6 @@ export default function HsgqOltPage() {
   let ontsInPort = [];
 
   if (activeTab === "ONT Detail") {
-    // Default selects
     let tempPortId = detailSelectedPortId;
     if (!tempPortId && uniquePorts.length > 0) {
       tempPortId = uniquePorts[0].toString();
@@ -681,423 +602,677 @@ export default function HsgqOltPage() {
 
   return (
     <>
-    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4">
-      {ToastComponent}
-      {/* Header Tabs */}
-      <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <Server size={24} className="text-blue-500 dark:text-blue-400" />
-            HSGQ OLT
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Monitoring dan Konfigurasi perangkat OLT HSGQ
-          </p>
-        </div>
-      </div>
-      <div className="flex-shrink-0 flex items-center gap-1 border-b border-slate-700/50 my-3 overflow-x-auto scrollbar-none flex-nowrap max-w-full pb-0.5">
-        {[
-          "Authenticate List",
-          "Version Information",
-          "Bind Profile Info",
-          "WLAN",
-          "ONT Detail",
-        ].map((tab, idx) => (
-          <button
-            key={idx}
-            onClick={() => {
-              setActiveTab(tab);
-              setError(null);
-              setDisplayType("All");
-              setDisplayValue("");
-              setSelectedPort("All");
-              setCurrentPage(1);
+      <div className="flex-1 flex flex-col gap-4 min-w-0 pb-8">
+        {ToastComponent}
 
-              if (typeof window !== "undefined") {
-                const url = new URL(window.location);
-                url.search = `?tab=${encodeURIComponent(tabSlugs[tab])}`;
-                window.history.pushState({}, "", url);
-              }
-            }}
-            className={`cursor-pointer px-3.5 py-2.5 whitespace-nowrap text-xs font-semibold rounded-t-lg transition-all flex-shrink-0 ${
-              activeTab === tab
-                ? "text-blue-400 bg-blue-500/10 border-b-2 border-blue-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "ONT Detail" ? (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 text-xs">Port ID:</span>
-                <select
-                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-32 cursor-pointer"
-                  value={activeDetailPortId}
-                  onChange={(e) => {
-                    setDetailSelectedPortId(e.target.value);
-                    setDetailSelectedOntId(""); // Reset ONT selection when port changes
-                  }}
-                >
-                  {uniquePorts.map((p) => (
-                    <option key={p} value={p}>
-                      PON0{p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 text-xs">Name:</span>
-                <select
-                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-48 cursor-pointer"
-                  value={activeDetailOntId}
-                  onChange={(e) => setDetailSelectedOntId(e.target.value)}
-                >
-                  {ontsInPort.map((o) => (
-                    <option key={o.ontId} value={o.ontId}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* 1. TOP HEADER BAR */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <Server size={18} />
             </div>
-
-            <div className="flex items-center gap-2">
-              {canManageOlt && activeDetailPortId && activeDetailOntId && (
-                <>
-                  <button
-                    onClick={() => {
-                      const activeOnt = ontsInPort.find(o => String(o.ontId) === String(activeDetailOntId));
-                      const activeOntName = activeOnt ? activeOnt.name : `ONT0${activeDetailPortId}/00${activeDetailOntId}`;
-                      
-                      const row = data.find(r => {
-                        let p = 1, o = 0;
-                        const rawName = r.ont_name || r.name || "";
-                        if (rawName && rawName.includes("/")) {
-                          const parts = rawName.split("/");
-                          p = parseInt(parts[0].replace("ONT", "").replace("PON", ""), 10);
-                          o = parseInt(parts[1], 10);
-                        } else if (r.identifier !== undefined) {
-                          p = (r.identifier >> 8) & 255;
-                          o = r.identifier & 255;
-                        }
-                        return String(p) === String(activeDetailPortId) && String(o) === String(activeDetailOntId);
-                      });
-                      const activeOntDesc = row ? (row.ont_description || row.description || "") : "";
-
-                      setEditingOnt({
-                        portId: parseInt(activeDetailPortId, 10),
-                        ontId: parseInt(activeDetailOntId, 10),
-                        ontIdString: `PON0${activeDetailPortId}/${activeDetailOntId}`,
-                      });
-                      setEditOntName(activeOntName);
-                      setEditOntDesc(activeOntDesc);
-                    }}
-                    className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
-                  >
-                    <Settings size={14} /> Setting Description
-                  </button>
-                  <button
-                    onClick={() => {
-                      setRebootOntAction({
-                        portId: activeDetailPortId,
-                        ontId: activeDetailOntId,
-                      });
-                      setShowRebootOntConfirm(true);
-                    }}
-                    className="cursor-pointer flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
-                  >
-                    <Power size={14} /> Reboot ONT
-                  </button>
-                </>
-              )}
-              <button
-                className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
-                onClick={() => {
-                  const tempP = detailSelectedPortId;
-                  const tempO = detailSelectedOntId;
-                  setDetailSelectedPortId("");
-                  setTimeout(() => {
-                    setDetailSelectedPortId(tempP || activeDetailPortId);
-                    setDetailSelectedOntId(tempO || activeDetailOntId);
-                  }, 10);
-                }}
-              >
-                <RefreshCw size={14} /> Refresh
-              </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-slate-100">HSGQ OLT</h1>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
+                  GPON / EPON
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Monitoring & Konfigurasi perangkat OLT HSGQ secara langsung
+              </p>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {activeDetailPortId && activeDetailOntId ? (
-              <OntDetailView
-                portId={parseInt(activeDetailPortId, 10)}
-                ontId={parseInt(activeDetailOntId, 10)}
-                canManageOlt={canManageOlt}
-                showStandaloneReboot={false}
-                rebootTimestamp={rebootTimestamp}
-                editTimestamp={editTimestamp}
-                onRebootSuccess={() => fetchData(true)}
-                onEditNameDesc={(name, desc) => {
-                  setEditingOnt({
-                    portId: parseInt(activeDetailPortId, 10),
-                    ontId: parseInt(activeDetailOntId, 10),
-                    ontIdString: `PON0${activeDetailPortId}/${activeDetailOntId}`,
-                  });
-                  setEditOntName(name);
-                  setEditOntDesc(desc);
-                }}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                fetchData();
+                if (socket) socket.emit("force_sync_hsgq");
+              }}
+              disabled={loading}
+              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition disabled:opacity-50 shadow-sm"
+            >
+              <RefreshCw
+                size={13}
+                className={loading ? "animate-spin text-white" : "text-white"}
               />
-            ) : (
-              <div className="text-slate-400">Pilih Port dan Name ONT...</div>
-            )}
+              <span>{loading ? "Sinkron..." : "Refresh"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDisplayType("All");
+                setDisplayValue("");
+                setSelectedPort("All");
+                setCurrentPage(1);
+              }}
+              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+              title="Reset semua filter pencarian"
+            >
+              <RotateCcw size={13} />
+              <span>Reset Filter</span>
+            </button>
           </div>
-        </>
-      ) : (
-        <>
-          {/* Toolbar */}
-          <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 mb-3">
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-              <span className="text-slate-400 text-xs">Port ID:</span>
-              <select
-                className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500 mr-2"
-                value={selectedPort}
-                onChange={(e) => {
-                  setSelectedPort(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="All">All</option>
-                {uniquePorts.map((p) => (
-                  <option key={p} value={String(p)}>
-                    {p < 10 ? `PON0${p}` : `PON${p}`}
-                  </option>
-                ))}
-              </select>
+        </div>
 
-              <span className="text-slate-400 text-xs">Query Method:</span>
-              <select
-                className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-                value={displayType}
-                onChange={(e) => {
-                  setDisplayType(e.target.value);
-                  setDisplayValue("");
-                }}
-              >
-                <option value="All">All</option>
-                <option value="ONT ID">ONT ID</option>
-                <option value="Name">Name</option>
-                <option value="Serial Number">Serial Number</option>
-
-                {activeTab === "Version Information" ? (
-                  <>
-                    <option value="Vendor ID">Vendor ID</option>
-                    <option value="ONT Version">ONT Version</option>
-                  </>
-                ) : activeTab === "Bind Profile Info" ? (
-                  <>
-                    <option value="Equipment ID">Equipment ID</option>
-                    <option value="Line Profile ID">Line Profile ID</option>
-                  </>
-                ) : activeTab === "WLAN" ? (
-                  <option value="SSID">SSID</option>
-                ) : (
-                  <option value="Running state">Running state</option>
-                )}
-              </select>
-
-              {displayType === "Running state" ? (
-                <select
-                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-full sm:w-32 cursor-pointer"
-                  value={displayValue}
-                  onChange={(e) => {
-                    setDisplayValue(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="initial">initial</option>
-                  <option value="online">online</option>
-                  <option value="offline">offline</option>
-                </select>
-              ) : displayType !== "All" ? (
-                <input
-                  type="text"
-                  className="bg-slate-800 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-full sm:w-48 flex-1 sm:flex-none"
-                  value={displayValue}
-                  onChange={(e) => {
-                    setDisplayValue(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder={`Search ${displayType}...`}
-                />
-              ) : null}
+        {/* 2. KPI METRICS CARDS */}
+        {activeTab === "Authenticate List" ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Total Registered */}
+            <div
+              onClick={() => {
+                setDisplayType("All");
+                setDisplayValue("");
+                setCurrentPage(1);
+              }}
+              className={`cursor-pointer bg-slate-900 border rounded-xl p-3 sm:p-4 transition hover:border-slate-700 ${
+                displayType === "All" && !displayValue
+                  ? "border-blue-500/40 ring-1 ring-blue-500/20"
+                  : "border-slate-800"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  Registered ONT
+                </span>
+                <CheckCircle2 size={15} className="text-blue-400" />
+              </div>
+              <div className="text-xl font-bold font-mono text-slate-100 mt-1">
+                {stats.registered}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Total unit terdaftar di port
+              </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {activeTab === "Authenticate List" && (
-                <>
-                  <div
-                    onClick={() => {
-                      setDisplayType("All");
+            {/* Online */}
+            <div
+              onClick={() => {
+                setDisplayType("Running state");
+                setDisplayValue("online");
+                setCurrentPage(1);
+              }}
+              className={`cursor-pointer bg-slate-900 border rounded-xl p-3 sm:p-4 transition hover:border-slate-700 ${
+                displayType === "Running state" && displayValue === "online"
+                  ? "border-emerald-500/40 ring-1 ring-emerald-500/20"
+                  : "border-slate-800"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  Online
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              </div>
+              <div className="text-xl font-bold font-mono text-emerald-400 mt-1">
+                {stats.online}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Aktif & mentransmisikan optik
+              </p>
+            </div>
+
+            {/* Offline */}
+            <div
+              onClick={() => {
+                setDisplayType("Running state");
+                setDisplayValue("offline");
+                setCurrentPage(1);
+              }}
+              className={`cursor-pointer bg-slate-900 border rounded-xl p-3 sm:p-4 transition hover:border-slate-700 ${
+                displayType === "Running state" && displayValue === "offline"
+                  ? "border-rose-500/40 ring-1 ring-rose-500/20"
+                  : "border-slate-800"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  Offline
+                </span>
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+              </div>
+              <div className="text-xl font-bold font-mono text-rose-400 mt-1">
+                {stats.offline}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Terdaftar namun terputus
+              </p>
+            </div>
+
+            {/* Unregistered / Initial */}
+            <div
+              onClick={() => {
+                setDisplayType("Running state");
+                setDisplayValue("initial");
+                setCurrentPage(1);
+              }}
+              className={`cursor-pointer bg-slate-900 border rounded-xl p-3 sm:p-4 transition hover:border-slate-700 ${
+                displayType === "Running state" && displayValue === "initial"
+                  ? "border-amber-500/40 ring-1 ring-amber-500/20"
+                  : "border-slate-800"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  Initial / Unregistered
+                </span>
+                <AlertCircle size={15} className="text-amber-400" />
+              </div>
+              <div className="text-xl font-bold font-mono text-amber-400 mt-1">
+                {stats.unregistered}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Menunggu aktivasi / konfigurasi
+              </p>
+            </div>
+          </div>
+        ) : activeTab === "WLAN" ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Total WLAN */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  Total ONT WLAN
+                </span>
+                <Wifi size={15} className="text-blue-400" />
+              </div>
+              <div className="text-xl font-bold font-mono text-slate-100 mt-1">
+                {wlanStats.total}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Perangkat ONT berfitur WiFi
+              </p>
+            </div>
+
+            {/* WiFi Enabled */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  WiFi Enabled
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              </div>
+              <div className="text-xl font-bold font-mono text-emerald-400 mt-1">
+                {wlanStats.enabled}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Radio WiFi aktif memancar
+              </p>
+            </div>
+
+            {/* WiFi Disabled */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  WiFi Disabled
+                </span>
+                <span className="w-2 h-2 rounded-full bg-slate-500" />
+              </div>
+              <div className="text-xl font-bold font-mono text-slate-400 mt-1">
+                {wlanStats.disabled}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Radio WiFi dinonaktifkan
+              </p>
+            </div>
+
+            {/* SSID Broadcast */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">
+                  SSID Broadcast
+                </span>
+                <Activity size={15} className="text-blue-400" />
+              </div>
+              <div className="text-xl font-bold font-mono text-blue-400 mt-1">
+                {wlanStats.broadcast}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Nama SSID terlihat publik
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {/* 3. MODERN TAB NAVIGATION DOCK */}
+        <div className="grid grid-cols-3 gap-1 sm:gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl shadow-sm w-full">
+          {[
+            {
+              id: "Authenticate List",
+              labelFull: "Authenticate List",
+              labelShort: "Auth List",
+              icon: Layers,
+              count:
+                selectedPort === "All"
+                  ? totalOntCount
+                  : activeTab === "Authenticate List"
+                    ? filteredByPortData.length
+                    : totalOntCount,
+            },
+            {
+              id: "WLAN",
+              labelFull: "WLAN (WiFi Config)",
+              labelShort: "WLAN",
+              icon: Wifi,
+              count:
+                selectedPort === "All"
+                  ? totalWlanCount
+                  : activeTab === "WLAN"
+                    ? filteredByPortData.length
+                    : totalWlanCount,
+            },
+            {
+              id: "ONT Detail",
+              labelFull: "ONT Detail",
+              labelShort: "Detail",
+              icon: Activity,
+              count: null,
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setError(null);
+                  setDisplayType("All");
+                  setDisplayValue("");
+                  setSelectedPort("All");
+                  setCurrentPage(1);
+
+                  if (typeof window !== "undefined") {
+                    const url = new URL(window.location);
+                    url.search = `?tab=${encodeURIComponent(tabSlugs[item.id])}`;
+                    window.history.pushState({}, "", url);
+                  }
+                }}
+                className={`cursor-pointer w-full h-10 sm:h-11 flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 rounded-lg text-xs font-semibold transition ${
+                  isActive
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                }`}
+              >
+                <Icon size={14} className={`shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                <span className="truncate whitespace-nowrap">
+                  <span className="hidden md:inline">{item.labelFull}</span>
+                  <span className="md:hidden">{item.labelShort}</span>
+                </span>
+                {item.count !== null && (
+                  <span
+                    className={`shrink-0 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md leading-none ${
+                      isActive
+                        ? "bg-blue-700/80 text-white"
+                        : "bg-slate-800 text-slate-400 border border-slate-700"
+                    }`}
+                  >
+                    {item.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 4. TAB CONTENT */}
+        {activeTab === "ONT Detail" ? (
+          <div className="flex flex-col gap-4">
+            {/* Detail Control Toolbar */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-xs font-medium">Port ID:</span>
+                  <select
+                    className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono min-w-[120px]"
+                    value={activeDetailPortId}
+                    onChange={(e) => {
+                      setDetailSelectedPortId(e.target.value);
+                      setDetailSelectedOntId("");
+                    }}
+                  >
+                    {uniquePorts.map((p) => (
+                      <option key={p} value={p}>
+                        {p < 10 ? `PON0${p}` : `PON${p}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-xs font-medium">Name:</span>
+                  <select
+                    className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono min-w-[180px]"
+                    value={activeDetailOntId}
+                    onChange={(e) => setDetailSelectedOntId(e.target.value)}
+                  >
+                    {ontsInPort.map((o) => (
+                      <option key={o.ontId} value={o.ontId}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {canManageOlt && activeDetailPortId && activeDetailOntId && (
+                  <>
+                    <button
+                      onClick={() => {
+                        const activeOnt = ontsInPort.find(
+                          (o) => String(o.ontId) === String(activeDetailOntId),
+                        );
+                        const activeOntName = activeOnt
+                          ? activeOnt.name
+                          : `ONT0${activeDetailPortId}/00${activeDetailOntId}`;
+
+                        const row = data.find((r) => {
+                          let p = 1,
+                            o = 0;
+                          const rawName = r.ont_name || r.name || "";
+                          if (rawName && rawName.includes("/")) {
+                            const parts = rawName.split("/");
+                            p = parseInt(
+                              parts[0].replace("ONT", "").replace("PON", ""),
+                              10,
+                            );
+                            o = parseInt(parts[1], 10);
+                          } else if (r.identifier !== undefined) {
+                            p = (r.identifier >> 8) & 255;
+                            o = r.identifier & 255;
+                          }
+                          return (
+                            String(p) === String(activeDetailPortId) &&
+                            String(o) === String(activeDetailOntId)
+                          );
+                        });
+                        const activeOntDesc = row
+                          ? row.ont_description || row.description || ""
+                          : "";
+
+                        setEditingOnt({
+                          portId: parseInt(activeDetailPortId, 10),
+                          ontId: parseInt(activeDetailOntId, 10),
+                          ontIdString: `PON0${activeDetailPortId}/${activeDetailOntId}`,
+                        });
+                        setEditOntName(activeOntName);
+                        setEditOntDesc(activeOntDesc);
+                      }}
+                      className="cursor-pointer flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition"
+                    >
+                      <Settings size={13} />
+                      <span>Setting Description</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setRebootOntAction({
+                          portId: activeDetailPortId,
+                          ontId: activeDetailOntId,
+                        });
+                        setShowRebootOntConfirm(true);
+                      }}
+                      className="cursor-pointer flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition"
+                    >
+                      <Power size={13} />
+                      <span>Reboot ONT</span>
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={() => {
+                    const tempP = detailSelectedPortId;
+                    const tempO = detailSelectedOntId;
+                    setDetailSelectedPortId("");
+                    setTimeout(() => {
+                      setDetailSelectedPortId(tempP || activeDetailPortId);
+                      setDetailSelectedOntId(tempO || activeDetailOntId);
+                    }, 10);
+                  }}
+                  className="cursor-pointer flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition"
+                >
+                  <RefreshCw size={13} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ONT Detail View */}
+            <div className="flex-1">
+              {activeDetailPortId && activeDetailOntId ? (
+                <OntDetailView
+                  portId={parseInt(activeDetailPortId, 10)}
+                  ontId={parseInt(activeDetailOntId, 10)}
+                  canManageOlt={canManageOlt}
+                  showStandaloneReboot={false}
+                  rebootTimestamp={rebootTimestamp}
+                  editTimestamp={editTimestamp}
+                  onRebootSuccess={() => fetchData(true)}
+                  onEditNameDesc={(name, desc) => {
+                    setEditingOnt({
+                      portId: parseInt(activeDetailPortId, 10),
+                      ontId: parseInt(activeDetailOntId, 10),
+                      ontIdString: `PON0${activeDetailPortId}/${activeDetailOntId}`,
+                    });
+                    setEditOntName(name);
+                    setEditOntDesc(desc);
+                  }}
+                />
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400 text-xs">
+                  Pilih Port ID dan Name ONT pada toolbar di atas untuk melihat detail lengkap perangkat.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* TAB: AUTHENTICATE LIST & WLAN */
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col">
+            {/* Table Toolbar */}
+            <div className="p-3 sm:p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-900/60">
+              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+                {/* Port ID Filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-xs font-medium">Port:</span>
+                  <select
+                    className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 min-w-[130px]"
+                    value={selectedPort}
+                    onChange={(e) => {
+                      setSelectedPort(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value="All">Semua Port</option>
+                    {uniquePorts.map((p) => (
+                      <option key={p} value={String(p)}>
+                        {p < 10 ? `PON0${p}` : `PON${p}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Query Method */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-xs font-medium">Metode:</span>
+                  <select
+                    className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 min-w-[140px]"
+                    value={displayType}
+                    onChange={(e) => {
+                      setDisplayType(e.target.value);
                       setDisplayValue("");
                       setCurrentPage(1);
                     }}
-                    className="flex bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-md text-xs border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors"
                   >
-                    Registered: {stats.registered}
-                  </div>
-                  <div
-                    onClick={() => {
-                      setDisplayType("Running state");
-                      setDisplayValue("initial");
-                      setCurrentPage(1);
-                    }}
-                    className="flex bg-red-500/10 text-red-400 px-3 py-1.5 rounded-md text-xs border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors"
-                  >
-                    Unregistered: {stats.unregistered}
-                  </div>
-                  <div
-                    onClick={() => {
-                      setDisplayType("Running state");
-                      setDisplayValue("online");
-                      setCurrentPage(1);
-                    }}
-                    className="flex bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-md text-xs border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-colors"
-                  >
-                    Online: {stats.online}
-                  </div>
-                  <div
-                    onClick={() => {
-                      setDisplayType("Running state");
-                      setDisplayValue("offline");
-                      setCurrentPage(1);
-                    }}
-                    className="flex bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-md text-xs border border-rose-500/20 cursor-pointer hover:bg-rose-500/20 transition-colors"
-                  >
-                    Offline: {stats.offline}
-                  </div>
-                </>
-              )}
+                    <option value="All">Semua Kolom</option>
+                    <option value="ONT ID">ONT ID</option>
+                    <option value="Name">Nama</option>
+                    <option value="Serial Number">Serial Number</option>
+                    {activeTab === "WLAN" ? (
+                      <option value="SSID">SSID</option>
+                    ) : (
+                      <option value="Running state">Status (Running State)</option>
+                    )}
+                  </select>
+                </div>
 
-              <div className="flex items-center gap-2 ml-4">
-                <button
-                  onClick={() => {
-                    fetchData();
-                    if (socket) socket.emit("force_sync_hsgq");
+                {/* Search Box / Status Selector */}
+                {displayType === "Running state" ? (
+                  <select
+                    className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 min-w-[130px]"
+                    value={displayValue}
+                    onChange={(e) => {
+                      setDisplayValue(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value="">Semua Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="initial">Initial</option>
+                  </select>
+                ) : (
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search
+                      size={13}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                    />
+                    <input
+                      type="text"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition placeholder:text-slate-500"
+                      value={displayValue}
+                      onChange={(e) => {
+                        setDisplayValue(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder={
+                        displayType === "All"
+                          ? "Cari ONT ID, Nama, SN..."
+                          : `Cari berdasarkan ${displayType}...`
+                      }
+                    />
+                    {displayValue && (
+                      <button
+                        onClick={() => {
+                          setDisplayValue("");
+                          setCurrentPage(1);
+                        }}
+                        className="cursor-pointer absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Rows Per Page */}
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 text-xs">Tampilkan:</span>
+                <select
+                  className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-2.5 pr-7 py-1 text-xs text-slate-300 focus:outline-none"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
                   }}
-                  className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
                 >
-                  <RefreshCw size={14} /> Refresh
-                </button>
-                <button
-                  onClick={() => {
-                    setDisplayType("All");
-                    setDisplayValue("");
-                    setSelectedPort("All");
-                  }}
-                  className="cursor-pointer flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs transition-colors"
-                >
-                  Reset Query
-                </button>
+                  <option value={20}>20</option>
+                  <option value={30}>30</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
               </div>
             </div>
-          </div>
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-xs">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="p-4 bg-rose-500/10 border-b border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+                <AlertCircle size={14} />
+                <span>{error}</span>
+              </div>
+            )}
 
-          {/* Table */}
-          <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
+            {/* Table */}
             <div className="overflow-x-auto overflow-y-visible min-w-0 max-w-full touch-auto scrollbar-thin">
-              <table className="w-full text-left text-xs text-slate-300 relative min-w-[750px]">
-                <thead className="bg-slate-800/90 text-slate-400 border-b border-slate-700/50 uppercase text-xs sticky top-0 z-10 backdrop-blur-sm">
+              <table className="w-full text-left text-xs text-slate-300 relative min-w-[800px]">
+                <thead className="bg-slate-950/95 text-slate-400 border-b border-slate-800 font-mono text-[11px] uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm">
                   <tr>
-                    <th className="px-4 py-3">ONT ID</th>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Serial Number</th>
-                    {activeTab === "Version Information" ? (
+                    <th className="px-4 py-3 font-semibold">ONT ID</th>
+                    <th className="px-4 py-3 font-semibold">Name</th>
+                    <th className="px-4 py-3 font-semibold">Serial Number</th>
+
+                    {activeTab === "WLAN" ? (
                       <>
-                        <th className="px-4 py-3">Device Type</th>
-                        <th className="px-4 py-3">Vendor ID</th>
-                        <th className="px-4 py-3">ONT Version</th>
-                        <th className="px-4 py-3">Equipment ID</th>
-                        <th className="px-4 py-3">Main Software Version</th>
-                        <th className="px-4 py-3">Standby Software Version</th>
-                      </>
-                    ) : activeTab === "Bind Profile Info" ? (
-                      <>
-                        <th className="px-4 py-3">Device Type</th>
-                        <th className="px-4 py-3">Equipment ID</th>
-                        <th className="px-4 py-3">Line Profile ID</th>
-                        <th className="px-4 py-3">Line Profile Name</th>
-                        <th className="px-4 py-3">Srv Profile ID</th>
-                        <th className="px-4 py-3">Srv Profile Name</th>
-                      </>
-                    ) : activeTab === "WLAN" ? (
-                      <>
-                        <th className="px-4 py-3">Type</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">SSID</th>
-                        <th className="px-4 py-3">Share key</th>
-                        <th className="px-4 py-3">Band Width</th>
-                        <th className="px-4 py-3">Isolation</th>
-                        <th className="px-4 py-3">Broadcast</th>
-                        <th className="px-4 py-3">Channel</th>
+                        <th className="px-4 py-3 font-semibold">Type</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                        <th className="px-4 py-3 font-semibold">SSID</th>
+                        <th className="px-4 py-3 font-semibold">Share Key</th>
+                        <th className="px-4 py-3 font-semibold">Bandwidth</th>
+                        <th className="px-4 py-3 font-semibold">Channel</th>
                       </>
                     ) : (
                       <>
-                        <th className="px-4 py-3">Running state</th>
-                        <th className="px-4 py-3">Receive Power</th>
-                        <th className="px-4 py-3">Last up time</th>
-                        <th className="px-4 py-3">Last down time</th>
-                        <th className="px-4 py-3">Last down cause</th>
+                        <th className="px-4 py-3 font-semibold">Running State</th>
+                        <th className="px-4 py-3 font-semibold">Rx Power</th>
+                        <th className="px-4 py-3 font-semibold">Last Up Time</th>
+                        <th className="px-4 py-3 font-semibold">Last Down Time</th>
+                        <th className="px-4 py-3 font-semibold">Last Down Cause</th>
                       </>
                     )}
-                    <th className="px-4 py-3 text-center">Setting</th>
+                    <th className="px-4 py-3 font-semibold text-center">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/50">
+
+                <tbody className="divide-y divide-slate-800/60">
                   {loading ? (
                     <tr>
-                      <td
-                        colSpan="13"
-                        className="px-4 py-8 text-center text-slate-400"
-                      >
-                        Loading data...
+                      <td colSpan="10" className="px-4 py-12 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <RefreshCw size={20} className="animate-spin text-blue-500" />
+                          <span className="text-xs">Memuat data dari OLT HSGQ...</span>
+                        </div>
                       </td>
                     </tr>
                   ) : filteredData.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan="12"
-                        className="px-4 py-8 text-center text-slate-400"
-                      >
-                        No data available.
+                      <td colSpan="10" className="px-4 py-12 text-center text-slate-500">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <Server size={24} className="text-slate-600 mb-1" />
+                          <span className="text-xs font-medium">Tidak ada data ONT yang sesuai</span>
+                          <span className="text-[11px] text-slate-600">
+                            Coba ubah filter atau kata kunci pencarian
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ) : (
                     currentData.map((row, idx) => {
-                      // Jika API mengembalikan array object tapi key tidak diketahui, coba mapping manual
-                      // Default field mappings fallback to row[0], row[1] etc jika format array of arrays
                       const isArray = Array.isArray(row);
                       const rawName = row.ont_name || row.name || "";
                       let genId = "";
+                      let parsedPortId = 1;
+                      let parsedOntId = 0;
+
                       if (rawName && rawName.includes("/")) {
                         const parts = rawName.split("/");
-                        genId = `${parts[0].replace("ONT", "PON")}/${parseInt(parts[1], 10)}`;
+                        parsedPortId = parseInt(
+                          parts[0].replace("ONT", "").replace("PON", ""),
+                          10,
+                        );
+                        parsedOntId = parseInt(parts[1], 10);
+                        genId = `${parts[0].replace("ONT", "PON")}/${parsedOntId}`;
                       } else if (row.identifier !== undefined) {
-                        genId = `PON0${(row.identifier >> 8) & 255}/${row.identifier & 255}`;
+                        parsedPortId = (row.identifier >> 8) & 255;
+                        parsedOntId = row.identifier & 255;
+                        genId = `PON0${parsedPortId}/${parsedOntId}`;
                       } else {
-                        genId = `PON0${Math.floor(idx / 10)}/${idx % 10}`;
+                        parsedPortId = Math.floor(idx / 10);
+                        parsedOntId = idx % 10;
+                        genId = `PON0${parsedPortId}/${parsedOntId}`;
                       }
 
                       const ontId = isArray
@@ -1110,43 +1285,15 @@ export default function HsgqOltPage() {
                         ? row[2]
                         : row.ont_sn || row.sn || row.serial_number || "-";
 
-                      let parsedPortId = 1;
-                      let parsedOntId = 0;
-                      if (row.identifier !== undefined) {
-                        parsedPortId = (row.identifier >> 8) & 255;
-                        parsedOntId = row.identifier & 255;
-                      } else {
-                        const idParts =
-                          String(ontId).match(/PON0?(\d+)\/(\d+)/i);
-                        if (idParts) {
-                          parsedPortId = parseInt(idParts[1], 10);
-                          parsedOntId = parseInt(idParts[2], 10);
-                        }
-                      }
-
-                      const handleOntClick = () => {
-                        setSelectedOnt({
-                          ontIdString: ontId,
-                          portId: parsedPortId,
-                          ontId: parsedOntId,
-                        });
-                      };
-
                       const ontIdCell = (
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={handleOntClick}
-                            className="text-blue-400 hover:text-blue-300 hover:underline font-medium transition-colors cursor-pointer"
-                            title="Klik untuk melihat detail ONT"
-                          >
-                            {ontId}
-                          </button>
+                        <td className="px-4 py-2.5 font-mono text-blue-400 font-semibold whitespace-nowrap">
+                          {ontId}
                         </td>
                       );
 
                       const nameCell = (
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-1.5 font-medium text-slate-200">
                             <span>{name}</span>
                             {canManageOlt && (
                               <button
@@ -1157,10 +1304,12 @@ export default function HsgqOltPage() {
                                     ontIdString: ontId,
                                   });
                                   setEditOntName(name);
-                                  setEditOntDesc(row.ont_description || row.description || "");
+                                  setEditOntDesc(
+                                    row.ont_description || row.description || "",
+                                  );
                                 }}
-                                className="cursor-pointer text-slate-400 hover:text-blue-400 transition-colors p-0.5"
-                                title="Edit Name & Description"
+                                className="cursor-pointer text-slate-500 hover:text-blue-400 transition p-0.5 rounded"
+                                title="Edit Nama / Deskripsi"
                               >
                                 <Edit2 size={12} />
                               </button>
@@ -1170,19 +1319,18 @@ export default function HsgqOltPage() {
                       );
 
                       const settingCell = (
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-3">
+                        <td className="px-4 py-2.5 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-2">
                             {activeTab === "WLAN" && canManageOlt && (
                               <button
                                 onClick={() => handleOpenWifiModal(row)}
-                                className="cursor-pointer text-blue-400 hover:text-blue-300 hover:underline transition-colors font-medium text-xs"
+                                className="cursor-pointer px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition text-[11px] font-medium"
                               >
                                 Setting WiFi
                               </button>
                             )}
                             <button
                               onClick={() => {
-                                // Trigger client-side view detail
                                 setActiveTab("ONT Detail");
                                 setDetailSelectedPortId(parsedPortId.toString());
                                 setDetailSelectedOntId(parsedOntId.toString());
@@ -1192,137 +1340,71 @@ export default function HsgqOltPage() {
                                   window.history.pushState({}, "", url);
                                 }
                               }}
-                              className="cursor-pointer text-blue-400 hover:text-blue-300 hover:underline transition-colors font-medium text-xs"
+                              className="cursor-pointer px-2.5 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition text-[11px] font-semibold"
                             >
-                              View Detail
+                              Detail
                             </button>
                           </div>
                         </td>
                       );
 
-                      if (activeTab === "Version Information") {
-                        const devType = isArray
-                          ? row[3]
-                          : row.dev_type || row.device_type || "-";
-                        const vendorId = isArray ? row[4] : row.vendorid || "-";
-                        const ontVersion = isArray
-                          ? row[5]
-                          : row.ont_version || "-";
-                        const equipId = isArray
-                          ? row[6]
-                          : row.equipmentid || "-";
-                        const mainVer = isArray
-                          ? row[7]
-                          : row.mainversion || "-";
-                        const stbVer = isArray ? row[8] : row.stbversion || "-";
-
-                        return (
-                          <tr
-                            key={idx}
-                            className="hover:bg-slate-700/20 transition-colors"
-                          >
-                            {ontIdCell}
-                            {nameCell}
-                            <td className="px-4 py-3">{sn}</td>
-                            <td className="px-4 py-3">{devType}</td>
-                            <td className="px-4 py-3">{vendorId}</td>
-                            <td className="px-4 py-3">{ontVersion}</td>
-                            <td className="px-4 py-3">{equipId}</td>
-                            <td className="px-4 py-3">{mainVer}</td>
-                            <td className="px-4 py-3">{stbVer}</td>
-                            {settingCell}
-                          </tr>
-                        );
-                      }
-
-                      if (activeTab === "Bind Profile Info") {
-                        const devType = isArray
-                          ? row[3]
-                          : row.dev_type || row.device_type || "-";
-                        const equipId = isArray
-                          ? row[4]
-                          : row.equipmentid || "-";
-                        const lprofId = isArray ? row[5] : (row.lprofid ?? row.lineprof_id ?? "-");
-                        const lprofName = isArray
-                          ? row[6]
-                          : row.lprofname || row.lineprof_name || (row.lineprof_id !== undefined ? `PROFILE_${row.lineprof_id}` : "-");
-                        const sprofId = isArray ? row[7] : (row.sprofid ?? row.srvprof_id ?? "-");
-                        const sprofName = isArray
-                          ? row[8]
-                          : row.sprofname || row.srvprof_name || (row.srvprof_id !== undefined ? `PROFILE_${row.srvprof_id}` : "-");
-
-                        return (
-                          <tr
-                            key={idx}
-                            className="hover:bg-slate-700/20 transition-colors"
-                          >
-                            {ontIdCell}
-                            {nameCell}
-                            <td className="px-4 py-3">{sn}</td>
-                            <td className="px-4 py-3">{devType}</td>
-                            <td className="px-4 py-3">{equipId}</td>
-                            <td className="px-4 py-3">{lprofId}</td>
-                            <td className="px-4 py-3">{lprofName}</td>
-                            <td className="px-4 py-3">{sprofId}</td>
-                            <td className="px-4 py-3">{sprofName}</td>
-                            {settingCell}
-                          </tr>
-                        );
-                      }
-
                       if (activeTab === "WLAN") {
                         const wifi = row.wifi && row.wifi[0] ? row.wifi[0] : {};
                         const typeStr = wifi.instance === 2 ? "5G" : "2.4G";
-
                         const status = wifi.enable === 1;
                         const ssid = wifi.wifiname || "-";
                         const sharekey = wifi.sharekey || "-";
                         const bandwidth =
                           wifi.bandwidth === 0
-                            ? "20mhz"
+                            ? "20MHz"
                             : wifi.bandwidth === 1
-                              ? "40mhz"
-                              : "auto";
-                        const isolation = wifi.isolation === 1;
-                        const broadcast = wifi.broadcast === 1;
+                              ? "40MHz"
+                              : "Auto";
                         const channel =
-                          wifi.channel === 0 ? "auto" : wifi.channel;
+                          wifi.channel === 0 ? "Auto" : wifi.channel;
 
                         return (
                           <tr
                             key={idx}
-                            className="hover:bg-slate-700/20 transition-colors"
+                            className="hover:bg-slate-800/40 transition border-b border-slate-800/40"
                           >
                             {ontIdCell}
                             {nameCell}
-                            <td className="px-4 py-3">{sn}</td>
-                            <td className="px-4 py-3">{typeStr}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-2.5 font-mono text-slate-300">
+                              {sn}
+                            </td>
+                            <td className="px-4 py-2.5 font-mono text-slate-400">
+                              {typeStr}
+                            </td>
+                            <td className="px-4 py-2.5">
                               <div
-                                className={`flex flex-col gap-1 ${canManageOlt ? "cursor-pointer group" : "cursor-not-allowed opacity-60"}`}
+                                className={`inline-flex items-center gap-1.5 ${
+                                  canManageOlt
+                                    ? "cursor-pointer"
+                                    : "cursor-not-allowed opacity-60"
+                                }`}
                                 onClick={() =>
                                   canManageOlt &&
                                   handleWifiToggle(row, "enable", wifi.enable)
                                 }
                               >
                                 <span
-                                  className={`text-xs transition-colors ${canManageOlt ? "text-slate-300 group-hover:text-blue-400" : "text-slate-400"}`}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                    status
+                                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                      : "bg-slate-800 text-slate-400 border-slate-700"
+                                  }`}
                                 >
-                                  {status ? "Enable" : "Disable"}
+                                  {status ? "Enabled" : "Disabled"}
                                 </span>
-                                <div
-                                  className={`w-8 h-4 rounded-full relative transition-colors ${status ? "bg-blue-500" : "bg-slate-600"}`}
-                                >
-                                  <div
-                                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${status ? "left-[18px]" : "left-0.5"}`}
-                                  ></div>
-                                </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3">{ssid}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-2.5 font-medium text-slate-200">
+                              {ssid}
+                            </td>
+                            <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono bg-slate-900/50 px-2 py-1 rounded text-slate-300">
+                                <span className="font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-slate-300 text-xs">
                                   {visiblePasswords[ontId]
                                     ? sharekey
                                     : "••••••••"}
@@ -1335,7 +1417,7 @@ export default function HsgqOltPage() {
                                         [ontId]: !prev[ontId],
                                       }))
                                     }
-                                    className="cursor-pointer text-slate-400 hover:text-blue-400 transition-colors"
+                                    className="cursor-pointer text-slate-500 hover:text-blue-400 transition"
                                     title={
                                       visiblePasswords[ontId]
                                         ? "Sembunyikan Password"
@@ -1343,107 +1425,35 @@ export default function HsgqOltPage() {
                                     }
                                   >
                                     {visiblePasswords[ontId] ? (
-                                      <EyeOff size={14} />
+                                      <EyeOff size={13} />
                                     ) : (
-                                      <Eye size={14} />
+                                      <Eye size={13} />
                                     )}
                                   </button>
                                 )}
                               </div>
                             </td>
-                            <td className="px-4 py-3">{bandwidth}</td>
-                            <td className="px-4 py-3">
-                              <div
-                                className={`flex flex-col gap-1 ${
-                                  canManageOlt && wifi.enable === 1
-                                    ? "cursor-pointer group"
-                                    : "cursor-not-allowed opacity-40"
-                                }`}
-                                onClick={() =>
-                                  canManageOlt && wifi.enable === 1 &&
-                                  handleWifiToggle(
-                                    row,
-                                    "isolation",
-                                    wifi.isolation,
-                                  )
-                                }
-                              >
-                                <span
-                                  className={`text-xs transition-colors ${canManageOlt ? "text-slate-300 group-hover:text-blue-400" : "text-slate-400"}`}
-                                >
-                                  {isolation ? "Enable" : "Disable"}
-                                </span>
-                                <div
-                                  className={`w-8 h-4 rounded-full relative transition-colors ${isolation ? "bg-blue-500" : "bg-slate-600"}`}
-                                >
-                                  <div
-                                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${isolation ? "left-[18px]" : "left-0.5"}`}
-                                  ></div>
-                                </div>
-                              </div>
+                            <td className="px-4 py-2.5 font-mono text-slate-400">
+                              {bandwidth}
                             </td>
-                            <td className="px-4 py-3">
-                              <div
-                                className={`flex flex-col gap-1 ${
-                                  canManageOlt && wifi.enable === 1
-                                    ? "cursor-pointer group"
-                                    : "cursor-not-allowed opacity-40"
-                                }`}
-                                onClick={() =>
-                                  canManageOlt && wifi.enable === 1 &&
-                                  handleWifiToggle(
-                                    row,
-                                    "broadcast",
-                                    wifi.broadcast,
-                                  )
-                                }
-                              >
-                                <span
-                                  className={`text-xs transition-colors ${canManageOlt ? "text-slate-300 group-hover:text-blue-400" : "text-slate-400"}`}
-                                >
-                                  {broadcast ? "Enable" : "Disable"}
-                                </span>
-                                <div
-                                  className={`w-8 h-4 rounded-full relative transition-colors ${broadcast ? "bg-blue-500" : "bg-slate-600"}`}
-                                >
-                                  <div
-                                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${broadcast ? "left-[18px]" : "left-0.5"}`}
-                                  ></div>
-                                </div>
-                              </div>
+                            <td className="px-4 py-2.5 font-mono text-slate-400">
+                              {channel}
                             </td>
-                            <td className="px-4 py-3">{channel}</td>
                             {settingCell}
                           </tr>
                         );
                       }
 
+                      // Authenticate List Row
                       const stateVal = isArray ? row[3] : row.state;
                       const rstateVal = isArray ? row[4] : row.rstate;
-                      const cstateVal = isArray ? row[5] : row.cstate;
-
-                      const state =
-                        stateVal === 1
-                          ? "Active"
-                          : stateVal === 0
-                            ? "Inactive"
-                            : "Unknown";
                       const runningState =
                         stateVal === 1
                           ? rstateVal === 1
                             ? "online"
                             : "offline"
                           : "initial";
-                      const configState =
-                        cstateVal === 1
-                          ? "normal"
-                          : cstateVal === 0
-                            ? "initial"
-                            : "unknown";
 
-                      const deviceType = isArray
-                        ? row[6]
-                        : row.dev_type || row.device_type || "HGU";
                       const rxPower = isArray
                         ? row[7]
                         : row.receive_power || row.rx_power || "-";
@@ -1457,29 +1467,55 @@ export default function HsgqOltPage() {
                         ? row[10]
                         : row.last_d_cause || row.last_down_cause || "-";
 
+                      const rxNumeric = parseFloat(rxPower);
+                      const isSignalWarning = !isNaN(rxNumeric) && rxNumeric < -27;
+                      const isSignalCritical = !isNaN(rxNumeric) && rxNumeric <= -30;
+
                       return (
                         <tr
                           key={idx}
-                          className="hover:bg-slate-700/20 transition-colors"
+                          className="hover:bg-slate-800/40 transition border-b border-slate-800/40"
                         >
                           {ontIdCell}
                           {nameCell}
-                          <td className="px-4 py-3">{sn}</td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2.5 font-mono text-slate-300">
+                            {sn}
+                          </td>
+                          <td className="px-4 py-2.5">
                             <span
-                              className={`px-2 py-1 rounded text-xs font-medium ${
+                              className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
                                 runningState.toLowerCase() === "online"
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                  : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                  : runningState.toLowerCase() === "offline"
+                                    ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                               }`}
                             >
                               {runningState}
                             </span>
                           </td>
-                          <td className="px-4 py-3">{rxPower}</td>
-                          <td className="px-4 py-3 text-xs">{lastUp}</td>
-                          <td className="px-4 py-3 text-xs">{lastDown}</td>
-                          <td className="px-4 py-3 text-xs">{lastDownCause}</td>
+                          <td className="px-4 py-2.5 font-mono text-xs">
+                            <span
+                              className={
+                                isSignalCritical
+                                  ? "text-rose-400 font-semibold"
+                                  : isSignalWarning
+                                    ? "text-amber-400 font-semibold"
+                                    : "text-slate-300"
+                              }
+                            >
+                              {rxPower} {rxPower !== "-" && !String(rxPower).includes("dBm") && "dBm"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400 whitespace-nowrap">
+                            {lastUp}
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                            {lastDown}
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-slate-400">
+                            {lastDownCause}
+                          </td>
                           {settingCell}
                         </tr>
                       );
@@ -1490,429 +1526,266 @@ export default function HsgqOltPage() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700/50 text-xs text-slate-400">
-              <div>Total {filteredData.length}</div>
-              <div className="flex items-center gap-4">
-                <select
-                  className="cursor-pointer bg-slate-800 border border-slate-700 rounded-md px-2 py-1 focus:outline-none"
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value={20}>20/page</option>
-                  <option value={30}>30/page</option>
-                  <option value={50}>50/page</option>
-                </select>
+            <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 border-t border-slate-800 text-xs text-slate-400 gap-3 bg-slate-900/40">
+              <div className="font-medium">
+                Menampilkan {filteredData.length === 0 ? 0 : startIndex + 1} -{" "}
+                {Math.min(startIndex + itemsPerPage, filteredData.length)} dari{" "}
+                <span className="text-slate-200 font-semibold">
+                  {filteredData.length}
+                </span>{" "}
+                ONT
+              </div>
+
+              <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">
                   <button
-                    className="cursor-pointer p-1 hover:text-slate-200 disabled:opacity-50"
+                    className="cursor-pointer p-1.5 rounded-lg border border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition"
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
+                    title="Halaman sebelumnya"
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronLeft size={14} />
                   </button>
-                  <span className="px-2">
-                    Page {currentPage} of {totalPages || 1}
+
+                  <span className="px-2.5 py-1 text-xs font-mono font-medium text-slate-300">
+                    {currentPage} / {totalPages || 1}
                   </span>
+
                   <button
-                    className="cursor-pointer p-1 hover:text-slate-200 disabled:opacity-50"
+                    className="cursor-pointer p-1.5 rounded-lg border border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition"
                     onClick={() =>
                       setCurrentPage((p) => Math.min(totalPages, p + 1))
                     }
                     disabled={currentPage >= totalPages || totalPages === 0}
+                    title="Halaman berikutnya"
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={14} />
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span>Go to</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={currentPage}
-                    onChange={(e) => {
-                      const valStr = e.target.value.replace(/[^0-9]/g, "");
-                      if (valStr === "") {
-                        setCurrentPage("");
-                        return;
-                      }
-                      const val = Number(valStr);
-                      if (val >= 1 && val <= totalPages) {
-                        setCurrentPage(val);
-                      } else if (val > totalPages) {
-                        setCurrentPage(totalPages);
-                      }
-                    }}
-                    onBlur={() => {
-                      if (currentPage === "" || currentPage < 1)
-                        setCurrentPage(1);
-                      if (currentPage > totalPages) setCurrentPage(totalPages);
-                    }}
-                    className="w-12 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center"
-                  />
-                </div>
               </div>
             </div>
           </div>
-        </>
-      )}
+        )}
 
-      {editingOnt && (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80">
-              <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                <Settings size={16} className="text-blue-400" />
-                Setting ONT
-              </h3>
-              <button
-                onClick={() => setEditingOnt(null)}
-                className="text-slate-400 hover:text-white transition cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 flex flex-col gap-4 text-xs">
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Port ID</span>
-                <span className="text-slate-200 font-medium">PON0{editingOnt.portId}</span>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">ONT ID</span>
-                <span className="text-slate-200 font-medium">PON0{editingOnt.portId}/{editingOnt.ontId}</span>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Name</label>
-                <input
-                  type="text"
-                  value={editOntName}
-                  onChange={(e) => setEditOntName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
-                  placeholder="Masukkan nama ONT"
-                  maxLength={32}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">ONT Description</label>
-                <textarea
-                  value={editOntDesc}
-                  onChange={(e) => setEditOntDesc(e.target.value)}
-                  rows={3}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none resize-none"
-                  placeholder="Masukkan deskripsi ONT"
-                  maxLength={128}
-                />
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-700 bg-slate-800/80 flex items-center justify-between">
-              <button
-                onClick={handleViewDetail}
-                className="cursor-pointer px-4 py-2 text-xs font-medium text-blue-400 hover:text-blue-300 hover:underline transition"
-              >
-                View Detail
-              </button>
-              <div className="flex items-center gap-3">
+        {/* MODAL: EDIT ONT NAME / DESC */}
+        {editingOnt && (
+          <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+                <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
+                  <Settings size={16} className="text-blue-400" />
+                  Setting ONT Description
+                </h3>
                 <button
                   onClick={() => setEditingOnt(null)}
-                  className="cursor-pointer px-4 py-2 text-xs font-medium text-slate-300 hover:text-white transition"
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={isSavingEdit || !editOntName.trim()}
-                  className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSavingEdit ? (
-                    <RefreshCw size={14} className="animate-spin" />
-                  ) : (
-                    <span>Apply</span>
-                  )}
+                  <X size={16} />
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editingWifi && (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80">
-              <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                <Settings size={16} className="text-blue-400" />
-                Setting WiFi (WLAN)
-              </h3>
-              <button
-                onClick={() => setEditingWifi(null)}
-                className="text-slate-400 hover:text-white transition cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="p-5 overflow-y-auto max-h-[70vh] flex flex-col gap-4 text-xs custom-scrollbar">
-              {/* Warning banner when WLAN is disabled */}
-              {editingWifi.enable === 0 && Number(wifiEnable) === 0 && (
-                <div className="flex items-start gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                  <span className="text-yellow-400 mt-0.5">⚠️</span>
-                  <p className="text-yellow-300 text-[11px] leading-relaxed">
-                    WLAN sedang <strong>Disable</strong>. Hanya status yang dapat diubah. Ubah Status WiFi ke <strong>Enable</strong> untuk mengakses semua pengaturan.
-                  </p>
+              <div className="p-5 flex flex-col gap-4 text-xs">
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-slate-500 text-[10px] font-mono">PORT ID</span>
+                    <span className="text-slate-200 font-mono font-semibold">PON0{editingOnt.portId}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5 text-right">
+                    <span className="text-slate-500 text-[10px] font-mono">ONT ID</span>
+                    <span className="text-blue-400 font-mono font-semibold">PON0{editingOnt.portId}/{editingOnt.ontId}</span>
+                  </div>
                 </div>
-              )}
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Instance (always shown) */}
-                <div className="flex flex-col gap-1">
-                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Instance</span>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-slate-400 font-semibold text-xs">Nama ONT</label>
                   <input
                     type="text"
-                    value={editingWifi.instance ?? '-'}
-                    readOnly
-                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-slate-400 outline-none cursor-not-allowed"
+                    value={editOntName}
+                    onChange={(e) => setEditOntName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:border-blue-500 outline-none text-xs"
+                    placeholder="Contoh: ONT01/000"
+                    maxLength={32}
                   />
                 </div>
 
-                {/* Status WiFi (always shown) */}
-                <div className="flex flex-col gap-1">
-                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Status WiFi</span>
-                  <select
-                    value={wifiEnable}
-                    onChange={(e) => setWifiEnable(Number(e.target.value))}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                  >
-                    <option value={1}>Enable</option>
-                    <option value={0}>Disable</option>
-                  </select>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-slate-400 font-semibold text-xs">Deskripsi ONT</label>
+                  <textarea
+                    value={editOntDesc}
+                    onChange={(e) => setEditOntDesc(e.target.value)}
+                    rows={3}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:border-blue-500 outline-none resize-none text-xs"
+                    placeholder="Masukkan keterangan atau lokasi perangkat"
+                    maxLength={128}
+                  />
                 </div>
-
-                {/* Full fields — only shown when WLAN is being enabled */}
-                {Number(wifiEnable) === 1 && (
-                  <>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">SSID (Nama WiFi)</span>
-                      <input
-                        type="text"
-                        value={wifiSsid}
-                        onChange={(e) => setWifiSsid(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
-                        placeholder="Masukkan SSID"
-                        maxLength={32}
-                      />
-                    </div>
-                    
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Share Key (Password)</span>
-                      <input
-                        type="text"
-                        value={wifiShareKey}
-                        onChange={(e) => setWifiShareKey(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none font-mono"
-                        placeholder="Minimal 8 karakter"
-                        maxLength={64}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Security Mode</span>
-                      <select
-                        value={wifiSecurityMode}
-                        disabled
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-slate-400 outline-none cursor-not-allowed"
-                      >
-                        <option value={0}>open</option>
-                        <option value={3}>wpapsk</option>
-                        <option value={4}>wpa2psk</option>
-                        <option value={5}>wpa2mixed</option>
-                        <option value={1}>wep64bits</option>
-                        <option value={2}>wep128bits</option>
-                      </select>
-                    </div>
-
-                    {[3, 4, 5].includes(Number(wifiSecurityMode)) && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">WPA Encryption</span>
-                        <select
-                          value={wifiWpaEncrypt}
-                          onChange={(e) => setWifiWpaEncrypt(Number(e.target.value))}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                        >
-                          <option value={0}>TKIP</option>
-                          <option value={1}>AES</option>
-                          <option value={2}>TKIP/AES</option>
-                        </select>
-                      </div>
-                    )}
-
-                    {[1, 2].includes(Number(wifiSecurityMode)) && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">WEP Auth Type</span>
-                        <select
-                          value={wifiWepAuth}
-                          onChange={(e) => setWifiWepAuth(Number(e.target.value))}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                        >
-                          <option value={0}>open</option>
-                          <option value={1}>share</option>
-                          <option value={2}>share and open auto</option>
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Channel</span>
-                      <select
-                        value={wifiChannel}
-                        onChange={(e) => setWifiChannel(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                      >
-                        <option value={0}>Auto</option>
-                        {Array.from({ length: 13 }, (_, i) => i + 1).map(ch => (
-                          <option key={ch} value={ch}>Channel {ch}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Bandwidth</span>
-                      <select
-                        value={wifiBandwidth}
-                        onChange={(e) => setWifiBandwidth(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                      >
-                        <option value={0}>20 MHz</option>
-                        <option value={1}>40 MHz</option>
-                        <option value={2}>Auto</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Short Guard Interval (GI)</span>
-                      <select
-                        value={wifiShortgi}
-                        onChange={(e) => setWifiShortgi(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                      >
-                        <option value={1}>Enable</option>
-                        <option value={0}>Disable</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">WiFi Isolation</span>
-                      <select
-                        value={wifiIsolation}
-                        onChange={(e) => setWifiIsolation(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                      >
-                        <option value={1}>Enable</option>
-                        <option value={0}>Disable</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Broadcast SSID</span>
-                      <select
-                        value={wifiBroadcast}
-                        onChange={(e) => setWifiBroadcast(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
-                      >
-                        <option value={1}>Enable</option>
-                        <option value={0}>Disable</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Beacon Interval</span>
-                      <input
-                        type="number"
-                        value={wifiBeacon}
-                        onChange={(e) => setWifiBeacon(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
-                        placeholder="Default 100"
-                        min={20}
-                        max={1000}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">DTIM Period</span>
-                      <input
-                        type="number"
-                        value={wifiDtim}
-                        onChange={(e) => setWifiDtim(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
-                        placeholder="Default 1"
-                        min={1}
-                        max={255}
-                      />
-                    </div>
-                  </>
-                )}
+              </div>
+              <div className="p-4 border-t border-slate-800 bg-slate-900/80 flex items-center justify-between">
+                <button
+                  onClick={handleViewDetail}
+                  className="cursor-pointer text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
+                >
+                  Buka Detail ONT &rarr;
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setEditingOnt(null)}
+                    className="cursor-pointer px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={isSavingEdit || !editOntName.trim()}
+                    className="cursor-pointer px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isSavingEdit && <RefreshCw size={13} className="animate-spin" />}
+                    <span>Simpan</span>
+                  </button>
+                </div>
               </div>
             </div>
+          </div>
+        )}
 
-            <div className="p-4 border-t border-slate-700 bg-slate-800/80 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setEditingWifi(null)}
-                className="cursor-pointer px-4 py-2 text-xs font-medium text-slate-300 hover:text-white transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveWifi}
-                disabled={isSavingWifi || (Number(wifiEnable) === 1 && !wifiSsid.trim())}
-                className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSavingWifi ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  <span>Apply</span>
+        {/* MODAL: EDIT WIFI (WLAN) */}
+        {editingWifi && (
+          <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+                <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
+                  <Wifi size={16} className="text-blue-400" />
+                  Setting WiFi ONT (WLAN)
+                </h3>
+                <button
+                  onClick={() => setEditingWifi(null)}
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-5 overflow-y-auto max-h-[70vh] flex flex-col gap-4 text-xs custom-scrollbar">
+                {editingWifi.enable === 0 && Number(wifiEnable) === 0 && (
+                  <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                    <span className="text-amber-400">⚠️</span>
+                    <p className="text-amber-300 text-[11px] leading-relaxed">
+                      WLAN sedang <strong>Disabled</strong>. Aktifkan Status WiFi untuk mengakses pengaturan SSID dan enkripsi.
+                    </p>
+                  </div>
                 )}
-              </button>
+
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-400 font-semibold text-[11px]">Instance</span>
+                    <input
+                      type="text"
+                      value={editingWifi.instance ?? "-"}
+                      readOnly
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-400 outline-none cursor-not-allowed font-mono"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-400 font-semibold text-[11px]">Status WiFi</span>
+                    <select
+                      value={wifiEnable}
+                      onChange={(e) => setWifiEnable(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      <option value={1}>Enable</option>
+                      <option value={0}>Disable</option>
+                    </select>
+                  </div>
+
+                  {Number(wifiEnable) === 1 && (
+                    <>
+                      <div className="flex flex-col gap-1 col-span-2">
+                        <span className="text-slate-400 font-semibold text-[11px]">SSID (Nama WiFi)</span>
+                        <input
+                          type="text"
+                          value={wifiSsid}
+                          onChange={(e) => setWifiSsid(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none"
+                          placeholder="Masukkan nama SSID"
+                          maxLength={32}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1 col-span-2">
+                        <span className="text-slate-400 font-semibold text-[11px]">Password (Share Key)</span>
+                        <input
+                          type="text"
+                          value={wifiShareKey}
+                          onChange={(e) => setWifiShareKey(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none font-mono"
+                          placeholder="Minimal 8 karakter"
+                          maxLength={64}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-slate-400 font-semibold text-[11px]">Channel</span>
+                        <select
+                          value={wifiChannel}
+                          onChange={(e) => setWifiChannel(Number(e.target.value))}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                        >
+                          <option value={0}>Auto</option>
+                          {[...Array(13)].map((_, i) => (
+                            <option key={i + 1} value={i + 1}>
+                              Channel {i + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-slate-400 font-semibold text-[11px]">Bandwidth</span>
+                        <select
+                          value={wifiBandwidth}
+                          onChange={(e) => setWifiBandwidth(Number(e.target.value))}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 focus:border-blue-500 outline-none cursor-pointer"
+                        >
+                          <option value={0}>20MHz</option>
+                          <option value={1}>40MHz</option>
+                          <option value={2}>Auto</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-800 bg-slate-900/80 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setEditingWifi(null)}
+                  className="cursor-pointer px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSaveWifi}
+                  disabled={isSavingWifi || (Number(wifiEnable) === 1 && !wifiSsid.trim())}
+                  className="cursor-pointer px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSavingWifi && <RefreshCw size={13} className="animate-spin" />}
+                  <span>Simpan</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {selectedOnt && (
-        <OntDetailModal
-          ontIdString={selectedOnt.ontIdString}
-          portId={selectedOnt.portId}
-          ontId={selectedOnt.ontId}
-          canManageOlt={canManageOlt}
-          onRebootSuccess={() => fetchData(true)}
-          onEditNameDesc={(name, desc) => {
-            setEditingOnt({
-              portId: selectedOnt.portId,
-              ontId: selectedOnt.ontId,
-              ontIdString: selectedOnt.ontIdString,
-            });
-            setEditOntName(name);
-            setEditOntDesc(desc);
-            setSelectedOnt(null);
-          }}
-          onClose={() => setSelectedOnt(null)}
+        {/* REBOOT MODAL */}
+        <RebootOntConfirmModal
+          showRebootOntConfirm={showRebootOntConfirm}
+          setShowRebootOntConfirm={setShowRebootOntConfirm}
+          rebootOntAction={rebootOntAction}
+          showToast={showToast}
+          setRebootTimestamp={setRebootTimestamp}
+          fetchData={fetchData}
         />
-      )}
-
-      {/* Reboot ONT Confirmation Modal */}
-      <RebootOntConfirmModal
-        showRebootOntConfirm={showRebootOntConfirm}
-        setShowRebootOntConfirm={setShowRebootOntConfirm}
-        rebootOntAction={rebootOntAction}
-        showToast={showToast}
-        setRebootTimestamp={setRebootTimestamp}
-        fetchData={fetchData}
-      />
-    </div>
+      </div>
     </>
   );
 }

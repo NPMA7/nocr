@@ -1,31 +1,30 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
-  Network,
   PieChart,
   GitGraph,
   Server,
   Settings,
-  Database,
-  Shield,
-  Wifi,
   Monitor,
   Key,
-  Eye,
   MapPin,
   ClipboardList,
-  MessageCircle,
   ChevronDown,
-  User,
   Activity,
   Palette,
   Building2,
+  Wifi,
+  Shield,
+  Lock,
+  User,
+  Users,
 } from "lucide-react";
 
 import { useAppState } from "@/App";
-import { hasAccess, isLegacyAdmin, getStoredUser } from "@/lib/roles";
+import { hasAccess, getStoredUser } from "@/lib/roles";
 
 export default function Sidebar({
   isConnected,
@@ -46,21 +45,26 @@ export default function Sidebar({
   });
 
   useEffect(() => {
-    fetch("/api/settings/company")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.name) {
-          setCompanyInfo({
-            name: data.name,
-            region: data.region || "Kabupaten Bandung",
-          });
-        }
-      })
-      .catch(() => {});
+    const fetchCompany = () => {
+      fetch("/api/settings/company")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.name) {
+            setCompanyInfo({
+              name: data.name,
+              region: data.region || "Kabupaten Bandung",
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchCompany();
+    window.addEventListener("nocr-company-updated", fetchCompany);
+    return () => window.removeEventListener("nocr-company-updated", fetchCompany);
   }, []);
 
   const [expandedMenus, setExpandedMenus] = useState({
-    topology: false,
     monitoring: false,
     device: false,
     sites: false,
@@ -72,11 +76,10 @@ export default function Sidebar({
 
   useEffect(() => {
     setExpandedMenus({
-      topology: pathname.startsWith("/topology"),
       monitoring: pathname.startsWith("/monitoring"),
       device: pathname.startsWith("/device"),
       sites: pathname.startsWith("/sites"),
-      report: pathname.startsWith("/report"),
+      report: pathname.startsWith("/report") || pathname.startsWith("/daily-reports"),
       settings: pathname.startsWith("/settings"),
     });
   }, [pathname]);
@@ -102,8 +105,20 @@ export default function Sidebar({
   const getLinkClass = (href) => {
     const isActive =
       pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-    return `flex items-center ${isCollapsed ? "justify-center px-2 w-full" : "gap-3 px-4 w-full"} py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition duration-200 font-medium text-sm ${
-      isActive ? "bg-blue-600 text-white hover:bg-blue-700" : ""
+    return `group flex items-center ${
+      isCollapsed ? "justify-center px-2 w-full" : "gap-3 px-3 w-full"
+    } py-2.5 min-h-[36px] rounded-lg transition-all duration-150 text-xs ${
+      isActive
+        ? "bg-sky-500/10 text-sky-300 font-medium"
+        : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 font-normal"
+    }`;
+  };
+
+  const getSubLinkClass = (isActive) => {
+    return `flex items-center gap-2 px-3 py-2 min-h-[32px] text-xs rounded-lg transition-colors ${
+      isActive
+        ? "text-sky-300 font-medium bg-sky-500/15"
+        : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 font-normal"
     }`;
   };
 
@@ -115,113 +130,143 @@ export default function Sidebar({
     }
   };
 
-  const isAdmin = isLegacyAdmin(currentUser);
-
   return (
     <aside
-      className={`bg-slate-800 border-r border-slate-700/50 flex flex-col z-[3000] h-full transition-all duration-300 ${isCollapsed ? "w-16 overflow-visible" : "w-64 overflow-hidden"}`}
+      className={`bg-slate-950/95 border-r border-slate-800/80 flex flex-col z-[3000] h-full transition-all duration-300 ${
+        isCollapsed ? "w-16 overflow-visible" : "w-64 overflow-hidden"
+      } backdrop-blur-md`}
     >
+      {/* ─── Header: Brand Logo & Title ───────────────────────────────── */}
       <div
-        className={`p-4 flex flex-col gap-1 border-b border-slate-700/50 transition-all duration-300 ${isCollapsed ? "items-center" : "p-4"}`}
+        className={`h-14 flex items-center border-b border-slate-800/80 transition-all ${
+          isCollapsed ? "justify-center px-2" : "px-4 gap-3"
+        }`}
       >
-        <div className="flex items-center gap-2">
+        <div className="relative flex-shrink-0">
           <img
             src="/logo.png"
             alt="NOCR Logo"
-            className="w-10 h-10 border-2 border-slate-600 rounded-full flex-shrink-0 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+            className="w-8 h-8 rounded-lg border border-slate-700/80 object-cover shadow-sm"
           />
-          {!isCollapsed && (
-            <div>
-              <div className="flex">
-                {/* <div className="flex items-center gap-2"> */}
-                <h1 className="text-lg font-bold text-blue-500 whitespace-nowrap">
-                  NOCR
-                </h1>
-                <span className="text-[10px] text-slate-400 font-normal">
-                  v2.0.0
-                </span>
-                {/* <span className="text-[10px] text-slate-400 font-normal">
-                  by: npma
-                </span> */}
-              </div>
-              <span className="text-[12px] text-slate-400 font-normal whitespace overflow-hidden text-ellipsis">
-                Network Operations Center
+          <span
+            className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-slate-950 ${
+              isConnected ? "bg-emerald-400" : "bg-rose-500"
+            }`}
+          />
+        </div>
+
+        {!isCollapsed && (
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-100 font-mono tracking-wider">
+                NOCR
               </span>
             </div>
-          )}
-        </div>
+            <p className="text-[10px] text-slate-400 tracking-normal font-medium truncate">
+              Operations Center
+            </p>
+          </div>
+        )}
       </div>
 
+      {/* ─── Navigation Links ─────────────────────────────────────────── */}
       <nav
-        className={`flex-1 flex flex-col gap-1 transition-all duration-300 ${isCollapsed ? "p-2 items-center overflow-visible" : "p-4 overflow-y-auto custom-scrollbar"}`}
+        className={`flex-1 flex flex-col gap-1 transition-all duration-300 ${
+          isCollapsed
+            ? "p-2 items-center overflow-visible"
+            : "p-3 overflow-y-auto custom-scrollbar"
+        }`}
       >
+        {/* Category: MENU UTAMA */}
+        {!isCollapsed && (
+          <span className="text-[10px] font-semibold font-mono tracking-wider uppercase text-slate-400 px-3 pt-2 pb-1">
+            Menu Utama
+          </span>
+        )}
+
+        {/* 1. Dashboard */}
         {hasAccess(currentUser, "dashboard", "read") && (
           <Link
             href="/dashboard"
             onClick={onNavigate}
             scroll={false}
-            title={isCollapsed ? "Dashboard" : undefined}
+            title={isCollapsed ? "Dashboard Utama" : undefined}
             className={getLinkClass("/dashboard")}
           >
-            <PieChart size={18} className="flex-shrink-0" />
+            <PieChart size={16} className="flex-shrink-0 group-hover:scale-105 transition-transform" />
             {!isCollapsed && <span>Dashboard</span>}
           </Link>
         )}
 
+        {/* 2. Peta Wilayah */}
         {hasAccess(currentUser, "topology", "read") && (
-          <>
-            <Link
-              href="/maps"
-              onClick={onNavigate}
-              scroll={false}
-              title={isCollapsed ? "Peta Wilayah" : undefined}
-              className={getLinkClass("/maps")}
-            >
-              <MapPin size={18} className="flex-shrink-0" />
-              {!isCollapsed && <span>Peta Wilayah</span>}
-            </Link>
-
-            <Link
-              href="/topology"
-              onClick={onNavigate}
-              scroll={false}
-              title={isCollapsed ? "Peta Topologi" : undefined}
-              className={getLinkClass("/topology")}
-            >
-              <GitGraph size={18} className="flex-shrink-0" />
-              {!isCollapsed && <span>Topologi Jaringan</span>}
-            </Link>
-          </>
+          <Link
+            href="/maps"
+            onClick={onNavigate}
+            scroll={false}
+            title={isCollapsed ? "Peta Wilayah" : undefined}
+            className={getLinkClass("/maps")}
+          >
+            <MapPin size={16} className="flex-shrink-0 group-hover:scale-105 transition-transform" />
+            {!isCollapsed && <span>Peta Wilayah</span>}
+          </Link>
         )}
-        {["monitoring-l2tp", "monitoring-pppoe"].some((k) =>
+
+        {/* 3. Topologi Jaringan */}
+        {hasAccess(currentUser, "topology", "read") && (
+          <Link
+            href="/topology"
+            onClick={onNavigate}
+            scroll={false}
+            title={isCollapsed ? "Topologi Jaringan" : undefined}
+            className={getLinkClass("/topology")}
+          >
+            <GitGraph size={16} className="flex-shrink-0 group-hover:scale-105 transition-transform" />
+            {!isCollapsed && <span>Topologi Jaringan</span>}
+          </Link>
+        )}
+
+        {/* Category: MONITORING & INFRA */}
+        {!isCollapsed && (
+          <span className="text-[10px] font-semibold font-mono tracking-wider uppercase text-slate-400 px-3 pt-3.5 pb-1">
+            Monitoring & Infra
+          </span>
+        )}
+
+        {/* 4. Monitoring (Dropdown) */}
+        {["monitoring-l2tp", "monitoring-pppoe", "monitoring-traffic"].some((k) =>
           hasAccess(currentUser, k, "read"),
         ) && (
           <div className="flex flex-col gap-0.5 w-full relative group">
             <button
               onClick={() => handleParentClick("monitoring")}
-              className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center px-2" : "justify-between px-4"} py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none w-full ${
+              className={`cursor-pointer flex items-center ${
+                isCollapsed ? "justify-center px-2" : "justify-between px-3"
+              } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/monitoring")
-                  ? "bg-slate-800/50 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Monitor size={18} className="flex-shrink-0" />
+                <Monitor size={16} className="flex-shrink-0" />
                 {!isCollapsed && <span>Monitoring</span>}
               </div>
               {!isCollapsed && (
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform ${expandedMenus.monitoring ? "rotate-180" : ""}`}
+                  size={14}
+                  className={`transition-transform duration-200 text-slate-500 ${
+                    expandedMenus.monitoring ? "rotate-180 text-slate-300" : ""
+                  }`}
                 />
               )}
             </button>
 
-            {/* Collapsed Hover Flyout */}
+            {/* Collapsed Flyout */}
             {isCollapsed && (
-              <div className="absolute left-[100%] top-0 pl-2 hidden group-hover:block z-[9999]">
-                <div className="bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl py-2 px-1.5 w-48 flex flex-col gap-1 backdrop-blur-md max-h-[380px] overflow-y-auto custom-scrollbar">
-                  <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-700/30 mb-1 sticky top-0 bg-slate-900 z-10">
+              <div className="absolute left-[100%] top-0 pl-1.5 hidden group-hover:block z-[9999]">
+                <div className="bg-slate-900/95 border border-slate-800 rounded-lg shadow-2xl py-1.5 px-1 w-48 flex flex-col gap-0.5 backdrop-blur-md">
+                  <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1 font-mono">
                     Monitoring
                   </div>
                   {hasAccess(currentUser, "monitoring-l2tp", "read") && (
@@ -229,13 +274,9 @@ export default function Sidebar({
                       href="/monitoring/desa"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        pathname.startsWith("/monitoring/desa")
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(pathname.startsWith("/monitoring/desa"))}
                     >
-                      <Monitor size={14} className="flex-shrink-0" />
+                      <Monitor size={13} />
                       <span>Monitor Desa</span>
                     </Link>
                   )}
@@ -244,13 +285,9 @@ export default function Sidebar({
                       href="/monitoring/opd"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        pathname.startsWith("/monitoring/opd")
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(pathname.startsWith("/monitoring/opd"))}
                     >
-                      <Monitor size={14} className="flex-shrink-0" />
+                      <Monitor size={13} />
                       <span>Monitor OPD</span>
                     </Link>
                   )}
@@ -259,13 +296,9 @@ export default function Sidebar({
                       href="/monitoring/traffic"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        pathname.startsWith("/monitoring/traffic")
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(pathname.startsWith("/monitoring/traffic"))}
                     >
-                      <Activity size={14} className="flex-shrink-0" />
+                      <Activity size={13} />
                       <span>Traffic Semua Site</span>
                     </Link>
                   )}
@@ -274,19 +307,14 @@ export default function Sidebar({
             )}
 
             {!isCollapsed && expandedMenus.monitoring && (
-              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+              <div className="ml-4 pl-3 border-l border-slate-800/80 my-1 flex flex-col gap-1">
                 {hasAccess(currentUser, "monitoring-l2tp", "read") && (
                   <Link
                     href="/monitoring/desa"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/monitoring/desa")
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/monitoring/desa"))}
                   >
-                    <Monitor size={14} className="flex-shrink-0" />
                     <span>Monitor Desa</span>
                   </Link>
                 )}
@@ -295,13 +323,8 @@ export default function Sidebar({
                     href="/monitoring/opd"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/monitoring/opd")
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/monitoring/opd"))}
                   >
-                    <Monitor size={14} className="flex-shrink-0" />
                     <span>Monitor OPD</span>
                   </Link>
                 )}
@@ -310,13 +333,8 @@ export default function Sidebar({
                     href="/monitoring/traffic"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/monitoring/traffic")
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/monitoring/traffic"))}
                   >
-                    <Activity size={14} className="flex-shrink-0" />
                     <span>Traffic Semua Site</span>
                   </Link>
                 )}
@@ -325,35 +343,40 @@ export default function Sidebar({
           </div>
         )}
 
+        {/* 5. Perangkat Jaringan (Dropdown) */}
         {["devices-ruijie", "devices-mikrotik", "devices-hsgq"].some((k) =>
           hasAccess(currentUser, k, "read"),
         ) && (
           <div className="flex flex-col gap-0.5 w-full relative group">
             <button
               onClick={() => handleParentClick("device")}
-              className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center px-2" : "justify-between px-4"} py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none w-full ${
+              className={`cursor-pointer flex items-center ${
+                isCollapsed ? "justify-center px-2" : "justify-between px-3"
+              } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/device")
-                  ? "bg-slate-800/50 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Server size={18} className="flex-shrink-0" />
+                <Server size={16} className="flex-shrink-0" />
                 {!isCollapsed && <span>Perangkat Jaringan</span>}
               </div>
               {!isCollapsed && (
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform ${expandedMenus.device ? "rotate-180" : ""}`}
+                  size={14}
+                  className={`transition-transform duration-200 text-slate-500 ${
+                    expandedMenus.device ? "rotate-180 text-slate-300" : ""
+                  }`}
                 />
               )}
             </button>
 
-            {/* Collapsed Hover Flyout */}
+            {/* Collapsed Flyout */}
             {isCollapsed && (
-              <div className="absolute left-[100%] top-0 pl-2 hidden group-hover:block z-[9999]">
-                <div className="bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl py-2 px-1.5 w-48 flex flex-col gap-1 backdrop-blur-md max-h-[380px] overflow-y-auto custom-scrollbar">
-                  <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-700/30 mb-1 sticky top-0 bg-slate-900 z-10">
+              <div className="absolute left-[100%] top-0 pl-1.5 hidden group-hover:block z-[9999]">
+                <div className="bg-slate-900/95 border border-slate-800 rounded-lg shadow-2xl py-1.5 px-1 w-48 flex flex-col gap-0.5 backdrop-blur-md">
+                  <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1 font-mono">
                     Perangkat Jaringan
                   </div>
                   {hasAccess(currentUser, "devices-ruijie", "read") && (
@@ -361,13 +384,9 @@ export default function Sidebar({
                       href="/device/ruijie"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        pathname.startsWith("/device/ruijie")
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(pathname.startsWith("/device/ruijie"))}
                     >
-                      <Wifi size={14} className="flex-shrink-0" />
+                      <Wifi size={13} />
                       <span>Ruijie AP</span>
                     </Link>
                   )}
@@ -376,14 +395,10 @@ export default function Sidebar({
                       href="/device/mikrotik"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        pathname.startsWith("/device/mikrotik")
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(pathname.startsWith("/device/mikrotik"))}
                     >
-                      <Server size={14} className="flex-shrink-0" />
-                      <span>Mikrotik RO</span>
+                      <Server size={13} />
+                      <span>MikroTik Core</span>
                     </Link>
                   )}
                   {hasAccess(currentUser, "devices-hsgq", "read") && (
@@ -391,13 +406,9 @@ export default function Sidebar({
                       href="/device/hsgq-olt"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        pathname.startsWith("/device/hsgq-olt")
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(pathname.startsWith("/device/hsgq-olt"))}
                     >
-                      <Server size={14} className="flex-shrink-0" />
+                      <Server size={13} />
                       <span>HSGQ OLT</span>
                     </Link>
                   )}
@@ -406,19 +417,14 @@ export default function Sidebar({
             )}
 
             {!isCollapsed && expandedMenus.device && (
-              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+              <div className="ml-4 pl-3 border-l border-slate-800/80 my-1 flex flex-col gap-1">
                 {hasAccess(currentUser, "devices-ruijie", "read") && (
                   <Link
                     href="/device/ruijie"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/device/ruijie")
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/device/ruijie"))}
                   >
-                    <Wifi size={14} className="flex-shrink-0" />
                     <span>Ruijie AP</span>
                   </Link>
                 )}
@@ -427,14 +433,9 @@ export default function Sidebar({
                     href="/device/mikrotik"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/device/mikrotik")
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/device/mikrotik"))}
                   >
-                    <Server size={14} className="flex-shrink-0" />
-                    <span>Mikrotik RO</span>
+                    <span>MikroTik Core</span>
                   </Link>
                 )}
                 {hasAccess(currentUser, "devices-hsgq", "read") && (
@@ -442,13 +443,8 @@ export default function Sidebar({
                     href="/device/hsgq-olt"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/device/hsgq-olt")
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/device/hsgq-olt"))}
                   >
-                    <Server size={14} className="flex-shrink-0" />
                     <span>HSGQ OLT</span>
                   </Link>
                 )}
@@ -457,59 +453,54 @@ export default function Sidebar({
           </div>
         )}
 
+        {/* 6. Data Wilayah (Dropdown) */}
         {hasAccess(currentUser, "sites", "read") && (
           <div className="flex flex-col gap-0.5 w-full relative group">
             <button
               onClick={() => handleParentClick("sites")}
-              className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center px-2" : "justify-between px-4"} py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none w-full ${
+              className={`cursor-pointer flex items-center ${
+                isCollapsed ? "justify-center px-2" : "justify-between px-3"
+              } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/sites")
-                  ? "bg-slate-800/50 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
               <div className="flex items-center gap-3">
-                <MapPin size={18} className="flex-shrink-0" />
+                <MapPin size={16} className="flex-shrink-0" />
                 {!isCollapsed && <span>Data Wilayah</span>}
               </div>
               {!isCollapsed && (
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform ${expandedMenus.sites ? "rotate-180" : ""}`}
+                  size={14}
+                  className={`transition-transform duration-200 text-slate-500 ${
+                    expandedMenus.sites ? "rotate-180 text-slate-300" : ""
+                  }`}
                 />
               )}
             </button>
 
-            {/* Collapsed Hover Flyout */}
+            {/* Collapsed Flyout */}
             {isCollapsed && (
-              <div className="absolute left-[100%] top-0 pl-2 hidden group-hover:block z-[9999]">
-                <div className="bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl py-2 px-1.5 w-48 flex flex-col gap-1 backdrop-blur-md max-h-[380px] overflow-y-auto custom-scrollbar">
-                  <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-700/30 mb-1 sticky top-0 bg-slate-900 z-10">
+              <div className="absolute left-[100%] top-0 pl-1.5 hidden group-hover:block z-[9999]">
+                <div className="bg-slate-900/95 border border-slate-800 rounded-lg shadow-2xl py-1.5 px-1 w-48 flex flex-col gap-0.5 backdrop-blur-md">
+                  <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1 font-mono">
                     Data Wilayah
                   </div>
                   <Link
                     href="/sites/desa"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/sites/desa")
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/sites/desa"))}
                   >
-                    <MapPin size={14} className="flex-shrink-0" />
                     <span>Wilayah Desa</span>
                   </Link>
                   <Link
                     href="/sites/opd"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname.startsWith("/sites/opd")
-                        ? "text-purple-400 bg-purple-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname.startsWith("/sites/opd"))}
                   >
-                    <MapPin size={14} className="flex-shrink-0" />
                     <span>Wilayah OPD</span>
                   </Link>
                 </div>
@@ -517,31 +508,21 @@ export default function Sidebar({
             )}
 
             {!isCollapsed && expandedMenus.sites && (
-              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+              <div className="ml-4 pl-3 border-l border-slate-800/80 my-1 flex flex-col gap-1">
                 <Link
                   href="/sites/desa"
                   onClick={onNavigate}
                   scroll={false}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                    pathname.startsWith("/sites/desa")
-                      ? "text-blue-400 bg-blue-500/10"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
+                  className={getSubLinkClass(pathname.startsWith("/sites/desa"))}
                 >
-                  <MapPin size={14} className="flex-shrink-0" />
                   <span>Wilayah Desa</span>
                 </Link>
                 <Link
                   href="/sites/opd"
                   onClick={onNavigate}
                   scroll={false}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                    pathname.startsWith("/sites/opd")
-                      ? "text-purple-400 bg-purple-500/10"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
+                  className={getSubLinkClass(pathname.startsWith("/sites/opd"))}
                 >
-                  <MapPin size={14} className="flex-shrink-0" />
                   <span>Wilayah OPD</span>
                 </Link>
               </div>
@@ -549,59 +530,54 @@ export default function Sidebar({
           </div>
         )}
 
+        {/* 7. Laporan Harian (Dropdown) */}
         {hasAccess(currentUser, "laporan-harian", "read") && (
           <div className="flex flex-col gap-0.5 w-full relative group">
             <button
               onClick={() => handleParentClick("report")}
-              className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center px-2" : "justify-between px-4"} py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none w-full ${
-                pathname.startsWith("/report")
-                  ? "bg-slate-800/50 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              className={`cursor-pointer flex items-center ${
+                isCollapsed ? "justify-center px-2" : "justify-between px-3"
+              } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
+                pathname.startsWith("/report") || pathname.startsWith("/daily-reports")
+                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
               <div className="flex items-center gap-3">
-                <ClipboardList size={18} className="flex-shrink-0" />
+                <ClipboardList size={16} className="flex-shrink-0" />
                 {!isCollapsed && <span>Laporan Harian</span>}
               </div>
               {!isCollapsed && (
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform ${expandedMenus.report ? "rotate-180" : ""}`}
+                  size={14}
+                  className={`transition-transform duration-200 text-slate-500 ${
+                    expandedMenus.report ? "rotate-180 text-slate-300" : ""
+                  }`}
                 />
               )}
             </button>
 
-            {/* Collapsed Hover Flyout */}
+            {/* Collapsed Flyout */}
             {isCollapsed && (
-              <div className="absolute left-[100%] top-0 pl-2 hidden group-hover:block z-[9999]">
-                <div className="bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl py-2 px-1.5 w-48 flex flex-col gap-1 backdrop-blur-md max-h-[380px] overflow-y-auto custom-scrollbar">
-                  <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-700/30 mb-1 sticky top-0 bg-slate-900 z-10">
+              <div className="absolute left-[100%] top-0 pl-1.5 hidden group-hover:block z-[9999]">
+                <div className="bg-slate-900/95 border border-slate-800 rounded-lg shadow-2xl py-1.5 px-1 w-48 flex flex-col gap-0.5 backdrop-blur-md">
+                  <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1 font-mono">
                     Laporan Harian
                   </div>
                   <Link
                     href="/report/dashboard"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname === "/report/dashboard"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname === "/report/dashboard" || pathname === "/daily-reports/dashboard")}
                   >
-                    <Activity size={14} className="flex-shrink-0" />
                     <span>Dashboard Laporan</span>
                   </Link>
                   <Link
                     href="/report"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      pathname === "/report"
-                        ? "text-emerald-400 bg-emerald-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(pathname === "/report" || pathname === "/daily-reports")}
                   >
-                    <ClipboardList size={14} className="flex-shrink-0" />
                     <span>Kelola Laporan</span>
                   </Link>
                 </div>
@@ -609,31 +585,21 @@ export default function Sidebar({
             )}
 
             {!isCollapsed && expandedMenus.report && (
-              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+              <div className="ml-4 pl-3 border-l border-slate-800/80 my-1 flex flex-col gap-1">
                 <Link
                   href="/report/dashboard"
                   onClick={onNavigate}
                   scroll={false}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                    pathname === "/report/dashboard"
-                      ? "text-blue-400 bg-blue-500/10"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
+                  className={getSubLinkClass(pathname === "/report/dashboard" || pathname === "/daily-reports/dashboard")}
                 >
-                  <Activity size={14} className="flex-shrink-0" />
                   <span>Dashboard Laporan</span>
                 </Link>
                 <Link
                   href="/report"
                   onClick={onNavigate}
                   scroll={false}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                    pathname === "/report"
-                      ? "text-emerald-400 bg-emerald-500/10"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
+                  className={getSubLinkClass(pathname === "/report" || pathname === "/daily-reports")}
                 >
-                  <ClipboardList size={14} className="flex-shrink-0" />
                   <span>Kelola Laporan</span>
                 </Link>
               </div>
@@ -641,58 +607,75 @@ export default function Sidebar({
           </div>
         )}
 
-        {[
-          "settings-mikrotik",
-          "settings-vpn",
-          "settings-health",
-          "settings-wa",
-          "settings-users",
-          "settings-roles",
-          "settings-apikeys",
-          "settings-password",
-          "settings-system",
-        ].some((k) => hasAccess(currentUser, k, "read")) && (
+        {/* Category: KONFIGURASI */}
+        {!isCollapsed && (
+          <span className="text-[10px] font-semibold font-mono tracking-wider uppercase text-slate-400 px-3 pt-3.5 pb-1">
+            Konfigurasi
+          </span>
+        )}
+
+        {/* 8. Pengaturan (Dropdown) */}
+        {hasAccess(currentUser, "settings", "read") && (
           <div className="flex flex-col gap-0.5 w-full relative group">
             <button
               onClick={() => handleParentClick("settings")}
-              className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center px-2" : "justify-between px-4"} py-3 rounded-lg transition duration-200 font-medium text-sm border-0 bg-transparent text-left outline-none w-full ${
+              className={`cursor-pointer flex items-center ${
+                isCollapsed ? "justify-center px-2" : "justify-between px-3"
+              } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/settings")
-                  ? "bg-slate-800/50 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Settings size={18} className="flex-shrink-0" />
+                <Settings size={16} className="flex-shrink-0" />
                 {!isCollapsed && <span>Pengaturan</span>}
               </div>
               {!isCollapsed && (
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform ${expandedMenus.settings ? "rotate-180" : ""}`}
+                  size={14}
+                  className={`transition-transform duration-200 text-slate-500 ${
+                    expandedMenus.settings ? "rotate-180 text-slate-300" : ""
+                  }`}
                 />
               )}
             </button>
 
-            {/* Collapsed Hover Flyout */}
+            {/* Collapsed Flyout */}
             {isCollapsed && (
-              <div className="absolute left-[100%] bottom-0 pl-2 hidden group-hover:block z-[9999]">
-                <div className="bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl py-2 px-1.5 w-52 flex flex-col gap-1 backdrop-blur-md max-h-[380px] overflow-y-auto custom-scrollbar">
-                  <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-700/30 mb-1 sticky top-0 bg-slate-900 z-10">
-                    Pengaturan
+              <div className="absolute left-[100%] top-0 pl-1.5 hidden group-hover:block z-[9999]">
+                <div className="bg-slate-900/95 border border-slate-800 rounded-lg shadow-2xl py-1.5 px-1 w-52 flex flex-col gap-0.5 backdrop-blur-md">
+                  <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1 font-mono">
+                    Pengaturan Sistem
                   </div>
                   {hasAccess(currentUser, "settings-company", "read") && (
                     <Link
                       href="/settings/company"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "company" || currentTab === "profile"
-                          ? "text-cyan-400 bg-cyan-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(currentTab === "company" || currentTab === "profile")}
                     >
-                      <Building2 size={14} className="flex-shrink-0" />
+                      <Building2 size={13} />
                       <span>Profil Perusahaan</span>
+                    </Link>
+                  )}
+                  {(hasAccess(currentUser, "settings-system", "read") ||
+                    hasAccess(currentUser, "settings-mikrotik", "read") ||
+                    hasAccess(currentUser, "settings-vpn", "read")) && (
+                    <Link
+                      href="/settings/system"
+                      onClick={onNavigate}
+                      scroll={false}
+                      className={getSubLinkClass(
+                        currentTab === "system" ||
+                          currentTab === "server" ||
+                          currentTab === "core" ||
+                          currentTab === "mikrotik-gateway" ||
+                          currentTab === "vpn"
+                      )}
+                    >
+                      <Server size={13} />
+                      <span>Konfigurasi Server</span>
                     </Link>
                   )}
                   {hasAccess(currentUser, "settings-health", "read") && (
@@ -700,102 +683,52 @@ export default function Sidebar({
                       href="/settings/health"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "health"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(currentTab === "health")}
                     >
-                      <Monitor size={14} className="flex-shrink-0" />
+                      <Activity size={13} />
                       <span>Kesehatan Sistem & DB</span>
                     </Link>
                   )}
-                  {hasAccess(currentUser, "settings-users", "read") && (
+                  {(hasAccess(currentUser, "settings-users", "read") || hasAccess(currentUser, "settings-roles", "read")) && (
                     <Link
                       href="/settings/users"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "users"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(currentTab === "users" || currentTab === "roles")}
                     >
-                      <User size={14} className="flex-shrink-0" />
-                      <span>Manajemen Pengguna</span>
+                      <Users size={13} />
+                      <span>Pengguna & Role</span>
                     </Link>
                   )}
-                  {hasAccess(currentUser, "settings-roles", "read") && (
-                    <Link
-                      href="/settings/roles"
-                      onClick={onNavigate}
-                      scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "roles"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
-                    >
-                      <Shield size={14} className="flex-shrink-0" />
-                      <span>Manajemen Role</span>
-                    </Link>
-                  )}
-                 
                   {hasAccess(currentUser, "settings-password", "read") && (
                     <Link
                       href="/settings/password"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "password"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(currentTab === "password")}
                     >
-                      <Eye size={14} className="flex-shrink-0" />
+                      <Lock size={13} />
                       <span>Ubah Password</span>
-                    </Link>
-                  )}
-                  {hasAccess(currentUser, "settings-system", "read") && (
-                    <Link
-                      href="/settings/system"
-                      onClick={onNavigate}
-                      scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "system"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
-                    >
-                      <Settings size={14} className="flex-shrink-0" />
-                      <span>Konfigurasi Server</span>
                     </Link>
                   )}
                   <Link
                     href="/settings/design"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "design" || pathname === "/settings/design"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(currentTab === "design" || pathname === "/settings/design")}
                   >
-                    <Palette size={14} className="flex-shrink-0" />
-                    <span>Desain & Warna</span>
+                    <Palette size={13} />
+                    <span>Desain & Tema</span>
                   </Link>
-                   {(currentUser?.role || "").toLowerCase() === "superadmin" && (
+                  {((currentUser?.role || "").toLowerCase() === "superadmin" ||
+                    (currentUser?.role || "").toLowerCase() === "admin") && (
                     <Link
                       href="/settings/api-keys"
                       onClick={onNavigate}
                       scroll={false}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                        currentTab === "api-keys" || currentTab === "apikeys"
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      }`}
+                      className={getSubLinkClass(currentTab === "api-keys" || currentTab === "apikeys")}
                     >
-                      <Key size={14} className="flex-shrink-0 text-blue-400" />
+                      <Key size={13} />
                       <span>Akses API Key</span>
                     </Link>
                   )}
@@ -804,20 +737,33 @@ export default function Sidebar({
             )}
 
             {!isCollapsed && expandedMenus.settings && (
-              <div className="pl-6 pr-2 py-1.5 flex flex-col gap-1 border-l border-slate-700/50 ml-6 mt-1 mb-2">
+              <div className="ml-4 pl-3 border-l border-slate-800/80 my-1 flex flex-col gap-1">
                 {hasAccess(currentUser, "settings-company", "read") && (
                   <Link
                     href="/settings/company"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "company" || currentTab === "profile"
-                        ? "text-cyan-400 bg-cyan-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(currentTab === "company" || currentTab === "profile")}
                   >
-                    <Building2 size={14} className="flex-shrink-0" />
                     <span>Profil Perusahaan</span>
+                  </Link>
+                )}
+                {(hasAccess(currentUser, "settings-system", "read") ||
+                  hasAccess(currentUser, "settings-mikrotik", "read") ||
+                  hasAccess(currentUser, "settings-vpn", "read")) && (
+                  <Link
+                    href="/settings/system"
+                    onClick={onNavigate}
+                    scroll={false}
+                    className={getSubLinkClass(
+                      currentTab === "system" ||
+                        currentTab === "server" ||
+                        currentTab === "core" ||
+                        currentTab === "mikrotik-gateway" ||
+                        currentTab === "vpn"
+                    )}
+                  >
+                    <span>Konfigurasi Server</span>
                   </Link>
                 )}
                 {hasAccess(currentUser, "settings-health", "read") && (
@@ -825,102 +771,47 @@ export default function Sidebar({
                     href="/settings/health"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "health"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(currentTab === "health")}
                   >
-                    <Monitor size={14} className="flex-shrink-0" />
                     <span>Kesehatan Sistem & DB</span>
                   </Link>
                 )}
-                {hasAccess(currentUser, "settings-users", "read") && (
+                {(hasAccess(currentUser, "settings-users", "read") || hasAccess(currentUser, "settings-roles", "read")) && (
                   <Link
                     href="/settings/users"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "users"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(currentTab === "users" || currentTab === "roles")}
                   >
-                    <User size={14} className="flex-shrink-0" />
-                    <span>Manajemen Pengguna</span>
+                    <span>Pengguna & Role</span>
                   </Link>
                 )}
-                {hasAccess(currentUser, "settings-roles", "read") && (
-                  <Link
-                    href="/settings/roles"
-                    onClick={onNavigate}
-                    scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "roles"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Shield size={14} className="flex-shrink-0" />
-                    <span>Manajemen Role</span>
-                  </Link>
-                )}
-               
                 {hasAccess(currentUser, "settings-password", "read") && (
                   <Link
                     href="/settings/password"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "password"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(currentTab === "password")}
                   >
-                    <Eye size={14} className="flex-shrink-0" />
                     <span>Ubah Password</span>
-                  </Link>
-                )}
-                {hasAccess(currentUser, "settings-system", "read") && (
-                  <Link
-                    href="/settings/system"
-                    onClick={onNavigate}
-                    scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "system"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Settings size={14} className="flex-shrink-0" />
-                    <span>Konfigurasi Server</span>
                   </Link>
                 )}
                 <Link
                   href="/settings/design"
                   onClick={onNavigate}
                   scroll={false}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                    currentTab === "design" || pathname === "/settings/design"
-                      ? "text-blue-400 bg-blue-500/10"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
+                  className={getSubLinkClass(currentTab === "design" || pathname === "/settings/design")}
                 >
-                  <Palette size={14} className="flex-shrink-0" />
-                  <span>Desain & Warna</span>
+                  <span>Desain & Tema</span>
                 </Link>
-                 {(currentUser?.role || "").toLowerCase() === "superadmin" && (
+                {((currentUser?.role || "").toLowerCase() === "superadmin" ||
+                  (currentUser?.role || "").toLowerCase() === "admin") && (
                   <Link
                     href="/settings/api-keys"
                     onClick={onNavigate}
                     scroll={false}
-                    className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-md transition duration-200 ${
-                      currentTab === "api-keys" || currentTab === "apikeys"
-                        ? "text-blue-400 bg-blue-500/10"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
+                    className={getSubLinkClass(currentTab === "api-keys" || currentTab === "apikeys")}
                   >
-                    <Key size={14} className="flex-shrink-0 text-blue-400" />
                     <span>Akses API Key</span>
                   </Link>
                 )}
@@ -930,38 +821,25 @@ export default function Sidebar({
         )}
       </nav>
 
-      {/* Footer Area */}
+      {/* ─── Footer: Clean Minimalist Tenant Indicator (Server: Terhubung Removed) ── */}
       <div
-        className={`p-3 border-t border-slate-700/50 flex flex-col gap-2.5 transition-all duration-300 ${isCollapsed ? "items-center px-2 py-3" : "px-3 py-3"}`}
+        className={`p-3 border-t border-slate-800/80 flex items-center transition-all ${
+          isCollapsed ? "justify-center" : "gap-2.5"
+        }`}
       >
-       
-        
-          <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0 group-hover:scale-105 transition">
-            <Building2 size={16} />
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <div className="text-xs font-bold text-slate-100 truncate">
-                {companyInfo.name}
-              </div>
-              <div className="text-[11px] font-medium text-cyan-400 flex items-center gap-1 mt-0.5 truncate">
-                <Network size={11} className="shrink-0 text-cyan-400" />
-                <span className="truncate">{companyInfo.region}</span>
-              </div>
-            </div>
-          )}
-
-        {/* Server Status */}
-        <div className={`flex items-center gap-2 text-xs text-slate-400 ${isCollapsed ? "justify-center" : "px-1"}`}>
-          <span
-            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isConnected ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-500"}`}
-          ></span>
-          {!isCollapsed && (
-            <span>
-              {isConnected ? "Server: Terhubung" : "Server: Terputus"}
-            </span>
-          )}
+        <div className="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 flex-shrink-0">
+          <Building2 size={13} />
         </div>
+        {!isCollapsed && (
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] font-medium text-slate-200 truncate leading-tight">
+              {companyInfo.name}
+            </div>
+            <div className="text-[10px] text-slate-400 truncate font-sans mt-0.5">
+              {companyInfo.region}
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );

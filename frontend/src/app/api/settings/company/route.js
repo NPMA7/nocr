@@ -27,8 +27,8 @@ export async function GET(req) {
             address: 'Jalan Biak No. 19 C RT 002 RW 005 Kel. Cideng Kec. Gambir Jakarta Pusat 10150',
             phone: '+62 881 0827 99999 / (021) 21693078',
             email: 'support@milenetwork.co.id',
-            website: 'https://nocrnetwork.com',
-            description: 'Penyelenggara Jasa Internet, Monitoring Jaringan Terpadu, dan Pengelolaan Jaringan Telekomunikasi Wilayah Kabupaten Bandung.'
+            website: 'https://milenetwork.co.id',
+            description: 'Penyelenggara Jasa Internet, Monitoring Jaringan Terpadu, dan Pengelolaan Jaringan Telekomunikasi.'
         };
 
         return NextResponse.json(data || defaultProfile);

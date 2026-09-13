@@ -1223,12 +1223,10 @@ export default function TopologyCanvas({
         ))}
       </div>
 
-      {/* Top/Bottom Responsive Zoom Controls */}
+      {/* Bottom Right Floating Zoom & Simulation Controls */}
       <div
         data-export-ignore="true"
-        className={`export-exclude absolute bottom-4 right-4 sm:bottom-auto sm:top-4 ${
-          hasFloatingRight ? "sm:right-52" : "sm:right-4"
-        } flex items-center gap-1 sm:gap-1.5 bg-slate-900/95 border border-slate-700/80 rounded-xl p-1 shadow-2xl backdrop-blur-md z-30 transition-all duration-200`}
+        className="export-exclude absolute bottom-4 right-4 flex items-center gap-1 sm:gap-1.5 bg-slate-900 border border-slate-800 rounded-xl p-1.5 shadow-2xl backdrop-blur-md z-30 transition-all duration-200"
       >
         {setSimulationActive && (
           <button

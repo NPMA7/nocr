@@ -53,7 +53,7 @@ export default function OntWebModal({ device, onClose }) {
         }`}
       >
         {/* Modal Header */}
-        <div className="px-4 py-3 bg-slate-850 border-b border-slate-700/50 flex items-center justify-between gap-3 flex-shrink-0">
+        <div className="px-4 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-3 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center flex-shrink-0 text-purple-400">
               <Globe size={18} />

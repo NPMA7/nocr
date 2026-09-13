@@ -12,9 +12,13 @@ import {
   Building2,
   UserPlus,
   Trash2,
-  Info,
   X,
-  FileSpreadsheet,
+  Copy,
+  Check,
+  Phone,
+  Wifi,
+  ExternalLink,
+  Globe,
 } from "lucide-react";
 import { getStoredUser, hasAccess } from "@/lib/roles";
 import { useAppState } from "@/App";
@@ -26,7 +30,7 @@ const SiteCoordinateMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-56 w-full rounded-lg bg-slate-800/50 border border-slate-700/50 animate-pulse" />
+      <div className="h-56 w-full rounded-xl bg-slate-950 border border-slate-800 animate-pulse" />
     ),
   },
 );
@@ -63,6 +67,16 @@ export default function SiteDetailPage() {
   const [evidencePhotos, setEvidencePhotos] = useState({});
 
   const [canEdit, setCanEdit] = useState(false);
+  const [copiedState, setCopiedState] = useState({});
+
+  const copyToClipboard = (text, id) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text.trim());
+    setCopiedState((prev) => ({ ...prev, [id]: true }));
+    setTimeout(() => {
+      setCopiedState((prev) => ({ ...prev, [id]: false }));
+    }, 2000);
+  };
 
   const applyForm = useCallback((item) => {
     const site = item?.site;
@@ -162,9 +176,11 @@ export default function SiteDetailPage() {
       });
       setData(res.data);
       applyForm(res.data);
-      if (showToast) showToast("Data site berhasil diperbarui dari Sheet!", "success");
+      if (showToast)
+        showToast("Data site berhasil diperbarui dari Sheet!", "success");
     } catch (e) {
-      const msg = e.response?.data?.error || e.message || "Gagal menyimpan data";
+      const msg =
+        e.response?.data?.error || e.message || "Gagal menyimpan data";
       if (showToast) showToast(msg, "error");
     } finally {
       setSaving(false);
@@ -186,369 +202,524 @@ export default function SiteDetailPage() {
 
   if (loading && !data) {
     return (
-      <div className="h-full flex flex-col gap-4 animate-pulse">
-        <div className="h-10 w-48 bg-slate-700/40 rounded" />
-        <div className="flex-1 bg-slate-800/50 rounded-xl" />
+      <div className="h-full flex flex-col gap-4 animate-pulse p-4">
+        <div className="h-14 w-full bg-slate-900 border border-slate-800 rounded-xl" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 bg-slate-900 border border-slate-800 rounded-xl" />
+          ))}
+        </div>
+        <div className="h-64 bg-slate-900 border border-slate-800 rounded-xl" />
       </div>
     );
   }
 
   if (error && !data) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-red-400">
-        <p>{error}</p>
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-red-400 p-8">
+        <p className="text-sm font-medium">{error}</p>
         <Link
           href="/sites/desa"
-          className="text-blue-400 hover:underline text-xs flex items-center gap-1"
+          className="text-blue-400 hover:underline text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800"
         >
-          <ArrowLeft size={16} /> Kembali ke daftar
+          <ArrowLeft size={14} /> Kembali ke daftar Desa
         </Link>
       </div>
     );
   }
 
-  const online = data?.final_status === "Online";
+  const isOnline = data?.final_status === "Online";
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
-      <div className="flex-shrink-0 flex items-start justify-between gap-3 flex-wrap">
-        <div>
+    <div className="flex-1 flex flex-col gap-4 min-w-0 pb-8 custom-scrollbar">
+      {/* 1. TOP HEADER BAR */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/sites/desa"
-            className="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 mb-2 transition"
+            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white transition shrink-0"
+            title="Kembali ke Daftar Desa"
           >
-            <ArrowLeft size={14} /> Wilayah Desa
+            <ArrowLeft size={16} />
           </Link>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3 flex-wrap">
-            <MapPin size={24} className="text-orange-400" />
-            {data?.prefix || "Detail Wilayah"}
-            <span className="text-xs font-normal px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Desa
-            </span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1 font-mono">
-            {data?.ruijie_alias} ↔ {data?.mikrotik_alias}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-              online
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "bg-red-500/20 text-red-400 border border-red-500/30"
-            }`}
-          >
-            {data?.final_status || "—"}
-          </span>
-          {canEdit && (
-            <>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-sm sm:text-base font-bold text-slate-100 truncate">
+                {data?.prefix || "Detail Wilayah Desa"}
+              </h1>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                DESA
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                L2TP VPN
+              </span>
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold flex items-center gap-1.5 ${
+                  isOnline
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                }`}
               >
-                {saving ? (
-                  <RefreshCw size={15} className="animate-spin" />
-                ) : (
-                  <Save size={15} />
-                )}
-                Simpan
-              </button>
-            </>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isOnline ? "bg-emerald-400 animate-pulse" : "bg-rose-400"
+                  }`}
+                />
+                {data?.final_status || "—"}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">
+              {data?.ruijie_alias || "—"} ↔ {data?.mikrotik_alias || "—"}
+            </p>
+          </div>
+        </div>
+
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={fetchDetail}
+            disabled={loading}
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition disabled:opacity-50"
+          >
+            <RefreshCw
+              size={13}
+              className={loading ? "animate-spin text-blue-400" : "text-slate-400"}
+            />
+            <span>{loading ? "Memuat..." : "Muat Ulang"}</span>
+          </button>
+
+          {canEdit && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition disabled:opacity-50"
+            >
+              {saving ? (
+                <RefreshCw size={13} className="animate-spin" />
+              ) : (
+                <Save size={13} />
+              )}
+              <span>{saving ? "Menyimpan..." : "Simpan"}</span>
+            </button>
           )}
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 space-y-4 pb-4">
-        {/* Ringkasan mapping */}
-        <section className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">
-              Prefix Gabungan
-            </p>
-            <p className="text-base font-bold text-slate-100">
-              {data?.prefix || "—"}
-            </p>
+      {/* 2. COMPACT SYSTEM OVERVIEW CARDS (4 Columns) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Card 1: Prefix & MAC */}
+        <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              Prefix Site
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">
+              DESA
+            </span>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">
-              Ruijie (AP)
-            </p>
-            <p className="text-xs text-slate-200 font-mono">
-              {data?.ruijie_alias || "—"}
-            </p>
-            <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-              {data?.ruijie_mac}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">
-              Mikrotik (Desa)
-            </p>
-            <p className="text-xs text-slate-200 font-mono">
-              {data?.mikrotik_alias || "—"}
-            </p>
-          </div>
-          {(data?.site?.topology_node_id ||
-            data?.status_ruijie ||
-            data?.status_mikrotik) && (
-            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-8 col-span-full">
-              {data?.site?.topology_node_id && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    Node Topologi Terhubung
-                  </p>
-                  <p className="text-xs text-blue-400 font-mono break-words">
-                    {data.site.topology_node_id}
-                  </p>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Vendor & PIC disinkronkan dua arah dengan node peta topologi
-                  </p>
-                </div>
-              )}
-              <div className="flex-1 min-w-0 sm:mt-0 mt-0">
-                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">
-                  Status Sumber
-                </p>
-                <p className="text-xs text-slate-400">
-                  Ruijie:{" "}
-                  <span
-                    className={
-                      data?.status_ruijie === "Online"
-                        ? "text-emerald-400"
-                        : data?.status_ruijie === "Offline"
-                          ? "text-red-400"
-                          : "text-slate-200"
-                    }
-                  >
-                    {data?.status_ruijie}
-                  </span>{" "}
-                  · Mikrotik:{" "}
-                  <span
-                    className={
-                      data?.status_mikrotik === "Online"
-                        ? "text-emerald-400"
-                        : data?.status_mikrotik === "Offline"
-                          ? "text-red-400"
-                          : "text-slate-200"
-                    }
-                  >
-                    {data?.status_mikrotik}
-                  </span>
-                </p>
-                {data?.issue && data?.issue !== "Normal" && (
-                  <p className="text-xs text-orange-400 mt-1">
-                    Issue: {data.issue}
-                  </p>
+          <p className="text-sm font-bold text-slate-100 mt-1 truncate" title={data?.prefix}>
+            {data?.prefix || "—"}
+          </p>
+          {data?.ruijie_mac && (
+            <div className="flex items-center gap-1.5 mt-1 text-[11px] font-mono text-slate-400">
+              <span className="truncate">{data.ruijie_mac}</span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(data.ruijie_mac, "mac_header")}
+                className="cursor-pointer text-slate-500 hover:text-slate-300"
+                title="Salin MAC Address"
+              >
+                {copiedState["mac_header"] ? (
+                  <Check size={11} className="text-emerald-400" />
+                ) : (
+                  <Copy size={11} />
                 )}
-              </div>
+              </button>
             </div>
           )}
-        </section>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Vendor */}
-          <section className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5">
-            <h2 className="text-xs font-bold text-slate-200 flex items-center gap-2 mb-2">
-              <Building2 size={16} className="text-blue-400" />
-              Vendor / ID Pelanggan
-            </h2>
-            <p className="text-[12px] text-blue-400 mb-2">
-              ID:{" "}
-              <span className="text-slate-200 font-mono">
-                {customerId || "—"}
-              </span>{" "}
-              · Aktivasi:{" "}
-              <span className="text-slate-200 font-mono">
-                {activationDate || "—"}
-              </span>
-            </p>
-            <div className="flex flex-col gap-3">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">
-                  Nama Vendor
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={vendor}
-                    onChange={(e) => setVendor(e.target.value)}
-                    disabled={!canEdit}
-                    placeholder="Nama vendor / ISP"
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setVendorModalOpen(true)}
-                    className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-slate-700/50 hover:bg-slate-700 text-slate-300 border border-slate-600 transition"
-                    title="Detail vendor"
-                  >
-                    <Info size={14} />
-                    Detail
-                  </button>
+        {/* Card 2: Perangkat Ruijie (AP) */}
+        <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              Ruijie (AP)
+            </span>
+            <span
+              className={`flex items-center gap-1 text-[10px] font-mono font-semibold ${
+                data?.status_ruijie === "Online"
+                  ? "text-emerald-400"
+                  : "text-rose-400"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  data?.status_ruijie === "Online"
+                    ? "bg-emerald-400"
+                    : "bg-rose-400"
+                }`}
+              />
+              {data?.status_ruijie || "—"}
+            </span>
+          </div>
+          <p className="text-xs font-semibold text-slate-200 mt-1 font-mono truncate" title={data?.ruijie_alias}>
+            {data?.ruijie_alias || "—"}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-1 truncate">
+            {data?.sn ? `SN: ${data.sn}` : "Akses Point Lapangan"}
+          </p>
+        </div>
+
+        {/* Card 3: MikroTik (DESA) */}
+        <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              MikroTik (Desa)
+            </span>
+            <span
+              className={`flex items-center gap-1 text-[10px] font-mono font-semibold ${
+                data?.status_mikrotik === "Online"
+                  ? "text-emerald-400"
+                  : "text-rose-400"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  data?.status_mikrotik === "Online"
+                    ? "bg-emerald-400"
+                    : "bg-rose-400"
+                }`}
+              />
+              {data?.status_mikrotik || "—"}
+            </span>
+          </div>
+          <p className="text-xs font-semibold text-slate-200 mt-1 font-mono truncate" title={data?.mikrotik_alias}>
+            {data?.mikrotik_alias || "—"}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-1 truncate">
+            {data?.issue && data.issue !== "Normal" ? (
+              <span className="text-amber-400 font-semibold">Issue: {data.issue}</span>
+            ) : (
+              "Koneksi Routerboard Normal"
+            )}
+          </p>
+        </div>
+
+        {/* Card 4: Jalur & Topologi */}
+        <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              Jalur & Topologi
+            </span>
+            <span className="text-[10px] font-mono font-bold text-blue-400">
+              L2TP VPN
+            </span>
+          </div>
+          {data?.site?.topology_node_id ? (
+            <Link
+              href={`/maps?focus=${encodeURIComponent(data.site.topology_node_id)}`}
+              className="inline-flex items-center gap-1 text-xs font-mono text-blue-400 hover:text-blue-300 hover:underline mt-1 truncate"
+              title="Buka node di Peta Wilayah"
+            >
+              <Globe size={12} className="shrink-0" />
+              <span className="truncate">{data.site.topology_node_id}</span>
+              <ExternalLink size={10} className="shrink-0" />
+            </Link>
+          ) : (
+            <p className="text-xs text-slate-400 mt-1">Belum Terhubung Node</p>
+          )}
+          <p className="text-[10px] text-slate-500 mt-1 truncate">
+            Sinkronisasi data 2 arah aktif
+          </p>
+        </div>
+      </div>
+
+      {/* 3. DUAL COLUMN: VENDOR ISP & KONTAK PIC */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Kolom 1: Profil Vendor & Kontrak Pelanggan */}
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <Wifi size={16} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider font-mono">
+                    Vendor ISP & Kontrak Pelanggan
+                  </h2>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Data penyedia internet, ID pelanggan, dan tanggal aktivasi
+                  </p>
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* PIC */}
-          <section className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold text-slate-200">
-                PIC (Person In Charge)
-              </h2>
+            <div className="flex flex-col gap-3 pt-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5 block">
+                  Nama Vendor ISP
+                </label>
+                <input
+                  type="text"
+                  value={vendor}
+                  onChange={(e) => setVendor(e.target.value)}
+                  disabled={!canEdit}
+                  placeholder="Contoh: MEGAVISION / INDIBIZ / BABBAGE"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 outline-none focus:border-blue-500 disabled:opacity-60 transition"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5 block">
+                    ID Pelanggan (Customer ID)
+                  </label>
+                  <input
+                    type="text"
+                    value={customerId}
+                    onChange={(e) => setCustomerId(e.target.value)}
+                    disabled={!canEdit}
+                    placeholder="Contoh: 131175137140"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 font-mono placeholder-slate-600 outline-none focus:border-blue-500 disabled:opacity-60 transition"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5 block">
+                    Tanggal Aktivasi
+                  </label>
+                  <input
+                    type="date"
+                    value={activationDate}
+                    onChange={(e) => setActivationDate(e.target.value)}
+                    disabled={!canEdit}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60 transition"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Jalur: L2TP VPN</span>
+            <span>Site Desa</span>
+          </div>
+        </section>
+
+        {/* Kolom 2: Kontak PIC Lapangan */}
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <Phone size={16} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider font-mono">
+                    Kontak PIC (Person In Charge)
+                  </h2>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Kontak teknisi atau penanggung jawab operasional di lokasi Desa
+                  </p>
+                </div>
+              </div>
+
               {canEdit && (
                 <button
                   type="button"
                   onClick={addPic}
-                  className="cursor-pointer flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                  className="cursor-pointer flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-blue-400 hover:text-white bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 transition"
                 >
-                  <UserPlus size={14} /> Tambah PIC
+                  <UserPlus size={13} />
+                  <span>Tambah PIC</span>
                 </button>
               )}
             </div>
-            <div className="space-y-3">
+
+            <div className="space-y-2.5 pt-4">
               {pics.map((pic, idx) => (
                 <div
                   key={idx}
-                  className="relative flex items-center gap-2 p-3 rounded-lg bg-slate-900/50 border border-slate-700/40 overflow-hidden"
+                  className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800"
                 >
-                  <div className="flex flex-1 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nama PIC"
-                      value={pic.name}
-                      onChange={(e) => updatePic(idx, "name", e.target.value)}
-                      disabled={!canEdit}
-                      className="w-1/2 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Nomor telepon"
-                      value={pic.phone}
-                      onChange={(e) => updatePic(idx, "phone", e.target.value)}
-                      disabled={!canEdit}
-                      className="w-1/2 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    placeholder="Nama PIC"
+                    value={pic.name}
+                    onChange={(e) => updatePic(idx, "name", e.target.value)}
+                    disabled={!canEdit}
+                    className="w-1/2 min-w-0 bg-transparent border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 outline-none focus:border-blue-500 disabled:opacity-60"
+                  />
+                  <input
+                    type="text"
+                    placeholder="No. Telepon / WhatsApp"
+                    value={pic.phone}
+                    onChange={(e) => updatePic(idx, "phone", e.target.value)}
+                    disabled={!canEdit}
+                    className="w-1/2 min-w-0 bg-transparent border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-100 font-mono placeholder-slate-600 outline-none focus:border-blue-500 disabled:opacity-60"
+                  />
+
+                  {pic.phone && (
+                    <a
+                      href={`https://wa.me/${pic.phone.replace(/[^0-9]/g, "").replace(/^0/, "62")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="cursor-pointer p-1.5 rounded-md bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition shrink-0"
+                      title="Kirim Pesan WhatsApp"
+                    >
+                      <Phone size={13} />
+                    </a>
+                  )}
+
                   {canEdit && (
                     <button
                       type="button"
                       onClick={() => removePic(idx)}
-                      className="ml-2 cursor-pointer p-2 text-red-400/80 hover:bg-red-500/10 rounded-lg flex-shrink-0"
+                      className="cursor-pointer p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition shrink-0"
                       title="Hapus PIC"
-                      style={{ zIndex: 1, position: "relative" }}
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={13} />
                     </button>
                   )}
                 </div>
               ))}
             </div>
-          </section>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-500">
+            Total {pics.filter((p) => p.name).length} kontak terdata
+          </div>
+        </section>
+      </div>
+
+      {/* 4. EVIDENCE FOTO PERANGKAT */}
+      <SiteEvidencePhotos
+        ruijieMac={mac}
+        sitePrefix={data?.prefix || data?.ruijie_alias || mac}
+        category="desa"
+        isOpd={false}
+        evidencePhotos={evidencePhotos}
+        onPhotosUpdated={(newPhotos) => setEvidencePhotos(newPhotos)}
+        canEdit={canEdit}
+        showToast={showToast}
+      />
+
+      {/* 5. LOKASI WILAYAH & KOORDINAT GIS */}
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm flex flex-col gap-4">
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <MapPin size={16} />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider font-mono">
+                Lokasi Wilayah & Koordinat GIS
+              </h2>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Alamat lengkap operasional dan titik pemetaan satelit
+              </p>
+            </div>
+          </div>
+
+          {latitude && longitude && (
+            <a
+              href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 hover:text-white bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 transition cursor-pointer"
+            >
+              <Globe size={13} />
+              <span>Buka di Google Maps</span>
+              <ExternalLink size={10} />
+            </a>
+          )}
         </div>
 
-        {/* Evidence Foto Perangkat (AP, MikroTik, ONT, Panel) */}
-        <SiteEvidencePhotos
-          ruijieMac={mac}
-          sitePrefix={data?.prefix || data?.ruijie_alias || mac}
-          evidencePhotos={evidencePhotos}
-          onPhotosUpdated={(newPhotos) => setEvidencePhotos(newPhotos)}
-          canEdit={canEdit}
-          showToast={showToast}
-        />
-
-        {/* Alamat & peta (koordinat hanya dari Topologi) */}
-        <section className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5">
-          <h2 className="text-xs font-bold text-slate-200 flex items-center gap-2 mb-4">
-            <MapPin size={16} className="text-orange-400" />
-            Lokasi Wilayah
-          </h2>
-          <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-3">
             <div>
-              <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">
-                Alamat Lengkap
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5 block">
+                Alamat Lengkap Site
               </label>
               <textarea
                 value={fullAddress}
                 onChange={(e) => setFullAddress(e.target.value)}
                 disabled={!canEdit}
                 rows={3}
-                placeholder="Jl. ..., RT/RW, Kelurahan, Kecamatan, Kota"
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60 resize-y min-h-[80px]"
+                placeholder="Jl. ..., RT/RW, Kelurahan, Kecamatan, Kabupaten"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 outline-none focus:border-blue-500 disabled:opacity-60 resize-y min-h-[90px] transition"
               />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Titik koordinat diatur di{" "}
-                  <Link
-                    href="/topology"
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    Peta Topologi
-                  </Link>
-                  {data?.site?.topology_node_id && (
-                    <>
-                      {" "}
-                      (node:{" "}
-                      <span className="inline text-blue-400 font-mono">
-                        {data.site.topology_node_id}
-                      </span>
-                      )
-                    </>
-                  )}
-                  .
-                </p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">
-                      Latitude
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={latitude || "—"}
-                      className="w-full bg-slate-900/60 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono cursor-text select-text"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">
-                      Longitude
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={longitude || "—"}
-                      className="w-full bg-slate-900/60 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono cursor-text select-text"
-                    />
-                  </div>
-                </div>
-                {coordsFromTopology && latitude && longitude && (
-                  <span className="text-[10px] text-orange-400/90 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded w-max">
-                    Sinkron dari Peta Topologi
-                  </span>
-                )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1 block">
+                  Latitude
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={latitude || "—"}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono cursor-text select-text"
+                />
               </div>
-              <SiteCoordinateMap
-                latitude={latitude}
-                longitude={longitude}
-                readOnly
-              />
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1 block">
+                  Longitude
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={longitude || "—"}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono cursor-text select-text"
+                />
+              </div>
             </div>
-          </div>
-        </section>
-      </div>
 
-      {/* Modal detail vendor */}
+            {coordsFromTopology && latitude && longitude && (
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded w-max">
+                ✓ Koordinat Sinkron dari Peta Topologi
+              </span>
+            )}
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Titik koordinat terhubung langsung dengan modul GIS{" "}
+              <Link
+                href={
+                  data?.site?.topology_node_id
+                    ? `/maps?focus=${encodeURIComponent(data.site.topology_node_id)}`
+                    : "/maps"
+                }
+                className="text-blue-400 hover:underline"
+              >
+                Peta Wilayah
+              </Link>
+              {data?.site?.topology_node_id && (
+                <span> (node: {data.site.topology_node_id})</span>
+              )}
+              .
+            </p>
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-slate-800">
+            <SiteCoordinateMap
+              latitude={latitude}
+              longitude={longitude}
+              readOnly
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Modal Detail Vendor (Opsional) */}
       {vendorModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-700 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-modal">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                <Building2 size={16} className="text-blue-400" />
+          <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-xs font-bold font-mono text-slate-100 flex items-center gap-2 uppercase tracking-wider">
+                <Building2 size={15} className="text-blue-400" />
                 Detail Vendor
               </h3>
               <button
@@ -556,12 +727,12 @@ export default function SiteDetailPage() {
                 onClick={() => setVendorModalOpen(false)}
                 className="cursor-pointer text-slate-400 hover:text-white"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
-            <div className="p-5 flex flex-col gap-4">
+            <div className="p-4 flex flex-col gap-3 text-xs">
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">
+                <label className="text-[11px] font-mono text-slate-400 block mb-1">
                   Nama Vendor
                 </label>
                 <input
@@ -569,11 +740,11 @@ export default function SiteDetailPage() {
                   value={vendor}
                   onChange={(e) => setVendor(e.target.value)}
                   disabled={!canEdit}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">
+                <label className="text-[11px] font-mono text-slate-400 block mb-1">
                   ID Pelanggan
                 </label>
                 <input
@@ -581,12 +752,11 @@ export default function SiteDetailPage() {
                   value={customerId}
                   onChange={(e) => setCustomerId(e.target.value)}
                   disabled={!canEdit}
-                  placeholder="Contoh: PLG-00123"
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">
+                <label className="text-[11px] font-mono text-slate-400 block mb-1">
                   Tanggal Aktivasi
                 </label>
                 <input
@@ -594,15 +764,15 @@ export default function SiteDetailPage() {
                   value={activationDate}
                   onChange={(e) => setActivationDate(e.target.value)}
                   disabled={!canEdit}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 outline-none focus:border-blue-500"
                 />
               </div>
             </div>
-            <div className="p-4 border-t border-slate-700 flex justify-end gap-2">
+            <div className="p-3 border-t border-slate-800 flex justify-end gap-2 bg-slate-950">
               <button
                 type="button"
                 onClick={() => setVendorModalOpen(false)}
-                className="cursor-pointer px-4 py-2 text-xs text-slate-300 hover:text-white"
+                className="cursor-pointer px-3 py-1.5 text-xs text-slate-300 hover:text-white"
               >
                 Tutup
               </button>
@@ -614,9 +784,10 @@ export default function SiteDetailPage() {
                     handleSave();
                   }}
                   disabled={saving}
-                  className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium flex items-center gap-2 disabled:opacity-50"
+                  className="cursor-pointer px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
                 >
-                  <Save size={14} /> Simpan
+                  <Save size={13} />
+                  <span>Simpan</span>
                 </button>
               )}
             </div>

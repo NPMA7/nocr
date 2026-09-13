@@ -90,10 +90,74 @@ export async function GET(request) {
     
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
+
+    if (type === 'WLAN') {
+      let token = await getHsgqToken();
+      const fetchWlanForPort = async (p, t) => {
+        try {
+          const r = await axios.get(`${url}/gponont_mgmt?form=wificonfig&port_id=${p}&_t=${Date.now()}`, {
+            headers: { ...(t ? { 'x-token': t } : {}) },
+            timeout: 6000,
+          });
+          return Array.isArray(r.data?.data) ? r.data.data : [];
+        } catch (e) {
+          return [];
+        }
+      };
+
+      let results = await Promise.all([1, 2, 3, 4].map((p) => fetchWlanForPort(p, token)));
+      let combined = results.flat();
+      if (combined.length === 0) {
+        token = await getHsgqToken(true);
+        results = await Promise.all([1, 2, 3, 4].map((p) => fetchWlanForPort(p, token)));
+        combined = results.flat();
+      }
+
+      // Apply pending overrides
+      const now = Date.now();
+      global.pendingWifiUpdates = global.pendingWifiUpdates || {};
+      for (const key in global.pendingWifiUpdates) {
+        if (now - global.pendingWifiUpdates[key].timestamp > 65000) {
+          delete global.pendingWifiUpdates[key];
+        }
+      }
+
+      combined = combined.map((row) => {
+        if (!row.wifi || !row.wifi[0]) return row;
+        const wifi = row.wifi[0];
+        const fields = [
+          'enable',
+          'isolation',
+          'broadcast',
+          'wifiname',
+          'sharekey',
+          'securitymode',
+          'wpaencrypt',
+          'channel',
+          'bandwidth',
+          'beacon',
+          'dtim',
+          'shortgi',
+        ];
+        fields.forEach((field) => {
+          const key = `${row.identifier}_${wifi.instance}_${field}`;
+          if (global.pendingWifiUpdates[key]) {
+            wifi[field] = global.pendingWifiUpdates[key].value;
+          }
+        });
+        return row;
+      });
+
+      return NextResponse.json({
+        code: 1,
+        message: 'success',
+        data: combined,
+      });
+    }
+
     let endpoint = '/ontinfo_table';
     if (type === 'Version Information') endpoint = '/ontversion_table';
     else if (type === 'Bind Profile Info') endpoint = '/ontprofile_table';
-    else if (type === 'WLAN') endpoint = '/ontwificonfig_table';
     const isExplicitRefresh = searchParams.has('_t') || searchParams.get('force') === 'true';
     if (!isExplicitRefresh && endpoint === '/ontinfo_table' && global.hsgqDataCache && global.hsgqDataCache.ontinfo && (Date.now() - global.hsgqDataCache.timestamp < 15000)) {
       if (global.hsgqDataCache.ontinfo.code === 1 || Array.isArray(global.hsgqDataCache.ontinfo.data)) {
@@ -130,9 +194,9 @@ export async function GET(request) {
     try {
       response = await doRequest(token);
     } catch (epErr) {
-      if (endpoint === '/ontprofile_table') {
+      if (endpoint === '/ontprofile_table' || endpoint === '/ontwificonfig_table' || endpoint === '/ontversion_table') {
         endpoint = '/ontinfo_table';
-        response = await doRequest(token);
+        response = await doRequest(token, '/ontinfo_table');
       } else {
         throw epErr;
       }
@@ -143,9 +207,9 @@ export async function GET(request) {
        try {
          response = await doRequest(token);
        } catch (epErr) {
-         if (endpoint === '/ontprofile_table') {
+         if (endpoint === '/ontprofile_table' || endpoint === '/ontwificonfig_table' || endpoint === '/ontversion_table') {
            endpoint = '/ontinfo_table';
-           response = await doRequest(token);
+           response = await doRequest(token, '/ontinfo_table');
          } else {
            throw epErr;
          }

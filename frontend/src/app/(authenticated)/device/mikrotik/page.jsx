@@ -20,6 +20,7 @@ import {
   EyeOff,
   Timer,
   Server,
+  Search,
 } from "lucide-react";
 import {
   hasAccess,
@@ -31,9 +32,9 @@ import MikrotikStatCards from "@/components/device/mikrotik/MikrotikStatCards";
 import PPPoEUserModal from "@/components/device/mikrotik/PPPoEUserModal";
 
 const statusColor = (running, disabled) => {
-  if (disabled === "true") return "bg-slate-600 text-slate-300";
-  if (running === "true") return "bg-emerald-500/20 text-emerald-400";
-  return "bg-red-500/20 text-red-400";
+  if (disabled === "true") return "bg-slate-800 text-slate-400 border border-slate-700";
+  if (running === "true") return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+  return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
 };
 
 // Komponen Toast
@@ -573,112 +574,147 @@ export default function Mikrotik() {
     !coreStatus.connected &&
     coreStatus.error?.includes("dikonfigurasi");
   const actionBtnClass =
-    "cursor-pointer p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition";
+    "cursor-pointer p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition";
 
   const dataPanelClass =
-    "flex flex-col min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-xl";
-  const dataScrollClass = "overflow-x-auto overflow-y-visible min-w-0 touch-auto";
+    "flex flex-col min-w-0 bg-slate-900 border border-slate-800 rounded-xl shadow-sm overflow-hidden";
+  const dataScrollClass = "overflow-x-auto min-w-0";
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4 relative">
+    <div className="flex-1 flex flex-col gap-3.5 min-w-0 pb-6 relative">
       <Toast toasts={toasts} />
 
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold flex items-center text-slate-100 gap-3">
-              <Server size={24} className="text-blue-500 dark:text-blue-400" /> Mikrotik RO
-            </h1>
-            {syncStatus?.syncedAt && (
-              <span
-                className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase tracking-wider ${
-                  (tab === "interfaces"
+      {/* 1. TOP HEADER & SYNC ACTION */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <Server size={16} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm sm:text-base font-bold text-slate-100">
+                Core Gateway MikroTik
+              </h1>
+              {syncStatus?.syncedAt && (
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold uppercase tracking-wider border ${
+                    (tab === "interfaces"
+                      ? syncStatus.interfaces
+                      : tab === "pppoe"
+                        ? syncStatus.pppoe
+                        : syncStatus.secrets) === "cache"
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  }`}
+                >
+                  {(tab === "interfaces"
                     ? syncStatus.interfaces
                     : tab === "pppoe"
                       ? syncStatus.pppoe
                       : syncStatus.secrets) === "cache"
-                    ? "text-amber-400"
-                    : "text-emerald-400"
-                }`}
-              >
-                {(tab === "interfaces"
-                  ? syncStatus.interfaces
-                  : tab === "pppoe"
-                    ? syncStatus.pppoe
-                    : syncStatus.secrets) === "cache"
-                  ? "Cached DB"
-                  : "Live Router"}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-0.5">
-            <p className="text-xs text-slate-400">
-              Pantau dan kelola resource MikroTik Pusat secara langsung
-            </p>
-
-            {syncing && !loading && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 flex items-center gap-1">
-                <RefreshCw size={10} className="animate-spin" /> Memperbarui...
-              </span>
-            )}
+                    ? "Cached DB"
+                    : "Live Router"}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-[11px] text-slate-400">
+                Pantau dan kelola resource MikroTik Pusat secara langsung — interface, sesi aktif, dan manajemen secret
+              </p>
+              {syncing && !loading && (
+                <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-400 flex items-center gap-1 border border-slate-700">
+                  <RefreshCw size={10} className="animate-spin text-blue-400" /> Sinkron...
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={() => fetchAll(true)}
             disabled={loading}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 cursor-pointer"
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition disabled:opacity-50 shadow-sm"
           >
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />{" "}
-            Sync Sekarang
+            <RefreshCw size={13} className={loading ? "animate-spin text-white" : "text-white"} />
+            <span>{loading ? "Sinkron..." : "Sync Sekarang"}</span>
           </button>
         </div>
       </div>
 
-      {/* Core Status Card */}
+      {/* 2. CORE GATEWAY STATUS CARD */}
       <MikrotikStatCards
         coreStatus={coreStatus}
         notConfigured={notConfigured}
       />
 
-      {/* Tab Switcher */}
-      <div className="flex-shrink-0 flex flex-wrap gap-1.5 w-full">
+      {/* 3. MODERN TAB NAVIGATION BAR */}
+      <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl shadow-sm overflow-x-auto">
         <button
           id="tab-interfaces"
-          onClick={() => setTab("interfaces")}
-          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl text-xs font-semibold transition border ${tab === "interfaces" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
+          onClick={() => {
+            setTab("interfaces");
+            setCurrentPage(1);
+          }}
+          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+            tab === "interfaces"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+          }`}
         >
-          <Activity size={16} />
+          <Activity size={14} className={tab === "interfaces" ? "text-white" : "text-slate-400"} />
           <span>Interfaces</span>
           <span
-            className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${tab === "interfaces" ? "bg-blue-500/40 text-blue-100" : "bg-slate-700 text-slate-400"}`}
+            className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+              tab === "interfaces" ? "bg-blue-700/60 text-white" : "bg-slate-800 text-slate-400 border border-slate-700"
+            }`}
           >
             {interfaces.length}
           </span>
         </button>
+
         <button
           id="tab-pppoe"
-          onClick={() => setTab("pppoe")}
-          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl text-xs font-semibold transition border ${tab === "pppoe" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
+          onClick={() => {
+            setTab("pppoe");
+            setCurrentPage(1);
+          }}
+          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+            tab === "pppoe"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+          }`}
         >
-          <Users size={16} />
+          <Users size={14} className={tab === "pppoe" ? "text-white" : "text-slate-400"} />
           <span>Sesi Aktif</span>
           <span
-            className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${tab === "pppoe" ? "bg-blue-500/40 text-blue-100" : "bg-slate-700 text-slate-400"}`}
+            className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+              tab === "pppoe" ? "bg-blue-700/60 text-white" : "bg-slate-800 text-slate-400 border border-slate-700"
+            }`}
           >
             {filteredSessions.length}
           </span>
         </button>
+
         <button
           id="tab-secrets"
-          onClick={() => setTab("secrets")}
-          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl text-xs font-semibold transition border ${tab === "secrets" ? "bg-blue-600 text-white border-blue-500 shadow-md" : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:text-white hover:bg-slate-700/60"}`}
+          onClick={() => {
+            setTab("secrets");
+            setCurrentPage(1);
+          }}
+          className={`cursor-pointer flex-1 min-w-[140px] flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+            tab === "secrets"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+          }`}
         >
-          <Users size={16} />
+          <Server size={14} className={tab === "secrets" ? "text-white" : "text-slate-400"} />
           <span>Pelanggan</span>
           <span
-            className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${tab === "secrets" ? "bg-blue-500/40 text-blue-100" : "bg-slate-700 text-slate-400"}`}
+            className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+              tab === "secrets" ? "bg-blue-700/60 text-white" : "bg-slate-800 text-slate-400 border border-slate-700"
+            }`}
           >
             {pppoeSecrets.length}
           </span>
@@ -686,56 +722,84 @@ export default function Mikrotik() {
       </div>
 
       {loading && interfaces.length === 0 ? (
-        <div className="flex-1 flex flex-col gap-2 p-3 min-h-[300px]">
+        <div className="flex-1 flex flex-col gap-2 p-4 min-h-[300px] bg-slate-900 border border-slate-800 rounded-xl">
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="w-full h-12 bg-slate-700/30 rounded-lg animate-pulse"
+              className="w-full h-10 bg-slate-800/40 rounded-lg animate-pulse"
             />
           ))}
         </div>
       ) : error ? (
-        <div className="flex-1 flex items-center justify-center min-h-[200px]">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <AlertTriangle size={36} className="text-red-400" />
-            <p className="text-slate-200 font-semibold">Terjadi kesalahan</p>
+        <div className="flex-1 flex items-center justify-center min-h-[240px] bg-slate-900 border border-slate-800 rounded-xl">
+          <div className="flex flex-col items-center gap-3 text-center py-12 text-rose-400">
+            <AlertTriangle size={32} className="text-rose-500/60" />
+            <p className="text-slate-200 font-semibold text-sm">Terjadi Kesalahan</p>
             <p className="text-slate-400 text-xs">{error}</p>
           </div>
         </div>
       ) : tab === "interfaces" ? (
         <div className={dataPanelClass}>
-          <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-xs flex-shrink-0">
-              Interface
-            </h2>
-            <input
-              type="text"
-              placeholder="Cari nama, tipe, MAC..."
-              value={interfaceSearch}
-              onChange={(e) => { setInterfaceSearch(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
-            />
+          {/* Table Toolbar */}
+          <div className="p-3 sm:p-4 border-b border-slate-800 flex items-center gap-2.5 flex-wrap">
+            {/* Search Box */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search
+                size={13}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+              <input
+                type="text"
+                placeholder="Cari nama, tipe, MAC interface..."
+                value={interfaceSearch}
+                onChange={(e) => {
+                  setInterfaceSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:border-blue-500 outline-none transition"
+              />
+              {interfaceSearch && (
+                <button
+                  onClick={() => setInterfaceSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Filter Tipe */}
             <select
               value={filterType}
-              onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+              onChange={(e) => {
+                setFilterType(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer font-medium"
             >
               <option value="all">Semua Tipe</option>
-              <option value="pppoe">OPD</option>
-              <option value="l2tp">Desa</option>
-              <option value="sistem">Sistem</option>
+              <option value="pppoe">OPD (PPPoE)</option>
+              <option value="l2tp">Desa (L2TP)</option>
+              <option value="sistem">Sistem (Ether/Bridge)</option>
             </select>
+
+            {/* Filter Status */}
             <select
               value={filterStatus}
-              onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer font-medium"
             >
               <option value="all">Semua Status</option>
               <option value="running">Running</option>
               <option value="down">Down</option>
             </select>
+
+            {/* Per Page & Add Interface Button */}
             <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
-              <span className="text-xs text-slate-400">Tampilkan:</span>
+              <span className="text-xs text-slate-500 hidden sm:inline">Tampilkan:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -744,7 +808,7 @@ export default function Mikrotik() {
                   setItemsPerPage(val);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer font-mono"
               >
                 <option value={10}>10</option>
                 <option value={30}>30</option>
@@ -752,107 +816,116 @@ export default function Mikrotik() {
                 <option value={100}>100</option>
                 <option value="all">Semua ({filteredInterfaces.length})</option>
               </select>
+
               {canCreate && (
                 <button
                   id="btn-tambah-interface"
                   onClick={openAddInterface}
-                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                  className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
                 >
-                  <Plus size={14} /> Tambah
+                  <Plus size={13} /> <span>Tambah</span>
                 </button>
               )}
             </div>
           </div>
+
           <div className={dataScrollClass}>
             {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-slate-700/30">
+            <div className="md:hidden divide-y divide-slate-800">
               {filteredInterfaces.length === 0 ? (
-                <p className="text-center py-12 text-slate-500 text-sm">
-                  Tidak ada data interface
+                <p className="text-center py-12 text-slate-500 text-xs font-mono">
+                  Tidak ada data interface yang cocok
                 </p>
               ) : (
                 paginatedInterfaces.map((iface, i) => (
                   <div
                     key={i}
-                    className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-700/20 active:bg-slate-700/40 transition"
+                    className="p-4 flex flex-col gap-2 hover:bg-slate-800/30 transition"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-100 text-sm truncate">
-                        {iface.name}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {iface.type} · MTU {iface.mtu || "-"}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5 font-mono">
-                        {iface["mac-address"] || "-"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span
-                        className={`text-xs px-3 py-1.5 rounded-full font-bold ${statusColor(iface.running, iface.disabled)}`}
-                      >
-                        {iface.disabled === "true"
-                          ? "Disabled"
-                          : iface.running === "true"
-                            ? "Running"
-                            : "Down"}
-                      </span>
-                      {canUpdate && (
-                        <button
-                          title="Edit"
-                          onClick={() => openEditInterface(iface)}
-                          className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-100 text-xs truncate">
+                          {iface.name}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {iface.type} · MTU {iface.mtu || "-"}
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                          {iface["mac-address"] || "-"}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold ${statusColor(iface.running, iface.disabled)}`}
                         >
-                          <Edit2 size={18} />
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          title="Hapus Interface"
-                          onClick={() =>
-                            setConfirmDelete({
-                              type: "interface",
-                              item: iface,
-                            })
-                          }
-                          className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      )}
+                          {iface.disabled === "true"
+                            ? "Disabled"
+                            : iface.running === "true"
+                              ? "Running"
+                              : "Down"}
+                        </span>
+                      </div>
                     </div>
+                    {(canUpdate || canDelete) && (
+                      <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-800/60">
+                        {canUpdate && (
+                          <button
+                            title="Edit"
+                            onClick={() => openEditInterface(iface)}
+                            className="p-1 text-slate-400 hover:text-slate-100 rounded hover:bg-slate-800 transition cursor-pointer"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            title="Hapus Interface"
+                            onClick={() =>
+                              setConfirmDelete({
+                                type: "interface",
+                                item: iface,
+                              })
+                            }
+                            className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-rose-500/10 transition cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
             </div>
+
             {/* Desktop table view */}
             <div className="hidden md:block min-h-0">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Nama
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950/60">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                      Nama Interface
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-28">
                       Tipe
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-40">
                       MAC Address
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-20">
                       MTU
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-28">
                       Status
                     </th>
                     {(canUpdate || canDelete) && (
-                      <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono text-right w-24">
                         Aksi
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-800/70 text-xs">
                   {filteredInterfaces.length === 0 ? (
                     <tr>
                       <td
@@ -965,28 +1038,51 @@ export default function Mikrotik() {
         </div>
       ) : tab === "pppoe" ? (
         <div className={dataPanelClass}>
-          <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-xs flex-shrink-0">
-              Sesi Aktif
-            </h2>
-            <input
-              type="text"
-              placeholder="Cari nama user atau IP..."
-              value={pppoeSearch}
-              onChange={(e) => { setPppoeSearch(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
-            />
+          {/* Table Toolbar */}
+          <div className="p-3 sm:p-4 border-b border-slate-800 flex items-center gap-2.5 flex-wrap">
+            {/* Search Box */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search
+                size={13}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+              <input
+                type="text"
+                placeholder="Cari nama user atau IP remote..."
+                value={pppoeSearch}
+                onChange={(e) => {
+                  setPppoeSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:border-blue-500 outline-none transition"
+              />
+              {pppoeSearch && (
+                <button
+                  onClick={() => setPppoeSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Filter Service */}
             <select
               value={sessionFilterService}
-              onChange={(e) => { setSessionFilterService(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer"
+              onChange={(e) => {
+                setSessionFilterService(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer font-medium"
             >
               <option value="all">Semua Service</option>
-              <option value="pppoe">OPD</option>
-              <option value="l2tp">Desa</option>
+              <option value="pppoe">OPD (PPPoE)</option>
+              <option value="l2tp">Desa (L2TP)</option>
             </select>
+
+            {/* Per Page */}
             <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
-              <span className="text-xs text-slate-400">Tampilkan:</span>
+              <span className="text-xs text-slate-500 hidden sm:inline">Tampilkan:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -995,7 +1091,7 @@ export default function Mikrotik() {
                   setItemsPerPage(val);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer font-mono"
               >
                 <option value={10}>10</option>
                 <option value={30}>30</option>
@@ -1005,128 +1101,142 @@ export default function Mikrotik() {
               </select>
             </div>
           </div>
+
           <div className={dataScrollClass}>
             {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-slate-700/30">
+            <div className="md:hidden divide-y divide-slate-800">
               {filteredSessions.length === 0 ? (
-                <p className="text-center py-12 text-slate-500 text-sm">
-                  Tidak ada sesi aktif
+                <p className="text-center py-12 text-slate-500 text-xs font-mono">
+                  Tidak ada sesi aktif yang cocok
                 </p>
               ) : (
                 paginatedSessions.map((p, i) => (
                   <div
                     key={i}
-                    className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-700/20 active:bg-slate-700/40 transition"
+                    className="p-4 flex flex-col gap-2 hover:bg-slate-800/30 transition"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-100 text-sm truncate">
-                        {p.name || "-"}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {p.address || "-"} ·{" "}
-                        <span
-                          className={
-                            p.service?.toLowerCase().includes("l2tp")
-                              ? "text-orange-400"
-                              : "text-blue-400"
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-100 text-xs truncate">
+                          {p.name || "-"}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                          {p.address || "-"} ·{" "}
+                          <span
+                            className={
+                              p.service?.toLowerCase().includes("l2tp")
+                                ? "text-amber-400 font-semibold"
+                                : "text-blue-400 font-semibold"
+                            }
+                          >
+                            {p.service?.toLowerCase().includes("l2tp")
+                              ? "Desa (L2TP)"
+                              : p.service?.toLowerCase().includes("pppoe")
+                              ? "OPD (PPPoE)"
+                              : p.service || "pppoe"}
+                          </span>
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                          Uptime: {p.uptime || "-"} · Caller: {p["caller-id"] || "-"}
+                        </p>
+                      </div>
+                      {canDelete && (
+                        <button
+                          onClick={() =>
+                            setConfirmDelete({ type: "pppoe", item: p })
                           }
+                          className="cursor-pointer flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-rose-950/30 text-rose-400 hover:bg-rose-900/40 border border-rose-500/20 transition font-medium flex-shrink-0"
                         >
-                          {p.service?.toLowerCase().includes("l2tp") ? "Desa" : p.service?.toLowerCase().includes("pppoe") ? "OPD" : (p.service || "pppoe")}
-                        </span>
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Uptime: {p.uptime || "-"}
-                      </p>
+                          <WifiOff size={11} /> Putus
+                        </button>
+                      )}
                     </div>
-                    {canDelete && (
-                      <button
-                        onClick={() =>
-                          setConfirmDelete({ type: "pppoe", item: p })
-                        }
-                        className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold flex-shrink-0"
-                      >
-                        <WifiOff size={15} /> Putus
-                      </button>
-                    )}
                   </div>
                 ))
               )}
             </div>
+
             {/* Desktop table view */}
             <div className="hidden md:block min-h-0">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950/60">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
                       Username
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      IP (Remote)
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-40">
+                      IP Remote
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-28">
                       Service
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-32">
                       Uptime
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-44">
                       Caller ID
                     </th>
                     {canDelete && (
-                      <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono text-right w-24">
                         Aksi
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-800/70 text-xs">
                   {filteredSessions.length === 0 ? (
                     <tr>
                       <td
                         colSpan={6}
-                        className="text-center py-12 text-slate-500"
+                        className="text-center py-12 text-slate-500 font-mono text-xs"
                       >
-                        Tidak ada sesi aktif
+                        Tidak ada sesi aktif terhubung
                       </td>
                     </tr>
                   ) : (
                     paginatedSessions.map((p, i) => (
                       <tr
                         key={i}
-                        className="border-b border-slate-700/20 hover:bg-slate-700/20 transition"
+                        className="hover:bg-slate-800/30 transition-colors"
                       >
-                        <td className="px-4 py-3 font-medium text-slate-200">
+                        <td className="px-4 py-3 font-semibold text-slate-200">
                           {p.name || "-"}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                        <td className="px-4 py-3 font-mono text-xs text-blue-400">
                           {p.address || "-"}
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`text-xs px-2 py-0.5 rounded font-mono ${p.service?.toLowerCase().includes("l2tp") ? "bg-orange-500/20 text-orange-400" : "bg-blue-500/20 text-blue-400"}`}
+                            className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold border ${
+                              p.service?.toLowerCase().includes("l2tp")
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                            }`}
                           >
-                            {p.service?.toLowerCase().includes("l2tp") ? "Desa" : p.service?.toLowerCase().includes("pppoe") ? "OPD" : (p.service || "pppoe")}
+                            {p.service?.toLowerCase().includes("l2tp")
+                              ? "Desa"
+                              : p.service?.toLowerCase().includes("pppoe")
+                              ? "OPD"
+                              : p.service || "pppoe"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-400">
+                        <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                           {p.uptime || "-"}
                         </td>
                         <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                           {p["caller-id"] || "-"}
                         </td>
                         {canDelete && (
-                          <td className="px-4 py-3">
-                            <div className="flex justify-end">
-                              <button
-                                title="Putuskan Sesi"
-                                onClick={() =>
-                                  setConfirmDelete({ type: "pppoe", item: p })
-                                }
-                                className="cursor-pointer flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition font-semibold"
-                              >
-                                <WifiOff size={12} /> Putuskan
-                              </button>
-                            </div>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              title="Putuskan Sesi"
+                              onClick={() =>
+                                setConfirmDelete({ type: "pppoe", item: p })
+                              }
+                              className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-rose-950/30 text-rose-400 hover:bg-rose-900/40 border border-rose-500/20 transition font-medium"
+                            >
+                              <WifiOff size={11} /> Putuskan
+                            </button>
                           </td>
                         )}
                       </tr>
@@ -1138,22 +1248,22 @@ export default function Mikrotik() {
           </div>
 
           {filteredSessions.length > 0 && (
-            <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
-              <span className="text-slate-400">
+            <div className="p-3 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-950/40">
+              <span className="text-slate-400 font-mono">
                 {itemsPerPage === "all"
-                  ? `Menampilkan ${filteredSessions.length} dari ${filteredSessions.length}`
-                  : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredSessions.length)}-${Math.min(currentPage * itemsPerPage, filteredSessions.length)} dari ${filteredSessions.length}`}
+                  ? `Menampilkan ${filteredSessions.length} dari ${filteredSessions.length} sesi`
+                  : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredSessions.length)}-${Math.min(currentPage * itemsPerPage, filteredSessions.length)} dari ${filteredSessions.length} sesi`}
               </span>
               {itemsPerPage !== "all" && totalSessionPages > 1 && (
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-800 transition cursor-pointer text-xs font-medium"
                   >
-                    Prev
+                    Sebelumnya
                   </button>
-                  <span className="text-slate-400 font-medium px-2">
+                  <span className="text-slate-400 font-mono px-2">
                     {currentPage} / {totalSessionPages}
                   </span>
                   <button
@@ -1163,9 +1273,9 @@ export default function Mikrotik() {
                       )
                     }
                     disabled={currentPage === totalSessionPages}
-                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-800 transition cursor-pointer text-xs font-medium"
                   >
-                    Next
+                    Selanjutnya
                   </button>
                 </div>
               )}
@@ -1174,19 +1284,37 @@ export default function Mikrotik() {
         </div>
       ) : (
         <div className={dataPanelClass}>
-          <div className="p-4 border-b border-slate-700/30 flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <h2 className="font-semibold text-slate-200 text-xs flex-shrink-0">
-              Secrets
-            </h2>
-            <input
-              type="text"
-              placeholder="Cari nama atau profile..."
-              value={secretSearch}
-              onChange={(e) => { setSecretSearch(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1 min-w-[140px]"
-            />
+          {/* Pelanggan Toolbar */}
+          <div className="p-3 sm:p-4 border-b border-slate-800 flex items-center gap-2.5 flex-wrap">
+            {/* Search Box */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search
+                size={13}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+              <input
+                type="text"
+                placeholder="Cari nama pelanggan atau profile..."
+                value={secretSearch}
+                onChange={(e) => {
+                  setSecretSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:border-blue-500 outline-none transition"
+              />
+              {secretSearch && (
+                <button
+                  onClick={() => setSecretSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Per Page & Add Secret Button */}
             <div className="flex items-center gap-2 ml-auto flex-wrap flex-shrink-0">
-              <span className="text-xs text-slate-400">Tampilkan:</span>
+              <span className="text-xs text-slate-500 hidden sm:inline">Tampilkan:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -1195,7 +1323,7 @@ export default function Mikrotik() {
                   setItemsPerPage(val);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 cursor-pointer"
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500 cursor-pointer font-mono"
               >
                 <option value={10}>10</option>
                 <option value={30}>30</option>
@@ -1203,23 +1331,25 @@ export default function Mikrotik() {
                 <option value={100}>100</option>
                 <option value="all">Semua ({filteredSecrets.length})</option>
               </select>
+
               {canCreate && (
                 <button
                   id="btn-tambah-pelanggan"
                   onClick={openAddSecret}
-                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition flex-shrink-0"
+                  className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
                 >
-                  <Plus size={14} /> Tambah
+                  <Plus size={13} /> <span>Tambah</span>
                 </button>
               )}
             </div>
           </div>
+
           <div className={dataScrollClass}>
             {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-slate-700/30">
+            <div className="md:hidden divide-y divide-slate-800">
               {filteredSecrets.length === 0 ? (
-                <p className="text-center py-12 text-slate-500 text-sm">
-                  Tidak ada pelanggan terdaftar
+                <p className="text-center py-12 text-slate-500 text-xs font-mono">
+                  Tidak ada pelanggan terdaftar yang cocok
                 </p>
               ) : (
                 paginatedSecrets.map((s, i) => {
@@ -1228,31 +1358,40 @@ export default function Mikrotik() {
                   return (
                     <div
                       key={i}
-                      className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-700/20 active:bg-slate-700/40 transition"
+                      className="p-4 flex flex-col gap-2 hover:bg-slate-800/30 transition"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-bold text-slate-100 text-sm truncate">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-100 text-xs truncate">
                             {s.name || "-"}
                           </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {s.profile || "-"} · {s.service || "pppoe"}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                            Remote: {s["remote-address"] || "-"}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
                           <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${isOnline ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}
+                            className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold border ${
+                              isOnline
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-slate-800 text-slate-400 border-slate-700"
+                            }`}
                           >
-                            {isOnline ? "● Online" : "● Offline"}
+                            {isOnline ? "● Online" : "○ Offline"}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400">
-                          {s.profile || "-"} · {s.service || "pppoe"}
-                        </p>
                       </div>
                       {(canUpdate || canDelete) && (
-                        <div className="flex gap-2 flex-shrink-0">
+                        <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-800/60">
                           {canUpdate && (
                             <button
                               onClick={() => openEditSecret(s)}
-                              className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition"
+                              className="p-1 text-slate-400 hover:text-slate-100 rounded hover:bg-slate-800 transition cursor-pointer"
                             >
-                              <Edit2 size={18} />
+                              <Edit2 size={13} />
                             </button>
                           )}
                           {canDelete && (
@@ -1260,9 +1399,9 @@ export default function Mikrotik() {
                               onClick={() =>
                                 setConfirmDelete({ type: "secret", item: s })
                               }
-                              className="cursor-pointer p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                              className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-rose-500/10 transition cursor-pointer"
                             >
-                              <Trash2 size={18} />
+                              <Trash2 size={13} />
                             </button>
                           )}
                         </div>
@@ -1272,45 +1411,46 @@ export default function Mikrotik() {
                 })
               )}
             </div>
+
             {/* Desktop table view */}
             <div className="hidden md:block min-h-0">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-700/30 bg-slate-800/95 backdrop-blur">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950/60">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
                       Username
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-32">
                       Password
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-28">
                       Profile
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-24">
                       Service
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-36">
                       Local Addr
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-36">
                       Remote Addr
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono w-24">
                       Status
                     </th>
                     {(canUpdate || canDelete) && (
-                      <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono text-right w-24">
                         Aksi
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-800/70 text-xs">
                   {filteredSecrets.length === 0 ? (
                     <tr>
                       <td
                         colSpan={8}
-                        className="text-center py-12 text-slate-500"
+                        className="text-center py-12 text-slate-500 font-mono text-xs"
                       >
                         Tidak ada pelanggan PPPoE terdaftar
                       </td>
@@ -1322,15 +1462,15 @@ export default function Mikrotik() {
                       return (
                         <tr
                           key={i}
-                          className="border-b border-slate-700/20 hover:bg-slate-700/20 transition"
+                          className="hover:bg-slate-800/30 transition-colors"
                         >
-                          <td className="px-4 py-3 font-medium text-slate-200">
+                          <td className="px-4 py-3 font-semibold text-slate-200">
                             {s.name || "-"}
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-slate-400">
                             {canShowPassword ? (
-                              <div className="flex items-center gap-2">
-                                <span className="max-w-[200px] break-all">
+                              <div className="flex items-center gap-1.5">
+                                <span className="max-w-[140px] truncate">
                                   {showListPasswords[s.name]
                                     ? s.password
                                     : "••••••"}
@@ -1341,9 +1481,9 @@ export default function Mikrotik() {
                                   className="cursor-pointer text-slate-500 hover:text-slate-300"
                                 >
                                   {showListPasswords[s.name] ? (
-                                    <EyeOff size={14} />
+                                    <EyeOff size={13} />
                                   ) : (
-                                    <Eye size={14} />
+                                    <Eye size={13} />
                                   )}
                                 </button>
                               </div>
@@ -1351,47 +1491,35 @@ export default function Mikrotik() {
                               "••••••"
                             )}
                           </td>
-                          <td className="px-4 py-3 text-slate-400">
+                          <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                             {s.profile || "-"}
                           </td>
-                          <td className="px-4 py-3 text-slate-400">
+                          <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                             {s.service || "-"}
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs">
-                            <span
-                              className={
-                                isOnline ? "text-blue-400" : "text-slate-400"
-                              }
-                            >
-                              {isOnline
-                                ? activeSess["local-address"] ||
-                                  s["local-address"] ||
-                                  "-"
-                                : s["local-address"] || "-"}
-                            </span>
+                          <td className="px-4 py-3 font-mono text-xs text-blue-400">
+                            {isOnline
+                              ? activeSess["local-address"] || s["local-address"] || "-"
+                              : s["local-address"] || "-"}
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs">
-                            <span
-                              className={
-                                isOnline ? "text-emerald-400" : "text-slate-400"
-                              }
-                            >
-                              {isOnline
-                                ? activeSess.address ||
-                                  s["remote-address"] ||
-                                  "-"
-                                : s["remote-address"] || "-"}
-                            </span>
+                          <td className="px-4 py-3 font-mono text-xs text-emerald-400">
+                            {isOnline
+                              ? activeSess.address || s["remote-address"] || "-"
+                              : s["remote-address"] || "-"}
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${s.disabled === "true" ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}
+                              className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold border ${
+                                s.disabled === "true"
+                                  ? "bg-slate-800 text-slate-400 border-slate-700"
+                                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              }`}
                             >
                               {s.disabled === "true" ? "Disabled" : "Enabled"}
                             </span>
                           </td>
                           {(canUpdate || canDelete) && (
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 text-right">
                               <div className="flex items-center gap-1 justify-end">
                                 {canUpdate && (
                                   <button
@@ -1399,7 +1527,7 @@ export default function Mikrotik() {
                                     onClick={() => openEditSecret(s)}
                                     className={actionBtnClass}
                                   >
-                                    <Edit2 size={14} />
+                                    <Edit2 size={13} />
                                   </button>
                                 )}
                                 {canDelete && (
@@ -1411,9 +1539,9 @@ export default function Mikrotik() {
                                         item: s,
                                       })
                                     }
-                                    className={`${actionBtnClass} hover:text-red-400 hover:bg-red-500/10`}
+                                    className={`${actionBtnClass} hover:text-rose-400 hover:bg-rose-500/10`}
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={13} />
                                   </button>
                                 )}
                               </div>
@@ -1429,22 +1557,22 @@ export default function Mikrotik() {
           </div>
 
           {filteredSecrets.length > 0 && (
-            <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-800/40">
-              <span className="text-slate-400">
+            <div className="p-3 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs bg-slate-950/40">
+              <span className="text-slate-400 font-mono">
                 {itemsPerPage === "all"
-                  ? `Menampilkan ${filteredSecrets.length} dari ${filteredSecrets.length}`
-                  : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredSecrets.length)}-${Math.min(currentPage * itemsPerPage, filteredSecrets.length)} dari ${filteredSecrets.length}`}
+                  ? `Menampilkan ${filteredSecrets.length} dari ${filteredSecrets.length} pelanggan`
+                  : `Menampilkan ${Math.min((currentPage - 1) * itemsPerPage + 1, filteredSecrets.length)}-${Math.min(currentPage * itemsPerPage, filteredSecrets.length)} dari ${filteredSecrets.length} pelanggan`}
               </span>
               {itemsPerPage !== "all" && totalSecretPages > 1 && (
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-800 transition cursor-pointer text-xs font-medium"
                   >
-                    Prev
+                    Sebelumnya
                   </button>
-                  <span className="text-slate-400 font-medium px-2">
+                  <span className="text-slate-400 font-mono px-2">
                     {currentPage} / {totalSecretPages}
                   </span>
                   <button
@@ -1454,9 +1582,9 @@ export default function Mikrotik() {
                       )
                     }
                     disabled={currentPage === totalSecretPages}
-                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-700 transition cursor-pointer"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-slate-300 border border-slate-800 transition cursor-pointer text-xs font-medium"
                   >
-                    Next
+                    Selanjutnya
                   </button>
                 </div>
               )}

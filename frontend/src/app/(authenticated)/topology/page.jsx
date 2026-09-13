@@ -1160,33 +1160,33 @@ export default function TopologyArchitecturePage() {
       {/* ========================================================
           TOP HEADER & TOOLBAR
           ======================================================== */}
-      <header className="flex-shrink-0 bg-slate-900 border-b border-slate-700/60 px-3 py-1.5 sm:px-4 sm:py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 z-40">
+      <header className="flex-shrink-0 bg-slate-900 border-b border-slate-800 px-3 py-2 sm:px-4 sm:py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 z-40">
         {/* Left Section: Title & Status + Search */}
-        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+        <div className="flex items-center justify-between gap-2.5 w-full sm:w-auto">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)] flex-shrink-0">
-              <GitGraph size={15} />
+            <div className="w-8 h-8 rounded-xl bg-blue-600/10 text-blue-400 flex items-center justify-center border border-blue-500/20 flex-shrink-0">
+              <GitGraph size={16} />
             </div>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-100 truncate max-w-[130px] sm:max-w-[240px]">
+                <span className="text-xs font-bold text-slate-100 truncate max-w-[130px] sm:max-w-[220px]">
                   {activeTemplateName}
                 </span>
-                <span className="text-[9px] sm:text-[10px] text-emerald-400 font-semibold flex items-center gap-1 flex-shrink-0">
+                <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 flex-shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="hidden xs:inline">Live Canvas</span>
                 </span>
               </div>
-              <span className="text-[9px] sm:text-[10px] text-slate-400 truncate hidden xs:inline">
-                Arsitektur Topologi Jaringan Interaktif
+              <span className="text-[10px] text-slate-400 truncate hidden xs:inline">
+                Topologi Jaringan
               </span>
             </div>
           </div>
 
           {/* Search Bar / Area Box Navigator */}
           <div className="relative flex-shrink-0" ref={searchRef}>
-            <div className="flex items-center bg-slate-950/90 border border-slate-800 hover:border-slate-700 focus-within:border-sky-500 focus-within:ring-1 focus-within:ring-sky-500/50 rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 gap-1.5 shadow-inner w-36 xs:w-44 sm:w-56 md:w-64 transition-all">
-              <Search size={12} className="text-sky-400 flex-shrink-0" />
+            <div className="flex items-center bg-slate-950 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-2.5 py-1.5 gap-1.5 w-36 xs:w-44 sm:w-56 md:w-64 transition-all">
+              <Search size={13} className="text-slate-400 flex-shrink-0" />
               <input
                 type="text"
                 placeholder="Cari Area / Perangkat..."
@@ -1209,7 +1209,7 @@ export default function TopologyArchitecturePage() {
                   <X size={12} />
                 </button>
               )}
-              <kbd className="hidden md:inline-block bg-slate-900 border border-slate-700/80 rounded px-1.5 py-0.5 text-[9px] font-mono text-slate-400">
+              <kbd className="hidden md:inline-block bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[9px] font-mono text-slate-400">
                 /
               </kbd>
             </div>
@@ -1321,31 +1321,62 @@ export default function TopologyArchitecturePage() {
           </div>
         </div>
 
-        {/* Right Section: Action Buttons */}
-        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto custom-scrollbar max-w-full pb-0.5 sm:pb-0">
+        {/* Right Section: Panel Toggles & Action Buttons */}
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar max-w-full pb-0.5 sm:pb-0">
+          {/* Panel Toggles Group */}
+          {(perms.canCreate || perms.canUpdate) && (
+            <div className="flex items-center bg-slate-950 rounded-xl border border-slate-800 p-0.5 flex-shrink-0">
+              <button
+                onClick={() => setIsPaletteOpen((prev) => !prev)}
+                title={isPaletteOpen ? "Tutup Katalog Perangkat" : "Buka Katalog Perangkat"}
+                className={`cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  isPaletteOpen
+                    ? "bg-slate-800 text-emerald-400"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                }`}
+              >
+                <PanelLeftOpen size={13} className={isPaletteOpen ? "text-emerald-400" : "text-slate-400"} />
+                <span className="hidden md:inline">Katalog</span>
+              </button>
+
+              <button
+                onClick={() => setIsPropertiesOpen((prev) => !prev)}
+                title={isPropertiesOpen ? "Tutup Ringkasan & Properti" : "Buka Ringkasan & Properti"}
+                className={`cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  isPropertiesOpen
+                    ? "bg-slate-800 text-blue-400"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                }`}
+              >
+                <PanelRightOpen size={13} className={isPropertiesOpen ? "text-blue-400" : "text-slate-400"} />
+                <span className="hidden md:inline">Ringkasan</span>
+              </button>
+            </div>
+          )}
+
           {/* New Canvas Button */}
           {(perms.canCreate || perms.canUpdate) && (
             <button
               onClick={handleNewCanvas}
               title="Mulai Kanvas Baru Kosong"
-              className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-semibold transition flex-shrink-0"
+              className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium transition flex-shrink-0"
             >
-              <Plus size={13} />
-              <span className="hidden sm:inline">Kanvas Baru</span>
+              <Plus size={13} className="text-emerald-400" />
+              <span className="hidden lg:inline">Kanvas Baru</span>
             </button>
           )}
 
-          {/* Folder Template Button (Hanya untuk yang memiliki akses edit/kelola) */}
+          {/* Folder Template Button */}
           {(perms.canCreate || perms.canUpdate) && (
             <button
               onClick={() => setShowTemplateModal(true)}
               title="Buka Folder Template & Skema Tersimpan"
-              className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex-shrink-0"
+              className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium transition flex-shrink-0"
             >
               <FolderOpen size={13} className="text-amber-400" />
-              <span className="hidden md:inline">Folder Template</span>
+              <span className="hidden lg:inline">Template</span>
               {savedDiagrams.length > 0 && (
-                <span className="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                <span className="bg-slate-950 text-amber-400 text-[10px] px-1.5 py-0.2 rounded-full font-bold border border-amber-500/20">
                   {savedDiagrams.length}
                 </span>
               )}
@@ -1354,12 +1385,12 @@ export default function TopologyArchitecturePage() {
 
           {/* Undo / Redo */}
           {(perms.canCreate || perms.canUpdate) && (
-            <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5 flex-shrink-0">
+            <div className="flex items-center bg-slate-950 rounded-xl border border-slate-800 p-0.5 flex-shrink-0">
               <button
                 onClick={handleUndo}
                 disabled={historyIndex <= 0}
                 title="Urungkan Perubahan (Ctrl+Z)"
-                className="cursor-pointer p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="cursor-pointer p-1.5 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-slate-900"
               >
                 <RotateCcw size={13} />
               </button>
@@ -1367,7 +1398,7 @@ export default function TopologyArchitecturePage() {
                 onClick={handleRedo}
                 disabled={historyIndex >= history.length - 1}
                 title="Ulangi Perubahan (Ctrl+Y)"
-                className="cursor-pointer p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="cursor-pointer p-1.5 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-slate-900"
               >
                 <RotateCw size={13} />
               </button>
@@ -1382,7 +1413,7 @@ export default function TopologyArchitecturePage() {
                 setShowSaveModal(true);
               }}
               title="Simpan Diagram Topologi ke Folder Template"
-              className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-500/20 flex-shrink-0"
+              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition shadow-sm flex-shrink-0"
             >
               <Save size={13} />
               <span className="hidden sm:inline">Simpan</span>
@@ -1392,22 +1423,22 @@ export default function TopologyArchitecturePage() {
           {/* Toggle Animasi Aliran Kabel */}
           <button
             onClick={() => setSimulationActive((prev) => !prev)}
-            title={simulationActive ? "Matikan Animasi Aliran Kabel & Trafik" : "Aktifkan Animasi Aliran Kabel & Trafik"}
-            className={`cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border text-xs font-semibold transition flex-shrink-0 ${
+            title={simulationActive ? "Matikan Animasi Aliran Kabel" : "Aktifkan Animasi Aliran Kabel"}
+            className={`cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition flex-shrink-0 ${
               simulationActive
-                ? "bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/50 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
-                : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-400"
+                ? "bg-slate-800 border-amber-500/40 text-amber-400"
+                : "bg-slate-800/80 hover:bg-slate-800 border-slate-700/80 text-slate-400"
             }`}
           >
             {simulationActive ? (
               <>
                 <Pause size={13} className="text-amber-400" />
-                <span className="hidden lg:inline">Animasi (ON)</span>
+                <span className="hidden xl:inline">Animasi</span>
               </>
             ) : (
               <>
                 <Play size={13} className="text-slate-400" />
-                <span className="hidden lg:inline">Animasi (OFF)</span>
+                <span className="hidden xl:inline">Animasi</span>
               </>
             )}
           </button>
@@ -1416,18 +1447,18 @@ export default function TopologyArchitecturePage() {
           <button
             onClick={handleExportImage}
             title="Ekspor Diagram ke Gambar PNG"
-            className="cursor-pointer flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex-shrink-0"
+            className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium transition flex-shrink-0"
           >
             <ImageIcon size={13} className="text-sky-400" />
-            <span className="hidden lg:inline">Ekspor PNG</span>
+            <span className="hidden xl:inline">Ekspor</span>
           </button>
 
           {/* Export/Import JSON */}
-          <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5 flex-shrink-0">
+          <div className="flex items-center bg-slate-950 rounded-xl border border-slate-800 p-0.5 flex-shrink-0">
             <button
               onClick={handleExportJSON}
               title="Unduh File JSON Topologi"
-              className="cursor-pointer p-1 sm:p-1.5 text-slate-400 hover:text-emerald-400 transition"
+              className="cursor-pointer p-1.5 text-slate-400 hover:text-emerald-400 transition rounded-lg hover:bg-slate-900"
             >
               <Download size={13} />
             </button>
@@ -1435,7 +1466,7 @@ export default function TopologyArchitecturePage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 title="Unggah File JSON Topologi"
-                className="cursor-pointer p-1 sm:p-1.5 text-slate-400 hover:text-emerald-400 transition"
+                className="cursor-pointer p-1.5 text-slate-400 hover:text-emerald-400 transition rounded-lg hover:bg-slate-900"
               >
                 <Upload size={13} />
               </button>
@@ -1447,7 +1478,7 @@ export default function TopologyArchitecturePage() {
             <button
               onClick={handleClearAll}
               title="Kosongkan Kanvas"
-              className="cursor-pointer p-1 sm:p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 hover:text-white transition flex-shrink-0"
+              className="cursor-pointer p-1.5 rounded-xl bg-red-950/30 hover:bg-red-900/40 border border-red-500/20 text-red-400 hover:text-red-300 transition flex-shrink-0"
             >
               <Trash2 size={13} />
             </button>
@@ -1556,9 +1587,9 @@ export default function TopologyArchitecturePage() {
               data-export-ignore="true"
               onClick={() => setIsPaletteOpen(true)}
               title="Buka Katalog Perangkat"
-              className="export-exclude cursor-pointer absolute top-3 left-3 sm:top-4 sm:left-4 z-30 flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
+              className="export-exclude cursor-pointer absolute top-3 left-3 sm:top-4 sm:left-4 z-30 flex items-center gap-2 bg-slate-900/95 hover:bg-slate-800 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white shadow-xl backdrop-blur-md transition group"
             >
-              <PanelLeftOpen size={15} className="text-emerald-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <PanelLeftOpen size={14} className="text-emerald-400 group-hover:scale-110 transition-transform flex-shrink-0" />
               <span className="hidden sm:inline">Katalog Perangkat</span>
             </button>
           )}
@@ -1569,10 +1600,10 @@ export default function TopologyArchitecturePage() {
               data-export-ignore="true"
               onClick={() => setIsPropertiesOpen(true)}
               title="Buka Ringkasan Topologi"
-              className="export-exclude cursor-pointer absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-slate-200 hover:text-white shadow-2xl backdrop-blur-md transition group"
+              className="export-exclude cursor-pointer absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex items-center gap-2 bg-slate-900/95 hover:bg-slate-800 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white shadow-xl backdrop-blur-md transition group"
             >
               <span className="hidden sm:inline">Ringkasan Topologi</span>
-              <PanelRightOpen size={15} className="text-blue-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <PanelRightOpen size={14} className="text-blue-400 group-hover:scale-110 transition-transform flex-shrink-0" />
             </button>
           )}
 

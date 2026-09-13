@@ -21,14 +21,14 @@ export const AREA_THEMES = {
     glow: "shadow-[0_0_25px_rgba(16,185,129,0.15)]",
     dot: "bg-emerald-400",
   },
-  purple: {
-    border: "border-purple-500/60 hover:border-purple-400",
-    bg: "bg-purple-950/25",
-    headerBg: "bg-purple-900/40 border-purple-500/40",
-    text: "text-purple-300",
-    badge: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-    glow: "shadow-[0_0_25px_rgba(168,85,247,0.15)]",
-    dot: "bg-purple-400",
+  slate: {
+    border: "border-slate-500/60 hover:border-slate-400",
+    bg: "bg-slate-900/40",
+    headerBg: "bg-slate-800/60 border-slate-600/40",
+    text: "text-slate-300",
+    badge: "bg-slate-700/50 text-slate-200 border-slate-600",
+    glow: "shadow-[0_0_25px_rgba(148,163,184,0.1)]",
+    dot: "bg-slate-400",
   },
   amber: {
     border: "border-amber-500/60 hover:border-amber-400",

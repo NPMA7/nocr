@@ -434,6 +434,11 @@ export default function AuthenticatedLayout({ children }) {
             d.id === data.id ? { ...d, status: data.status } : d,
           ),
         );
+        setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
+      };
+
+      const handleSyncBroadcast = () => {
+        setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
       };
 
       const handleRoleUpdated = (payload) => {
@@ -461,6 +466,11 @@ export default function AuthenticatedLayout({ children }) {
       socket.on("device-status", handleDeviceStatus);
       socket.on("user_role_updated", handleRoleUpdated);
       socket.on("role_name_changed", handleRoleNameChanged);
+      socket.on("ruijie_update", handleSyncBroadcast);
+      socket.on("hsgq_olt_update", handleSyncBroadcast);
+      socket.on("mikrotik_full_update", handleSyncBroadcast);
+      socket.on("dashboard_core_update", handleSyncBroadcast);
+      socket.on("mappings_updated", handleSyncBroadcast);
 
       socket.emit("request_initial_logs");
 
@@ -470,7 +480,13 @@ export default function AuthenticatedLayout({ children }) {
 
       fetchDevices();
 
+      // Global recurring sync interval (every 60 seconds / 1 minute)
+      const syncInterval = setInterval(() => {
+        fetchDevices();
+      }, 60000);
+
       return () => {
+        clearInterval(syncInterval);
         window.removeEventListener("server-settings-updated", handleLocalSettingsUpdate);
         socket.off("connect", handleConnect);
         socket.off("disconnect", handleDisconnect);
@@ -480,9 +496,18 @@ export default function AuthenticatedLayout({ children }) {
         socket.off("device-status", handleDeviceStatus);
         socket.off("user_role_updated", handleRoleUpdated);
         socket.off("role_name_changed", handleRoleNameChanged);
+        socket.off("ruijie_update", handleSyncBroadcast);
+        socket.off("hsgq_olt_update", handleSyncBroadcast);
+        socket.off("mikrotik_full_update", handleSyncBroadcast);
+        socket.off("dashboard_core_update", handleSyncBroadcast);
+        socket.off("mappings_updated", handleSyncBroadcast);
       };
     } else {
+      const syncInterval = setInterval(() => {
+        fetchDevices();
+      }, 60000);
       return () => {
+        clearInterval(syncInterval);
         window.removeEventListener("server-settings-updated", handleLocalSettingsUpdate);
       };
     }

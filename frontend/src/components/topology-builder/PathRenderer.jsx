@@ -354,7 +354,7 @@ export default function PathRenderer({
           : isVPN
           ? "#f59e0b"
           : isWireless
-          ? "#a855f7"
+          ? "#0ea5e9"
           : "#60a5fa";
 
         const linkBadgeStyle = isDead
@@ -366,7 +366,7 @@ export default function PathRenderer({
           : isVPN
           ? "bg-slate-900/90 text-amber-300 border-amber-500/40 hover:border-amber-400"
           : isWireless
-          ? "bg-slate-900/90 text-purple-300 border-purple-500/40 hover:border-purple-400"
+          ? "bg-slate-900/90 text-cyan-300 border-cyan-500/40 hover:border-cyan-400"
           : "bg-slate-900/90 text-sky-300 border-sky-500/40 hover:border-sky-400";
 
         const linkDotColor = isDead
@@ -376,7 +376,7 @@ export default function PathRenderer({
           : isVPN
           ? "bg-amber-400 shadow-[0_0_6px_#f59e0b]"
           : isWireless
-          ? "bg-purple-400 shadow-[0_0_6px_#a855f7]"
+          ? "bg-cyan-400 shadow-[0_0_6px_#06b6d4]"
           : "bg-sky-400 shadow-[0_0_6px_#38bdf8]"; // Biru untuk Ethernet LAN!
 
         // Kecepatan animasi partikel (durasi default 2.2 detik untuk 1x)

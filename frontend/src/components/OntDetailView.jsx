@@ -146,9 +146,9 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
 
   // Helper for rows
   const DetailRow = ({ label, value }) => (
-    <div className="flex justify-between items-center py-2 border-b border-slate-700/50 last:border-0 hover:bg-slate-800/30 transition-colors px-2 rounded-md">
+    <div className="flex justify-between items-center py-2 border-b border-slate-800/60 last:border-0 hover:bg-slate-800/40 transition-colors px-2 rounded-md">
       <span className="text-slate-400 text-xs">{label}</span>
-      <span className="text-slate-200 text-xs font-medium text-right break-all ml-4">
+      <span className="text-slate-200 text-xs font-mono text-right break-all ml-4">
         {value !== "" && value !== undefined && value !== null ? value : "-"}
       </span>
     </div>
@@ -208,7 +208,7 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
       {/* Left Column: Basic Info */}
-      <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
           <Activity size={18} />
           ONT Basic Information
@@ -272,7 +272,7 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
       {/* Right Column: Version & Capability & Optical */}
       <div className="space-y-6">
         {/* Optical Information Card */}
-        <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
             <Zap size={18} className="text-amber-400" />
             ONT Optical Information
@@ -288,7 +288,7 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
         </div>
 
         {/* Version Information */}
-        <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
             <Info size={18} />
             Version Information
@@ -305,7 +305,7 @@ export default function OntDetailView({ portId, ontId, canManageOlt = false, sho
         </div>
 
         {/* Capability Information */}
-        <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
             <ShieldCheck size={18} />
             ONT Capability

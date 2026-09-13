@@ -103,6 +103,26 @@ export function hasAccess(user, menuKey, action) {
     if (menuKey.startsWith('monitoring-') && Array.isArray(perms['monitoring']) && perms['monitoring'].includes(action)) {
       return true;
     }
+
+    // 3. Parent dropdown aggregation: allow parent menu if user has access to ANY of its children
+    if (key === 'settings') {
+      if (Array.isArray(perms['settings']) && perms['settings'].includes(action)) return true;
+      return Object.keys(perms).some(
+        (k) => k.startsWith('settings-') && Array.isArray(perms[k]) && perms[k].includes(action)
+      );
+    }
+    if (key === 'devices') {
+      if (Array.isArray(perms['devices']) && perms['devices'].includes(action)) return true;
+      return Object.keys(perms).some(
+        (k) => k.startsWith('devices-') && Array.isArray(perms[k]) && perms[k].includes(action)
+      );
+    }
+    if (key === 'monitoring') {
+      if (Array.isArray(perms['monitoring']) && perms['monitoring'].includes(action)) return true;
+      return Object.keys(perms).some(
+        (k) => k.startsWith('monitoring-') && Array.isArray(perms[k]) && perms[k].includes(action)
+      );
+    }
   }
 
   return false;

@@ -19,6 +19,7 @@ import {
   Terminal,
   Pencil,
   Check,
+  CheckCircle2,
   Key,
   Activity,
   HardDrive,
@@ -30,11 +31,16 @@ import {
   X,
   Power,
   Trash,
+  Building2,
+  Users,
 } from "lucide-react";
 import { hasAccess, getStoredUser, getRoleLabel } from "@/lib/roles";
 import RoleSettings from "@/components/RoleSettings";
-import CompanyProfileSettings from "@/components/CompanyProfileSettings";
-import ApiKeySettings from "@/components/ApiKeySettings";
+import CompanyProfileSettings from "@/components/settings/CompanyProfileSettings";
+import ApiKeySettings from "@/components/settings/ApiKeySettings";
+import UserAndRoleSettings from "@/components/settings/UserAndRoleSettings";
+import PasswordChangeSettings from "@/components/settings/PasswordChangeSettings";
+import SystemConfigSettings from "@/components/settings/SystemConfigSettings";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -504,125 +510,6 @@ function UserManagement({ canCreate = true, canUpdate = true, canDelete = true }
   );
 }
 
-function PasswordChangeSettings({ canUpdate = true }) {
-  const { showToast } = useAppState();
-  const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
-  const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canUpdate) return;
-    if (form.newPassword !== form.confirmPassword) {
-      if (showToast) showToast("Konfirmasi password tidak cocok", "error");
-      return;
-    }
-    setLoading(true);
-    try {
-      const user = getStoredUser();
-      await axios.patch(`${API_URL}/auth/users/${user.id}`, {
-        password: form.newPassword,
-      });
-      setForm({ newPassword: "", confirmPassword: "" });
-      if (showToast) showToast("Password Anda berhasil diperbarui", "success");
-    } catch (err) {
-      if (showToast)
-        showToast(err.response?.data?.error || err.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg p-5">
-      <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 mb-4">
-        <Eye size={20} className="text-blue-500" /> Ubah Password Saya
-      </h2>
-      <p className="text-xs text-slate-400 mb-6">
-        Gunakan form di bawah ini untuk memperbarui kata sandi akun Anda.
-        Pastikan password baru Anda kuat dan aman.
-      </p>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Password Baru
-          </label>
-          <div className="relative">
-            <input
-              type={showPwd ? "text" : "password"}
-              value={form.newPassword}
-              onChange={(e) =>
-                setForm({ ...form, newPassword: e.target.value })
-              }
-              placeholder="Masukkan password baru"
-              required
-              disabled={!canUpdate}
-              minLength={4}
-              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 disabled:opacity-50"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-            >
-              {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Konfirmasi Password Baru
-          </label>
-          <div className="relative">
-            <input
-              type={showPwd ? "text" : "password"}
-              value={form.confirmPassword}
-              onChange={(e) =>
-                setForm({ ...form, confirmPassword: e.target.value })
-              }
-              placeholder="Konfirmasi password baru"
-              required
-              disabled={!canUpdate}
-              minLength={4}
-              className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 disabled:opacity-50"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-            >
-              {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-2">
-          {canUpdate ? (
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-6 rounded-lg text-xs transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{" "}
-                  Menyimpan...
-                </>
-              ) : (
-                <>
-                  <Save size={16} /> Simpan Perubahan Password
-                </>
-              )}
-            </button>
-          ) : (
-            <></>
-          )}
-        </div>
-      </form>
-    </div>
-  );
-}
 
 function SystemHealth({ isAdmin }) {
   const { showToast } = useAppState();
@@ -697,218 +584,406 @@ function SystemHealth({ isAdmin }) {
     return `${h}j ${m}m`;
   };
 
+  const totalMem = Number(data?.os?.totalMemory) || 0;
+  const freeMem = Number(data?.os?.freeMemory) || 0;
+  const usedMem = Math.max(0, totalMem - freeMem);
+  const ramPercent = totalMem > 0 ? Math.round((usedMem / totalMem) * 100) : 0;
+
+  const load1 = data?.os?.loadAvg?.[0]?.toFixed(2) || "0.00";
+  const load5 = data?.os?.loadAvg?.[1]?.toFixed(2) || "0.00";
+  const load15 = data?.os?.loadAvg?.[2]?.toFixed(2) || "0.00";
+
+  const servicesList = data?.pm2 && Array.isArray(data.pm2) ? data.pm2 : [];
+  const onlineCount = servicesList.filter((s) => s.status === "online").length;
+
+  const getContainerRole = (name) => {
+    switch (name) {
+      case "nocr_app":
+        return "Core Web App & API Services";
+      case "ruijie_scraper":
+        return "Ruijie & OLT Data Scraper";
+      case "nocr_postgres":
+        return "PostgreSQL Primary Storage";
+      default:
+        return "Docker Background Daemon";
+    }
+  };
+
   if (loading && !data)
     return (
-      <div className="text-slate-400 p-5 animate-pulse">
-        Memuat metrik sistem...
+      <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-6 text-center text-slate-400 text-xs animate-pulse">
+        Memuat metrik kesehatan sistem...
       </div>
     );
 
   return (
     <>
-    <div className="flex flex-col gap-6">
-      {/* OS Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-blue-500 dark:text-blue-400 font-bold mb-1">
-            <Cpu size={18} /> Beban CPU (Load Avg)
-          </div>
-          <div className="text-xl font-bold text-slate-100">
-            {data?.os?.loadAvg
-              ? data.os.loadAvg.map((n) => n.toFixed(2)).join(" | ")
-              : "-"}
-          </div>
-          <div className="text-xs text-slate-400">Rata-rata 1, 5, 15 menit</div>
-        </div>
-        <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-blue-500 dark:text-blue-400 font-bold mb-1">
-            <HardDrive size={18} /> Penggunaan RAM
-          </div>
-          <div className="text-xl font-bold text-slate-100">
-            {formatBytes(data?.os?.totalMemory - data?.os?.freeMemory)}{" "}
-            <span className="text-xs text-slate-400 font-normal">
-              / {formatBytes(data?.os?.totalMemory)}
-            </span>
-          </div>
-          <div className="w-full bg-slate-900/60 rounded-full h-1.5 mt-1 overflow-hidden">
-            <div
-              className="bg-blue-600 h-1.5 rounded-full"
-              style={{
-                width: `${((data?.os?.totalMemory - data?.os?.freeMemory) / data?.os?.totalMemory) * 100}%`,
-              }}
-            ></div>
-          </div>
-        </div>
-        <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-blue-500 dark:text-blue-400 font-bold mb-1">
-            <Activity size={18} /> Server Uptime
-          </div>
-          <div className="text-xl font-bold text-slate-100">
-            {formatUptime(data?.os?.uptime)}
-          </div>
-          <div className="text-xs text-slate-400">
-            Waktu aktif host sejak restart
-          </div>
-        </div>
-      </div>
+      <div className="space-y-3.5">
+        {/* ─── 1. Host Hardware Vitals (3 Grid Cards) ─── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* Card 1: Beban CPU */}
+          <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 md:p-4 backdrop-blur-sm flex flex-col justify-between transition-all">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-sky-400 flex-shrink-0">
+                  <Cpu size={14} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-200 tracking-wide uppercase">
+                    Beban CPU (Load Avg)
+                  </span>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Rata-rata antrean prosesor
+                  </p>
+                </div>
+              </div>
+              <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/50 text-slate-300">
+                1M • 5M • 15M
+              </span>
+            </div>
 
-      {/* Database Stats */}
-      <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg">
-        <div className="flex items-center gap-2 text-base font-bold text-slate-100 mb-4 border-b border-slate-700/50 pb-3">
-          <Database size={20} className="text-blue-500 dark:text-blue-400" /> PostgreSQL Database
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-slate-400">
-              Ukuran Penyimpanan
-            </span>
-            <span className="text-base font-bold text-slate-200">
-              {data?.db?.size || "-"}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-slate-400">
-              Koneksi Aktif
-            </span>
-            <span className="text-base font-bold text-slate-200">
-              {data?.db?.active_connections || 0}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1 col-span-2">
-            <span className="text-xs font-semibold text-slate-400">
-              Versi Mesin
-            </span>
-            <span className="text-xs font-semibold text-slate-300 break-words">
-              {data?.db?.version || "-"}
-            </span>
-          </div>
-        </div>
-      </div>
+            <div className="grid grid-cols-3 gap-2 my-1">
+              <div className="bg-slate-950/70 border border-slate-800/80 rounded-md p-2 text-center">
+                <div className="text-[9.5px] text-slate-500 font-mono uppercase">1 Min</div>
+                <div className="text-base font-bold font-mono text-slate-100 mt-0.5">{load1}</div>
+              </div>
+              <div className="bg-slate-950/70 border border-slate-800/80 rounded-md p-2 text-center">
+                <div className="text-[9.5px] text-slate-500 font-mono uppercase">5 Min</div>
+                <div className="text-base font-bold font-mono text-slate-100 mt-0.5">{load5}</div>
+              </div>
+              <div className="bg-slate-950/70 border border-slate-800/80 rounded-md p-2 text-center">
+                <div className="text-[9.5px] text-slate-500 font-mono uppercase">15 Min</div>
+                <div className="text-base font-bold font-mono text-slate-100 mt-0.5">{load15}</div>
+              </div>
+            </div>
 
-      {/* Docker Containers & Background Services Stats */}
-      <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-5 shadow-lg">
-        <div className="flex items-center justify-between mb-4 border-b border-slate-700/50 pb-3">
-          <div className="flex items-center gap-2 text-base font-bold text-slate-100">
-            <Terminal size={20} className="text-blue-500 dark:text-blue-400" /> Layanan Kontainer
-            (Docker)
+            <div className="text-[10.5px] text-slate-400 font-mono mt-1.5 flex items-center justify-between">
+              <span>Status CPU:</span>
+              <span className="text-emerald-400 font-semibold">Normal (Multi-Core Host)</span>
+            </div>
           </div>
-          <button
-            onClick={() => fetchHealth(true)}
-            disabled={refreshing}
-            className={`cursor-pointer text-slate-400 hover:text-slate-200 p-1.5 rounded-lg bg-slate-900 border border-slate-700 transition ${refreshing ? "animate-spin text-blue-400" : ""}`}
-            title="Muat Ulang"
-          >
-            <RefreshCw size={14} />
-          </button>
+
+          {/* Card 2: Penggunaan RAM */}
+          <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 md:p-4 backdrop-blur-sm flex flex-col justify-between transition-all">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-sky-400 flex-shrink-0">
+                  <HardDrive size={14} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-200 tracking-wide uppercase">
+                    Penggunaan RAM
+                  </span>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Alokasi memori fisik host
+                  </p>
+                </div>
+              </div>
+              <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded bg-sky-950/60 border border-sky-800/60 text-sky-300">
+                {ramPercent}% TERPAKAI
+              </span>
+            </div>
+
+            <div className="my-1">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-bold font-mono text-slate-100">
+                  {formatBytes(usedMem)}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  / {formatBytes(totalMem)}
+                </span>
+              </div>
+
+              <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800/80 my-2">
+                <div
+                  className="bg-gradient-to-r from-sky-500 to-blue-600 h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${ramPercent}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="text-[10.5px] text-slate-400 font-mono flex items-center justify-between">
+              <span>Tersedia:</span>
+              <span className="text-slate-300 font-semibold">{formatBytes(freeMem)} Memori Bebas</span>
+            </div>
+          </div>
+
+          {/* Card 3: Server Uptime */}
+          <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 md:p-4 backdrop-blur-sm flex flex-col justify-between transition-all">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-sky-400 flex-shrink-0">
+                  <Activity size={14} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-200 tracking-wide uppercase">
+                    Server Uptime
+                  </span>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Durasi operasional host aktif
+                  </p>
+                </div>
+              </div>
+              <span className="flex items-center gap-1 text-[9px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/60 text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                ONLINE
+              </span>
+            </div>
+
+            <div className="my-1">
+              <div className="text-xl font-bold font-mono text-slate-100">
+                {formatUptime(data?.os?.uptime)}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                Waktu aktif sistem operasi sejak boot
+              </div>
+            </div>
+
+            <div className="text-[10.5px] text-slate-400 font-mono flex items-center justify-between">
+              <span>Keandalan Host:</span>
+              <span className="text-emerald-400 font-semibold">100% Berjalan Stabil</span>
+            </div>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-800/80 text-slate-300 dark:text-slate-200">
-              <tr className="border-b border-slate-700/60">
-                <th className="px-4 py-3 text-xs font-bold uppercase">
-                  Layanan / Kontainer
-                </th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
-                  Uptime
-                </th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
-                  Memori & CPU
-                </th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
-                  Port
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/50">
-              {data?.pm2 && Array.isArray(data.pm2) ? (
-                data.pm2.map((app) => (
-                  <tr
-                    key={app.name}
-                    className="hover:bg-slate-700/20 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-xs font-bold text-slate-200">
-                      {app.name}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {app.status === "online" ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>{" "}
-                          Online
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>{" "}
-                          {app.status || "Offline"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-300">
-                      {formatUptime(app.uptime / 1000)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-0.5 text-xs text-slate-400 font-mono">
-                        {app.memory > 0 && <span>RAM: {formatBytes(app.memory)}</span>}
-                        {app.cpu > 0 && <span>CPU: {app.cpu}%</span>}
-                        {app.memory === 0 && app.cpu === 0 && <span>Active</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-300 font-mono">
-                      {app.port || "-"}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="px-4 py-3 text-center text-xs text-slate-500"
-                  >
-                    Data layanan Docker tidak tersedia.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+        {/* ─── 2. Database PostgreSQL Health ─── */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 md:p-4 backdrop-blur-sm transition-all">
+          <div className="flex items-center justify-between pb-2.5 mb-3.5 border-b border-slate-800/80">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-md bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-sky-400 flex-shrink-0">
+                <Database size={14} />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-200 tracking-wide uppercase">
+                  Database Operasional (PostgreSQL)
+                </span>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  Penyimpanan relasional, histori trafik, dan tabel konfigurasi NOCR
+                </p>
+              </div>
+            </div>
+            <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/50 text-emerald-400 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              PORT: 5432 • CONNECTED
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-md p-3">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                Ukuran Penyimpanan
+              </span>
+              <div className="text-base font-bold font-mono text-slate-100">
+                {data?.db?.size || "-"}
+              </div>
+              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                Total file data & indeks tabel
+              </span>
+            </div>
+
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-md p-3">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                Koneksi Aktif
+              </span>
+              <div className="text-base font-bold font-mono text-slate-100">
+                {data?.db?.active_connections || 0} <span className="text-xs font-normal text-slate-400">Koneksi</span>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                Sesi backend pool terhubung
+              </span>
+            </div>
+
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-md p-3">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                Versi Mesin Basis Data
+              </span>
+              <div className="text-xs font-semibold font-mono text-slate-200 truncate" title={data?.db?.version || "-"}>
+                {data?.db?.version ? data.db.version.split(" on ")[0] : "PostgreSQL 16"}
+              </div>
+              <span className="text-[10px] text-slate-500 mt-0.5 block truncate">
+                x86_64 Alpine Linux Runtime
+              </span>
+            </div>
+
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-md p-3">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                Status Integritas
+              </span>
+              <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5 mt-0.5">
+                <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />
+                <span>Normal & Siap Transaksi</span>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                Query latency & read/write normal
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-      {confirmRestartApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-slate-700/50 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
-                <RefreshCw size={16} className="text-blue-400" />
-                Konfirmasi Restart
-              </h3>
-              <button onClick={() => setConfirmRestartApp(null)} className="cursor-pointer text-slate-400 hover:text-slate-200 transition">
-                <X size={18} />
+
+        {/* ─── 3. Docker Containers & Services ─── */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3.5 md:p-4 backdrop-blur-sm transition-all">
+          <div className="flex items-center justify-between pb-2.5 mb-3.5 border-b border-slate-800/80">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-md bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-sky-400 flex-shrink-0">
+                <Terminal size={14} />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-200 tracking-wide uppercase">
+                  Layanan Kontainer (Docker)
+                </span>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  Status daemon aplikasi, web server, dan scraper background
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/50 text-slate-300">
+                {onlineCount} / {servicesList.length} KONTAINER AKTIF
+              </span>
+              <button
+                onClick={() => fetchHealth(true)}
+                disabled={refreshing}
+                className={`cursor-pointer text-slate-400 hover:text-slate-200 p-1.5 rounded-md bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700/60 transition ${
+                  refreshing ? "animate-spin text-sky-400" : ""
+                }`}
+                title="Muat Ulang Metrik"
+              >
+                <RefreshCw size={13} />
               </button>
             </div>
-            <div className="p-5 space-y-4">
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Yakin ingin merestart{" "}
-                <span className="font-bold text-white">{confirmRestartApp}</span>?
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-950/40 text-slate-400 text-[10px] font-mono uppercase tracking-wider">
+                  <th className="px-3.5 py-2.5">Layanan / Kontainer</th>
+                  <th className="px-3.5 py-2.5">Status</th>
+                  <th className="px-3.5 py-2.5">Uptime</th>
+                  <th className="px-3.5 py-2.5">Memori & CPU</th>
+                  <th className="px-3.5 py-2.5">Port</th>
+                  {isAdmin && <th className="px-3.5 py-2.5 text-right">Aksi</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-xs">
+                {servicesList.length > 0 ? (
+                  servicesList.map((app) => (
+                    <tr
+                      key={app.name}
+                      className="hover:bg-slate-800/30 transition-colors"
+                    >
+                      <td className="px-3.5 py-3">
+                        <div className="flex flex-col">
+                          <span className="font-mono font-bold text-slate-200 text-xs">
+                            {app.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {getContainerRole(app.name)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        {app.status === "online" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                            {app.status || "Offline"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3.5 py-3 text-slate-300 font-mono text-xs">
+                        {formatUptime(app.uptime / 1000)}
+                      </td>
+                      <td className="px-3.5 py-3 font-mono text-xs text-slate-300">
+                        {app.memory > 0 && <span>RAM: {formatBytes(app.memory)}</span>}
+                        {app.cpu > 0 && (
+                          <span className="text-slate-400"> • CPU: {app.cpu}%</span>
+                        )}
+                        {app.memory === 0 && app.cpu === 0 && (
+                          <span className="text-slate-500">Aktif</span>
+                        )}
+                      </td>
+                      <td className="px-3.5 py-3 font-mono text-xs">
+                        <span className="text-sky-300 bg-sky-950/40 border border-sky-800/50 px-2 py-0.5 rounded text-[11px]">
+                          {app.port || "-"}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-3.5 py-3 text-right">
+                          <button
+                            onClick={() => handleRestart(app.name)}
+                            className="cursor-pointer px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-[11px] font-medium text-slate-300 hover:text-white transition flex items-center gap-1.5 ml-auto"
+                            title={`Restart kontainer ${app.name}`}
+                          >
+                            <RefreshCw size={11} />
+                            <span>Restart</span>
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={isAdmin ? 6 : 5}
+                      className="px-4 py-6 text-center text-xs text-slate-500"
+                    >
+                      Data layanan Docker tidak tersedia.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Modal Konfirmasi Restart (Dashboard Style) ─── */}
+      {confirmRestartApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-200 text-xs flex items-center gap-2">
+                <RefreshCw size={14} className="text-sky-400" />
+                Konfirmasi Restart Kontainer
+              </h3>
+              <button
+                onClick={() => setConfirmRestartApp(null)}
+                className="cursor-pointer text-slate-400 hover:text-slate-200 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Yakin ingin merestart kontainer{" "}
+                <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded">
+                  {confirmRestartApp}
+                </span>
+                ?
               </p>
-              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs p-3 rounded-lg">
-                ⚠️ Layanan akan offline sementara selama proses restart.
+              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] p-2.5 rounded-md">
+                ⚠️ Layanan akan offline sejenak selama proses inisialisasi ulang.
               </div>
-              <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-700/30">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setConfirmRestartApp(null)}
-                  className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
                   onClick={confirmRestart}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 border border-blue-500 text-xs text-white font-semibold transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-sky-600 hover:bg-sky-500 text-xs text-white font-semibold transition cursor-pointer shadow-sm"
                 >
-                  <RefreshCw size={13} />
+                  <RefreshCw size={12} />
                   Ya, Restart
                 </button>
               </div>
@@ -920,1000 +995,7 @@ function SystemHealth({ isAdmin }) {
   );
 }
 
-function SystemConfigSettings({
-  canUpdate = true,
-  perms = {},
-  coreDevice = {},
-  setCoreDevice,
-  showCorePassword,
-  setShowCorePassword,
-  handleSaveCore,
-  vpnConfig = {},
-  setVpnConfig,
-  showVpnPassword,
-  setShowVpnPassword,
-  handleSaveVpn,
-  testVpnConnect,
-  testVpnDisconnect,
-  vpnConnecting = false,
-  vpnMsg = "",
-  existingId = null,
-  initialSubTab = "gateway",
-}) {
-  const { showToast } = useAppState();
-  const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [newIssue, setNewIssue] = useState("");
-  const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
-
-  const [editingIssue, setEditingIssue] = useState(null);
-  const [renamedIssues, setRenamedIssues] = useState([]);
-
-  const fetchSettings = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get("/api/settings/server");
-      setSettings(res.data);
-    } catch (err) {
-      console.error(err);
-      showToast("Gagal memuat pengaturan server", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  useEffect(() => {
-    if (initialSubTab) {
-      setActiveSubTab(initialSubTab);
-    }
-  }, [initialSubTab]);
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!canUpdate) return;
-    setSaving(true);
-    try {
-      const payload = {
-        ...settings,
-        renamed_issues: renamedIssues,
-      };
-      const res = await axios.post("/api/settings/server", payload);
-      showToast("Pengaturan server berhasil disimpan!", "success");
-      if (res.data?.renamed_count > 0) {
-        showToast(
-          `Berhasil memperbarui ${res.data.renamed_count} data laporan harian yang menggunakan issue lama!`,
-          "success"
-        );
-      }
-      setRenamedIssues([]);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("server-settings-updated", { detail: settings }));
-      }
-    } catch (err) {
-      console.error(err);
-      showToast("Gagal menyimpan pengaturan server", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAddIssue = () => {
-    if (!newIssue.trim()) return;
-    if (settings.standard_issues.includes(newIssue.trim())) {
-      showToast("Issue sudah ada di daftar", "warning");
-      return;
-    }
-    setSettings({
-      ...settings,
-      standard_issues: [...settings.standard_issues, newIssue.trim()],
-    });
-    setNewIssue("");
-  };
-
-  const handleSaveEditIssue = (oldName, newValue) => {
-    const trimmedNew = newValue.trim();
-    if (!trimmedNew) return;
-    if (oldName === trimmedNew) {
-      setEditingIssue(null);
-      return;
-    }
-    if (
-      settings.standard_issues.includes(trimmedNew) &&
-      trimmedNew.toLowerCase() !== oldName.toLowerCase()
-    ) {
-      showToast("Issue dengan nama tersebut sudah ada di daftar", "warning");
-      return;
-    }
-
-    const updatedList = settings.standard_issues.map((i) =>
-      i === oldName ? trimmedNew : i
-    );
-
-    setSettings({
-      ...settings,
-      standard_issues: updatedList,
-    });
-
-    setRenamedIssues((prev) => {
-      const filtered = prev.filter((r) => r.new !== oldName);
-      const existing = prev.find((r) => r.new === oldName);
-      if (existing) {
-        return [...filtered, { old: existing.old, new: trimmedNew }];
-      } else {
-        return [...filtered, { old: oldName, new: trimmedNew }];
-      }
-    });
-
-    setEditingIssue(null);
-    showToast(`Issue "${oldName}" diubah menjadi "${trimmedNew}"`, "info");
-  };
-
-  const handleRemoveIssue = (issue) => {
-    setSettings({
-      ...settings,
-      standard_issues: settings.standard_issues.filter((i) => i !== issue),
-    });
-  };
-
-  if (loading) {
-    return <div className="p-5 text-slate-400">Memuat konfigurasi...</div>;
-  }
-
-  if (!settings) {
-    return <div className="p-5 text-red-400">Gagal memuat konfigurasi.</div>;
-  }
-
-  return (
-    <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
-      <div className="p-5 border-b border-slate-700/50">
-        <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-          <SettingsIcon size={20} className="text-blue-400" /> Konfigurasi Server / Project
-        </h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Atur konektivitas gateway MikroTik & VPN, serta parameter operasional sistem NOCR.
-        </p>
-      </div>
-
-      {/* Sub Tabs Navigation */}
-      <div className="flex border-b border-slate-700/50 bg-slate-800/40 px-5 gap-6 overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("gateway")}
-          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none whitespace-nowrap ${
-            activeSubTab === "gateway"
-              ? "border-blue-500 text-blue-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          1. MIKROTIK & VPN GATEWAY
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("report")}
-          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none whitespace-nowrap ${
-            activeSubTab === "report"
-              ? "border-blue-500 text-blue-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          2. PARAMETER LAPORAN
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("sync")}
-          className={`py-3 text-xs font-bold border-b-2 transition duration-200 cursor-pointer outline-none whitespace-nowrap ${
-            activeSubTab === "sync"
-              ? "border-blue-500 text-blue-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          3. PARAMETER SINKRONISASI & MONITORING
-        </button>
-      </div>
-
-      {/* TAB 1: MIKROTIK & VPN GATEWAY */}
-      {activeSubTab === "gateway" && (
-        <div className="p-5">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
-            {/* CARD 1: MIKROTIK GATEWAY */}
-            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg h-full flex flex-col">
-              <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Server size={20} className="text-blue-400" />
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-100">
-                      MikroTik Gateway
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Router utama untuk monitoring PPPoE, ONT, dan interface pelanggan lainnya.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-5 flex-1 flex flex-col">
-                <form onSubmit={handleSaveCore} className="flex-1 flex flex-col justify-between gap-4">
-                  <div
-                    className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!perms?.mikrotikUpdate ? "opacity-90" : ""}`}
-                  >
-                    <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Nama Router <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={!perms?.mikrotikUpdate}
-                        value={coreDevice?.name || ""}
-                        onChange={(e) =>
-                          setCoreDevice && setCoreDevice({ ...coreDevice, name: e.target.value })
-                        }
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        IP Address <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={!perms?.mikrotikUpdate}
-                        value={coreDevice?.ip_address || ""}
-                        onChange={(e) =>
-                          setCoreDevice && setCoreDevice({
-                            ...coreDevice,
-                            ip_address: e.target.value,
-                          })
-                        }
-                        placeholder="Contoh: 192.168.100.1"
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Port API <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        readOnly={!perms?.mikrotikUpdate}
-                        value={coreDevice?.port || 8728}
-                        onChange={(e) =>
-                          setCoreDevice && setCoreDevice({
-                            ...coreDevice,
-                            port: parseInt(e.target.value) || 8728,
-                          })
-                        }
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Username API <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        readOnly={!perms?.mikrotikUpdate}
-                        value={coreDevice?.username || ""}
-                        onChange={(e) =>
-                          setCoreDevice && setCoreDevice({
-                            ...coreDevice,
-                            username: e.target.value,
-                          })
-                        }
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Password API
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showCorePassword && perms?.mikrotikUpdate ? "text" : "password"}
-                          readOnly={!perms?.mikrotikUpdate}
-                          value={coreDevice?.password || ""}
-                          onChange={(e) =>
-                            setCoreDevice && setCoreDevice({
-                              ...coreDevice,
-                              password: e.target.value,
-                            })
-                          }
-                          placeholder={
-                            existingId
-                              ? "Kosongkan jika tidak diubah"
-                              : "Masukkan password"
-                          }
-                          className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
-                        />
-                        <button
-                          type="button"
-                          disabled={!perms?.mikrotikUpdate}
-                          onClick={() => perms?.mikrotikUpdate && setShowCorePassword && setShowCorePassword(!showCorePassword)}
-                          className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms?.mikrotikUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
-                          title={perms?.mikrotikUpdate ? "" : "Anda hanya memiliki akses baca"}
-                        >
-                          {showCorePassword && perms?.mikrotikUpdate ? (
-                            <EyeOff size={16} />
-                          ) : (
-                            <Eye size={16} />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {perms?.mikrotikUpdate && (
-                    <div className="mt-auto pt-4 flex justify-end">
-                      <button
-                        type="submit"
-                        className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-blue-500/20"
-                      >
-                        <Save size={16} /> Simpan Konfigurasi
-                      </button>
-                    </div>
-                  )}
-                </form>
-              </div>
-            </div>
-
-            {/* CARD 2: VPN CONNECTION */}
-            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden shadow-lg h-full flex flex-col">
-              <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Network size={20} className="text-blue-400" />
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-100">
-                      VPN Connection (Windows / Linux)
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Koneksi VPN otomatis saat jaringan terputus (rasdial / pon-poff).
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-5 flex-1 flex flex-col">
-                <form onSubmit={handleSaveVpn} className="flex-1 flex flex-col justify-between gap-4">
-                  <div className="flex flex-col gap-4">
-                    {/* Platform Selector */}
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-semibold text-slate-400">
-                        Pilih Platform VPN
-                      </label>
-                      <div className="grid grid-cols-2 bg-slate-900/60 p-1.5 rounded-lg border border-slate-700/50 gap-1.5 max-w-md">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setVpnConfig && setVpnConfig({
-                              ...vpnConfig,
-                              active_platform: "windows",
-                            })
-                          }
-                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
-                            vpnConfig?.active_platform === "windows"
-                              ? "bg-blue-600 text-white shadow-md"
-                              : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <Monitor size={14} />
-                          Windows (rasdial)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setVpnConfig && setVpnConfig({
-                              ...vpnConfig,
-                              active_platform: "linux",
-                            })
-                          }
-                          className={`cursor-pointer py-2 px-4 text-xs font-bold rounded-md transition-all duration-200 flex items-center justify-center gap-2 ${
-                            vpnConfig?.active_platform === "linux"
-                              ? "bg-blue-600 text-white shadow-md"
-                              : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <Terminal size={14} />
-                          Linux (pon/poff)
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-slate-700/50 my-1"></div>
-
-                    {/* Conditional Platform Forms */}
-                    {vpnConfig?.active_platform === "windows" ? (
-                      <div className="flex flex-col gap-4">
-                        <div className="flex items-center gap-2 pb-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                          <h4 className="text-xs font-bold text-slate-200">
-                            Konfigurasi Windows
-                          </h4>
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold text-slate-400">
-                            Nama Profil VPN (rasdial) <span className="text-red-400">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            readOnly={!perms?.vpnUpdate}
-                            value={vpnConfig?.windows_name || ""}
-                            onChange={(e) =>
-                              setVpnConfig && setVpnConfig({
-                                ...vpnConfig,
-                                windows_name: e.target.value,
-                              })
-                            }
-                            placeholder="Contoh: VPN_DISKOMINFO_KABBDG"
-                            className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                            required={vpnConfig?.active_platform === "windows"}
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-slate-400">
-                              Username VPN (Opsional)
-                            </label>
-                            <input
-                              type="text"
-                              readOnly={!perms?.vpnUpdate}
-                              value={vpnConfig?.windows_username || ""}
-                              onChange={(e) =>
-                                setVpnConfig && setVpnConfig({
-                                  ...vpnConfig,
-                                  windows_username: e.target.value,
-                                })
-                              }
-                              placeholder="Username jika diperlukan"
-                              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-slate-400">
-                              Password VPN (Opsional)
-                            </label>
-                            <div className="relative">
-                              <input
-                                type={showVpnPassword && perms?.vpnUpdate ? "text" : "password"}
-                                readOnly={!perms?.vpnUpdate}
-                                value={vpnConfig?.windows_password || ""}
-                                onChange={(e) =>
-                                  setVpnConfig && setVpnConfig({
-                                    ...vpnConfig,
-                                    windows_password: e.target.value,
-                                  })
-                                }
-                                placeholder="Password jika diperlukan"
-                                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
-                              />
-                              <button
-                                type="button"
-                                disabled={!perms?.vpnUpdate}
-                                onClick={() => perms?.vpnUpdate && setShowVpnPassword && setShowVpnPassword(!showVpnPassword)}
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms?.vpnUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
-                                title={perms?.vpnUpdate ? "" : "Anda hanya memiliki akses baca"}
-                              >
-                                {showVpnPassword && perms?.vpnUpdate ? (
-                                  <EyeOff size={16} />
-                                ) : (
-                                  <Eye size={16} />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-4">
-                        <div className="flex items-center gap-2 pb-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                          <h4 className="text-xs font-bold text-slate-200">
-                            Konfigurasi Linux (pon/poff)
-                          </h4>
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold text-slate-400">
-                            Nama Provider / Interface (pon &lt;name&gt;) <span className="text-red-400">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            readOnly={!perms?.vpnUpdate}
-                            value={vpnConfig?.linux_name || ""}
-                            onChange={(e) =>
-                              setVpnConfig && setVpnConfig({
-                                ...vpnConfig,
-                                linux_name: e.target.value,
-                              })
-                            }
-                            placeholder="Contoh: vpn-provider"
-                            className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                            required={vpnConfig?.active_platform === "linux"}
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-slate-400">
-                              Username Linux PPP (Opsional)
-                            </label>
-                            <input
-                              type="text"
-                              readOnly={!perms?.vpnUpdate}
-                              value={vpnConfig?.linux_username || ""}
-                              onChange={(e) =>
-                                setVpnConfig && setVpnConfig({
-                                  ...vpnConfig,
-                                  linux_username: e.target.value,
-                                })
-                              }
-                              placeholder="Username jika diperlukan"
-                              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-slate-400">
-                              Password Linux PPP (Opsional)
-                            </label>
-                            <div className="relative">
-                              <input
-                                type={showVpnPassword && perms?.vpnUpdate ? "text" : "password"}
-                                readOnly={!perms?.vpnUpdate}
-                                value={vpnConfig?.linux_password || ""}
-                                onChange={(e) =>
-                                  setVpnConfig && setVpnConfig({
-                                    ...vpnConfig,
-                                    linux_password: e.target.value,
-                                  })
-                                }
-                                placeholder="Password jika diperlukan"
-                                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none w-full pr-10"
-                              />
-                              <button
-                                type="button"
-                                disabled={!perms?.vpnUpdate}
-                                onClick={() => perms?.vpnUpdate && setShowVpnPassword && setShowVpnPassword(!showVpnPassword)}
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${perms?.vpnUpdate ? "cursor-pointer text-slate-500 hover:text-slate-300" : "text-slate-600 cursor-not-allowed opacity-50"}`}
-                                title={perms?.vpnUpdate ? "" : "Anda hanya memiliki akses baca"}
-                              >
-                                {showVpnPassword && perms?.vpnUpdate ? (
-                                  <EyeOff size={16} />
-                                ) : (
-                                  <Eye size={16} />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-auto pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-700/50">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={vpnConnecting || !perms?.vpnUpdate}
-                        onClick={testVpnConnect}
-                        className="cursor-pointer bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 px-3.5 py-2 rounded-lg text-xs font-semibold transition"
-                      >
-                        {vpnConnecting ? "Memproses..." : "Tes Hubungkan"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={vpnConnecting || !perms?.vpnUpdate}
-                        onClick={testVpnDisconnect}
-                        className="cursor-pointer bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 px-3.5 py-2 rounded-lg text-xs font-semibold transition"
-                      >
-                        Putuskan
-                      </button>
-                      {vpnMsg && (
-                        <span className="text-xs text-blue-400 font-mono">
-                          {vpnMsg}
-                        </span>
-                      )}
-                    </div>
-                    {perms?.vpnUpdate && (
-                      <button
-                        type="submit"
-                        className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition shadow-lg shadow-blue-500/20"
-                      >
-                        <Save size={16} /> Simpan Pengaturan
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2 & 3: PARAMETER LAPORAN & SINKRONISASI */}
-      {(activeSubTab === "report" || activeSubTab === "sync") && (
-        <div className="p-5">
-          <form onSubmit={handleSave} className="flex flex-col gap-5">
-            {activeSubTab === "report" && (
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">
-                  2. Parameter Laporan
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Minimal Durasi Offline - Laporan Harian (Menit)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      readOnly={!canUpdate}
-                      value={settings.min_offline_duration_minutes}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          min_offline_duration_minutes: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                    <span className="text-[10px] text-slate-500">
-                      Perangkat offline yang kurang dari waktu ini tidak akan dimasukkan otomatis ke laporan harian.
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Batas Waktu Flapping Log Aktivitas (Menit)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      readOnly={!canUpdate}
-                      value={settings.activity_log_flapping_minutes ?? 10}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          activity_log_flapping_minutes: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                    <span className="text-[10px] text-slate-500">
-                      Log pergantian status (Offline/Online) yang kurang dari waktu ini akan otomatis dihapus agar tidak mengotori Log Aktivitas.
-                    </span>
-                  </div>
-                </div>
-
-                {/* Standard Issues Management */}
-                <div className="flex flex-col gap-2 mt-2">
-                  <label className="text-xs font-semibold text-slate-400">
-                    Daftar Pilihan Issue Standar (Dropdown)
-                  </label>
-                  
-                  {canUpdate && (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newIssue}
-                        onChange={(e) => setNewIssue(e.target.value)}
-                        placeholder="Contoh: Kabel Digigit Tikus..."
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:border-blue-500 outline-none flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddIssue}
-                        className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
-                      >
-                        Tambah
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2 mt-2 p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg max-h-48 overflow-y-auto">
-                    {settings.standard_issues.map((issue) => {
-                      const isEditing = editingIssue?.oldName === issue;
-                      return (
-                        <div
-                          key={issue}
-                          className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-full"
-                        >
-                          {isEditing ? (
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="text"
-                                value={editingIssue.value}
-                                onChange={(e) =>
-                                  setEditingIssue({
-                                    ...editingIssue,
-                                    value: e.target.value,
-                                  })
-                                }
-                                className="bg-slate-900 border border-blue-500 rounded px-2 py-0.5 text-xs text-white outline-none w-48"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    handleSaveEditIssue(issue, editingIssue.value);
-                                  }
-                                  if (e.key === "Escape") {
-                                    setEditingIssue(null);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleSaveEditIssue(issue, editingIssue.value)
-                                }
-                                className="text-green-400 hover:text-green-300 p-0.5 transition cursor-pointer"
-                                title="Simpan perbaikan nama issue"
-                              >
-                                <Check size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingIssue(null)}
-                                className="text-slate-400 hover:text-slate-200 p-0.5 transition cursor-pointer"
-                                title="Batal"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <span>{issue}</span>
-                              {canUpdate && (
-                                <div className="flex items-center gap-1 ml-1 border-l border-slate-700/60 pl-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setEditingIssue({ oldName: issue, value: issue })
-                                    }
-                                    className="text-slate-400 hover:text-blue-400 transition cursor-pointer"
-                                    title="Edit nama issue ini"
-                                  >
-                                    <Pencil size={12} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveIssue(issue)}
-                                    className="text-slate-400 hover:text-red-400 transition cursor-pointer"
-                                    title="Hapus issue"
-                                  >
-                                    <Trash size={12} />
-                                  </button>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "sync" && (
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">
-                  3. Parameter Sinkronisasi & Monitoring
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Interval Ping Perangkat (Detik)
-                    </label>
-                    <input
-                      type="number"
-                      min="2"
-                      readOnly={!canUpdate}
-                      value={settings.ping_interval_seconds}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          ping_interval_seconds: parseInt(e.target.value) || 5,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Timeout Ping Perangkat (Detik)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      readOnly={!canUpdate}
-                      value={settings.ping_timeout_seconds}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          ping_timeout_seconds: parseInt(e.target.value) || 15,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Interval Broadcast Core (Detik)
-                    </label>
-                    <input
-                      type="number"
-                      min="2"
-                      readOnly={!canUpdate}
-                      value={settings.core_broadcast_interval_seconds || 10}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          core_broadcast_interval_seconds: parseInt(e.target.value) || 10,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Interval Sinkronisasi Ruijie (Detik)
-                    </label>
-                    <input
-                      type="number"
-                      min="5"
-                      readOnly={!canUpdate}
-                      value={settings.sync_ruijie_interval_seconds || 60}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          sync_ruijie_interval_seconds: parseInt(e.target.value) || 60,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Interval Sinkronisasi MikroTik (Detik)
-                    </label>
-                    <input
-                      type="number"
-                      min="5"
-                      readOnly={!canUpdate}
-                      value={settings.sync_mikrotik_interval_seconds || 60}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          sync_mikrotik_interval_seconds: parseInt(e.target.value) || 60,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Interval Sinkronisasi Mappings (Detik)
-                    </label>
-                    <input
-                      type="number"
-                      min="5"
-                      readOnly={!canUpdate}
-                      value={settings.sync_mappings_interval_seconds || 60}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          sync_mappings_interval_seconds: parseInt(e.target.value) || 60,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Interval Sinkronisasi HSGQ OLT (Detik)
-                    </label>
-                    <input
-                      type="number"
-                      min="5"
-                      readOnly={!canUpdate}
-                      value={settings.sync_hsgq_interval_seconds || 60}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          sync_hsgq_interval_seconds: parseInt(e.target.value) || 60,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Delay Alarm Offline (ms)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      readOnly={!canUpdate}
-                      value={settings.alarm_delay_ms ?? 1500}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          alarm_delay_ms: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    />
-                    <span className="text-[10px] text-slate-500">
-                      Delay sebelum alarm berbunyi setelah notif offline diterima. Berguna untuk menghindari false alarm akibat fluktuasi singkat.
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">
-                      Jenis Suara Alarm
-                    </label>
-                    <select
-                      disabled={!canUpdate}
-                      value={settings.alarm_sound || "beep"}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          alarm_sound: e.target.value,
-                        })
-                      }
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-blue-500 outline-none"
-                      required
-                    >
-                      <option value="beep">Beep (Default - Nada Kotak 4x)</option>
-                      <option value="siren">Siren (Nada Naik-Turun Sawtooth)</option>
-                      <option value="alert">Alert (3 Nada Cepat)</option>
-                      <option value="ping">Ping (Nada Sine Lembut)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {canUpdate && (
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-700/50">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-2 px-6 rounded-lg text-xs transition"
-                >
-                  {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  Simpan Konfigurasi
-                </button>
-              </div>
-            )}
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
+// SystemConfigSettings is imported from @/components/SystemConfigSettings
 
 export default function SettingsWrapper(props) {
   const router = useRouter();
@@ -2167,15 +1249,71 @@ function Settings({ activeTab: activeTabProp }) {
     }
   };
 
+  const getTabHeader = () => {
+    switch (activeTab) {
+      case "company":
+      case "profile":
+        return {
+          title: "Profil Perusahaan",
+          desc: "Informasi resmi organisasi, identitas operasional, dan kontak resmi",
+          icon: <Building2 size={22} className="text-blue-400" />,
+        };
+      case "users":
+      case "roles":
+        return {
+          title: "Manajemen Pengguna & Role",
+          desc: "Kelola akun pengguna, penugasan hak akses, dan matriks perizinan role",
+          icon: <Users size={22} className="text-blue-400" />,
+        };
+      case "health":
+        return {
+          title: "Kesehatan Sistem & DB",
+          desc: "Status operasional database, performa memori, dan servis pendukung NOCR",
+          icon: <Activity size={22} className="text-blue-400" />,
+        };
+      case "api-keys":
+      case "apikeys":
+        return {
+          title: "Akses API Key",
+          desc: "Kelola token autentikasi integrasi API dan webhook",
+          icon: <Key size={22} className="text-blue-400" />,
+        };
+      case "password":
+        return {
+          title: "Ubah Password",
+          desc: "Perbarui kredensial keamanan akun Anda",
+          icon: <Key size={22} className="text-blue-400" />,
+        };
+      case "mikrotik-gateway":
+      case "vpn":
+      case "core":
+        return {
+          title: "Core Gateway & Jaringan",
+          desc: "Konfigurasi perangkat core gateway dan parameter routing",
+          icon: <Network size={22} className="text-blue-400" />,
+        };
+      case "system":
+      case "server":
+      default:
+        return {
+          title: "Konfigurasi Server",
+          desc: "Pengaturan infrastruktur server, koneksi daemon, dan konfigurasi lingkungan",
+          icon: <Server size={22} className="text-blue-400" />,
+        };
+    }
+  };
+
+  const tabHeader = getTabHeader();
+
   return (
     <div className="h-full min-h-0 overflow-y-auto flex flex-col gap-6 w-full pb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <Shield size={22} className="text-blue-400" /> Pengaturan Sistem
+            {tabHeader.icon} {tabHeader.title}
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Konfigurasi pusat untuk NOCR dan Perangkat Core Gateway
+            {tabHeader.desc}
           </p>
         </div>
       </div>
@@ -2187,20 +1325,20 @@ function Settings({ activeTab: activeTabProp }) {
             <CompanyProfileSettings canUpdate={perms.companyUpdate} />
           )}
 
-          {activeTab === "users" && perms.usersRead && (
-            <UserManagement
-              canCreate={perms.usersCreate}
-              canUpdate={perms.usersUpdate}
-              canDelete={perms.usersDelete}
-            />
-          )}
-
-          {activeTab === "roles" && perms.rolesRead && (
-            <RoleSettings
-              showToast={showToast}
-              canCreate={perms.rolesCreate}
-              canUpdate={perms.rolesUpdate}
-              canDelete={perms.rolesDelete}
+          {(activeTab === "users" || activeTab === "roles") && (perms.usersRead || perms.rolesRead) && (
+            <UserAndRoleSettings
+              userPerms={{
+                canRead: perms.usersRead,
+                canCreate: perms.usersCreate,
+                canUpdate: perms.usersUpdate,
+                canDelete: perms.usersDelete,
+              }}
+              rolePerms={{
+                canRead: perms.rolesRead,
+                canCreate: perms.rolesCreate,
+                canUpdate: perms.rolesUpdate,
+                canDelete: perms.rolesDelete,
+              }}
             />
           )}
 

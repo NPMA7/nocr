@@ -16,7 +16,7 @@ const getMarkerIcon = (node, isDown, isUp, isDisabled, showLabels, isFront) => {
         if (node.status === 'online') colorClass = isInfrastructure ? 'bg-blue-500 border-blue-300 ring-2 ring-blue-500/50' : 'bg-emerald-500 border-emerald-300 ring-2 ring-emerald-500/50';
         else if (node.status === 'offline') { colorClass = 'bg-red-500 border-red-300 ring-2 ring-red-500/50'; isOffline = true; }
         else if (t === 'core' || t === 'olt') colorClass = 'bg-blue-600 border-blue-300';
-        else if (t === 'client') colorClass = 'bg-purple-500 border-purple-200';
+        else if (t === 'client') colorClass = 'bg-sky-500 border-sky-200';
         else colorClass = 'bg-slate-500 border-slate-300';
     }
 

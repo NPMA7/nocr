@@ -19,6 +19,10 @@ import {
   AlertTriangle,
   Download,
   FileSpreadsheet,
+  Copy,
+  ArrowDown,
+  ArrowUp,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { getStoredUser } from "@/lib/roles";
@@ -154,15 +158,15 @@ function DualLineChart({ points, isDaily = false }) {
 
   if (!points || points.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-slate-500 text-xs bg-slate-900/40 rounded-lg border border-slate-700/50">
+      <div className="flex items-center justify-center h-44 text-slate-500 text-xs bg-slate-950/60 rounded-xl border border-slate-800 font-mono">
         Tidak ada data traffic tersedia untuk rentang ini
       </div>
     );
   }
 
   const W = 860,
-    H = 170,
-    PL = 60,
+    H = 180,
+    PL = 64,
     PR = 16,
     PT = 20,
     PB = 32;
@@ -214,50 +218,50 @@ function DualLineChart({ points, isDaily = false }) {
   const activeP = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div className="relative w-full bg-slate-900/60 rounded-lg p-3 border border-slate-700/50">
-      <div className="flex items-center justify-between mb-2 px-1 text-[11px]">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+    <div className="relative w-full bg-slate-950/80 rounded-xl p-3 sm:p-4 border border-slate-800">
+      <div className="flex items-center justify-between mb-3 px-1 text-xs">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5 text-emerald-400 font-semibold font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            Uplink (In)
+            Uplink (Out)
           </span>
-          <span className="flex items-center gap-1.5 text-blue-400 font-medium">
+          <span className="flex items-center gap-1.5 text-blue-400 font-semibold font-mono">
             <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-            Downlink (Out)
+            Downlink (In)
           </span>
         </div>
         {activeP && (
-          <div className="font-mono text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 text-[10px]">
-            {activeP.time} | In: <span className="text-emerald-400 font-bold">{formatBytes(activeP.in || activeP.flowIn || 0)}</span> | Out: <span className="text-blue-400 font-bold">{formatBytes(activeP.out || activeP.flowOut || 0)}</span>
+          <div className="font-mono text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-[11px] shadow-sm">
+            <span className="text-slate-400">{activeP.time}</span> | In: <span className="text-blue-400 font-bold">{formatBytes(activeP.in || activeP.flowIn || 0)}</span> | Out: <span className="text-emerald-400 font-bold">{formatBytes(activeP.out || activeP.flowOut || 0)}</span>
           </div>
         )}
       </div>
 
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-40 overflow-visible cursor-crosshair select-none"
+        className="w-full h-44 overflow-visible cursor-crosshair select-none"
         onMouseLeave={() => setHoverIndex(null)}
       >
         {yTicks.map((t, i) => (
           <g key={i}>
-            <line x1={PL} y1={t.y} x2={W - PR} y2={t.y} stroke="#334155" strokeWidth="1" strokeDasharray="2 2" />
-            <text x={PL - 6} y={t.y + 3} textAnchor="end" fontSize="9" fill="#94a3b8" fontFamily="monospace">
+            <line x1={PL} y1={t.y} x2={W - PR} y2={t.y} stroke="#1e293b" strokeWidth="1" strokeDasharray="2 2" />
+            <text x={PL - 8} y={t.y + 3.5} textAnchor="end" fontSize="10" fill="#64748b" fontFamily="monospace">
               {formatBytes(t.val)}
             </text>
           </g>
         ))}
 
         {xTicks.map((t, i) => (
-          <text key={i} x={t.x} y={H - 6} textAnchor="middle" fontSize="9" fill="#94a3b8" fontFamily="monospace">
+          <text key={i} x={t.x} y={H - 6} textAnchor="middle" fontSize="10" fill="#64748b" fontFamily="monospace">
             {t.time}
           </text>
         ))}
 
-        <path d={inArea} fill="rgba(16, 185, 129, 0.08)" />
-        <path d={outArea} fill="rgba(59, 130, 246, 0.08)" />
+        <path d={inArea} fill="rgba(59, 130, 246, 0.12)" />
+        <path d={outArea} fill="rgba(16, 185, 129, 0.12)" />
 
-        <path d={inLine} fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinejoin="round" />
-        <path d={outLine} fill="none" stroke="#3b82f6" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d={inLine} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />
+        <path d={outLine} fill="none" stroke="#10b981" strokeWidth="2" strokeLinejoin="round" />
 
         {hoverIndex !== null && (
           <g>
@@ -266,12 +270,12 @@ function DualLineChart({ points, isDaily = false }) {
               y1={PT}
               x2={inPts[hoverIndex].x}
               y2={PT + iH}
-              stroke="#94a3b8"
-              strokeWidth="1"
-              strokeDasharray="2 2"
+              stroke="#64748b"
+              strokeWidth="1.5"
+              strokeDasharray="3 3"
             />
-            <circle cx={inPts[hoverIndex].x} cy={inPts[hoverIndex].y} r="3.5" fill="#10b981" stroke="#0f172a" strokeWidth="2" />
-            <circle cx={outPts[hoverIndex].x} cy={outPts[hoverIndex].y} r="3.5" fill="#3b82f6" stroke="#0f172a" strokeWidth="2" />
+            <circle cx={inPts[hoverIndex].x} cy={inPts[hoverIndex].y} r="4" fill="#3b82f6" stroke="#0f172a" strokeWidth="2" />
+            <circle cx={outPts[hoverIndex].x} cy={outPts[hoverIndex].y} r="4" fill="#10b981" stroke="#0f172a" strokeWidth="2" />
           </g>
         )}
 
@@ -356,7 +360,6 @@ export default function MonitoringTrafficPage() {
     }
   };
 
-  // Cleanup timer on component unmount
   useEffect(() => {
     setCurrentUser(getStoredUser());
     return () => {
@@ -364,7 +367,7 @@ export default function MonitoringTrafficPage() {
     };
   }, []);
 
-  const canManualSync = (currentUser?.role || "").toLowerCase() === "superadmin";
+  const canManualSync = (currentUser?.role || "").toLowerCase() === "superadmin" || (currentUser?.role || "").toLowerCase() === "admin";
 
   // ─── Fetch All Sites Traffic ───────────────────────────────────────────────
   const fetchTraffic = async (isForce = false) => {
@@ -407,96 +410,73 @@ export default function MonitoringTrafficPage() {
         setLastSyncedAt(data.lastSyncedAt);
       }
       if (isForce) {
-        showToast("Sinkronisasi manual berhasil! Data terbaru tersimpan di database.", "success");
+        showToast("Sinkronisasi manual berhasil! Data terbaru tersimpan.", "success");
       }
-      const totalSecs = ((Date.now() - startStamp) / 1000).toFixed(1);
-      setLastFetchDuration(totalSecs);
     } catch (err) {
-      console.error("Gagal ambil traffic:", err);
-      const msg = err.response?.data?.error || err.message || "Gagal mengambil data traffic";
+      console.error("Gagal mengambil traffic all sites:", err);
+      const msg = err.response?.data?.error || err.message || "Gagal menghubungi server traffic";
       setError(msg);
       showToast(msg, "error");
     } finally {
       stopTimer();
+      const dur = ((Date.now() - startStamp) / 1000).toFixed(1);
+      setLastFetchDuration(dur);
       setLoading(false);
     }
   };
 
-  // ─── Export to Excel (.xlsx) dengan Border & Styling Lengkap ─────────────
+  // ─── Export to Excel ───────────────────────────────────────────────────────
   const exportToExcel = async () => {
-    if (!sites || sites.length === 0) {
-      showToast("Belum ada data traffic untuk diekspor", "warning");
+    if (sites.length === 0) {
+      showToast("Tidak ada data traffic untuk diekspor", "warning");
       return;
     }
 
     try {
-      showToast("Menyiapkan file Excel dengan border & styling...", "info");
+      showToast("Sedang membuat file Excel berstandar resmi...", "info");
       const ExcelJS = await loadExcelJsLibrary();
-
-      const exportTime = new Date();
-      const startDateRaw = summary?.startDate || "";
-      const endDateRaw = summary?.endDate || "";
-
-      let startFormatted = formatIndoDate(startDateRaw);
-      let endFormatted = formatIndoDate(endDateRaw);
-
-      if (!startDateRaw || !endDateRaw) {
-        endFormatted = formatIndoDate(exportTime);
-        const daysAgo = rangeType === "30days" ? 30 : rangeType === "7days" ? 7 : 1;
-        const past = new Date(exportTime.getTime() - daysAgo * 86400000);
-        startFormatted = formatIndoDate(past);
-      }
-
-      let rangeInfo = "";
-      if (rangeType === "30days") {
-        rangeInfo = `${startFormatted} s/d ${endFormatted} (30 Hari Terakhir)`;
-      } else if (rangeType === "7days") {
-        rangeInfo = `${startFormatted} s/d ${endFormatted} (7 Hari Terakhir)`;
-      } else if (rangeType === "today") {
-        rangeInfo = `${endFormatted} (24 Jam / Hari Ini)`;
-      } else {
-        rangeInfo = `${startFormatted} s/d ${endFormatted} (Kustom)`;
-      }
-
-      const fetchTimeInfo = formatIndoDateTime(exportTime);
-      const totalSites = summary?.totalSites || sites.length;
-      const totalTrafficStr = summary?.totalTrafficFormatted || formatBytes(summary?.totalTrafficBytes || 0);
-      const totalInStr = formatBytes(summary?.totalInTrafficBytes || 0);
-      const totalOutStr = formatBytes(summary?.totalOutTrafficBytes || 0);
-      const totalClientsStr = summary?.totalClients ? Number(summary.totalClients).toLocaleString("id-ID") : "0";
+      if (!ExcelJS) throw new Error("Library ExcelJS tidak tersedia");
 
       const wb = new ExcelJS.Workbook();
-      wb.creator = "NOCR Monitoring Platform";
-      wb.created = exportTime;
-      const ws = wb.addWorksheet("Traffic L2TP Semua Site");
+      wb.creator = "NOCR Network Operations Center";
+      wb.lastModifiedBy = currentUser?.name || "Admin NOCR";
+      wb.created = new Date();
 
-      ws.views = [{ showGridLines: true }];
+      const ws = wb.addWorksheet("Laporan Traffic Desa", {
+        views: [{ showGridLines: true }]
+      });
 
-      // 1. Header Judul (Baris 1) - Merge A1:G1
+      // 1. Judul Laporan (Baris 1)
       ws.mergeCells("A1:G1");
       const cellTitle = ws.getCell("A1");
-      cellTitle.value = "LAPORAN PENGGUNAAN TRAFFIC SEMUA SITE DESA";
-      cellTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: "FF1E293B" } };
-      cellTitle.alignment = { vertical: "middle", horizontal: "left" };
-      ws.getRow(1).height = 26;
+      cellTitle.value = "LAPORAN REKAPITULASI TRAFFIC & KLIEN WILAYAH DESA (L2TP)";
+      cellTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: "FF0F172A" } };
+      cellTitle.alignment = { vertical: "middle", horizontal: "center" };
+      ws.getRow(1).height = 28;
 
-      // 2. Periode Data (Baris 2) - Merge A2:G2
+      // 2. Sub-judul Periode (Baris 2)
       ws.mergeCells("A2:G2");
       const cellPeriode = ws.getCell("A2");
-      cellPeriode.value = `Periode Rentang Data: ${rangeInfo}`;
-      cellPeriode.font = { name: "Calibri", size: 10, italic: true, color: { argb: "FF475569" } };
-      cellPeriode.alignment = { vertical: "middle", horizontal: "left" };
-      ws.getRow(2).height = 18;
+      cellPeriode.value = `Periode Data: ${dateRangeText}`;
+      cellPeriode.font = { name: "Calibri", size: 11, italic: true, color: { argb: "FF334155" } };
+      cellPeriode.alignment = { vertical: "middle", horizontal: "center" };
+      ws.getRow(2).height = 20;
 
-      // 3. Waktu Tarik Data (Baris 3) - Merge A3:G3
+      // 3. Waktu Ekspor (Baris 3)
       ws.mergeCells("A3:G3");
       const cellWaktu = ws.getCell("A3");
-      cellWaktu.value = `Waktu Pengambilan Data: ${fetchTimeInfo}`;
-      cellWaktu.font = { name: "Calibri", size: 10, color: { argb: "FF475569" } };
-      cellWaktu.alignment = { vertical: "middle", horizontal: "left" };
+      cellWaktu.value = `Waktu Ekspor Sistem: ${formatIndoDateTime(new Date())}`;
+      cellWaktu.font = { name: "Calibri", size: 9, italic: true, color: { argb: "FF64748B" } };
+      cellWaktu.alignment = { vertical: "middle", horizontal: "center" };
       ws.getRow(3).height = 18;
 
-      // 4. Ringkasan Akumulasi (Baris 4) - Merge A4:G4
+      // 4. Ringkasan Eksekutif (Baris 4)
+      const totalSites = summary?.totalSites || sites.length;
+      const totalTrafficStr = summary?.totalTrafficFormatted || formatBytes(summary?.totalTrafficBytes || 0);
+      const totalInStr = formatBytes(summary?.totalInBytes || 0);
+      const totalOutStr = formatBytes(summary?.totalOutBytes || 0);
+      const totalClientsStr = summary?.totalClients ? Number(summary.totalClients).toLocaleString("id-ID") : "0";
+
       ws.mergeCells("A4:G4");
       const cellSummary = ws.getCell("A4");
       cellSummary.value = `Ringkasan: Total Site: ${totalSites} Desa | Total Traffic: ${totalTrafficStr} (Down: ${totalInStr} | Up: ${totalOutStr}) | Total Klien Terdeteksi: ${totalClientsStr}`;
@@ -505,10 +485,9 @@ export default function MonitoringTrafficPage() {
       cellSummary.alignment = { vertical: "middle", horizontal: "left" };
       ws.getRow(4).height = 22;
 
-      // 5. Baris Kosong
       ws.getRow(5).height = 8;
 
-      // 6. Header Kolom Tabel (Baris 6)
+      // Header Kolom Tabel (Baris 6)
       const headers = ["No", "Nama Kecamatan", "Nama Desa", "Total Traffic", "Download (Down)", "Upload (Up)", "Total Klien"];
       const headerRow = ws.getRow(6);
       headerRow.values = headers;
@@ -546,8 +525,8 @@ export default function MonitoringTrafficPage() {
           kecamatan,
           desa,
           formatBytes(trafficBytes),
-          formatBytes(site.inTrafficBytes || 0),   // Download (Down)
-          formatBytes(site.outTrafficBytes || 0),  // Upload (Up)
+          formatBytes(site.inTrafficBytes || 0),
+          formatBytes(site.outTrafficBytes || 0),
           site.clients ? Number(site.clients).toLocaleString("id-ID") : "0"
         ];
 
@@ -595,14 +574,13 @@ export default function MonitoringTrafficPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      showToast(`File ${filename} berhasil diunduh dengan border & styling rapi!`, "success");
+      showToast(`File ${filename} berhasil diunduh!`, "success");
     } catch (err) {
       console.error("Gagal export excel:", err);
       showToast("Gagal mengekspor file Excel: " + err.message, "error");
     }
   };
 
-  // Initial load & when rangeType changes
   useEffect(() => {
     fetchTraffic(false);
   }, [rangeType]);
@@ -693,10 +671,6 @@ export default function MonitoringTrafficPage() {
     return result;
   }, [sites, search, sortBy]);
 
-  const maxTrafficInList = useMemo(() => {
-    return Math.max(...sites.map((s) => s.totalTrafficBytes || 0), 1);
-  }, [sites]);
-
   const totalPages = itemsPerPage === "all" ? 1 : Math.ceil(filteredAndSortedSites.length / itemsPerPage) || 1;
   const paginatedSites = useMemo(() => {
     if (itemsPerPage === "all") return filteredAndSortedSites;
@@ -704,48 +678,60 @@ export default function MonitoringTrafficPage() {
     return filteredAndSortedSites.slice(start, start + itemsPerPage);
   }, [filteredAndSortedSites, currentPage, itemsPerPage]);
 
-  const totalOnline = sites.filter((s) => s.status === "ON" || s.status === "Online").length;
-  const totalOffline = sites.length > 0 ? sites.length - totalOnline : 0;
-
   const dateRangeText = useMemo(() => {
     const sRaw = summary?.startDate || "";
     const eRaw = summary?.endDate || "";
     if (sRaw && eRaw) {
-      return `${formatIndoDate(sRaw)} s/d ${formatIndoDate(eRaw)} (30 Hari Terakhir)`;
+      return `${formatIndoDate(sRaw)} s/d ${formatIndoDate(eRaw)} (${rangeType === "30days" ? "30 Hari Terakhir" : rangeType === "7days" ? "7 Hari Terakhir" : "Rentang Terpilih"})`;
     }
     const now = new Date();
     const past = new Date(now.getTime() - 30 * 86400000);
     return `${formatIndoDate(past)} s/d ${formatIndoDate(now)} (30 Hari Terakhir)`;
-  }, [summary]);
+  }, [summary, rangeType]);
+
+  const dataPanelClass =
+    "w-full flex flex-col bg-slate-900 border border-slate-800 rounded-xl min-w-0 shadow-sm overflow-hidden";
+  const dataScrollClass =
+    "w-full overflow-x-auto overflow-y-visible min-w-0 touch-auto relative";
 
   return (
-    <div className="flex-1 w-full min-w-0 flex flex-col gap-2.5 md:gap-3 pb-4 relative text-slate-100">
+    <div className="flex-1 w-full min-w-0 flex flex-col gap-3.5 pb-6 relative text-slate-100">
       {ToastComponent}
 
-      {/* ─── NOCR Standard Page Header ────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <Activity size={20} className="text-blue-500 dark:text-blue-400" />
-            Traffic Semua Site (DESA)
-          </h1>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Akumulasi lalu lintas data & statistik total klien unik 280 Desa terpantau
-          </p>
+      {/* 1. TOP HEADER & QUICK ACTIONS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 sm:py-3.5 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <Activity size={18} className={loading ? "animate-pulse" : ""} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm sm:text-base font-bold text-slate-100 font-mono">
+                Traffic Semua Site (DESA)
+              </h1>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                L2TP / Mikrotik & Ruijie Cloud
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+              Akumulasi lalu lintas data & statistik total klien unik 280 Desa terpantau
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
           {lastSyncedAt && (
-            <span className="text-[11px] text-slate-300 bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700/60 flex items-center gap-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              Terakhir sinkronasi: {formatShortWibTime(lastSyncedAt)}
+            <span className="text-[11px] font-mono text-slate-300 bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{formatShortWibTime(lastSyncedAt)}</span>
             </span>
           )}
 
           {lastFetchDuration && !loading && (
-            <span className="text-[11px] font-mono text-slate-400 bg-slate-800/80 px-2 py-1 rounded border border-slate-700/50 flex items-center gap-1">
+            <span className="text-[11px] font-mono text-slate-400 bg-slate-950 px-2 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1">
               <Clock size={12} className="text-blue-400" />
-              {lastFetchDuration}s
+              <span>{lastFetchDuration}s</span>
             </span>
           )}
 
@@ -753,8 +739,8 @@ export default function MonitoringTrafficPage() {
             <button
               onClick={() => fetchTraffic(true)}
               disabled={loading}
-              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition shadow-md bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-blue-500/20 disabled:opacity-50"
-              title="Tarik data traffic terbaru secara langsung dari Ruijie Cloud (Khusus Super Admin)"
+              className="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 whitespace-nowrap"
+              title="Tarik data traffic terbaru secara langsung dari Ruijie Cloud"
             >
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
               <span>{loading ? "Menyinkronkan..." : "Sync Sekarang"}</span>
@@ -764,7 +750,7 @@ export default function MonitoringTrafficPage() {
           <button
             onClick={exportToExcel}
             disabled={loading || sites.length === 0}
-            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition shadow-md bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 text-white shadow-emerald-500/20 disabled:opacity-50"
+            className="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 whitespace-nowrap"
             title="Download Laporan ke Excel (.xlsx)"
           >
             <Download size={13} />
@@ -773,80 +759,96 @@ export default function MonitoringTrafficPage() {
         </div>
       </div>
 
-      {/* ─── NOCR Standard Stats Cards ──────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-shrink-0">
+      {/* 2. STATS CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 flex-shrink-0">
         {/* Total Sites */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-2.5 md:p-3 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-            <Wifi size={14} className="text-blue-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Sites</p>
-            <p className="text-base md:text-lg font-bold text-slate-100 leading-tight">
-              {summary?.totalSites || sites.length || "-"}{" "}
+        <div className="p-3 sm:p-3.5 bg-slate-900 border border-slate-800 rounded-xl shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              Total Sites
             </p>
+            <p className="text-xl font-bold font-mono text-slate-100 mt-0.5">
+              {summary?.totalSites || sites.length || "-"}
+            </p>
+            <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+              Wilayah Desa Aktif
+            </p>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <Wifi size={15} />
           </div>
         </div>
 
         {/* Total Traffic */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-2.5 md:p-3 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-            <TrendingUp size={14} className="text-blue-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Total Traffic ({rangeType === "30days" ? "30H" : rangeType === "7days" ? "7H" : rangeType === "today" ? "Hari Ini" : "Kustom"})
+        <div className="p-3 sm:p-3.5 bg-slate-900 border border-slate-800 rounded-xl shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider font-mono">
+              Total Traffic ({rangeType === "30days" ? "30H" : rangeType === "7days" ? "7H" : "Hari Ini"})
             </p>
-            <p className="text-base md:text-lg font-bold text-slate-100 leading-tight">
+            <p className="text-xl font-bold font-mono text-blue-400 mt-0.5">
               {summary?.totalTrafficFormatted || formatBytes(summary?.totalTrafficBytes || 0)}
             </p>
+            <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+              Volume kumulatif
+            </p>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <TrendingUp size={15} />
           </div>
         </div>
 
         {/* Total Klien */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-2.5 md:p-3 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-            <Users size={14} className="text-emerald-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Klien Akumulatif</p>
-            <p className="text-base md:text-lg font-bold text-slate-100 leading-tight">
+        <div className="p-3 sm:p-3.5 bg-slate-900 border border-slate-800 rounded-xl shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider font-mono">
+              Total Klien Akumulatif
+            </p>
+            <p className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
               {summary?.totalClients ? Number(summary.totalClients).toLocaleString("id-ID") : "-"}
             </p>
+            <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+              Pengguna terdeteksi
+            </p>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            <Users size={15} />
           </div>
         </div>
 
         {/* Top Site */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-2.5 md:p-3 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-            <BarChart2 size={14} className="text-amber-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site Tertinggi</p>
-            <p className="text-xs md:text-sm font-bold text-slate-100 truncate leading-tight" title={summary?.topSite?.siteName || summary?.topSite?.alias || "-"}>
+        <div className="p-3 sm:p-3.5 bg-slate-900 border border-slate-800 rounded-xl shadow-sm flex items-center justify-between">
+          <div className="min-w-0 flex-1 mr-2">
+            <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider font-mono">
+              Site Tertinggi
+            </p>
+            <p className="text-xs sm:text-sm font-bold font-mono text-slate-100 truncate mt-0.5" title={summary?.topSite?.siteName || summary?.topSite?.alias || "-"}>
               {summary?.topSite?.siteName || summary?.topSite?.alias || "-"}
             </p>
-            <p className="text-[10px] font-mono text-amber-400 font-semibold leading-none mt-0.5">
+            <p className="text-[10px] font-mono text-amber-400 font-semibold mt-0.5">
               {summary?.topSite?.totalTrafficBytes ? formatBytes(summary.topSite.totalTrafficBytes) : "-"}
             </p>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+            <BarChart2 size={15} />
           </div>
         </div>
       </div>
 
-      {/* ─── NOCR Main Table Panel ─────────────────────────────────────────── */}
-      <div className="w-full flex flex-col bg-slate-800/50 border border-slate-700/50 rounded-xl min-w-0 overflow-hidden shadow-sm">
-        {/* Panel Toolbar Header */}
-        <div className="p-3 border-b border-slate-700/30 flex items-center justify-between gap-2.5 flex-shrink-0 flex-wrap">
-          {/* Left: Fixed 30 Days Period Badge with Date Range */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold">
+      {/* 3. MAIN TABLE PANEL & INTEGRATED TOOLBAR */}
+      <div className={dataPanelClass}>
+        {/* Table Toolbar */}
+        <div className="p-3 sm:p-4 border-b border-slate-800 flex items-center justify-between gap-2.5 flex-wrap">
+          {/* Left: Periode Badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-blue-400 text-xs font-semibold font-mono">
             <Calendar size={13} className="text-blue-400 flex-shrink-0" />
             <span>Periode: {dateRangeText}</span>
           </div>
 
-          {/* Right: Search & Sort */}
-          <div className="flex items-center gap-2 flex-1 sm:flex-none justify-end">
-            <div className="relative flex-1 sm:w-56">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          {/* Right: Search & Sort Controls */}
+          <div className="flex items-center gap-2 flex-1 sm:flex-none justify-end flex-wrap">
+            {/* Search Box */}
+            <div className="relative flex-1 sm:w-60 min-w-[180px]">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 placeholder="Cari desa, IP, MAC, SN..."
@@ -855,22 +857,23 @@ export default function MonitoringTrafficPage() {
                   setSearch(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-lg pl-8 pr-3 py-1 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-mono transition"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  className="cursor-pointer absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                 >
                   <X size={12} />
                 </button>
               )}
             </div>
 
+            {/* Sort Select */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-slate-900/60 border border-slate-700/50 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-blue-500"
+              className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono min-w-[140px]"
             >
               <option value="traffic-desc">Traffic Terbanyak</option>
               <option value="traffic-asc">Traffic Terendah</option>
@@ -880,165 +883,282 @@ export default function MonitoringTrafficPage() {
           </div>
         </div>
 
-        {/* Table Content */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-slate-700 border-t-blue-500 animate-spin" />
-            <div className="text-xs font-semibold text-slate-200">
-              Mengambil data traffic 280 site secara paralel...
+        {/* Table Content Area */}
+        <div className={dataScrollClass}>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-slate-800 border-t-blue-500 animate-spin" />
+              <div className="text-xs font-semibold text-slate-200 font-mono">
+                Mengambil data traffic 280 site secara paralel...
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-blue-400 font-mono bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                <Clock size={12} className="animate-pulse" />
+                <span>Waktu berjalan: <strong className="text-blue-300 font-bold">{liveElapsed}s</strong></span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-mono">
+                Sinkronisasi rx/tx dan penghitungan total klien unik Ruijie Cloud
+              </p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-blue-400 font-mono bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-              <Clock size={12} className="animate-pulse" />
-              <span>Waktu berjalan: <strong className="text-blue-300 font-bold">{liveElapsed}s</strong></span>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-14 text-center px-4 gap-2">
+              <AlertTriangle size={28} className="text-rose-400 mb-1" />
+              <div className="text-xs font-semibold text-rose-300 font-mono">{error}</div>
+              <button
+                onClick={() => fetchTraffic(false)}
+                className="cursor-pointer mt-2 px-3.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-white transition font-mono"
+              >
+                Coba Lagi
+              </button>
             </div>
-            <p className="text-[10px] text-slate-500">
-              Sinkronisasi rx/tx dan penghitungan total klien unik Ruijie Cloud
-            </p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-            <AlertTriangle size={28} className="text-red-400 mb-1.5" />
-            <div className="text-xs font-semibold text-red-300">{error}</div>
-            <button
-              onClick={() => fetchTraffic(false)}
-              className="cursor-pointer mt-2.5 px-3 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-[11px] font-semibold text-white"
-            >
-              Coba Lagi
-            </button>
-          </div>
-        ) : filteredAndSortedSites.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-xs">
-            Tidak ada site yang cocok dengan pencarian.
-          </div>
-        ) : (
-          <div className="w-full overflow-x-auto overflow-y-visible min-w-0 touch-auto relative">
-            <table className="w-full text-left border-collapse table-fixed text-[11px]">
-              <colgroup>
-                <col style={{ width: "44px" }} />
-                <col style={{ width: "24%" }} />
-                <col style={{ width: "18%" }} />
-                <col style={{ width: "13%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "95px" }} />
-                <col style={{ width: "70px" }} />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-slate-700/50 bg-slate-900/40 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <th className="py-2.5 px-2 text-center">#</th>
-                  <th className="py-2.5 px-3">Lokasi / Desa</th>
-                  <th className="py-2.5 px-2">MAC & SN</th>
-                  <th className="py-2.5 px-2.5 text-right">Total Traffic</th>
-                  <th className="py-2.5 px-2.5 text-right">Download (Down)</th>
-                  <th className="py-2.5 px-2.5 text-right">Upload (Up)</th>
-                  <th className="py-2.5 px-2 text-center">Total Klien</th>
-                  <th className="py-2.5 px-2 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700/30">
+          ) : filteredAndSortedSites.length === 0 ? (
+            <div className="text-center py-14 text-slate-500 text-xs font-mono">
+              Tidak ada site yang cocok dengan filter pencarian.
+            </div>
+          ) : (
+            <>
+              {/* Mobile Cards (HP View) */}
+              <div className="lg:hidden flex flex-col gap-2.5 p-2.5 sm:p-3 bg-slate-950/40">
                 {paginatedSites.map((site, idx) => {
                   const globalRank = (currentPage - 1) * (itemsPerPage === "all" ? 0 : itemsPerPage) + idx + 1;
                   const trafficBytes = site.totalTrafficBytes || 0;
 
                   return (
-                    <tr
+                    <div
                       key={site.groupId || site.sn || idx}
-                      className="hover:bg-slate-700/20 transition-colors"
+                      className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex flex-col gap-2.5 shadow-sm"
                     >
-                      {/* Rank # */}
-                      <td className="py-2.5 px-2 text-center font-mono text-slate-400">
-                        {globalRank === 1 ? (
-                          <span className="w-4 h-4 rounded inline-flex items-center justify-center font-bold text-[9px] bg-amber-600 text-white">
-                            1
+                      {/* Baris 1: Rank & Nama Site (Kiri) | Total Traffic (Kanan) */}
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {globalRank === 1 ? (
+                            <span className="w-5 h-5 rounded font-mono font-bold text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0">
+                              #1
+                            </span>
+                          ) : globalRank === 2 ? (
+                            <span className="w-5 h-5 rounded font-mono font-bold text-[10px] bg-slate-400/20 text-slate-300 border border-slate-400/40 flex items-center justify-center shrink-0">
+                              #2
+                            </span>
+                          ) : globalRank === 3 ? (
+                            <span className="w-5 h-5 rounded font-mono font-bold text-[10px] bg-amber-700/20 text-amber-500 border border-amber-700/40 flex items-center justify-center shrink-0">
+                              #3
+                            </span>
+                          ) : (
+                            <span className="w-5 h-5 rounded font-mono text-slate-500 text-[10px] flex items-center justify-center shrink-0">
+                              #{globalRank}
+                            </span>
+                          )}
+                          <span
+                            className="font-bold text-slate-100 text-xs truncate font-mono"
+                            title={site.siteName || site.alias}
+                          >
+                            {site.siteName || site.alias}
                           </span>
-                        ) : globalRank === 2 ? (
-                          <span className="w-4 h-4 rounded inline-flex items-center justify-center font-bold text-[9px] bg-slate-600 text-white">
-                            2
-                          </span>
-                        ) : globalRank === 3 ? (
-                          <span className="w-4 h-4 rounded inline-flex items-center justify-center font-bold text-[9px] bg-amber-900 text-white">
-                            3
-                          </span>
-                        ) : (
-                          globalRank
-                        )}
-                      </td>
-
-                      {/* Site Name (No ID & No IP) */}
-                      <td className="py-2.5 px-3 overflow-hidden">
-                        <div className="font-semibold text-slate-100 truncate text-xs" title={site.siteName || site.alias}>
-                          {site.siteName || site.alias}
                         </div>
-                      </td>
+                        <div className="shrink-0 ml-auto font-mono font-bold text-slate-100 text-xs">
+                          {trafficBytes > 0 ? formatBytes(trafficBytes) : "0 B"}
+                        </div>
+                      </div>
 
-                      {/* MAC & SN */}
-                      <td className="py-2.5 px-2 overflow-hidden font-mono text-[11px]">
+                      {/* Baris 2: Download, Upload, Klien */}
+                      <div className="grid grid-cols-3 gap-2 bg-slate-950/60 p-2.5 rounded-lg text-[11px] border border-slate-800/80 font-mono">
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Download</span>
+                          <span className="font-semibold text-blue-400 truncate block">
+                            ↓ {formatBytes(site.inTrafficBytes || 0)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Upload</span>
+                          <span className="font-semibold text-emerald-400 truncate block">
+                            ↑ {formatBytes(site.outTrafficBytes || 0)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Total Klien</span>
+                          <span className="font-semibold text-purple-400 truncate block">
+                            {site.clients ? Number(site.clients).toLocaleString("id-ID") : "0"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Baris 3: MAC/SN & Action Buttons */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/60 flex-wrap">
                         <div
-                          className="text-blue-400 hover:underline cursor-pointer truncate"
+                          className="text-[10px] font-mono text-slate-400 cursor-pointer hover:text-blue-400 transition"
                           onClick={() => handleCopy(site.mac, `mac-${site.mac}`)}
-                          title="Klik salin MAC"
+                          title="Klik untuk salin MAC"
                         >
-                          {site.mac || "-"}
+                          MAC: {site.mac || "-"}
                         </div>
-                        <div
-                          className="text-slate-500 text-[10px] cursor-pointer truncate"
-                          onClick={() => handleCopy(site.sn, `sn-${site.sn}`)}
-                          title="Klik salin SN"
-                        >
-                          SN:{site.sn || "-"}
+
+                        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                          <button
+                            onClick={() => openTrendModal(site)}
+                            className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+                          >
+                            <TrendingUp size={11} /> Tren
+                          </button>
+                          <Link
+                            href={`/monitoring/desa/traffic/${encodeURIComponent(site.mac || "")}`}
+                            className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-md transition"
+                            title="Buka Halaman Detail Traffic Site"
+                          >
+                            <ExternalLink size={11} /> Detail
+                          </Link>
                         </div>
-                      </td>
-
-                      {/* Total Traffic */}
-                      <td className="py-2.5 px-2.5 text-right font-mono font-bold text-slate-100 text-xs">
-                        {trafficBytes > 0 ? formatBytes(trafficBytes) : <span className="text-slate-500 font-normal">0 B</span>}
-                      </td>
-
-                      {/* Download (Down) */}
-                      <td className="py-2.5 px-2.5 text-right font-mono font-semibold text-blue-400 text-xs">
-                        ↓ {formatBytes(site.inTrafficBytes || 0)}
-                      </td>
-
-                      {/* Upload (Up) */}
-                      <td className="py-2.5 px-2.5 text-right font-mono font-semibold text-emerald-400 text-xs">
-                        ↑ {formatBytes(site.outTrafficBytes || 0)}
-                      </td>
-
-                      {/* Client Count */}
-                      <td className="py-2.5 px-2 text-center">
-                        <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700/40 text-slate-300 font-mono text-[11px] font-semibold"
-                          title="Total Klien Akumulatif (30 Hari)"
-                        >
-                          <Users size={10} className="text-slate-400" />
-                          {site.clients ? Number(site.clients).toLocaleString("id-ID") : "0"}
-                        </span>
-                      </td>
-
-                      {/* Action Button: Direct Link to /monitoring/desa/traffic/[mac] */}
-                      <td className="py-2.5 px-2 text-center">
-                        <Link
-                          href={`/monitoring/desa/traffic/${encodeURIComponent(site.mac || "")}`}
-                          className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-700/50 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-600/40 text-[10px] font-medium transition"
-                          title="Lihat Detail & Tren di Halaman Desa"
-                        >
-                          <TrendingUp size={11} />
-                          <span>Tren</span>
-                        </Link>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block min-h-0 overflow-x-auto">
+                <table className="w-full text-left border-collapse table-fixed text-xs min-w-[950px]">
+                  <colgroup>
+                    <col style={{ width: "48px" }} />
+                    <col style={{ width: "24%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "13%" }} />
+                    <col style={{ width: "14%" }} />
+                    <col style={{ width: "14%" }} />
+                    <col style={{ width: "95px" }} />
+                    <col style={{ width: "85px" }} />
+                  </colgroup>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-800 bg-slate-950/95 backdrop-blur text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                      <th className="py-3 px-2 text-center">#</th>
+                      <th className="py-3 px-3">Lokasi / Desa</th>
+                      <th className="py-3 px-2">MAC & SN</th>
+                      <th className="py-3 px-2.5 text-right">Total Traffic</th>
+                      <th className="py-3 px-2.5 text-right">Download (Down)</th>
+                      <th className="py-3 px-2.5 text-right">Upload (Up)</th>
+                      <th className="py-3 px-2 text-center">Total Klien</th>
+                      <th className="py-3 px-2 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {paginatedSites.map((site, idx) => {
+                      const globalRank = (currentPage - 1) * (itemsPerPage === "all" ? 0 : itemsPerPage) + idx + 1;
+                      const trafficBytes = site.totalTrafficBytes || 0;
+
+                      return (
+                        <tr
+                          key={site.groupId || site.sn || idx}
+                          className="hover:bg-slate-800/40 transition-colors group"
+                        >
+                          {/* Rank # */}
+                          <td className="py-3 px-2 text-center font-mono">
+                            {globalRank === 1 ? (
+                              <span className="w-5 h-5 rounded font-mono font-bold text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/40 inline-flex items-center justify-center">
+                                1
+                              </span>
+                            ) : globalRank === 2 ? (
+                              <span className="w-5 h-5 rounded font-mono font-bold text-[10px] bg-slate-400/20 text-slate-300 border border-slate-400/40 inline-flex items-center justify-center">
+                                2
+                              </span>
+                            ) : globalRank === 3 ? (
+                              <span className="w-5 h-5 rounded font-mono font-bold text-[10px] bg-amber-700/20 text-amber-500 border border-amber-700/40 inline-flex items-center justify-center">
+                                3
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-[11px] font-mono">
+                                {globalRank}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Site Name */}
+                          <td className="py-3 px-3 overflow-hidden">
+                            <div className="font-semibold text-slate-100 truncate text-xs font-mono" title={site.siteName || site.alias}>
+                              {site.siteName || site.alias}
+                            </div>
+                          </td>
+
+                          {/* MAC & SN */}
+                          <td className="py-3 px-2 overflow-hidden font-mono text-[11px]">
+                            <div
+                              className="text-blue-400 hover:underline cursor-pointer truncate flex items-center gap-1"
+                              onClick={() => handleCopy(site.mac, `mac-${site.mac}`)}
+                              title="Klik salin MAC"
+                            >
+                              <span>{site.mac || "-"}</span>
+                              {copiedKey === `mac-${site.mac}` ? (
+                                <Check size={11} className="text-emerald-400 shrink-0" />
+                              ) : (
+                                <Copy size={10} className="text-slate-500 opacity-0 group-hover:opacity-100 shrink-0 transition" />
+                              )}
+                            </div>
+                            <div
+                              className="text-slate-500 text-[10px] cursor-pointer truncate"
+                              onClick={() => handleCopy(site.sn, `sn-${site.sn}`)}
+                              title="Klik salin SN"
+                            >
+                              SN:{site.sn || "-"}
+                            </div>
+                          </td>
+
+                          {/* Total Traffic */}
+                          <td className="py-3 px-2.5 text-right font-mono font-bold text-slate-100 text-xs">
+                            {trafficBytes > 0 ? formatBytes(trafficBytes) : <span className="text-slate-500 font-normal">0 B</span>}
+                          </td>
+
+                          {/* Download (Down) */}
+                          <td className="py-3 px-2.5 text-right font-mono font-semibold text-blue-400 text-xs">
+                            ↓ {formatBytes(site.inTrafficBytes || 0)}
+                          </td>
+
+                          {/* Upload (Up) */}
+                          <td className="py-3 px-2.5 text-right font-mono font-semibold text-emerald-400 text-xs">
+                            ↑ {formatBytes(site.outTrafficBytes || 0)}
+                          </td>
+
+                          {/* Client Count */}
+                          <td className="py-3 px-2 text-center">
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono text-[11px] font-semibold"
+                              title="Total Klien Akumulatif (30 Hari)"
+                            >
+                              <Users size={11} className="text-purple-400" />
+                              {site.clients ? Number(site.clients).toLocaleString("id-ID") : "0"}
+                            </span>
+                          </td>
+
+                          {/* Action Buttons */}
+                          <td className="py-3 px-2 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => openTrendModal(site)}
+                                className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-semibold transition"
+                                title="Lihat Grafik Cepat"
+                              >
+                                <TrendingUp size={11} />
+                                <span>Tren</span>
+                              </button>
+                              <Link
+                                href={`/monitoring/desa/traffic/${encodeURIComponent(site.mac || "")}`}
+                                className="cursor-pointer p-1 text-slate-500 hover:text-blue-400 transition"
+                                title="Buka Detail Halaman Traffic"
+                              >
+                                <ExternalLink size={12} />
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Pagination Footer */}
         {!loading && filteredAndSortedSites.length > 0 && (
-          <div className="p-3 border-t border-slate-700/30 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-400">
+          <div className="p-3 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-400 bg-slate-950/60 font-mono">
             <div className="flex items-center gap-2">
-              <span>Tampilkan:</span>
+              <span className="text-[11px]">Tampilkan:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -1046,14 +1166,14 @@ export default function MonitoringTrafficPage() {
                   setItemsPerPage(v === "all" ? "all" : Number(v));
                   setCurrentPage(1);
                 }}
-                className="bg-slate-900/60 border border-slate-700/50 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
+                className="cursor-pointer bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-8 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono min-w-[120px]"
               >
-                <option value={30}>30</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
+                <option value={30}>30 Baris</option>
+                <option value={50}>50 Baris</option>
+                <option value={100}>100 Baris</option>
                 <option value="all">Semua ({filteredAndSortedSites.length})</option>
               </select>
-              <span>
+              <span className="text-[11px] text-slate-500">
                 Menampilkan {(currentPage - 1) * (itemsPerPage === "all" ? 0 : itemsPerPage) + 1} -{" "}
                 {itemsPerPage === "all"
                   ? filteredAndSortedSites.length
@@ -1063,21 +1183,21 @@ export default function MonitoringTrafficPage() {
             </div>
 
             {itemsPerPage !== "all" && totalPages > 1 && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <button
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="cursor-pointer px-2 py-1 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-[11px]"
+                  className="cursor-pointer px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] transition"
                 >
                   Prev
                 </button>
-                <span className="px-2 font-mono text-[11px]">
+                <span className="px-2 font-mono text-[11px] text-slate-300">
                   {currentPage} / {totalPages}
                 </span>
                 <button
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="cursor-pointer px-2 py-1 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-[11px]"
+                  className="cursor-pointer px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] transition"
                 >
                   Next
                 </button>
@@ -1087,18 +1207,18 @@ export default function MonitoringTrafficPage() {
         )}
       </div>
 
-      {/* ─── Modal Tren Grafik Site ────────────────────────────────────────── */}
+      {/* 4. MODAL TREN GRAFIK SITE */}
       {modalSite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700/70 rounded-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-4 space-y-3 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-4 sm:p-5 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-700/50 pb-2.5">
+            <div className="flex items-start justify-between border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2 font-mono">
                   <Activity size={16} className="text-blue-400" />
                   Tren Traffic: {modalSite.siteName || modalSite.alias}
                 </h3>
-                <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 mt-0.5 font-mono">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-1 font-mono">
                   {modalSite.ip && <span>IP: {modalSite.ip}</span>}
                   {modalSite.mac && <span>MAC: {modalSite.mac}</span>}
                   {modalSite.sn && <span>SN: {modalSite.sn}</span>}
@@ -1106,7 +1226,7 @@ export default function MonitoringTrafficPage() {
               </div>
               <button
                 onClick={() => setModalSite(null)}
-                className="cursor-pointer w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition"
+                className="cursor-pointer w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition"
               >
                 <X size={14} />
               </button>
@@ -1114,7 +1234,7 @@ export default function MonitoringTrafficPage() {
 
             {/* Modal Range Switcher */}
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded border border-slate-700/50 text-[10px]">
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-[11px]">
                 {[
                   { id: "today", label: "Hari Ini" },
                   { id: "7days", label: "7 Hari" },
@@ -1123,9 +1243,9 @@ export default function MonitoringTrafficPage() {
                   <button
                     key={r.id}
                     onClick={() => changeModalRange(r.id)}
-                    className={`cursor-pointer px-2.5 py-0.5 rounded font-medium transition ${
+                    className={`cursor-pointer px-2.5 py-1 rounded-md font-semibold transition ${
                       modalRange === r.id
-                        ? "bg-blue-600 text-white font-semibold"
+                        ? "bg-blue-600 text-white shadow-sm"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
@@ -1135,7 +1255,7 @@ export default function MonitoringTrafficPage() {
               </div>
 
               {modalData && (
-                <div className="text-[11px] font-mono text-slate-300">
+                <div className="text-xs font-mono text-slate-300">
                   Total: <span className="font-bold text-white">{formatBytes(modalData.totalTrafficBytes || 0)}</span> | Klien:{" "}
                   <span className="font-bold text-emerald-400">{modalData.clients || 0}</span>
                 </div>
@@ -1145,8 +1265,8 @@ export default function MonitoringTrafficPage() {
             {/* Modal Body: Chart */}
             {modalLoading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-2">
-                <div className="w-7 h-7 rounded-full border-2 border-slate-700 border-t-blue-500 animate-spin" />
-                <span className="text-[11px] text-slate-400">Memuat kurva traffic...</span>
+                <div className="w-7 h-7 rounded-full border-2 border-slate-800 border-t-blue-500 animate-spin" />
+                <span className="text-xs text-slate-400 font-mono">Memuat kurva traffic...</span>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1156,7 +1276,7 @@ export default function MonitoringTrafficPage() {
                 />
 
                 {modalData?.userTrandPoints && modalData.userTrandPoints.length > 0 && (
-                  <div className="border-t border-slate-700/40 pt-2 text-[10px] font-mono text-slate-400 flex justify-between">
+                  <div className="border-t border-slate-800/80 pt-2 text-[10px] font-mono text-slate-400 flex justify-between">
                     <div>Klien Terakhir: <span className="text-amber-400 font-bold">{modalData.userTrandClients || 0} user</span></div>
                     <div>Waktu Snapshot: <span className="text-slate-300">{modalData.userTrandLastTime || "-"}</span></div>
                   </div>
@@ -1165,10 +1285,10 @@ export default function MonitoringTrafficPage() {
             )}
 
             {/* Modal Footer */}
-            <div className="flex justify-end border-t border-slate-700/50 pt-2">
+            <div className="flex justify-end border-t border-slate-800 pt-3">
               <button
                 onClick={() => setModalSite(null)}
-                className="cursor-pointer px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition"
+                className="cursor-pointer px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition"
               >
                 Tutup
               </button>

@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Lightbulb,
   X,
+  Search,
 } from "lucide-react";
 import { useAppState } from "@/App";
 import { hasAccess, getStoredUser } from "@/lib/roles";
@@ -904,203 +905,257 @@ export default function DailyReportPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-w-0 pb-4">
+    <div className="flex-1 flex flex-col gap-4 min-w-0 pb-4">
       <style>{`
         .custom-date-picker::-webkit-calendar-picker-indicator {
           filter: invert(0.85);
           cursor: pointer;
-          transform: scale(1.2);
+          transform: scale(1.1);
           padding: 1px;
         }
       `}</style>
-      <div className="flex-shrink-0 flex flex-col gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <ClipboardList size={24} className="text-blue-400" />
-            Laporan Harian {type === "PPPOE" ? "OPD" : "Desa"}
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Kelola dan pantau laporan harian perangkat{" "}
-            {type === "PPPOE" ? "OPD" : "Desa"}
-          </p>
-        </div>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-            <div className="flex items-center bg-slate-800/80 p-1 rounded-lg border border-slate-700">
+
+      {/* Header & Controls */}
+      <div className="flex-shrink-0 flex flex-col gap-3.5">
+        {/* Title Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                <ClipboardList size={18} />
+              </div>
+              <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                Laporan Harian
+                <span className="text-[11px] px-2 py-0.5 rounded font-mono font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  {type === "PPPOE" ? "OPD" : "Desa"}
+                </span>
+              </h1>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Rekapitulasi dan monitoring insiden jaringan perangkat {type === "PPPOE" ? "OPD" : "Desa"}
+            </p>
+          </div>
+
+          {/* Action Buttons (Impor dari Sheet REMOVED) */}
+          <div className="flex flex-wrap items-center gap-2">
+            {canCreate && (
               <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white shadow-sm border border-sky-500/30 transition whitespace-nowrap"
+              >
+                <Plus size={14} />
+                Tambah Data
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleCopyTable}
+              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm border border-emerald-500/30 transition whitespace-nowrap"
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              Salin ke Sheet
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-sm border border-rose-500/30 transition whitespace-nowrap"
+            >
+              <FileText size={14} />
+              Download PDF
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Bar: Segmented Switcher, Date Mode, Date Inputs, Search */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Segmented OPD / Desa Switcher */}
+            <div className="inline-flex p-1 rounded-lg bg-slate-950/80 border border-slate-800">
+              <button
+                type="button"
                 onClick={() => setType("PPPOE")}
-                className={`cursor-pointer px-4 py-1.5 rounded-md text-xs font-medium transition ${type === "PPPOE" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"}`}
+                className={`cursor-pointer px-3.5 py-1 rounded-md text-xs font-semibold transition ${
+                  type === "PPPOE"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
               >
                 OPD
               </button>
               <button
+                type="button"
                 onClick={() => setType("L2TP")}
-                className={`cursor-pointer px-4 py-1.5 rounded-md text-xs font-medium transition ${type === "L2TP" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"}`}
+                className={`cursor-pointer px-3.5 py-1 rounded-md text-xs font-semibold transition ${
+                  type === "L2TP"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
               >
                 Desa
               </button>
             </div>
 
             {/* Quick Date Range Selector */}
-            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
-              <Calendar size={16} className="text-slate-400" />
+            <div className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-lg">
+              <Calendar size={14} className="text-slate-400" />
               <select
                 value={dateMode}
                 onChange={(e) => setDateMode(e.target.value)}
                 className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer font-medium"
               >
-                <option value="today" className="bg-slate-800 text-slate-200">
+                <option value="today" className="bg-slate-900 text-slate-200">
                   Hari Ini
                 </option>
-                <option value="7d" className="bg-slate-800 text-slate-200">
+                <option value="7d" className="bg-slate-900 text-slate-200">
                   7 Hari
                 </option>
-                <option value="30d" className="bg-slate-800 text-slate-200">
+                <option value="30d" className="bg-slate-900 text-slate-200">
                   30 Hari
                 </option>
-                <option value="custom" className="bg-slate-800 text-slate-200">
+                <option value="custom" className="bg-slate-900 text-slate-200">
                   Custom
                 </option>
               </select>
             </div>
 
-            {/* Date Inputs */}
-            {dateMode === "custom" ? (
-              <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
-                <Calendar size={16} className="text-slate-400" />
+            {/* Date Inputs for Custom Mode */}
+            {dateMode === "custom" && (
+              <div className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-lg animate-in fade-in duration-150">
+                <Calendar size={14} className="text-slate-400" />
                 <input
                   type="date"
                   value={startDate}
                   max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker"
+                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker font-mono"
                 />
-                <span className="text-slate-500 text-xs">-</span>
+                <span className="text-slate-600 text-xs">-</span>
                 <input
                   type="date"
                   value={endDate}
                   min={startDate}
                   max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker"
+                  className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer custom-date-picker font-mono"
                 />
               </div>
-            ) : null}
-            {canCreate && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(true)}
-                  className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white shadow-lg shadow-blue-500/20 transition whitespace-nowrap"
-                >
-                  <Plus size={16} />
-                  Tambah Data
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImportType(type);
-                    setShowImportModal(true);
-                  }}
-                  className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium bg-purple-600 hover:bg-purple-700 border border-purple-500 text-white shadow-lg shadow-purple-500/20 transition whitespace-nowrap"
-                >
-                  <ClipboardList size={16} />
-                  Impor dari Sheet
-                </button>
-              </>
             )}
-            <button
-              type="button"
-              onClick={handleCopyTable}
-              className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition whitespace-nowrap"
-            >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              Salin ke Sheet
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadPDF}
-              className="cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium bg-red-600 hover:bg-red-700 border border-red-500 text-white shadow-lg shadow-red-500/20 transition whitespace-nowrap"
-            >
-              <FileText size={16} />
-              Download PDF
-            </button>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-2.5 rounded-lg w-full">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-slate-400"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            type="text"
-            placeholder="Cari laporan berdasarkan nama kecamatan, desa, atau tindakan..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent text-slate-200 text-xs outline-none w-full placeholder:text-slate-500"
-          />
+          {/* Search Bar */}
+          <div className="flex-1 max-w-md">
+            <div className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-lg w-full focus-within:border-sky-500/80 transition">
+              <Search size={14} className="text-slate-400 shrink-0" />
+              <input
+                type="text"
+                placeholder="Cari dinas, kecamatan, desa, issue, atau tindakan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent text-slate-200 text-xs outline-none w-full placeholder:text-slate-500"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-slate-400 hover:text-slate-200 p-0.5 rounded cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-xl">
-        {/* Header Stats like in Sheet */}
-        <div className="p-4 border-b border-slate-700/30 flex flex-wrap gap-6 bg-slate-800/80">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-              Tanggal
+      {/* KPI Stats Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+              Periode Laporan
             </span>
-            <span className="text-xs text-slate-200 font-bold">
-              {startDate === endDate
-                ? formatFriendlyDate(startDate)
-                : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
-            </span>
+            <Calendar size={13} className="text-slate-500" />
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+          <span className="text-xs font-semibold text-slate-200 mt-2 truncate font-mono">
+            {startDate === endDate
+              ? formatFriendlyDate(startDate)
+              : `${formatFriendlyDate(startDate)} - ${formatFriendlyDate(endDate)}`}
+          </span>
+        </div>
+
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
               Total Offline
             </span>
-            <span className="text-xs text-red-400 font-bold">
+            <span className="text-[10px] font-mono text-slate-500">Saat ini</span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-lg font-bold text-rose-400 font-mono">
               {totalOffline}
             </span>
+            <span className="text-[10px] text-slate-500 font-mono">perangkat</span>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-              Total Online Kembali
+        </div>
+
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Online Kembali
             </span>
-            <span className="text-xs text-emerald-400 font-bold">
+            <span className="text-[10px] font-mono text-slate-500">Selesai</span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-lg font-bold text-emerald-400 font-mono">
               {totalOnlineKembali}
             </span>
+            <span className="text-[10px] text-slate-500 font-mono">perangkat</span>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-              Total
+        </div>
+
+        <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+              Total Insiden
             </span>
-            <span className="text-xs text-slate-400 font-bold">
+            <span className="text-[10px] font-mono text-slate-500">Akumulasi</span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-lg font-bold text-slate-200 font-mono">
               {totalOnlineKembali + totalOffline}
             </span>
+            <span className="text-[10px] text-slate-500 font-mono">rekaman data</span>
           </div>
-          <div className="ml-auto flex items-center gap-4">
+        </div>
+      </div>
+
+      {/* Main Table Container */}
+      <div className="flex flex-col min-w-0 bg-slate-900/70 border border-slate-800 rounded-lg overflow-hidden shadow-xl backdrop-blur-sm">
+        {/* Table Subheader Bar */}
+        <div className="px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-950/60">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-400">
+              Total <span className="font-semibold text-slate-200 font-mono">{filteredReports.length}</span> baris
+              {searchQuery ? ` (filter: "${searchQuery}")` : ""}
+            </span>
+
             {canDelete && selectedIds.size > 0 && (
               <button
+                type="button"
                 onClick={() => setShowBatchDeleteConfirm(true)}
-                className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 hover:bg-red-700 border border-red-500 text-white shadow-lg shadow-red-500/20 transition animate-in fade-in duration-200"
+                className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-600 hover:bg-rose-500 border border-rose-500/40 text-white shadow-sm transition animate-in fade-in duration-150"
               >
-                <Trash2 size={13} />
+                <Trash2 size={12} />
                 Hapus {selectedIds.size} Data
               </button>
             )}
+          </div>
+
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 hidden sm:inline">
                 Tampilkan:
@@ -1112,7 +1167,7 @@ export default function DailyReportPage() {
                   setCurrentPage(1);
                   setSelectedIds(new Set());
                 }}
-                className="bg-slate-700/50 border border-slate-600 text-slate-200 text-xs rounded-md px-2 py-1.5 outline-none cursor-pointer hover:bg-slate-700 transition"
+                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-md px-2.5 py-1 outline-none cursor-pointer hover:border-slate-700 transition"
               >
                 <option value={10}>10</option>
                 <option value={30}>30</option>
@@ -1121,68 +1176,72 @@ export default function DailyReportPage() {
                 <option value={1000000}>Semua</option>
               </select>
             </div>
+
             {totalPages > 1 && (
-              <>
-                <span className="text-xs text-slate-400 hidden sm:inline border-l border-slate-700 pl-4">
-                  Halaman {currentPage} dari {totalPages}
+              <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
+                <span className="text-xs text-slate-400 hidden sm:inline font-mono">
+                  {currentPage}/{totalPages}
                 </span>
                 <div className="flex items-center gap-1">
                   <button
+                    type="button"
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-2.5 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-slate-200 transition text-xs cursor-pointer border border-slate-600"
+                    className="px-2.5 py-1 bg-slate-950 hover:bg-slate-850 disabled:opacity-40 disabled:cursor-not-allowed rounded text-slate-300 text-xs font-medium border border-slate-800 transition cursor-pointer"
                   >
                     Prev
                   </button>
                   <button
+                    type="button"
                     onClick={() =>
                       setCurrentPage((p) => Math.min(totalPages, p + 1))
                     }
                     disabled={currentPage === totalPages}
-                    className="px-2.5 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-slate-200 transition text-xs cursor-pointer border border-slate-600"
+                    className="px-2.5 py-1 bg-slate-950 hover:bg-slate-850 disabled:opacity-40 disabled:cursor-not-allowed rounded text-slate-300 text-xs font-medium border border-slate-800 transition cursor-pointer"
                   >
                     Next
                   </button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
 
+        {/* Scrollable Table Content */}
         <div className="overflow-x-auto overflow-y-visible min-w-0 touch-auto">
           {loading ? (
             <div className="p-6 space-y-2">
-              {[...Array(5)].map((_, i) => (
+              {[...Array(6)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-12 bg-slate-700/30 rounded-lg animate-pulse"
+                  className="h-10 bg-slate-800/40 rounded animate-pulse"
                 />
               ))}
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2 text-red-400">
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-rose-400">
               <p className="text-xs">{error}</p>
             </div>
           ) : filteredReports.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-              <ClipboardList size={32} className="mb-2 opacity-50" />
-              <p>Tidak ada data laporan untuk tanggal ini.</p>
+              <ClipboardList size={36} className="mb-2 opacity-30 text-slate-400" />
+              <p className="text-xs font-medium text-slate-400">Tidak ada data laporan untuk rentang tanggal ini.</p>
             </div>
           ) : (
             <table className="w-full text-xs min-w-[1000px]">
-              <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-700/50">
+              <thead className="sticky top-0 z-10 bg-slate-950/90 text-slate-400 font-mono text-[10px] uppercase tracking-wider border-b border-slate-800">
                 <tr>
-                  <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase w-10 border-r border-slate-700/50">
+                  <th className="text-center px-3 py-3 w-12 border-r border-slate-800/60">
                     No
                   </th>
                   <th
                     onClick={() => handleSort("col1")}
-                    className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 cursor-pointer hover:bg-slate-800 transition"
+                    className="text-left px-4 py-3 border-r border-slate-800/60 cursor-pointer hover:bg-slate-900/60 hover:text-slate-200 transition"
                   >
                     <div className="flex items-center justify-between">
-                      {type === "PPPOE" ? "Nama Dinas" : "Nama Kecamatan"}
+                      <span>{type === "PPPOE" ? "Nama Dinas" : "Nama Kecamatan"}</span>
                       {sortConfig.key === "col1" && (
-                        <span>
+                        <span className="text-sky-400">
                           {sortConfig.direction === "asc" ? "↑" : "↓"}
                         </span>
                       )}
@@ -1190,12 +1249,12 @@ export default function DailyReportPage() {
                   </th>
                   <th
                     onClick={() => handleSort("col2")}
-                    className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 cursor-pointer hover:bg-slate-800 transition"
+                    className="text-left px-4 py-3 border-r border-slate-800/60 cursor-pointer hover:bg-slate-900/60 hover:text-slate-200 transition"
                   >
                     <div className="flex items-center justify-between">
-                      {type === "PPPOE" ? "Lokasi" : "Nama Desa"}
+                      <span>{type === "PPPOE" ? "Lokasi" : "Nama Desa"}</span>
                       {sortConfig.key === "col2" && (
-                        <span>
+                        <span className="text-sky-400">
                           {sortConfig.direction === "asc" ? "↑" : "↓"}
                         </span>
                       )}
@@ -1203,12 +1262,12 @@ export default function DailyReportPage() {
                   </th>
                   <th
                     onClick={() => handleSort("offline_since")}
-                    className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 w-40 cursor-pointer hover:bg-slate-800 transition"
+                    className="text-left px-4 py-3 border-r border-slate-800/60 w-44 cursor-pointer hover:bg-slate-900/60 hover:text-slate-200 transition"
                   >
                     <div className="flex items-center justify-between">
-                      Jam Offline
+                      <span>Jam Offline</span>
                       {sortConfig.key === "offline_since" && (
-                        <span>
+                        <span className="text-sky-400">
                           {sortConfig.direction === "asc" ? "↑" : "↓"}
                         </span>
                       )}
@@ -1216,12 +1275,12 @@ export default function DailyReportPage() {
                   </th>
                   <th
                     onClick={() => handleSort("online_since")}
-                    className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 w-40 cursor-pointer hover:bg-slate-800 transition"
+                    className="text-left px-4 py-3 border-r border-slate-800/60 w-44 cursor-pointer hover:bg-slate-900/60 hover:text-slate-200 transition"
                   >
                     <div className="flex items-center justify-between">
-                      Jam Online
+                      <span>Jam Online</span>
                       {sortConfig.key === "online_since" && (
-                        <span>
+                        <span className="text-sky-400">
                           {sortConfig.direction === "asc" ? "↑" : "↓"}
                         </span>
                       )}
@@ -1229,12 +1288,12 @@ export default function DailyReportPage() {
                   </th>
                   <th
                     onClick={() => handleSort("status_progress")}
-                    className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 w-32 cursor-pointer hover:bg-slate-800 transition"
+                    className="text-left px-4 py-3 border-r border-slate-800/60 w-32 cursor-pointer hover:bg-slate-900/60 hover:text-slate-200 transition"
                   >
                     <div className="flex items-center justify-between">
-                      Status
+                      <span>Status</span>
                       {sortConfig.key === "status_progress" && (
-                        <span>
+                        <span className="text-sky-400">
                           {sortConfig.direction === "asc" ? "↑" : "↓"}
                         </span>
                       )}
@@ -1242,12 +1301,12 @@ export default function DailyReportPage() {
                   </th>
                   <th
                     onClick={() => handleSort("issue")}
-                    className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 cursor-pointer hover:bg-slate-800 transition"
+                    className="text-left px-4 py-3 border-r border-slate-800/60 cursor-pointer hover:bg-slate-900/60 hover:text-slate-200 transition"
                   >
                     <div className="flex items-center justify-between">
-                      Issue
+                      <span>Issue</span>
                       {sortConfig.key === "issue" && (
-                        <span>
+                        <span className="text-sky-400">
                           {sortConfig.direction === "asc" ? "↑" : "↓"}
                         </span>
                       )}
@@ -1255,54 +1314,63 @@ export default function DailyReportPage() {
                   </th>
                   <th
                     onClick={() => handleSort("tindakan")}
-                    className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase border-r border-slate-700/50 cursor-pointer hover:bg-slate-800 transition"
+                    className="text-left px-4 py-3 border-r border-slate-800/60 cursor-pointer hover:bg-slate-900/60 hover:text-slate-200 transition"
                   >
                     <div className="flex items-center justify-between">
-                      Tindakan
+                      <span>Tindakan</span>
                       {sortConfig.key === "tindakan" && (
-                        <span>
+                        <span className="text-sky-400">
                           {sortConfig.direction === "asc" ? "↑" : "↓"}
                         </span>
                       )}
                     </div>
                   </th>
-                  <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase w-12">
+                  <th className="text-center px-3 py-3 w-12">
                     {canDelete ? (
                       <input
                         type="checkbox"
-                        checked={paginatedReports.length > 0 && paginatedReports.every(r => selectedIds.has(r.id))}
+                        checked={
+                          paginatedReports.length > 0 &&
+                          paginatedReports.every((r) => selectedIds.has(r.id))
+                        }
                         onChange={toggleSelectAll}
-                        className="cursor-pointer w-3.5 h-3.5 accent-red-500"
+                        className="cursor-pointer w-4 h-4 rounded border-slate-700 bg-slate-950 text-sky-500 accent-sky-500"
                         title="Pilih semua di halaman ini"
                       />
-                    ) : "Aksi"}
+                    ) : (
+                      "Aksi"
+                    )}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/30">
+              <tbody className="divide-y divide-slate-800/60">
                 {paginatedReports.map((r, i) => (
                   <tr
                     key={r.id}
-                    className={`hover:bg-slate-700/20 transition group ${selectedIds.has(r.id) ? "bg-red-500/5 border-l-2 border-l-red-500/40" : ""}`}
+                    className={`hover:bg-slate-800/40 transition group ${
+                      selectedIds.has(r.id)
+                        ? "bg-sky-950/20 border-l-2 border-l-sky-500"
+                        : ""
+                    }`}
                   >
-                    <td className="px-3 py-3 text-center text-slate-500 border-r border-slate-700/30">
+                    <td className="px-3 py-2.5 text-center text-slate-500 font-mono text-[11px] border-r border-slate-800/60">
                       {startIndex + i + 1}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-200 border-r border-slate-700/30">
+                    <td className="px-4 py-2.5 font-semibold text-slate-100 border-r border-slate-800/60">
                       {r.prefix_name ? r.prefix_name.split("-")[0] : "-"}
                     </td>
-                    <td className="px-4 py-3 text-slate-300 border-r border-slate-700/30">
+                    <td className="px-4 py-2.5 text-slate-300 border-r border-slate-800/60">
                       {r.prefix_name && r.prefix_name.includes("-")
                         ? r.prefix_name.split("-").slice(1).join("-")
                         : r.prefix_name || "-"}
                     </td>
-                    <td className="px-3 py-3 text-slate-400 font-mono text-xs border-r border-slate-700/30 group/time min-w-[140px]">
+                    <td className="px-3 py-2.5 text-slate-300 font-mono text-xs border-r border-slate-800/60 group/time min-w-[140px]">
                       {editingDate?.id === r.id &&
                       editingDate?.field === "offline_since" ? (
                         <input
                           type="datetime-local"
                           step="1"
-                          className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded px-1 py-1 text-xs text-slate-300 outline-none transition"
+                          className="w-full bg-slate-950 border border-sky-500 rounded px-2 py-1 text-xs font-mono text-slate-200 outline-none transition"
                           autoFocus
                           disabled={!canUpdate}
                           defaultValue={toLocalDateTimeString(r.offline_since)}
@@ -1320,7 +1388,9 @@ export default function DailyReportPage() {
                         />
                       ) : (
                         <div className="flex items-center justify-between">
-                          <span>{formatTimeWIB(r.offline_since)}</span>
+                          <span className={r.offline_since ? "text-rose-400 font-medium" : "text-slate-500"}>
+                            {formatTimeWIB(r.offline_since)}
+                          </span>
                           {canUpdate && (
                             <button
                               onClick={() =>
@@ -1329,7 +1399,8 @@ export default function DailyReportPage() {
                                   field: "offline_since",
                                 })
                               }
-                              className="opacity-0 group-hover/time:opacity-100 hover:text-blue-400 transition p-1 cursor-pointer"
+                              className="opacity-0 group-hover/time:opacity-100 hover:text-sky-400 text-slate-500 transition p-1 cursor-pointer"
+                              title="Edit jam offline"
                             >
                               <Pencil size={12} />
                             </button>
@@ -1337,13 +1408,13 @@ export default function DailyReportPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-slate-400 font-mono text-xs border-r border-slate-700/30 group/time min-w-[140px]">
+                    <td className="px-3 py-2.5 text-slate-300 font-mono text-xs border-r border-slate-800/60 group/time min-w-[140px]">
                       {editingDate?.id === r.id &&
                       editingDate?.field === "online_since" ? (
                         <input
                           type="datetime-local"
                           step="1"
-                          className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded px-1 py-1 text-xs text-slate-300 outline-none transition"
+                          className="w-full bg-slate-950 border border-sky-500 rounded px-2 py-1 text-xs font-mono text-slate-200 outline-none transition"
                           autoFocus
                           disabled={!canUpdate}
                           defaultValue={toLocalDateTimeString(r.online_since)}
@@ -1361,7 +1432,9 @@ export default function DailyReportPage() {
                         />
                       ) : (
                         <div className="flex items-center justify-between">
-                          <span>{formatTimeWIB(r.online_since)}</span>
+                          <span className={r.online_since ? "text-emerald-400 font-medium" : "text-slate-600"}>
+                            {formatTimeWIB(r.online_since)}
+                          </span>
                           {canUpdate && (
                             <button
                               onClick={() =>
@@ -1370,7 +1443,8 @@ export default function DailyReportPage() {
                                   field: "online_since",
                                 })
                               }
-                              className="opacity-0 group-hover/time:opacity-100 hover:text-blue-400 transition p-1 cursor-pointer"
+                              className="opacity-0 group-hover/time:opacity-100 hover:text-sky-400 text-slate-500 transition p-1 cursor-pointer"
+                              title="Edit jam online"
                             >
                               <Pencil size={12} />
                             </button>
@@ -1378,22 +1452,24 @@ export default function DailyReportPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-700/30">
+                    <td className="px-3 py-2 border-r border-slate-800/60">
                       <select
                         value={r.status_progress || "Progress"}
                         onChange={(e) =>
                           updateReport(r.id, "status_progress", e.target.value)
                         }
                         disabled={!canUpdate}
-                        className={`w-full bg-slate-900/50 border rounded px-2 py-1.5 text-xs font-bold outline-none cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed
-                          ${r.status_progress === "Done" ? "text-emerald-400 border-emerald-500/30" : "text-amber-400 border-amber-500/30"}
-                        `}
+                        className={`w-full border rounded-md px-2.5 py-1 text-xs font-bold outline-none cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed transition ${
+                          r.status_progress === "Done"
+                            ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/80"
+                            : "bg-amber-950/60 text-amber-300 border-amber-800/80"
+                        }`}
                       >
-                        <option value="Progress">Progress</option>
-                        <option value="Done">Done</option>
+                        <option value="Progress" className="bg-slate-900 text-amber-300">Progress</option>
+                        <option value="Done" className="bg-slate-900 text-emerald-300">Done</option>
                       </select>
                     </td>
-                    <td className="px-2 py-2 border-r border-slate-700/30 min-w-[200px]">
+                    <td className="px-3 py-2 border-r border-slate-800/60 min-w-[200px]">
                       <div className="flex flex-col gap-1.5">
                         <select
                           disabled={!canUpdate}
@@ -1412,15 +1488,15 @@ export default function DailyReportPage() {
                               updateReport(r.id, "issue", val);
                             }
                           }}
-                          className="w-full bg-slate-900/50 border border-slate-700/50 rounded px-2 py-1 text-xs text-slate-300 outline-none cursor-pointer disabled:opacity-70"
+                          className="w-full bg-slate-950/80 border border-slate-800 hover:border-slate-700 focus:border-sky-500 rounded-md px-2.5 py-1 text-xs text-slate-200 outline-none cursor-pointer disabled:opacity-70 transition"
                         >
-                          <option value="">- Pilih Issue -</option>
+                          <option value="" className="bg-slate-900 text-slate-400">- Pilih Issue -</option>
                           {standardIssues.map((opt) => (
-                            <option key={opt} value={opt}>
+                            <option key={opt} value={opt} className="bg-slate-900 text-slate-200">
                               {opt}
                             </option>
                           ))}
-                          <option value="Lain-lain">Lain-lain (Custom)</option>
+                          <option value="Lain-lain" className="bg-slate-900 text-sky-400">Lain-lain (Custom)</option>
                         </select>
                         {!standardIssues.includes(r.issue) && r.issue ? (
                           <input
@@ -1430,13 +1506,13 @@ export default function DailyReportPage() {
                               updateReport(r.id, "issue", e.target.value)
                             }
                             disabled={!canUpdate}
-                            className="w-full bg-slate-900 border border-slate-700/50 focus:border-blue-500 rounded px-2 py-1 text-xs text-slate-300 outline-none"
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-md px-2.5 py-1 text-xs text-slate-200 outline-none transition"
                             placeholder="Tulis issue Custom..."
                           />
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-2 py-2 border-r border-slate-700/30">
+                    <td className="px-3 py-2 border-r border-slate-800/60">
                       <input
                         type="text"
                         value={r.tindakan || ""}
@@ -1444,7 +1520,7 @@ export default function DailyReportPage() {
                           updateReport(r.id, "tindakan", e.target.value)
                         }
                         disabled={!canUpdate}
-                        className="w-full bg-transparent border border-transparent hover:border-slate-600 focus:border-blue-500 rounded px-2 py-1.5 text-xs text-slate-300 outline-none transition disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full bg-slate-950/30 border border-transparent hover:border-slate-800 focus:border-sky-500 focus:bg-slate-950 rounded-md px-2.5 py-1 text-xs text-slate-200 outline-none transition disabled:opacity-70 disabled:cursor-not-allowed placeholder:text-slate-600"
                         placeholder={!canUpdate ? "-" : "Ketik tindakan..."}
                       />
                     </td>
@@ -1454,8 +1530,8 @@ export default function DailyReportPage() {
                           type="checkbox"
                           checked={selectedIds.has(r.id)}
                           onChange={() => toggleSelect(r.id)}
-                          className="cursor-pointer w-3.5 h-3.5 accent-red-500"
-                          title="Pilih untuk dihapus"
+                          className="cursor-pointer w-4 h-4 rounded border-slate-700 bg-slate-950 text-sky-500 accent-sky-500"
+                          title="Pilih baris"
                         />
                       )}
                     </td>
@@ -1467,31 +1543,40 @@ export default function DailyReportPage() {
         </div>
       </div>
 
+      {/* Delete Single Item Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-700/50">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Trash2 size={20} className="text-red-400" />
-                Konfirmasi Hapus
-              </h3>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-slate-800 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-100">
+                  Konfirmasi Hapus
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Tindakan ini tidak dapat dibatalkan
+                </p>
+              </div>
             </div>
-            <div className="p-5">
+            <div className="p-4">
               <p className="text-xs text-slate-300">
-                Apakah Anda yakin ingin menghapus laporan ini? Tindakan ini
-                tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus baris laporan ini dari database?
               </p>
             </div>
-            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50 flex justify-end gap-3">
+            <div className="p-3.5 bg-slate-950/50 border-t border-slate-800 flex justify-end gap-2.5">
               <button
+                type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-800 rounded-lg border border-slate-700/60 transition cursor-pointer"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={confirmDelete}
-                className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 rounded-lg transition cursor-pointer"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition cursor-pointer shadow-sm border border-rose-500/40"
               >
                 Ya, Hapus
               </button>
@@ -1500,30 +1585,44 @@ export default function DailyReportPage() {
         </div>
       )}
 
+      {/* Batch Delete Confirmation Modal */}
       {showBatchDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-700/50">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Trash2 size={20} className="text-red-400" />
-                Hapus {selectedIds.size} Laporan
-              </h3>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-slate-800 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-100">
+                  Hapus {selectedIds.size} Laporan
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Operasi penghapusan massal
+                </p>
+              </div>
             </div>
-            <div className="p-5">
-              <p className="text-xs text-slate-300">
-                Anda akan menghapus <span className="font-bold text-red-400">{selectedIds.size} laporan</span> sekaligus. Tindakan ini tidak dapat dibatalkan.
+            <div className="p-4">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Anda akan menghapus{" "}
+                <span className="font-bold text-rose-400">
+                  {selectedIds.size} laporan
+                </span>{" "}
+                secara permanen. Apakah Anda yakin?
               </p>
             </div>
-            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50 flex justify-end gap-3">
+            <div className="p-3.5 bg-slate-950/50 border-t border-slate-800 flex justify-end gap-2.5">
               <button
+                type="button"
                 onClick={() => setShowBatchDeleteConfirm(false)}
-                className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-800 rounded-lg border border-slate-700/60 transition cursor-pointer"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={confirmBatchDelete}
-                className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 rounded-lg transition cursor-pointer"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition cursor-pointer shadow-sm border border-rose-500/40"
               >
                 Ya, Hapus Semua
               </button>
@@ -1532,170 +1631,38 @@ export default function DailyReportPage() {
         </div>
       )}
 
-      {showImportModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col text-slate-200">
-            {/* Modal Header */}
-            <div className="px-5 py-3.5 border-b border-slate-700/50 flex justify-between items-center bg-slate-900/90">
+      {/* Tambah Laporan Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                  <FileSpreadsheet size={18} />
+                <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                  <Plus size={18} />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-100">
-                    Impor Laporan dari Google Sheets / Excel
+                    Tambah Laporan Manual
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Salin & tempel baris data laporan harian
+                    Kategori: {type === "PPPOE" ? "OPD" : "Desa"}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setShowImportModal(false)}
-                className="text-slate-400 hover:text-slate-100 p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 space-y-4 max-h-[75dvh] overflow-y-auto">
-              {/* Steps Box */}
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3.5 space-y-2">
-                <h4 className="text-xs font-bold text-slate-200">
-                  Langkah-langkah:
-                </h4>
-                <ol className="text-xs text-slate-300 space-y-1 pl-1 leading-relaxed">
-                  <li>1. Buka lembar Google Sheets Anda.</li>
-                  <li>
-                    2. Salin (Ctrl+C) kolom berurutan:{" "}
-                    <strong className="text-slate-100 font-semibold">
-                      Tanggal Sheet, Nama Dinas/Kecamatan, Lokasi/Desa, Jam Offline, Jam Online, Status, Issue, Tindakan
-                    </strong>
-                    .
-                  </li>
-                  <li>3. Tempelkan (Ctrl+V) ke kolom teks di bawah ini.</li>
-                </ol>
-                <div className="flex items-start gap-2 text-amber-300/90 text-[11px] bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg font-medium mt-2">
-                  <Lightbulb size={15} className="text-amber-400 flex-shrink-0 mt-0.5" />
-                  <span>
-                    INFO: Tanggal laporan akan diambil langsung dari kolom{" "}
-                    <strong className="text-slate-100">Tanggal Sheet</strong> pada setiap baris data secara dinamis.
-                  </span>
-                </div>
-              </div>
-
-              {/* Import Type Selector */}
-              <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg">
-                <span className="text-xs text-slate-400 font-medium">
-                  Tipe Laporan Tujuan:
-                </span>
-                <span className="text-[10px] px-2.5 py-0.5 rounded font-bold border tag-desa">
-                  {importType === "L2TP" ? "Desa" : "OPD"}
-                </span>
-              </div>
-
-              {/* Textarea Input */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300">
-                  Tempel Data di Sini (Format Kolom Tab / TSV)
-                </label>
-                <textarea
-                  value={importText}
-                  onChange={(e) => setImportText(e.target.value)}
-                  placeholder={`Contoh:\n19April2026\tDishub 3\tR Pacantel\t17/04/2026\t\tProgress\t\t\n19April2026\tDishub 3\tR Angkutan\t18/04/2026\t19/04/2026\tDone\tPerangkat Hang / Telat Sinkronisasi\trestart perangkat ONT dan AP`}
-                  rows={4}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-200 placeholder-slate-600 outline-none focus:border-blue-500 transition resize-none leading-relaxed"
-                />
-              </div>
-
-              {/* Parsed Live Feedback Card */}
-              {parsedImportReports.length > 0 && (
-                <div className="bg-slate-800/50 border border-blue-500/30 rounded-lg p-3.5 space-y-2.5 animate-in fade-in duration-150">
-                  <div className="flex items-center justify-between border-b border-slate-700/50 pb-2">
-                    <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-                      <CheckCircle2 size={15} className="text-emerald-400" />
-                      Hasil Parsing Data ({parsedImportReports.length} Baris Laporan):
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase font-mono">
-                      Siap Diimpor
-                    </span>
-                  </div>
-
-                  <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 text-xs">
-                    {parsedImportReports.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-slate-950/80 border border-slate-700/60 p-2.5 rounded-lg flex items-start justify-between gap-2"
-                      >
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-100 truncate">
-                              {item.prefix_name}
-                            </span>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-                                item.status_progress === "Done"
-                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                                  : "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                              }`}
-                            >
-                              {item.status_progress}
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">
-                            Tanggal: {item.date} {item.offlineCol ? `• Off: ${item.offlineCol}` : ""} {item.onlineCol ? `• On: ${item.onlineCol}` : ""}
-                          </span>
-                          {(item.issue || item.tindakan) && (
-                            <span className="text-[11px] text-slate-300 mt-0.5 truncate">
-                              {item.issue ? `Issue: ${item.issue}` : ""} {item.tindakan ? `(${item.tindakan})` : ""}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="px-5 py-3.5 bg-slate-900 border-t border-slate-700/50 flex items-center justify-end gap-2.5">
-              <button
                 type="button"
-                onClick={() => setShowImportModal(false)}
-                className="px-4 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-850 transition cursor-pointer"
               >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={importing || parsedImportReports.length === 0}
-                onClick={handleImport}
-                className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 border border-blue-500 disabled:opacity-50 shadow-lg shadow-blue-500/20 transition cursor-pointer flex items-center gap-1.5"
-              >
-                {importing && <RefreshCw size={14} className="animate-spin" />}
-                {importing ? "Mengimpor..." : `Mulai Impor (${parsedImportReports.length} Laporan)`}
+                <X size={16} />
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-700/50">
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Plus size={20} className="text-blue-400" />
-                Tambah Laporan Manual
-              </h3>
-            </div>
-            <div className="p-5 space-y-4">
+            <div className="p-4 space-y-3.5">
               {type === "PPPOE" ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">
                       Nama Dinas
                     </label>
                     <input
@@ -1707,12 +1674,12 @@ export default function DailyReportPage() {
                           dinas: e.target.value.toUpperCase(),
                         }))
                       }
-                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      className="w-full uppercase bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
                       placeholder="DISKOMINFO"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">
                       Lokasi
                     </label>
                     <input
@@ -1724,15 +1691,15 @@ export default function DailyReportPage() {
                           lokasi: e.target.value.toUpperCase(),
                         }))
                       }
-                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      className="w-full uppercase bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
                       placeholder="SERVER"
                     />
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">
                       Nama Kecamatan
                     </label>
                     <input
@@ -1744,12 +1711,12 @@ export default function DailyReportPage() {
                           kecamatan: e.target.value.toUpperCase(),
                         }))
                       }
-                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      className="w-full uppercase bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
                       placeholder="BALEENDAH"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">
                       Nama Desa
                     </label>
                     <input
@@ -1761,15 +1728,16 @@ export default function DailyReportPage() {
                           desa: e.target.value.toUpperCase(),
                         }))
                       }
-                      className="w-full uppercase bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                      className="w-full uppercase bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
                       placeholder="JELEKONG"
                     />
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
                     Jam Offline
                   </label>
                   <input
@@ -1782,11 +1750,11 @@ export default function DailyReportPage() {
                         offline_since: e.target.value,
                       }))
                     }
-                    className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
                     Jam Online
                   </label>
                   <input
@@ -1799,12 +1767,13 @@ export default function DailyReportPage() {
                         online_since: e.target.value,
                       }))
                     }
-                    className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition font-mono"
                   />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
                   Status
                 </label>
                 <select
@@ -1815,14 +1784,15 @@ export default function DailyReportPage() {
                       status_progress: e.target.value,
                     }))
                   }
-                  className=" bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition cursor-pointer"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition cursor-pointer"
                 >
                   <option value="Progress">Progress</option>
                   <option value="Done">Done</option>
                 </select>
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
                   Issue
                 </label>
                 <select
@@ -1844,7 +1814,7 @@ export default function DailyReportPage() {
                       setNewReportForm((p) => ({ ...p, issue: val }));
                     }
                   }}
-                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition cursor-pointer mb-2"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition cursor-pointer mb-2"
                 >
                   <option value="">- Pilih Issue -</option>
                   {standardIssues.map((opt) => (
@@ -1866,13 +1836,14 @@ export default function DailyReportPage() {
                     onChange={(e) =>
                       setNewReportForm((p) => ({ ...p, issue: e.target.value }))
                     }
-                    className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
                     placeholder="Ketik issue Custom..."
                   />
                 ) : null}
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
                   Tindakan
                 </label>
                 <input
@@ -1884,21 +1855,24 @@ export default function DailyReportPage() {
                       tindakan: e.target.value,
                     }))
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none transition placeholder:text-slate-600"
                   placeholder="Opsional..."
                 />
               </div>
             </div>
-            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50 flex justify-end gap-3">
+
+            <div className="p-3.5 bg-slate-950/50 border-t border-slate-800 flex justify-end gap-2.5">
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-800 rounded-lg border border-slate-700/60 transition cursor-pointer"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleAddReport}
-                className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 rounded-lg transition cursor-pointer"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition cursor-pointer shadow-sm border border-sky-500/40"
               >
                 Simpan
               </button>

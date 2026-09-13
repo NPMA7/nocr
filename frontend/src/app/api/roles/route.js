@@ -12,9 +12,11 @@ export async function GET(req) {
         const { data, error } = await db.from('access_roles').select('*').order('created_at', { ascending: true });
         if (error) throw error;
         
-        const isCallerAdmin = (user?.role || '').toLowerCase().trim() === 'admin';
+        const roleStr = (user?.role || '').toLowerCase().trim();
+        const isCallerAdmin = roleStr === 'admin' || roleStr === 'superadmin';
         const filteredRoles = (data || []).filter((r) => {
-            if (!isCallerAdmin && (r.name || '').toLowerCase().trim() === 'admin') {
+            const rName = (r.name || '').toLowerCase().trim();
+            if (!isCallerAdmin && (rName === 'admin' || rName === 'superadmin')) {
                 return false;
             }
             return true;

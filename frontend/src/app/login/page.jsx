@@ -3,9 +3,26 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Lock, User, ShieldAlert, ArrowRight, Eye, EyeOff } from "lucide-react";
+import {
+  Lock,
+  User,
+  ShieldAlert,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Activity,
+  Server,
+  Radio,
+  CheckCircle2,
+  ShieldCheck,
+} from "lucide-react";
 import { API_URL, socket } from "@/App";
-import { applySessionUser, getDefaultAccessibleRoute, getStoredUser, isClientTokenValid, clearClientAuth } from "@/lib/roles";
+import {
+  applySessionUser,
+  getDefaultAccessibleRoute,
+  isClientTokenValid,
+  clearClientAuth,
+} from "@/lib/roles";
 import { getStoredThemeConfig, applyThemeConfig } from "@/lib/themeEngine";
 
 export default function LoginPage() {
@@ -14,7 +31,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isSetup, setIsSetup] = useState(false);
 
@@ -45,7 +61,9 @@ export default function LoginPage() {
 
         // Check if system needs setup (no admin users in DB)
         try {
-          const res = await axios.get(`${API_URL}/auth/check-setup`, { timeout: 3000 });
+          const res = await axios.get(`${API_URL}/auth/check-setup`, {
+            timeout: 3000,
+          });
           if (res.data?.isSetup) {
             setIsSetup(true);
           }
@@ -100,156 +118,243 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-300"
-      style={{
-        backgroundColor: "var(--color-app-bg, #0F172A)",
-        color: "var(--color-text-main, #F8FAFC)",
-      }}
-    >
-      {/* Background Decorative Ambient Flares */}
-      <div
-        className="absolute top-[-10%] left-[-10%] w-96 h-96 rounded-full blur-[120px] opacity-30"
-        style={{ backgroundColor: "var(--color-primary, #3B82F6)" }}
-      />
-      <div
-        className="absolute bottom-[-10%] right-[-10%] w-96 h-96 rounded-full blur-[120px] opacity-20"
-        style={{ backgroundColor: "var(--color-purple, #8B5CF6)" }}
-      />
+    <div className="min-h-screen w-full flex bg-slate-950 text-slate-100 selection:bg-sky-500 selection:text-white">
+      {/* ─── LEFT PANEL: NOC Operational Showcase (Visible on lg+) ─────── */}
+      <div className="hidden lg:flex lg:w-1/2 xl:w-7/12 relative flex-col justify-between p-12 bg-gradient-to-br from-slate-900 via-slate-950 to-[#070b12] border-r border-slate-850 overflow-hidden">
+        {/* Subtle Tech Grid Background Pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.03] pointer-events-none"
+          style={{
+            backgroundImage: `radial-gradient(#38bdf8 1px, transparent 1px)`,
+            backgroundSize: "28px 28px",
+          }}
+        />
 
-      <div
-        className="w-full max-w-md border rounded-2xl shadow-2xl p-8 relative z-10 backdrop-blur-xl transition-colors duration-300"
-        style={{
-          backgroundColor: "var(--color-card-bg, #1E293B)",
-          borderColor: "var(--color-border-main, #334155)",
-        }}
-      >
-        <div className="flex justify-center mb-4">
-          <img
-            src="/logo.png"
-            alt="NOCR Logo"
-            className="w-24 h-24 border-2 rounded-full shadow-md"
-            style={{ borderColor: "var(--color-border-main, #334155)" }}
-          />
+        {/* Ambient Top Glow (Subtle Dark Slate/Cyan, No Purple Blob) */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Header Branding */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="NOCR Logo"
+              className="w-10 h-10 rounded-xl border border-slate-700/80 object-cover shadow-md"
+            />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl font-black font-mono tracking-widest text-slate-100">
+                  NOCR
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-300 font-semibold tracking-wider">
+                  OPERATIONS CONSOLE
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                Network Operations Center & Reporting
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="text-center mb-8">
-          <h1
-            className="text-2xl font-extrabold tracking-tight"
-            style={{ color: "var(--color-text-main, #F8FAFC)" }}
-          >
-            {isSetup ? "Setup Administrator" : "NOCR"}
+        {/* Middle Feature Content */}
+        <div className="relative z-10 max-w-lg my-auto py-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-300 font-mono mb-6">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Pusat Monitoring Terpadu 24/7</span>
+          </div>
+
+          <h1 className="text-3xl xl:text-4xl font-black text-slate-100 tracking-tight leading-tight mb-4">
+            Monitoring Infrastruktur Jaringan & Telekomunikasi 
           </h1>
 
-          <p
-            className="text-xs mt-1 font-medium"
-            style={{ color: "var(--color-text-muted, #94A3B8)" }}
-          >
-            {isSetup
-              ? "Sistem belum dikonfigurasi. Buat akun admin pertama Anda."
-              : "Silakan masukkan kredensial Anda untuk mengakses sistem."}
+          <p className="text-sm text-slate-400 leading-relaxed mb-8">
+            Platform pengawasan terpusat untuk memantau performa perangkat , ketersediaan link, topologi interaktif, dan telemetri gateway secara real-time.
           </p>
+
+          {/* Technical Spec List */}
+          <div className="space-y-3.5 border-t border-slate-850 pt-6">
+            <div className="flex items-start gap-3 text-xs text-slate-300">
+              <div className="w-5 h-5 rounded-md bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 flex-shrink-0 mt-0.5">
+                <Radio size={12} />
+              </div>
+              <div>
+                <span className="font-semibold text-slate-200">
+                  Telemetri Real-time WebSockets
+                </span>
+                <p className="text-slate-400 text-[11px] mt-0.5">
+                  Pembaruan instan status koneksi dan latensi link tanpa reload halaman.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 text-xs text-slate-300">
+              <div className="w-5 h-5 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0 mt-0.5">
+                <Server size={12} />
+              </div>
+              <div>
+                <span className="font-semibold text-slate-200">
+                  Infrastruktur  Terpadu
+                </span>
+                <p className="text-slate-400 text-[11px] mt-0.5">
+                  Dukungan terintegrasi untuk Router, OLT, Switch, dan AP.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 text-xs text-slate-300">
+              <div className="w-5 h-5 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0 mt-0.5">
+                <Activity size={12} />
+              </div>
+              <div>
+                <span className="font-semibold text-slate-200">
+                  Sistem Alarm & Deteksi Insiden Cepat
+                </span>
+                <p className="text-slate-400 text-[11px] mt-0.5">
+                  Monitoring proaktif titik putus jaringan dengan audio alert dan log insiden seketika.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {error && (
-          <div
-            className="border rounded-lg p-4 mb-6 flex items-start gap-3 text-xs"
-            style={{
-              backgroundColor: "rgba(246, 73, 50, 0.1)",
-              borderColor: "var(--color-danger, #EF4444)",
-              color: "var(--color-danger, #EF4444)",
-            }}
-          >
-            <ShieldAlert size={20} className="shrink-0 mt-0.5" />
-            <p className="leading-relaxed">{error}</p>
-          </div>
-        )}
+        {/* Footer info */}
+        <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 pt-6 border-t border-slate-850">
+          <span>NOCR Operations Console</span>
+          <span className="font-mono text-[11px]">Multi-Tenant Architecture</span>
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--color-text-muted, #94A3B8)" }}
-            >
-              Username
-            </label>
-            <div className="relative">
-              <User
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: "var(--color-text-muted, #94A3B8)" }}
-              />
-              <input
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Masukkan username"
-                className="w-full border rounded-lg py-3 pl-10 pr-4 text-xs font-medium focus:outline-none transition-all"
-                style={{
-                  backgroundColor: "var(--color-app-bg, #0F172A)",
-                  borderColor: "var(--color-border-main, #334155)",
-                  color: "var(--color-text-main, #F8FAFC)",
-                }}
-              />
+      {/* ─── RIGHT PANEL: Authentication Form ─────────────────────────── */}
+      <div className="w-full lg:w-1/2 xl:w-5/12 flex items-center justify-center p-6 sm:p-10 md:p-14 relative">
+        <div className="w-full max-w-md">
+          {/* Mobile Header Brand (Hidden on lg+) */}
+          <div className="lg:hidden flex flex-col items-center text-center mb-8">
+            <img
+              src="/logo.png"
+              alt="NOCR Logo"
+              className="w-16 h-16 rounded-2xl border border-slate-700/80 object-cover shadow-lg mb-3"
+            />
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl font-black font-mono tracking-widest text-slate-100">
+                NOCR
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-300 font-semibold tracking-wider">
+                OPERATIONS CONSOLE
+              </span>
             </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Network Operations Center & Reporting
+            </p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--color-text-muted, #94A3B8)" }}
-            >
-              Password
-            </label>
-            <div className="relative">
-              <Lock
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: "var(--color-text-muted, #94A3B8)" }}
-              />
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full border rounded-lg py-3 pl-10 pr-12 text-xs font-medium focus:outline-none transition-all"
-                style={{
-                  backgroundColor: "var(--color-app-bg, #0F172A)",
-                  borderColor: "var(--color-border-main, #334155)",
-                  color: "var(--color-text-main, #F8FAFC)",
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none transition-colors"
-                style={{ color: "var(--color-text-muted, #94A3B8)" }}
-                tabIndex="-1"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+          {/* Form Header */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-black text-slate-100 tracking-tight">
+              {isSetup ? "Inisialisasi Administrator" : "Masuk ke Konsol"}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              {isSetup
+                ? "Sistem belum dikonfigurasi. Buat akun Super Administrator pertama untuk memulai."
+                : "Masukkan username dan password Anda untuk mengakses dashboard operasional."}
+            </p>
+          </div>
+
+          {/* Error Alert Banner */}
+          {error && (
+            <div className="rounded-lg p-3.5 mb-6 flex items-start gap-3 text-xs bg-rose-950/40 border border-rose-800/60 text-rose-300">
+              <ShieldAlert size={18} className="shrink-0 mt-0.5 text-rose-400" />
+              <p className="leading-relaxed font-medium">{error}</p>
             </div>
-          </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="cursor-pointer mt-3 w-full font-bold py-3 px-4 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: "var(--color-primary, #3B82F6)",
-              color: "#FFFFFF",
-            }}
-          >
-            {submitting
-              ? "Memproses..."
-              : isSetup
-                ? "Buat Akun & Masuk"
-                : "Masuk ke Dashboard"}
-            {!submitting && <ArrowRight size={18} />}
-          </button>
-        </form>
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Username Field */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Username
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <User size={16} />
+                </div>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Masukkan username Anda"
+                  className="w-full bg-slate-900/80 border border-slate-800 rounded-lg py-2.5 pl-10 pr-4 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/80 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Password
+                </label>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <Lock size={16} />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-slate-900/80 border border-slate-800 rounded-lg py-2.5 pl-10 pr-11 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/80 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="cursor-pointer absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 focus:outline-none transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="cursor-pointer w-full mt-2 py-2.5 px-4 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold tracking-wide transition-all shadow-md shadow-sky-950/50 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Memverifikasi Akses...</span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {isSetup ? "Inisialisasi Sistem" : "Masuk ke Dashboard"}
+                  </span>
+                  <ArrowRight size={15} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Security & Audit Notice */}
+          <div className="mt-8 pt-6 border-t border-slate-850 flex items-center justify-between text-[11px] text-slate-400">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-emerald-400" />
+              <span>Sesi Terenkripsi TLS/JWT</span>
+            </div>
+            <span>v2.0 Enterprise</span>
+          </div>
+        </div>
       </div>
     </div>
   );

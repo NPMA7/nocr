@@ -33,7 +33,7 @@ const ALL_SLOTS = [
     label: "Router MikroTik",
     subtitle: "Routerboard & Power Supply",
     icon: Cpu,
-    color: "purple",
+    color: "cyan",
   },
   {
     key: "ont",
@@ -173,7 +173,7 @@ export default function SiteEvidencePhotos({
   const uploadedCount = Object.keys(photos || {}).filter((k) => photos[k]?.url || photos[k]?.drive_id).length;
 
   return (
-    <section className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 flex flex-col gap-4">
+    <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col gap-4 shadow-sm">
       {/* Section Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -183,7 +183,7 @@ export default function SiteEvidencePhotos({
           <div>
             <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
               Evidence Foto Perangkat
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/80 text-slate-300 font-normal">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-normal border border-slate-700">
                 {uploadedCount} / {slots.length} Terpasang
               </span>
             </h2>
@@ -211,21 +211,21 @@ export default function SiteEvidencePhotos({
           return (
             <div
               key={slot.key}
-              className={`relative rounded-xl border transition-all duration-200 flex flex-col overflow-hidden bg-slate-900/60 ${
+              className={`relative rounded-xl border transition-all duration-200 flex flex-col overflow-hidden bg-slate-950 ${
                 hasPhoto
-                  ? "border-slate-700/80 hover:border-slate-600 shadow-md"
-                  : "border-dashed border-slate-700/70 hover:border-slate-600"
+                  ? "border-slate-800 hover:border-slate-700 shadow-md"
+                  : "border-dashed border-slate-800 hover:border-slate-700"
               }`}
             >
               {/* Card Top Banner / Icon */}
-              <div className="p-3 bg-slate-800/40 border-b border-slate-800 flex items-center justify-between">
+              <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
                   <div
                     className={`p-1.5 rounded-md ${
                       slot.color === "blue"
                         ? "bg-blue-500/20 text-blue-400"
-                        : slot.color === "purple"
-                        ? "bg-purple-500/20 text-purple-400"
+                        : slot.color === "cyan"
+                        ? "bg-cyan-500/20 text-cyan-400"
                         : slot.color === "emerald"
                         ? "bg-emerald-500/20 text-emerald-400"
                         : "bg-amber-500/20 text-amber-400"

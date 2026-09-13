@@ -65,14 +65,14 @@ export default function PropertiesDrawer({
       selectedNode?.label?.toLowerCase().includes("dukcapil") ||
       selectedNode?.label?.toLowerCase().includes("setda");
   return (
-    <div className="w-80 bg-slate-900 border-l border-slate-700/60 flex flex-col h-full z-30 select-none shadow-2xl">
+    <div className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col h-full z-30 select-none shadow-2xl">
       {/* Header */}
-      <div className="p-3.5 border-b border-slate-700/60 flex items-center justify-between">
+      <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
             <Sliders size={13} />
           </div>
-          <span className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+          <span className="text-xs font-bold text-slate-100 uppercase tracking-wider font-mono">
             {selectedNode
               ? "Detail Perangkat"
               : selectedLink
@@ -178,7 +178,7 @@ export default function PropertiesDrawer({
                   <span
                     className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
                       isOPD
-                        ? "bg-purple-950 text-purple-300 border border-purple-700/50"
+                        ? "bg-cyan-950 text-cyan-300 border border-cyan-700/50"
                         : "bg-blue-950 text-blue-300 border border-blue-700/50"
                     }`}
                   >
