@@ -1,22 +1,28 @@
 import fs from 'fs';
 import path from 'path';
 
-const CONFIG_PATH = path.join(process.cwd(), 'data', 'gdrive-config.json');
+const CONFIG_PATHS = [
+  path.join(process.cwd(), 'data', 'gdrive-config.json'),
+  path.join(process.cwd(), 'backend', 'data', 'gdrive-config.json'),
+  path.join(process.cwd(), '..', 'backend', 'data', 'gdrive-config.json'),
+];
 
 function getGDriveConfig() {
-  try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+  for (const cfgPath of CONFIG_PATHS) {
+    try {
+      if (fs.existsSync(cfgPath)) {
+        return JSON.parse(fs.readFileSync(cfgPath, 'utf-8'));
+      }
+    } catch (err) {
+      console.error(`Failed to read ${cfgPath}:`, err.message);
     }
-  } catch (err) {
-    console.error('Failed to read gdrive-config.json:', err.message);
   }
 
   return {
-    client_id: process.env.GDRIVE_CLIENT_ID || '510699103498-lccq9hfvgg1mugjnj7td2cp7640kmrpc.apps.googleusercontent.com',
-    client_secret: process.env.GDRIVE_CLIENT_SECRET || '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',
-    refresh_token: process.env.GDRIVE_REFRESH_TOKEN || '1//0g4KFrHu2DzRgCgYIARAAGBASNwF-L9IrKvI6xdrd85KzyQYPs9qJxVx030b13cW3bMjKZN3vVoY_4SbKMLGQDgcaGyyz9tV9Kq0',
-    photos_folder_id: process.env.GDRIVE_PHOTOS_FOLDER_ID || '12MZly0xY6H3o-Qx6AaBqtdaxOKBcTZ7p',
+    client_id: process.env.GDRIVE_CLIENT_ID || '',
+    client_secret: process.env.GDRIVE_CLIENT_SECRET || '',
+    refresh_token: process.env.GDRIVE_REFRESH_TOKEN || '',
+    photos_folder_id: process.env.GDRIVE_PHOTOS_FOLDER_ID || '',
   };
 }
 
