@@ -645,7 +645,13 @@ export default function Ruijie() {
                               <Edit size={11} />
                             </button>
                           )}
-                          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                          <span className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-medium ${
+                            d.connection_type === "L2TP"
+                              ? "tag-desa"
+                              : d.connection_type === "PPPOE"
+                              ? "tag-opd"
+                              : "bg-slate-800 text-slate-400 border border-slate-700"
+                          }`}>
                             {d.connection_type === "L2TP"
                               ? "Desa"
                               : d.connection_type === "PPPOE"
@@ -793,7 +799,13 @@ export default function Ruijie() {
                                   <Edit size={12} />
                                 </button>
                               )}
-                              <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                              <span className={`flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-semibold ${
+                                d.connection_type === "L2TP"
+                                  ? "tag-desa"
+                                  : d.connection_type === "PPPOE"
+                                  ? "tag-opd"
+                                  : "bg-slate-800 text-slate-400 border border-slate-700"
+                              }`}>
                                 {d.connection_type === "L2TP"
                                   ? "Desa"
                                   : d.connection_type === "PPPOE"

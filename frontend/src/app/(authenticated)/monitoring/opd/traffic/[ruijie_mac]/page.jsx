@@ -737,7 +737,7 @@ export default function TrafficDetailPage() {
             {isOPD ? "Monitoring OPD" : "Monitoring Desa"}
           </Link>
           <span className="text-slate-600">/</span>
-          <span className="flex items-center gap-1.5 text-purple-400 font-semibold">
+          <span className="flex items-center gap-1.5 text-blue-400 font-semibold">
             <BarChart2 size={13} /> Detail Traffic Per Site
           </span>
         </div>
@@ -746,7 +746,7 @@ export default function TrafficDetailPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1 border-t border-slate-800/80">
           {/* Site Identity */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
               <Activity size={20} className={loading ? "animate-pulse" : ""} />
             </div>
             <div className="min-w-0">
@@ -758,7 +758,7 @@ export default function TrafficDetailPage() {
                     deviceInfo?.prefix || mac
                   )}
                 </h1>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded whitespace-nowrap ${isOPD ? "tag-opd" : "tag-desa"}`}>
                   {isOPD ? "OPD · PPPoE" : "Desa · L2TP"}
                 </span>
               </div>
@@ -907,7 +907,7 @@ export default function TrafficDetailPage() {
                   Volume kumulatif
                 </p>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
                 <Activity size={15} />
               </div>
             </div>

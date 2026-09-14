@@ -49,7 +49,7 @@ export default function DesignSettingsPage() {
     setIsSaved(false);
   };
   const handleReset = () => {
-    const defaultConfig = PRESET_THEMES[0]; // Blue NOCR default
+    const defaultConfig = PRESET_THEMES[0]; // Linear Dark default
     setCurrentConfig(defaultConfig);
     applyThemeConfig(defaultConfig);
     setIsSaved(false);
@@ -308,7 +308,7 @@ export default function DesignSettingsPage() {
                 <input
                   type="color"
                   value={
-                    currentConfig.tagOpd || currentConfig.purple || "#AD6DED"
+                    currentConfig.tagOpd || "#B5B5B5"
                   }
                   onChange={(e) => handleColorChange("tagOpd", e.target.value)}
                   className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent"
@@ -322,7 +322,7 @@ export default function DesignSettingsPage() {
                 <input
                   type="color"
                   value={
-                    currentConfig.tagDesa || currentConfig.primary || "#097FE8"
+                    currentConfig.tagDesa || "#02B8CC"
                   }
                   onChange={(e) => handleColorChange("tagDesa", e.target.value)}
                   className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent"
@@ -466,10 +466,10 @@ export default function DesignSettingsPage() {
                 <span
                   className="px-2 py-0.5 rounded font-bold border"
                   style={{
-                    backgroundColor: `${currentConfig.tagOpd || currentConfig.purple || "#AD6DED"}20`,
+                    backgroundColor: `${currentConfig.tagOpd || "#B5B5B5"}20`,
                     color:
-                      currentConfig.tagOpd || currentConfig.purple || "#AD6DED",
-                    borderColor: `${currentConfig.tagOpd || currentConfig.purple || "#AD6DED"}40`,
+                      currentConfig.tagOpd || "#B5B5B5",
+                    borderColor: `${currentConfig.tagOpd || "#B5B5B5"}40`,
                   }}
                 >
                   OPD
@@ -477,12 +477,11 @@ export default function DesignSettingsPage() {
                 <span
                   className="px-2 py-0.5 rounded font-bold border"
                   style={{
-                    backgroundColor: `${currentConfig.tagDesa || currentConfig.primary || "#097FE8"}20`,
+                    backgroundColor: `${currentConfig.tagDesa || "#02B8CC"}20`,
                     color:
                       currentConfig.tagDesa ||
-                      currentConfig.primary ||
-                      "#097FE8",
-                    borderColor: `${currentConfig.tagDesa || currentConfig.primary || "#097FE8"}40`,
+                      "#02B8CC",
+                    borderColor: `${currentConfig.tagDesa || "#02B8CC"}40`,
                   }}
                 >
                   Desa

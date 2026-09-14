@@ -975,7 +975,7 @@ export default function MonitoringTrafficPage() {
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-500 block">Total Klien</span>
-                          <span className="font-semibold text-purple-400 truncate block">
+                          <span className="font-semibold text-blue-400 truncate block">
                             {site.clients ? Number(site.clients).toLocaleString("id-ID") : "0"}
                           </span>
                         </div>
@@ -1116,10 +1116,10 @@ export default function MonitoringTrafficPage() {
                           {/* Client Count */}
                           <td className="py-3 px-2 text-center">
                             <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono text-[11px] font-semibold"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono text-[11px] font-semibold"
                               title="Total Klien Akumulatif (30 Hari)"
                             >
-                              <Users size={11} className="text-purple-400" />
+                              <Users size={11} className="text-blue-400" />
                               {site.clients ? Number(site.clients).toLocaleString("id-ID") : "0"}
                             </span>
                           </td>

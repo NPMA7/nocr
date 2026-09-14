@@ -63,11 +63,12 @@ export default function UptimeTimer({ dateString, prefix = '', suffix = '', mode
   return (
     <span 
       onClick={handleToggle}
-      className="text-[10px] flex items-center gap-1 cursor-pointer select-none hover:text-blue-400 transition-colors"
+      className="text-[10px] text-slate-400 dark:text-slate-400 hover:text-slate-200 flex items-center gap-1 cursor-pointer select-none transition-colors"
+      style={{ color: 'var(--color-text-muted, #9C9DA1)' }}
       title="Klik untuk mengubah format waktu"
     >
-      <Clock size={10} />
-      {prefix} {displayText} {suffix}
+      <Clock size={10} className="shrink-0" style={{ color: 'inherit' }} />
+      <span>{prefix} {displayText} {suffix}</span>
     </span>
   );
 }

@@ -390,7 +390,7 @@ export default function MonitorOpd() {
       {/* 1. TOP HEADER & SYNC ACTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 sm:py-3.5 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
             <Monitor size={18} />
           </div>
           <div>
@@ -398,7 +398,7 @@ export default function MonitorOpd() {
               <h1 className="text-sm sm:text-base font-bold text-slate-100">
                 Monitor Wilayah OPD
               </h1>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 PPPoE / Mikrotik & Ruijie
               </span>
             </div>
@@ -531,7 +531,7 @@ export default function MonitorOpd() {
                 {mergedDevices.length} Instansi OPD
               </p>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-purple-400 shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-blue-400 shrink-0">
               <Users size={15} />
             </div>
           </div>
@@ -547,7 +547,6 @@ export default function MonitorOpd() {
               { id: "all", label: "Semua" },
               { id: "ONLINE", label: "Online" },
               { id: "OFFLINE", label: "Offline" },
-              { id: "ISSUE", label: "Tidak Sinkron" },
             ].map((chip) => (
               <button
                 key={chip.id}
@@ -665,7 +664,7 @@ export default function MonitorOpd() {
                           >
                             {d.prefix ? String(d.prefix).toUpperCase() : "-"}
                           </span>
-                          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-medium tag-opd">
                             OPD
                           </span>
                           {canUpdate && (
@@ -710,7 +709,7 @@ export default function MonitorOpd() {
                       <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
                         <div className="flex items-center gap-2">
                           {getIssueBadge(d.issue)}
-                          <span className="inline-flex items-center gap-1 font-mono text-xs text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">
+                          <span className="inline-flex items-center gap-1 font-mono text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">
                             <Users size={11} /> {d.clients !== undefined && d.clients !== null ? d.clients : 0}
                           </span>
                         </div>
@@ -739,7 +738,7 @@ export default function MonitorOpd() {
                               disabled={!d.remote_address}
                               className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border transition whitespace-nowrap ${
                                 d.remote_address
-                                  ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
+                                  ? "text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/20"
                                   : "text-slate-600 bg-slate-900 border-slate-800 cursor-not-allowed opacity-50"
                               }`}
                               title={
@@ -840,7 +839,7 @@ export default function MonitorOpd() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center align-middle">
-                            <div className="inline-flex items-center gap-1 font-mono font-bold text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-md">
+                            <div className="inline-flex items-center gap-1 font-mono font-bold text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-md">
                               <Users size={12} />
                               <span>{d.clients !== undefined && d.clients !== null ? d.clients : 0}</span>
                             </div>
@@ -879,7 +878,7 @@ export default function MonitorOpd() {
                                   disabled={!d.remote_address}
                                   className={`cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border transition whitespace-nowrap ${
                                     d.remote_address
-                                      ? "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20"
+                                      ? "text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/20"
                                       : "text-slate-600 bg-slate-900 border-slate-800 cursor-not-allowed opacity-50"
                                   }`}
                                   title={

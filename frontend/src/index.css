@@ -29,21 +29,21 @@
   --color-brand-purple-notion: #AD6DED;
 }
 
-/* Baseline Root Variables (Default: Blue NOCR Dark) */
+/* Baseline Root Variables (Default: Linear Dark) */
 :root {
-  --color-app-bg: #0F172A;
-  --color-card-bg: #1E293B;
-  --color-header-bg: #1E293B;
-  --color-border-main: #334155;
-  --color-text-main: #F8FAFC;
-  --color-text-muted: #94A3B8;
-  --color-primary: #3B82F6;
+  --color-app-bg: #08090A;
+  --color-card-bg: #191D20;
+  --color-header-bg: #08090A;
+  --color-border-main: #383B3F;
+  --color-text-main: #FFFFFF;
+  --color-text-muted: #9C9DA1;
+  --color-primary: #3296FF;
   --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
+  --color-warning: #E4F222;
+  --color-danger: #EB5757;
   --color-purple: #8B5CF6;
-  --color-tag-opd: #A855F7;
-  --color-tag-desa: #3B82F6;
+  --color-tag-opd: #B5B5B5;
+  --color-tag-desa: #02B8CC;
 }
 
 /* ==========================================================================
@@ -351,16 +351,16 @@ aside[class*="bg-slate"],
 /* Explicit Badge OPD & Badge Desa Theme Variables */
 .badge-opd,
 .tag-opd {
-  background-color: color-mix(in srgb, var(--color-tag-opd, #AD6DED) 20%, transparent) !important;
-  color: var(--color-tag-opd, #AD6DED) !important;
-  border-color: color-mix(in srgb, var(--color-tag-opd, #AD6DED) 35%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-tag-opd, #B5B5B5) 15%, transparent) !important;
+  color: var(--color-tag-opd, #B5B5B5) !important;
+  border: 1px solid color-mix(in srgb, var(--color-tag-opd, #B5B5B5) 35%, transparent) !important;
 }
 
 .badge-desa,
 .tag-desa {
-  background-color: color-mix(in srgb, var(--color-tag-desa, #097FE8) 20%, transparent) !important;
-  color: var(--color-tag-desa, #097FE8) !important;
-  border-color: color-mix(in srgb, var(--color-tag-desa, #097FE8) 35%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-tag-desa, #02B8CC) 15%, transparent) !important;
+  color: var(--color-tag-desa, #02B8CC) !important;
+  border: 1px solid color-mix(in srgb, var(--color-tag-desa, #02B8CC) 35%, transparent) !important;
 }
 
 /* Inactive Buttons & Toolbar Text Contrast Overrides */
@@ -384,75 +384,92 @@ aside[class*="bg-slate"],
   background-color: var(--color-header-bg, #FFFFFF) !important;
 }
 
-/* Sidebar Active Main Item (Dashboard, Topology, Live Chat, etc.) */
-aside a.bg-blue-600,
-aside button.bg-blue-600,
-.light aside a.bg-blue-600,
-.light aside button.bg-blue-600,
-[data-theme="light"] aside a.bg-blue-600,
-[data-theme="light"] aside button.bg-blue-600 {
-  background-color: var(--color-primary, #097FE8) !important;
-  color: #FFFFFF !important;
+/* Sidebar Active Nav & Subnav Items to strictly follow Primary Accent */
+.active-sidebar-item {
+  background-color: color-mix(in srgb, var(--color-primary, #3296FF) 16%, transparent) !important;
+  color: var(--color-primary, #3296FF) !important;
+  border-left: 3px solid var(--color-primary, #3296FF) !important;
 }
 
-aside a.bg-blue-600 *,
-aside button.bg-blue-600 *,
-.light aside a.bg-blue-600 *,
-.light aside button.bg-blue-600 *,
-[data-theme="light"] aside a.bg-blue-600 *,
-[data-theme="light"] aside button.bg-blue-600 * {
-  color: #FFFFFF !important;
+.active-sidebar-item * {
+  color: var(--color-primary, #3296FF) !important;
 }
 
-/* Sidebar Active Parent Dropdown Button in Light Mode (ONLY target the parent button itself) */
-.light aside button[class*="bg-slate-800/50"],
-[data-theme="light"] aside button[class*="bg-slate-800/50"] {
-  background-color: color-mix(in srgb, var(--color-primary, #097FE8) 12%, transparent) !important;
-  color: var(--color-primary, #097FE8) !important;
+.active-sidebar-subitem {
+  background-color: color-mix(in srgb, var(--color-primary, #3296FF) 18%, transparent) !important;
+  color: var(--color-primary, #3296FF) !important;
 }
 
-.light aside button[class*="bg-slate-800/50"] > *,
-.light aside button[class*="bg-slate-800/50"] > * > *,
-[data-theme="light"] aside button[class*="bg-slate-800/50"] > *,
-[data-theme="light"] aside button[class*="bg-slate-800/50"] > * > * {
-  color: var(--color-primary, #097FE8) !important;
+.active-sidebar-subitem * {
+  color: var(--color-primary, #3296FF) !important;
 }
 
-/* Sidebar Submenu Active Highlights to match Custom Primary Accent (ONLY active sub-links) */
-aside a[class*="bg-purple-500/10"],
-aside a[class*="bg-emerald-500/10"],
+aside a[class*="bg-sky-500/10"],
+aside a[class*="bg-sky-500/15"],
+aside button[class*="bg-sky-500/10"],
 aside a[class*="bg-blue-500/10"],
 aside a[class*="bg-blue-600/10"] {
-  background-color: color-mix(in srgb, var(--color-primary, #097FE8) 15%, transparent) !important;
-  color: var(--color-primary, #097FE8) !important;
+  background-color: color-mix(in srgb, var(--color-primary, #3296FF) 16%, transparent) !important;
+  color: var(--color-primary, #3296FF) !important;
 }
 
-aside a[class*="bg-purple-500/10"] *,
-aside a[class*="bg-emerald-500/10"] *,
+aside a[class*="bg-sky-500/10"] *,
+aside a[class*="bg-sky-500/15"] *,
+aside button[class*="bg-sky-500/10"] *,
 aside a[class*="bg-blue-500/10"] *,
 aside a[class*="bg-blue-600/10"] * {
-  color: var(--color-primary, #097FE8) !important;
-  opacity: 1 !important;
+  color: var(--color-primary, #3296FF) !important;
 }
 
 /* Global Primary Accent Overrides for Buttons, Texts & Borders */
 button.bg-blue-600,
 a.bg-blue-600,
-.bg-blue-600 {
-  background-color: var(--color-primary, #097FE8) !important;
+.bg-blue-600,
+button.bg-sky-600,
+a.bg-sky-600,
+.bg-sky-600,
+button.bg-blue-500,
+a.bg-blue-500 {
+  background-color: var(--color-primary, #3296FF) !important;
+  color: #FFFFFF !important;
+}
+
+button.bg-blue-600:hover,
+a.bg-blue-600:hover,
+.bg-blue-600:hover,
+button.bg-sky-600:hover,
+a.bg-sky-600:hover,
+.bg-sky-600:hover,
+button.bg-blue-500:hover,
+a.bg-blue-500:hover {
+  background-color: color-mix(in srgb, var(--color-primary, #3296FF) 85%, white) !important;
 }
 
 .border-blue-500,
-.border-blue-600 {
-  border-color: var(--color-primary, #097FE8) !important;
+.border-blue-600,
+.border-sky-500,
+.border-sky-600 {
+  border-color: var(--color-primary, #3296FF) !important;
 }
 
 .text-blue-400,
 .text-blue-500,
-.text-blue-600,
-[class*="text-blue-400"],
-[class*="text-blue-500"] {
-  color: var(--color-primary, #097FE8) !important;
+.text-blue-600 {
+  color: var(--color-primary, #3296FF) !important;
+}
+
+.bg-blue-500\/10,
+.bg-blue-600\/10,
+[class*="bg-blue-500/10"],
+[class*="bg-blue-600/10"] {
+  background-color: color-mix(in srgb, var(--color-primary, #3296FF) 12%, transparent) !important;
+}
+
+.border-blue-500\/20,
+.border-blue-600\/20,
+[class*="border-blue-500/20"],
+[class*="border-blue-600/20"] {
+  border-color: color-mix(in srgb, var(--color-primary, #3296FF) 25%, transparent) !important;
 }
 
 /* Custom Scrollbar Dynamic & Theme-Adaptive */

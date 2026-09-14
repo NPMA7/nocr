@@ -127,8 +127,10 @@ function SitesListPage() {
   const onlineCount = useMemo(() => {
     return typeItems.filter(
       (d) =>
-        (d.status_ruijie || "").toLowerCase() === "online" ||
-        (d.status_mikrotik || "").toLowerCase() === "online",
+        d.final_status === "Online" ||
+        (!d.final_status &&
+          (d.status_ruijie || "").toLowerCase() === "online" &&
+          (d.status_mikrotik || "").toLowerCase() === "online"),
     ).length;
   }, [typeItems]);
 
@@ -162,8 +164,10 @@ function SitesListPage() {
 
       // Online/Offline Status Filter
       const isOnline =
-        (d.status_ruijie || "").toLowerCase() === "online" ||
-        (d.status_mikrotik || "").toLowerCase() === "online";
+        d.final_status === "Online" ||
+        (!d.final_status &&
+          (d.status_ruijie || "").toLowerCase() === "online" &&
+          (d.status_mikrotik || "").toLowerCase() === "online");
       if (filterStatus === "online" && !isOnline) return false;
       if (filterStatus === "offline" && isOnline) return false;
 
@@ -518,8 +522,10 @@ function SitesListPage() {
                       const vendor = d.site?.vendor;
                       const customerId = d.site?.customer_id;
                       const isOnline =
-                        (d.status_ruijie || "").toLowerCase() === "online" ||
-                        (d.status_mikrotik || "").toLowerCase() === "online";
+                        d.final_status === "Online" ||
+                        (!d.final_status &&
+                          (d.status_ruijie || "").toLowerCase() === "online" &&
+                          (d.status_mikrotik || "").toLowerCase() === "online");
                       const pics = getValidPics(d.site?.pics);
 
                       return (
@@ -542,7 +548,7 @@ function SitesListPage() {
                               >
                                 {d.prefix || "—"}
                               </span>
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold shrink-0">
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0 tag-opd">
                                 OPD
                               </span>
                             </div>
@@ -706,8 +712,10 @@ function SitesListPage() {
                   const customerId = d.site?.customer_id;
                   const pics = getValidPics(d.site?.pics);
                   const isOnline =
-                    (d.status_ruijie || "").toLowerCase() === "online" ||
-                    (d.status_mikrotik || "").toLowerCase() === "online";
+                    d.final_status === "Online" ||
+                    (!d.final_status &&
+                      (d.status_ruijie || "").toLowerCase() === "online" &&
+                      (d.status_mikrotik || "").toLowerCase() === "online");
 
                   return (
                     <div
@@ -724,7 +732,7 @@ function SitesListPage() {
                           <span className="font-bold text-slate-100 text-sm truncate">
                             {d.prefix || "—"}
                           </span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold shrink-0">
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded font-bold shrink-0 tag-opd">
                             OPD
                           </span>
                         </div>

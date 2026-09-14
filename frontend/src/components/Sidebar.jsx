@@ -109,7 +109,7 @@ export default function Sidebar({
       isCollapsed ? "justify-center px-2 w-full" : "gap-3 px-3 w-full"
     } py-2.5 min-h-[36px] rounded-lg transition-all duration-150 text-xs ${
       isActive
-        ? "bg-sky-500/10 text-sky-300 font-medium"
+        ? "active-sidebar-item font-medium"
         : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 font-normal"
     }`;
   };
@@ -117,7 +117,7 @@ export default function Sidebar({
   const getSubLinkClass = (isActive) => {
     return `flex items-center gap-2 px-3 py-2 min-h-[32px] text-xs rounded-lg transition-colors ${
       isActive
-        ? "text-sky-300 font-medium bg-sky-500/15"
+        ? "active-sidebar-subitem font-medium"
         : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 font-normal"
     }`;
   };
@@ -244,7 +244,7 @@ export default function Sidebar({
                 isCollapsed ? "justify-center px-2" : "justify-between px-3"
               } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/monitoring")
-                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  ? "active-sidebar-item font-medium"
                   : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
@@ -354,7 +354,7 @@ export default function Sidebar({
                 isCollapsed ? "justify-center px-2" : "justify-between px-3"
               } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/device")
-                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  ? "active-sidebar-item font-medium"
                   : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
@@ -462,7 +462,7 @@ export default function Sidebar({
                 isCollapsed ? "justify-center px-2" : "justify-between px-3"
               } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/sites")
-                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  ? "active-sidebar-item font-medium"
                   : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
@@ -539,7 +539,7 @@ export default function Sidebar({
                 isCollapsed ? "justify-center px-2" : "justify-between px-3"
               } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/report") || pathname.startsWith("/daily-reports")
-                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  ? "active-sidebar-item font-medium"
                   : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >
@@ -623,7 +623,7 @@ export default function Sidebar({
                 isCollapsed ? "justify-center px-2" : "justify-between px-3"
               } py-2.5 min-h-[36px] rounded-lg transition-all text-xs border-0 bg-transparent text-left outline-none w-full ${
                 pathname.startsWith("/settings")
-                  ? "bg-sky-500/10 text-sky-300 font-medium"
+                  ? "active-sidebar-item font-medium"
                   : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200 font-normal"
               }`}
             >

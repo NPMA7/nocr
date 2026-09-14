@@ -1207,10 +1207,10 @@ export default function Mikrotik() {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold border ${
+                            className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold ${
                               p.service?.toLowerCase().includes("l2tp")
-                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                ? "tag-desa"
+                                : "tag-opd"
                             }`}
                           >
                             {p.service?.toLowerCase().includes("l2tp")

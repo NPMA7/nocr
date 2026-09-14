@@ -758,7 +758,7 @@ export default function TrafficDetailPage() {
                     deviceInfo?.prefix || mac
                   )}
                 </h1>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded whitespace-nowrap ${isOPD ? "tag-opd" : "tag-desa"}`}>
                   {isOPD ? "OPD · PPPoE" : "Desa · L2TP"}
                 </span>
               </div>

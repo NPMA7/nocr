@@ -251,7 +251,7 @@ export default function SiteDetailPage() {
               <h1 className="text-sm sm:text-base font-bold text-slate-100 truncate">
                 {data?.prefix || "Detail Wilayah OPD"}
               </h1>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tag-opd">
                 OPD
               </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
@@ -319,7 +319,7 @@ export default function SiteDetailPage() {
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
               Prefix Site
             </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded font-bold tag-opd">
               OPD
             </span>
           </div>

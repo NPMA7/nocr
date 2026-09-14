@@ -553,7 +553,6 @@ export default function MonitorDevice() {
               { id: "all", label: "Semua" },
               { id: "ONLINE", label: "Online" },
               { id: "OFFLINE", label: "Offline" },
-              { id: "ISSUE", label: "Tidak Sinkron" },
             ].map((chip) => (
               <button
                 key={chip.id}
@@ -671,7 +670,7 @@ export default function MonitorDevice() {
                           >
                             {d.prefix ? String(d.prefix).toUpperCase() : "-"}
                           </span>
-                          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded font-mono font-medium tag-desa">
                             Desa
                           </span>
                           {canUpdate && (
