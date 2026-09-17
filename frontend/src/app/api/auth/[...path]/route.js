@@ -97,7 +97,7 @@ function getClientIp(req) {
 }
 
 const COOKIE_NAME = 'nocr_token';
-const COOKIE_MAX_AGE = 24 * 60 * 60; // 24 hours (hardened session policy)
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days (604800 seconds)
 
 function isSecureRequest(req) {
     if (process.env.COOKIE_SECURE === 'true') return true;
@@ -275,7 +275,7 @@ export async function POST(req, { params }) {
                 { id: data[0].id, username: data[0].username, role: data[0].role },
                 JWT_SECRET,
                 {
-                    expiresIn: '24h',
+                    expiresIn: '7d',
                     issuer: 'nocrnetwork.com',
                     audience: 'nocr-users',
                     jwtid: crypto.randomUUID()
@@ -367,7 +367,7 @@ export async function POST(req, { params }) {
                 { id: data.id, username: data.username, role: userRole },
                 JWT_SECRET,
                 {
-                    expiresIn: '24h',
+                    expiresIn: '7d',
                     issuer: 'nocrnetwork.com',
                     audience: 'nocr-users',
                     jwtid: crypto.randomUUID()
